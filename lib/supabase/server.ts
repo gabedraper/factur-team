@@ -41,20 +41,3 @@ export function createServiceClient() {
     }
   );
 }
-
-// Cookie-less anon client for callers that authenticate via an explicit
-// bearer token (e.g. the Chrome extension) instead of the browser session.
-export function createAnonClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return [];
-        },
-        setAll() {},
-      },
-    }
-  );
-}
