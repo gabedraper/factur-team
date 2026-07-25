@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Team Learning Academy</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Team Learning Academy</h1>
+      <button id="logoutBtn" class="hidden">Log out</button>
+    </header>
+
+    <!-- No LMS URL configured yet -->
+    <section id="setupView" class="card hidden">
+      <p class="muted">Set up the extension by entering your LMS web address.</p>
+      <button id="openSettingsBtn" class="primary">Open Settings</button>
+    </section>
+
+    <!-- Logged out -->
+    <section id="loginView" class="card hidden">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" />
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <button id="loginBtn" class="primary">Log in</button>
+      <p id="loginError" class="error"></p>
+    </section>
+
+    <!-- Logged in -->
+    <section id="mainView" class="hidden">
+      <div class="tabs">
+        <button class="tab active" data-tab="courses">My Courses</button>
+        <button class="tab" data-tab="bug">Report a Bug</button>
+      </div>
+
+      <div id="coursesPanel" class="panel">
+        <div id="coursesList"></div>
+      </div>
+
+      <div id="bugPanel" class="panel hidden">
+        <label for="description">What went wrong?</label>
+        <textarea
+          id="description"
+          rows="4"
+          placeholder="Describe the issue you ran into"
+        ></textarea>
+        <button id="captureBtn" class="secondary">Capture screenshot of current tab</button>
+        <div id="screenshotPreview" class="screenshot-preview hidden">
+          <img id="screenshotImg" alt="Captured screenshot" />
+          <button id="removeScreenshotBtn" aria-label="Remove screenshot">✕</button>
+        </div>
+        <button id="submitBugBtn" class="primary">Send Report</button>
+        <p id="bugError" class="error"></p>
+        <p id="bugSuccess" class="status"></p>
+      </div>
+    </section>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
