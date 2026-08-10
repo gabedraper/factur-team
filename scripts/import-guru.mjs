@@ -4,12 +4,18 @@
 import { createClient } from "@supabase/supabase-js";
 import { execSync } from "child_process";
 
-const GURU_CLI_USER = "gabe@bethefactur.com";
-const GURU_CLI_TOKEN = "c1e203c4-d93f-43a1-a86e-e6c3c6988ea5";
+const GURU_CLI_USER = process.env.GURU_CLI_USER;
+const GURU_CLI_TOKEN = process.env.GURU_CLI_TOKEN;
+if (!GURU_CLI_USER || !GURU_CLI_TOKEN) {
+  throw new Error("Set GURU_CLI_USER and GURU_CLI_TOKEN in the environment before running this script.");
+}
 const env = { ...process.env, GURU_CLI_USER, GURU_CLI_TOKEN };
 
-const SUPABASE_URL = "https://esadbpqlskiwjijhghys.supabase.co";
-const SUPABASE_KEY = "sb_secret_sgnFU6myfqH9UwIUCAnVkw_M3LU6jSv";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the environment before running this script.");
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 function guruCLI(args) {

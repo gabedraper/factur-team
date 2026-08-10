@@ -1,5 +1,8 @@
-const GURU_EMAIL = "gabe@bethefactur.com";
-const GURU_TOKEN = "c1e203c4-d93f-43a1-a86e-e6c3c6988ea5";
+const GURU_EMAIL = process.env.GURU_CLI_USER;
+const GURU_TOKEN = process.env.GURU_CLI_TOKEN;
+if (!GURU_EMAIL || !GURU_TOKEN) {
+  throw new Error("Set GURU_CLI_USER and GURU_CLI_TOKEN in the environment before running this script.");
+}
 const GURU_BASE = "https://api.getguru.com/api/v1";
 const GURU_AUTH = Buffer.from(`${GURU_EMAIL}:${GURU_TOKEN}`).toString("base64");
 
