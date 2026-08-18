@@ -209,12 +209,15 @@ export default function LessonEditPage() {
             </div>
             <div className="space-y-2">
               <Label>Content Owner</Label>
-              <Select value={ownerId} onValueChange={setOwnerId}>
+              <Select
+                value={ownerId || "none"}
+                onValueChange={(v) => setOwnerId(v === "none" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select owner..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No owner</SelectItem>
+                  <SelectItem value="none">No owner</SelectItem>
                   {allUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
                   ))}
