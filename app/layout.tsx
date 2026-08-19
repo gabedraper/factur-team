@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_LMS_NAME || "Team Learning Academy",
-  description: "Team training and learning management system",
+  title: process.env.NEXT_PUBLIC_SITE_NAME || "Factur Team",
+  description: "Training, sales leaderboards and reporting for Factur staff",
 };
 
 export default function RootLayout({

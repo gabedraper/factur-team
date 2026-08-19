@@ -1,9 +1,0 @@
-{
-  "/(dashboard)/instructor/courses/[courseId]/page": "app/(dashboard)/instructor/courses/[courseId]/page.js",
-  "/(dashboard)/admin/page": "app/(dashboard)/admin/page.js",
-  "/(dashboard)/learner/courses/[courseId]/lessons/[lessonId]/page": "app/(dashboard)/learner/courses/[courseId]/lessons/[lessonId]/page.js",
-  "/(dashboard)/admin/users/page": "app/(dashboard)/admin/users/page.js",
-  "/(dashboard)/admin/learning-paths/page": "app/(dashboard)/admin/learning-paths/page.js",
-  "/(dashboard)/admin/courses/page": "app/(dashboard)/admin/courses/page.js",
-  "/(dashboard)/learner/courses/[courseId]/page": "app/(dashboard)/learner/courses/[courseId]/page.js"
-}

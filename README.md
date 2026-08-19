@@ -1,152 +1,57 @@
-# Team Learning Academy — LMS
+# Factur Team
 
-A full-featured Learning Management System built with Next.js 14 App Router, Supabase, Tailwind CSS, and shadcn/ui.
+The internal site for Factur staff: training, sales leaderboards, and (soon)
+lead timelines. One Next app, one Google sign-in, one database.
 
----
+Live at **team.facturmfg.com**. Sign-in is restricted to `@bethefactur.com` and
+`@facturmfg.com` Google accounts.
 
-## Features
+## Sections
 
-- **Role-based access**: Admin, Manager, Instructor, Learner
-- **Course authoring**: Modules + Lessons (video, text, quiz, file)
-- **Progress tracking**: Per-lesson completion, course progress percentage
-- **PDF Certificates**: Auto-issued on 100% course completion, downloadable
-- **Learning Paths**: Admins create paths targeted at specific roles
-- **Team Progress**: Managers see their team's enrollment and completion stats
+| Path | What it is |
+| --- | --- |
+| `/learner`, `/instructor`, `/manager`, `/admin` | Training: courses, modules, lessons, certificates |
+| `/leaderboard` | Course-completion board |
+| `/scoreboard/{hustle-points,deals,retention}` | Sales leaderboards, from Salesforce |
+| `/admin/weights` | Scoring weights behind the sales boards |
 
----
+Note the two boards are different things: `/leaderboard` ranks training
+progress, `/scoreboard` ranks selling.
 
-## Setup
-
-### 1. Create a Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Navigate to **Project Settings → API** and copy your URL and keys
-
-### 2. Run the Database Migration
-
-In your Supabase dashboard, go to **SQL Editor** and run the contents of:
-
-```
-supabase/migrations/001_schema.sql
-```
-
-This creates all tables and RLS policies.
-
-### 3. Configure Environment Variables
-
-Copy `.env.local.example` to `.env.local`:
-
-```bash
-cp .env.local.example .env.local
-```
-
-Fill in your values:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-NEXT_PUBLIC_LMS_NAME=Team Learning Academy
-NEXT_PUBLIC_ISSUER_NAME=Training Department
-```
-
-### 4. Install Dependencies
+## Running it
 
 ```bash
 npm install
+cp .env.local.example .env.local   # then fill in the keys
+npm run dev                        # http://localhost:3001
 ```
 
-### 5. Run the Development Server
+Keys come from Supabase project `ripnymdxplmoflpwmqwl` (Settings -> API keys).
+`SUPABASE_SERVICE_ROLE_KEY` wants a modern `sb_secret_...` key. Every
+`localhost` sign-in address must also be listed under Authentication -> URL
+Configuration, or Google will refuse to send you back.
 
-```bash
-npm run dev
-```
+## Access rules
 
-Open [http://localhost:3000](http://localhost:3000). You'll be redirected to `/login`.
+One rule governs everything: `public.is_factur_user()` in the database, which
+mirrors `lib/scoreboard/allowed-domains.ts` in the app. **Change both together.**
 
----
+- Signing in with a non-Factur Google account produces a session but no
+  profile, because `handle_new_user()` only creates one for allowed domains.
+  Middleware treats "no profile" as the signal to sign out and redirect to
+  `/unauthorized`.
+- `lms_initial_roles` maps email to LMS role and is read at first sign-in. The
+  admin Users screen writes to it.
+- `handle_new_user()` also links the account to its `reps` row. Both jobs share
+  one trigger because both apps wanted the name `on_auth_user_created`.
 
-## Role Walkthrough
+## Database
 
-### Admin
-- View dashboard stats (users, courses, paths, certificates)
-- Manage all users and their roles
-- Create and manage learning paths (assign target roles)
-- Browse all courses
+Migrations live in `supabase/migrations/` and target `ripnymdxplmoflpwmqwl`.
 
-### Manager
-- View all team members (users where `manager_id = manager.id`)
-- See each team member's enrollment status and progress per course
-- Drill into individual team member detail pages
+`ensure_staging_rls()` runs nightly from `nightly_maintenance()` and reasserts
+the policies on the `sf_*_raw` Salesforce tables. Change those policies there as
+well, or the nightly run will overwrite you.
 
-### Instructor
-- Create courses (title, description, thumbnail)
-- Build course content: Modules → Lessons
-- Lesson types: **Video** (URL/YouTube embed), **Text** (HTML), **Quiz** (multiple choice), **File** (download link)
-- Publish/unpublish courses
-
-### Learner
-- Browse available published courses
-- Enroll in courses
-- Take lessons:
-  - Video: watch embedded or direct video
-  - Text: read HTML content
-  - Quiz: answer questions, need 70%+ to pass
-  - File: download file resource
-- Track progress per course
-- Earn certificates on 100% completion
-- Download PDF certificates
-
----
-
-## Certificate Download URL
-
-```
-GET /api/certificates/:certId
-```
-
-Returns a PDF with `Content-Disposition: attachment`. The cert ID is a UUID from the `certificates` table.
-
-Example from the UI:
-```
-/api/certificates/550e8400-e29b-41d4-a716-446655440000
-```
-
----
-
-## Deploying to Vercel
-
-1. Push your repo to GitHub
-2. Go to [vercel.com](https://vercel.com) → **New Project** → import your repo
-3. Add all environment variables from `.env.local` in the Vercel dashboard
-4. Deploy
-
-Vercel auto-detects Next.js. No additional configuration needed.
-
-> **Note**: `@react-pdf/renderer` requires Node.js runtime for the certificate API route. Ensure you're not using Edge runtime for that route (the default Node.js runtime is used automatically).
-
----
-
-## Project Structure
-
-```
-lms/
-├── app/
-│   ├── (auth)/login        # Login page
-│   ├── (auth)/signup       # Signup page  
-│   ├── (dashboard)/        # Protected dashboard routes
-│   │   ├── layout.tsx      # Sidebar with role-based nav
-│   │   ├── admin/          # Admin pages
-│   │   ├── instructor/     # Course authoring
-│   │   ├── learner/        # Course taking + certificates
-│   │   └── manager/        # Team progress
-│   └── api/certificates/   # PDF generation endpoint
-├── actions/                # Next.js Server Actions
-├── components/ui/          # shadcn/ui components
-├── lib/
-│   ├── supabase/           # Supabase client (browser + server)
-│   ├── certificate.tsx     # @react-pdf/renderer PDF template
-│   └── progress.ts         # Course progress calculation
-├── middleware.ts            # Auth protection + redirects
-└── supabase/migrations/    # Database schema + RLS
-```
+`supabase/legacy-lms-project/` is the retired project's history, kept for
+reference only. Do not apply it.

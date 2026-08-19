@@ -35,7 +35,23 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager"];
+  // Sign-in with a non-Factur Google account produces a session but no profile
+  // (handle_new_user only creates one for the allowed domains). Send those
+  // straight out rather than letting them bounce around the dashboard.
+  if (user && !pathname.startsWith("/unauthorized")) {
+    const { data: hasProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!hasProfile) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
+    }
+  }
+
+  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard"];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
   );
@@ -59,7 +75,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If logged in and hitting auth pages, redirect to appropriate dashboard
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  if (user && pathname === "/login") {
     return NextResponse.redirect(new URL("/learner", request.url));
   }
 
