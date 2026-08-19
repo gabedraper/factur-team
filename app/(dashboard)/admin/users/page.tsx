@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { inviteUser, updateUserRole, sendPasswordReset, deleteUser, getUsersWithEmails } from "@/actions/admin";
+import { preassignRole, updateUserRole, deleteUser, getUsersWithEmails } from "@/actions/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { UserPlus, KeyRound, Trash2 } from "lucide-react";
+import { UserPlus, Trash2 } from "lucide-react";
 import { ROLES } from "@/lib/roles";
 
 interface UserProfile {
@@ -42,7 +42,6 @@ const roleColors: Record<string, string> = {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("learner");
   const [inviteError, setInviteError] = useState("");
@@ -65,21 +64,26 @@ export default function AdminUsersPage() {
   }
 
   async function handleInvite() {
-    if (!inviteEmail || !inviteName) return;
+    if (!inviteEmail) return;
     setLoading(true);
     setInviteError("");
-    const result = await inviteUser(inviteEmail, inviteName, inviteRole);
+    const result = await preassignRole(inviteEmail, inviteRole);
     setLoading(false);
     if (result.success) {
       setInviteOpen(false);
-      setInviteName("");
+      const email = inviteEmail;
       setInviteEmail("");
       setInviteRole("learner");
       setInviteError("");
-      showMessage(`Invite sent to ${inviteEmail}!`, "success");
+      showMessage(
+        result.alreadySignedUp
+          ? `${email} updated.`
+          : `${email} will be a ${inviteRole} when they first sign in.`,
+        "success"
+      );
       loadUsers();
     } else {
-      setInviteError(result.error || "Failed to send invite");
+      setInviteError(result.error || "Failed to save role");
     }
   }
 
@@ -90,16 +94,6 @@ export default function AdminUsersPage() {
       loadUsers();
     } else {
       showMessage(result.error || "Failed to update role", "error");
-    }
-  }
-
-  async function handlePasswordReset(email: string) {
-    if (!email) return showMessage("No email found for this user", "error");
-    const result = await sendPasswordReset(email);
-    if (result.success) {
-      showMessage(`Password reset link sent to ${email}`, "success");
-    } else {
-      showMessage(result.error || "Failed to send reset link", "error");
     }
   }
 
@@ -127,29 +121,21 @@ export default function AdminUsersPage() {
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="h-4 w-4 mr-2" />
-              Invite User
+              Add User
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Invite New User</DialogTitle>
+              <DialogTitle>Set a user’s role</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Full Name</Label>
-                <Input
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
-                  placeholder="Jane Smith"
-                />
-              </div>
               <div className="space-y-2">
                 <Label>Email Address</Label>
                 <Input
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="jane@example.com"
+                  placeholder="jane@facturmfg.com"
                 />
               </div>
               <div className="space-y-2">
@@ -169,14 +155,16 @@ export default function AdminUsersPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                They'll receive an email with a link to set their password and access the platform.
+                Anyone with a Factur Google account can already sign in. This sets
+                the role they get — now if they have signed in before, otherwise the
+                first time they do.
               </p>
               <Button
                 className="w-full"
                 onClick={handleInvite}
-                disabled={!inviteName || !inviteEmail || loading}
+                disabled={!inviteEmail || loading}
               >
-                {loading ? "Sending..." : "Send Invite"}
+                {loading ? "Saving..." : "Save role"}
               </Button>
             </div>
           </DialogContent>
@@ -237,16 +225,6 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => handlePasswordReset(user.email || user.id)}
-                          title="Send password reset email"
-                        >
-                          <KeyRound className="h-3 w-3 mr-1" />
-                          Reset PW
-                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
