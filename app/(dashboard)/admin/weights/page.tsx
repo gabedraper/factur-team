@@ -1,0 +1,45 @@
+import { createClient } from "@/lib/supabase/server";
+import { WeightsEditor } from "./WeightsEditor";
+import { HIDDEN_EFFORT_SOURCES, sortByEffortCategory } from "@/lib/scoreboard/effort-weights";
+
+export default async function AdminWeightsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: rep } = await supabase
+    .from("reps")
+    .select("is_admin")
+    .eq("auth_user_id", user?.id ?? "")
+    .maybeSingle();
+
+  if (!rep?.is_admin) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-8">
+        <p className="text-sm text-neutral-400">
+          You don&apos;t have access to this page.
+        </p>
+      </div>
+    );
+  }
+
+  const { data: weightsRaw } = await supabase
+    .from("effort_weights")
+    .select("effort_source, points, description");
+  const weights = sortByEffortCategory(weightsRaw ?? []);
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-8">
+      <h1 className="mb-1 text-xl font-semibold">Effort Weights</h1>
+      <p className="mb-6 text-sm text-neutral-500">
+        Points per activity type. Changes apply to the leaderboard on the next
+        recompute.
+      </p>
+
+      <WeightsEditor
+        weights={weights.filter((w) => !HIDDEN_EFFORT_SOURCES.has(w.effort_source))}
+      />
+    </div>
+  );
+}

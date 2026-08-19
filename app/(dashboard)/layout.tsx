@@ -17,6 +17,8 @@ import {
   BarChart2,
   ClipboardList,
   Trophy,
+  Target,
+  SlidersHorizontal,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { RolePreviewSelector } from "@/components/role-preview-selector";
@@ -38,12 +40,15 @@ function getNavItems(role: string): NavItem[] {
       { href: "/admin/courses", label: "All Courses", icon: <BookOpen className="h-4 w-4" /> },
       { href: "/admin/progress", label: "Team Progress", icon: <BarChart2 className="h-4 w-4" /> },
       { href: "/leaderboard", label: "Leaderboard", icon: <Trophy className="h-4 w-4" /> },
+      { href: "/scoreboard", label: "Sales Scoreboard", icon: <Target className="h-4 w-4" /> },
+      { href: "/admin/weights", label: "Scoring Weights", icon: <SlidersHorizontal className="h-4 w-4" /> },
     ];
   }
   return [
     { href: "/learner", label: "My Training", icon: <GraduationCap className="h-4 w-4" /> },
     { href: "/learner/certificates", label: "Certificates", icon: <Award className="h-4 w-4" /> },
     { href: "/leaderboard", label: "Leaderboard", icon: <Trophy className="h-4 w-4" /> },
+    { href: "/scoreboard", label: "Sales Scoreboard", icon: <Target className="h-4 w-4" /> },
   ];
 }
 
