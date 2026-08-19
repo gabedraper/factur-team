@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const STORAGE_KEY = "factur-nav-collapsed";
+const GROUPS_KEY = "factur-nav-groups";
 
 export type NavItem = { href: string; label: string; icon: React.ReactNode };
 export type NavGroup = { label: string; items: NavItem[] };
@@ -25,11 +26,28 @@ export function AppSidebar({
   footer: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [shutGroups, setShutGroups] = useState<string[]>([]);
   const pathname = usePathname();
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === "1");
+    try {
+      const saved = JSON.parse(localStorage.getItem(GROUPS_KEY) || "[]");
+      if (Array.isArray(saved)) setShutGroups(saved);
+    } catch {
+      // Corrupt value from an older build -- fall back to everything open.
+    }
   }, []);
+
+  function toggleGroup(label: string) {
+    setShutGroups((shut) => {
+      const next = shut.includes(label)
+        ? shut.filter((l) => l !== label)
+        : [...shut, label];
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   function toggle() {
     setCollapsed((c) => {
@@ -68,39 +86,64 @@ export function AppSidebar({
       {!collapsed && profile}
 
       <nav className="flex-1 overflow-y-auto px-3 py-2">
-        {groups.map((group, i) => (
-          <div key={group.label} className={i > 0 ? "mt-4" : undefined}>
-            {collapsed ? (
-              i > 0 && <Separator className="my-2" />
-            ) : (
-              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-                {group.label}
-              </p>
-            )}
-            <div className="space-y-1">
-              {group.items.map((item) => {
-                const active = item.href === activeHref;
-                return (
-                  <Link
-                    key={item.href + item.label}
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                      collapsed ? "justify-center px-0" : ""
-                    } ${
-                      active
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
-                  >
-                    <span className="shrink-0">{item.icon}</span>
-                    {!collapsed && item.label}
-                  </Link>
-                );
-              })}
+        {groups.map((group, i) => {
+          // Group collapsing only applies to the expanded sidebar; in icon mode
+          // there are no headers to click, so everything stays reachable.
+          const shut = !collapsed && shutGroups.includes(group.label);
+          const holdsActive = group.items.some((item) => item.href === activeHref);
+
+          return (
+            <div key={group.label} className={i > 0 ? "mt-4" : undefined}>
+              {collapsed ? (
+                i > 0 && <Separator className="my-2" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={!shut}
+                  className={`flex w-full items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors hover:text-foreground ${
+                    shut && holdsActive ? "text-foreground" : "text-muted-foreground/70"
+                  }`}
+                >
+                  {shut ? (
+                    <ChevronRight className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 shrink-0" />
+                  )}
+                  {group.label}
+                  {shut && holdsActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                  )}
+                </button>
+              )}
+
+              {!shut && (
+                <div className="space-y-1 pt-1">
+                  {group.items.map((item) => {
+                    const active = item.href === activeHref;
+                    return (
+                      <Link
+                        key={item.href + item.label}
+                        href={item.href}
+                        title={collapsed ? item.label : undefined}
+                        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                          collapsed ? "justify-center px-0" : ""
+                        } ${
+                          active
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        <span className="shrink-0">{item.icon}</span>
+                        {!collapsed && item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {!collapsed && footer}
