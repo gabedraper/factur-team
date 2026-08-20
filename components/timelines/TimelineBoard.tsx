@@ -3,12 +3,10 @@
 import { useMemo, useState } from "react";
 import type { Lead } from "@/lib/timelines/leads";
 import { Mark, MARKS, LEGEND_ORDER } from "./marks";
+import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
 
-const FIRST_RESPONSE_TARGET_H = 1;
-const LANE_W = 1000;   // lane viewBox; preserveAspectRatio none stretches it
-const LANE_H = 34;
 
-export type ViewKey = "quick" | "week" | "life";
+export type { ViewKey };
 
 const VIEWS: Record<ViewKey, {
   label: string; blurb: string; goal: string | null;
@@ -76,74 +74,6 @@ function verdictFor(view: ViewKey, l: Lead) {
     return { text, status: "warning" };
   }
   return null;
-}
-
-function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
-  const v = VIEWS[view];
-  const spanDays = lead.metrics.spanHours / 24;
-  const rowMax = v.windowDays ?? Math.max(0.4, spanDays + lead.metrics.daysSinceLastEvent) * 1.04;
-  const x = (d: number) => (d / rowMax) * LANE_W;
-  const mid = LANE_H / 2;
-
-  // The lane runs to today for an open lead, or to its last event once closed.
-  const open = !/^Closed/.test(lead.stage);
-  const laneEnd = Math.min(open ? spanDays + lead.metrics.daysSinceLastEvent : spanDays, rowMax);
-
-  const inWindow = lead.events.filter((e) => e.hours / 24 <= rowMax);
-  const overflow = lead.events.length - inWindow.length;
-
-  // Week view shades any day that got no rep touch — the gaps are the point.
-  const missed: number[] = [];
-  if (view === "week") {
-    const touched = new Set(
-      lead.events
-        .filter((e) => ["email_out", "call", "sms", "meeting_invite"].includes(e.kind))
-        .map((e) => Math.floor(e.hours / 24))
-    );
-    for (let d = 0; d < lead.metrics.firstWeekDaysElapsed; d++) if (!touched.has(d)) missed.push(d);
-  }
-
-  return (
-    <svg viewBox={`0 0 ${LANE_W} ${LANE_H}`} preserveAspectRatio="none" height={LANE_H}>
-      {missed.map((d) => (
-        <rect key={`m${d}`} className="missday" x={x(d)} y={2} width={x(d + 1) - x(d)} height={LANE_H - 4} />
-      ))}
-
-      {lead.stageSpans.map((span, i) => {
-        const from = span.fromHours / 24;
-        if (from >= laneEnd) return null;
-        const to = i + 1 < lead.stageSpans.length ? lead.stageSpans[i + 1].fromHours / 24 : laneEnd;
-        const a = Math.max(0, from), b = Math.min(to, laneEnd);
-        if (b <= a) return null;
-        return (
-          <line key={`s${i}`} x1={x(a)} x2={x(b)} y1={mid} y2={mid} strokeWidth={3} strokeLinecap="round"
-                stroke={`var(--st-${span.bucket})`}>
-            <title>{span.stage ?? "stage before this window"}</title>
-          </line>
-        );
-      })}
-
-      {v.ticks?.slice(1).map((d) => (
-        <line key={`t${d}`} className="gridline" x1={x(d)} x2={x(d)} y1={0} y2={LANE_H} />
-      ))}
-
-      {v.goal && view === "quick" && (
-        <line className="goalline" x1={x(FIRST_RESPONSE_TARGET_H / 24)} x2={x(FIRST_RESPONSE_TARGET_H / 24)}
-              y1={0} y2={LANE_H} />
-      )}
-
-      {inWindow.map((e) => (
-        <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer">
-          <Mark kind={e.kind} x={x(e.hours / 24)} y={mid} />
-          <title>{`${MARKS[e.kind]?.label ?? e.kind} · ${dur(e.hours)} in · ${e.detail}`}</title>
-        </a>
-      ))}
-
-      {overflow > 0 && (
-        <text className="ticktext" x={LANE_W - 4} y={mid + 4} textAnchor="end">+{overflow} →</text>
-      )}
-    </svg>
-  );
 }
 
 export function TimelineBoard({

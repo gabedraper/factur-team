@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { assembleLeads, contactName, type Lead, type LeadRow, type TaskRow } from "./assemble";
 
-export type { Lead } from "./assemble";
+export type { Lead, TimelineEvent, StageSpan } from "./assemble";
 export { contactName };
 
 export type LeadFilters = {
