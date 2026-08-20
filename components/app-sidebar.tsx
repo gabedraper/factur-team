@@ -31,13 +31,22 @@ export function AppSidebar({
 
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === "1");
+
+    // Sections start folded, so signing in gives a short menu of section names
+    // rather than every link at once. The moment someone folds or unfolds
+    // anything their own choice is stored and takes over from this.
+    const stored = localStorage.getItem(GROUPS_KEY);
+    if (stored === null) {
+      setShutGroups(groups.map((g) => g.label));
+      return;
+    }
     try {
-      const saved = JSON.parse(localStorage.getItem(GROUPS_KEY) || "[]");
+      const saved = JSON.parse(stored);
       if (Array.isArray(saved)) setShutGroups(saved);
     } catch {
       // Corrupt value from an older build -- fall back to everything open.
     }
-  }, []);
+  }, [groups]);
 
   function toggleGroup(label: string) {
     setShutGroups((shut) => {
