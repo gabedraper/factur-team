@@ -98,3 +98,110 @@ export async function setMemberActive(memberId: string, active: boolean) {
   revalidatePath("/settings/people");
   return { success: true };
 }
+
+export async function createTeam(serviceId: string, name: string, kind: "pod" | "group") {
+  await requireOrgManage();
+  const trimmed = name.trim();
+  if (!trimmed) return { success: false, error: "A pod needs a name." };
+  const db = createServiceClient();
+
+  const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const { error } = await db.from("org_teams")
+    .insert({ service_id: serviceId, name: trimmed, slug, kind });
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate")
+        ? "A team with that name already exists in this service."
+        : error.message,
+    };
+  }
+  revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+export async function renameTeam(teamId: string, name: string) {
+  await requireOrgManage();
+  if (!name.trim()) return { success: false, error: "A pod needs a name." };
+  const db = createServiceClient();
+  const { error } = await db.from("org_teams").update({ name: name.trim() }).eq("id", teamId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+export async function setTeamActive(teamId: string, active: boolean) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_teams").update({ active }).eq("id", teamId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+/**
+ * Puts someone in a pod, or takes them out. Team lives on the assignment rather
+ * than the member because a split-role person can sit in a different pod for
+ * each role they hold.
+ */
+export async function setMemberTeam(memberId: string, teamId: string, inTeam: boolean) {
+  await requireOrgManage();
+  const db = createServiceClient();
+
+  const { data: team } = await db.from("org_teams").select("service_id").eq("id", teamId).single();
+  const serviceId = (team as { service_id: string } | null)?.service_id;
+  if (!serviceId) return { success: false, error: "No such team." };
+
+  const { data: rows } = await db
+    .from("org_assignments").select("id,role_id,org_roles(service_id)").eq("member_id", memberId);
+  type Row = { id: string; role_id: string; org_roles?: { service_id: string | null } | null };
+  const match = ((rows ?? []) as unknown as Row[])
+    .find((r) => r.org_roles?.service_id === serviceId);
+
+  if (!match) {
+    return {
+      success: false,
+      error: "Give this person a role in that service first — a pod place hangs off the role.",
+    };
+  }
+
+  const { error } = await db.from("org_assignments")
+    .update({ team_id: inTeam ? teamId : null }).eq("id", match.id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+/** A client is covered by a pod or by one person, never both. */
+export async function addCoverage(
+  clientId: string, clientName: string | null,
+  owner: { teamId: string } | { memberId: string }
+) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_client_coverage").insert({
+    client_id: clientId,
+    client_name: clientName,
+    team_id: "teamId" in owner ? owner.teamId : null,
+    member_id: "memberId" in owner ? owner.memberId : null,
+  });
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate")
+        ? "That client is already covered by them."
+        : error.message,
+    };
+  }
+  revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+export async function removeCoverage(coverageId: string) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_client_coverage").delete().eq("id", coverageId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/teams");
+  return { success: true };
+}

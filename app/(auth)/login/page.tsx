@@ -43,8 +43,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <div
+      className="relative flex min-h-screen items-center justify-center bg-neutral-950 bg-cover bg-center p-4"
+      style={{ backgroundImage: "url('/login-bg.jpg')" }}
+    >
+      {/* Sits between the photograph and the card so the text stays legible
+          whatever the image happens to be doing behind it. */}
+      <div aria-hidden className="absolute inset-0 bg-black/55" />
+      <Card className="relative w-full max-w-sm border-white/10 bg-background/90 backdrop-blur">
         <CardHeader className="text-center">
           <CardTitle>Factur Team</CardTitle>
           <CardDescription>Sign in with your Factur Google account</CardDescription>

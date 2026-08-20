@@ -83,3 +83,54 @@ export async function listServicesAndTeams() {
     teams: (teams ?? []) as { id: string; service_id: string; slug: string; name: string; active: boolean }[],
   };
 }
+
+export type TeamRow = {
+  id: string; service_id: string; name: string; slug: string;
+  kind: "pod" | "group"; active: boolean;
+  memberIds: string[];
+  clients: { id: string; client_id: string; client_name: string | null }[];
+};
+
+/**
+ * Pods and groups, with who is in them and which clients they cover. Coverage
+ * held by an individual rather than a pod comes back separately, since the two
+ * are deliberately different arrangements.
+ */
+export async function listTeamsAndCoverage() {
+  const db = createServiceClient();
+
+  const [{ data: teams }, { data: assignments }, { data: coverage }, { data: clients }] =
+    await Promise.all([
+      db.from("org_teams").select("id,service_id,name,slug,kind,active").order("name"),
+      db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
+      db.from("org_client_coverage").select("id,client_id,client_name,team_id,member_id"),
+      db.from("sf_clients_raw")
+        .select("id,client_account__r_name,client_status__c")
+        .order("client_account__r_name"),
+    ]);
+
+  const membersByTeam = new Map<string, string[]>();
+  for (const a of (assignments ?? []) as { member_id: string; team_id: string }[]) {
+    membersByTeam.set(a.team_id, [...(membersByTeam.get(a.team_id) ?? []), a.member_id]);
+  }
+
+  type Cov = { id: string; client_id: string; client_name: string | null; team_id: string | null; member_id: string | null };
+  const cov = (coverage ?? []) as Cov[];
+  const clientsByTeam = new Map<string, Cov[]>();
+  for (const c of cov.filter((c) => c.team_id)) {
+    clientsByTeam.set(c.team_id!, [...(clientsByTeam.get(c.team_id!) ?? []), c]);
+  }
+
+  return {
+    teams: ((teams ?? []) as Omit<TeamRow, "memberIds" | "clients">[]).map((t) => ({
+      ...t,
+      memberIds: [...new Set(membersByTeam.get(t.id) ?? [])],
+      clients: (clientsByTeam.get(t.id) ?? []).map((c) => ({
+        id: c.id, client_id: c.client_id, client_name: c.client_name,
+      })),
+    })),
+    individualCoverage: cov.filter((c) => c.member_id),
+    clients: ((clients ?? []) as { id: string; client_account__r_name: string | null; client_status__c: string | null }[])
+      .map((c) => ({ id: c.id, name: c.client_account__r_name, status: c.client_status__c })),
+  };
+}
