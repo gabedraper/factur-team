@@ -1,0 +1,226 @@
+/* Ported from the lead-timeline prototype's stylesheet, scoped under .tl.
+   The prototype switched themes on prefers-color-scheme and a data-theme
+   attribute; both are re-pointed at the app's own .dark class so the page
+   follows the sidebar toggle. The colour language is load-bearing: green is
+   our team, red is the prospect, and the lane takes the colour of the stage
+   in force at that moment. */
+
+.tl {
+  /* Neutrals follow the app's own palette so the page sits in the product
+     rather than beside it. The categorical colours below are left alone --
+     green/red for who acted and the stage hues are load-bearing. */
+  --idcol: 272px;
+  --metacol: 212px;
+  --surface-0: hsl(var(--muted));
+  --surface-1: hsl(var(--card));
+  --surface-2: hsl(var(--secondary));
+  --border: hsl(var(--border));
+  --stack:     14px;   
+  --stage:     #7b53c9;   
+  
+  --st-cold:      #2f7fd6;
+  --st-generated: #12874a;
+  --st-warm:      #d8a412;
+  --st-hot:       #d33f3f;
+  --st-ltfu:      #d95fa8;
+  --st-dead:      hsl(var(--foreground));
+  --st-other:     hsl(var(--muted-foreground));
+  --st-unknown:   hsl(var(--border));
+  --border-strong: hsl(var(--input));
+  --text-primary: hsl(var(--foreground));
+  --text-secondary: hsl(var(--muted-foreground));
+  --text-muted: hsl(var(--muted-foreground));
+
+  
+  --rep:      #12874a;   
+  --prospect: #d33f3f;   
+  --goal: hsl(var(--primary));   
+
+  
+  --good:     #0ca30c;
+  --warning:  #fab219;
+  --serious:  #ec835a;
+  --critical: #d03b3b;
+
+  --lane: hsl(var(--border));
+}
+
+.dark .tl {
+  --surface-0: hsl(var(--background));
+  --surface-1: hsl(var(--secondary));
+  --surface-2: hsl(var(--muted));
+  --rep:      #35b96b;
+  --prospect: #e8615b;
+  --stage:    #a98ae0;
+  --st-cold:      #58a3ef;
+  --st-generated: #35b96b;
+  --st-warm:      #e0b336;
+  --st-hot:       #e8615b;
+  --st-ltfu:      #ef7fbd;
+}
+
+.tl {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.tl .wrap { max-width: 1500px; margin: 0 auto; padding: 28px 20px 64px; }
+.tl header h1 { font-size: 30px; font-weight: 680; margin: 0; letter-spacing: -0.02em; }
+.tl header { margin-bottom: 26px; }
+.tl header p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.tl .tiles {
+  display: grid; gap: 10px; margin: 0 0 var(--stack);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.tl .tile {
+  background: var(--surface-1); border: 0;
+  border-radius: 10px; padding: 12px 14px;
+}
+.tl .tile .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.tl .tile .value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.tl .tile .sub { font-size: 12px; color: var(--text-secondary); }
+.tl .controls {
+  
+  display: flex; flex-wrap: nowrap; gap: 8px; align-items: center;
+  padding: 12px; background: var(--surface-1);
+  border: 0; border-radius: 10px; margin-bottom: var(--stack);
+}
+.tl .controls label { font-size: 12px; color: var(--text-muted); margin-right: -4px; white-space: nowrap; flex: none; }
+.tl .controls select { flex: 0 1 auto; min-width: 0; max-width: 150px; }
+.tl .controls .toggle, .tl .controls #f-custom { flex: none; }
+.tl select, .tl input[type=search], .tl input[type=date] {
+  font: inherit; font-size: 13px; padding: 5px 8px;
+  background: var(--surface-2); color: var(--text-primary);
+  border: 0; border-radius: 7px;
+}
+.tl input[type=search] { flex: 1 1 130px; min-width: 90px; }
+.tl input[type=date] { min-width: 0; width: 124px; }
+.tl #f-custom { display: inline-flex; align-items: center; gap: 6px; }
+.tl #f-custom[hidden] { display: none; }
+.tl .spacer { flex: 1 1 0; min-width: 0; }
+.tl .sortgroup { display: flex; align-items: center; gap: 8px; flex: none; }
+.tl .toggle { display: flex; border-radius: 7px; overflow: hidden; background: var(--surface-2); }
+.tl .toggle button {
+  font: inherit; font-size: 12px; padding: 5px 11px; border: 0; cursor: pointer;
+  background: var(--surface-1); color: var(--text-secondary);
+}
+.tl .toggle button[aria-pressed="true"] { background: var(--rep); color: #fff; }
+.tl .viewtabs { display: flex; gap: 10px; margin-bottom: var(--stack); flex-wrap: wrap; }
+.tl .viewtabs button {
+  flex: 1 1 220px; min-width: 200px; text-align: left; cursor: pointer;
+  font: inherit; padding: 11px 14px; border-radius: 10px;
+  background: var(--surface-1); color: var(--text-secondary);
+  border: 0;
+  transition: background .12s;
+}
+.tl .viewtabs button:hover { background: var(--surface-2); }
+.tl .viewtabs button .t { display: block; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.tl .viewtabs button .g { display: block; font-size: 11.5px; margin-top: 2px; }
+.tl .viewtabs button[aria-selected="true"] {
+  background: color-mix(in oklab, var(--rep) 13%, var(--surface-1));
+  box-shadow: inset 0 0 0 2px var(--rep);
+}
+.tl .viewtabs button[aria-selected="true"] .t { color: var(--rep); }
+.tl .stagekey { display: inline-flex; flex-wrap: wrap; gap: 11px; align-items: center; color: var(--text-muted); }
+.tl .stagekey .sw { display: inline-flex; align-items: center; gap: 5px; }
+.tl .stagekey .sw i { width: 15px; height: 3px; border-radius: 2px; display: block; }
+.tl .legend {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  padding: 9px 12px; margin-bottom: var(--stack); font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--surface-1); border: 0; border-radius: 10px;
+}
+.tl .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+.tl .board { background: var(--surface-1); border: 0; border-radius: 10px; overflow: hidden; }
+.tl .axis {
+  position: sticky; top: 0; z-index: 3; display: grid;
+  grid-template-columns: var(--idcol) 1fr var(--metacol);
+  background: var(--surface-2);
+}
+.tl .axis .head { padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.tl .axis .ticks { position: relative; height: 34px; }
+.tl .axis .ticks span {
+  position: absolute; top: 9px; transform: translateX(-50%);
+  font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tl .row {
+  display: grid; grid-template-columns: var(--idcol) 1fr var(--metacol);
+  align-items: stretch;
+}
+.tl .row:nth-child(even) { background: color-mix(in oklab, var(--surface-2) 55%, transparent); }
+.tl .row:hover { background: var(--surface-2); }
+.tl .who { padding: 9px 12px; min-width: 0; }
+.tl .who a {
+  color: var(--text-primary); text-decoration: none; font-weight: 560;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tl .who a:hover { text-decoration: underline; text-decoration-color: var(--rep); }
+.tl .who .sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl .who .sub em { font-style: normal; color: var(--text-muted); }
+.tl .lane { position: relative; min-height: var(--laneh, 46px); }
+.tl .lane svg { display: block; width: 100%; height: var(--laneh, 46px); overflow: visible; }
+.tl .gridline { stroke: var(--border); stroke-width: 1; }
+.tl .ticktext { fill: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.tl .ticktext.strong { fill: var(--text-secondary); font-size: 10px; font-weight: 560; }
+.tl .goalline { stroke: var(--goal); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: .75; }
+.tl .meta { padding: 9px 12px; font-size: 12px; }
+.tl .chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 560;
+  border: 1px solid; white-space: nowrap;
+}
+.tl .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.tl .chip.good { color: var(--good);     border-color: color-mix(in oklab, var(--good) 40%, transparent); }
+.tl .chip.warning { color: #a5700a;         border-color: color-mix(in oklab, var(--warning) 55%, transparent); }
+.tl .chip.serious { color: #b2551f;         border-color: color-mix(in oklab, var(--serious) 55%, transparent); }
+.tl .chip.critical { color: var(--critical); border-color: color-mix(in oklab, var(--critical) 40%, transparent); }
+.tl .chip.neutral { color: var(--text-secondary); border-color: var(--border-strong); }
+.tl .chip.warning, .tl .chip.serious { color: var(--warning); }
+.dark .tl .chip.warning { color: var(--warning); }
+.dark .tl .chip.serious { color: var(--serious); }
+.tl .meta .nums { margin-top: 5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.tl .meta .nums b { font-weight: 600; color: var(--text-primary); }
+.tl #tip {
+  position: fixed; z-index: 40; pointer-events: none; opacity: 0;
+  transition: opacity .1s; max-width: 340px;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 8px 10px; font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 6px 22px rgba(0,0,0,.18);
+}
+.tl #tip .k { font-weight: 620; }
+.tl #tip .m { color: var(--text-secondary); }
+.tl table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tl th, .tl td { text-align: left; padding: 7px 10px; white-space: nowrap; }
+.tl th { position: sticky; top: 0; background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); z-index: 2; }
+.tl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tl td a { color: var(--rep); text-decoration: none; }
+.tl .hidden { display: none; }
+.tl .empty { padding: 40px; text-align: center; color: var(--text-muted); }
+.tl footer { margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+
+/* Added for the port: week-view missed-day shading and the footer line. */
+.tl .missday { fill: var(--warning); fill-opacity: .16; }
+.tl .foot { color: var(--text-muted); font-size: 12px; margin-top: var(--stack); }
+
+/* Requested adjustments to the prototype's layout. */
+.tl .tile { text-align: center; }
+.tl .row { align-items: center; }
+/* The lane measures its own width to draw 1:1, so its inner element must
+   fill the cell rather than shrink to its content. */
+.tl .lane { display: flex; align-items: center; }
+.tl .lane > div { width: 100%; }
+
+/* Row and header contrast.
+   The prototype separated rows with surface-2, which sat between its ground and
+   its card. The app's --secondary and --muted resolve to the same value in dark,
+   so that separation vanished. Deriving these from the text colour instead means
+   they contrast with whatever the card happens to be, in either theme. */
+.tl .row + .row { border-top: 1px solid var(--border); }
+.tl .row:nth-child(even) { background: color-mix(in oklab, var(--text-primary) 4%, transparent); }
+.tl .row:hover { background: color-mix(in oklab, var(--text-primary) 8%, transparent); }
+.tl .axis { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }
+.tl th { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }

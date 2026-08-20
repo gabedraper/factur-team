@@ -19,6 +19,11 @@ import {
   Trophy,
   Target,
   SlidersHorizontal,
+  Activity,
+  Handshake,
+  Repeat,
+  Zap,
+  CalendarClock,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { RolePreviewSelector } from "@/components/role-preview-selector";
@@ -29,7 +34,20 @@ function getNavGroups(role: string): NavGroup[] {
   const scoreboard: NavGroup = {
     label: "Scoreboard",
     items: [
-      { href: "/scoreboard", label: "Sales Scoreboard", icon: <Target className="h-4 w-4" /> },
+      { href: "/scoreboard/hustle-points", label: "Hustle Points", icon: <Target className="h-4 w-4" /> },
+      { href: "/scoreboard/deals", label: "Deals", icon: <Handshake className="h-4 w-4" /> },
+      { href: "/scoreboard/retention", label: "Retention", icon: <Repeat className="h-4 w-4" /> },
+    ],
+  };
+
+  // Its own section, with the three views as sub-links rather than an in-page
+  // switcher -- same treatment as the sales boards.
+  const timelines: NavGroup = {
+    label: "Opportunity Timelines",
+    items: [
+      { href: "/timelines/quick-response", label: "Quick response", icon: <Zap className="h-4 w-4" /> },
+      { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },
+      { href: "/timelines/full-life", label: "Full lead life", icon: <Activity className="h-4 w-4" /> },
     ],
   };
 
@@ -54,6 +72,7 @@ function getNavGroups(role: string): NavGroup[] {
         ],
       },
       scoreboard,
+      timelines,
     ];
   }
 
@@ -67,6 +86,7 @@ function getNavGroups(role: string): NavGroup[] {
       ],
     },
     scoreboard,
+    timelines,
   ];
 }
 

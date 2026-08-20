@@ -21,15 +21,19 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createClient();
+
+    // Where the user was heading rides in a cookie, not on the callback URL.
+    // Supabase matches redirect URLs exactly, so a query string here fails to
+    // match the allow-list entry and silently falls back to the project's Site
+    // URL -- which on a local dev server means being thrown to production.
     const redirectTo = new URLSearchParams(window.location.search).get("redirectTo");
+    if (redirectTo?.startsWith("/")) {
+      document.cookie = `post_login_redirect=${encodeURIComponent(redirectTo)}; path=/; max-age=600; samesite=lax`;
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo:
-          `${window.location.origin}/auth/callback` +
-          (redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ""),
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
 
     if (error) {
