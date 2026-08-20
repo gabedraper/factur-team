@@ -5,27 +5,37 @@ import type { Lead } from "@/lib/timelines/leads";
 import { Mark, MARKS, LEGEND_ORDER } from "./marks";
 
 const FIRST_RESPONSE_TARGET_H = 1;
-const W = 900;      // lane viewBox width; scales to fit via CSS
-const PAD = 10;
-const ROW_H = 44;
+const LANE_W = 1000;   // lane viewBox; preserveAspectRatio none stretches it
+const LANE_H = 34;
 
 type ViewKey = "quick" | "week" | "life";
 
-const VIEWS: Record<ViewKey, { label: string; goal: string | null; windowDays: number | null; ticks: number[] | null }> = {
-  quick: { label: "Quick response", goal: `first touch inside ${FIRST_RESPONSE_TARGET_H}h`, windowDays: 1, ticks: [0, 4, 8, 12, 16, 20, 24].map((h) => h / 24) },
-  week: { label: "Lead follow up", goal: "a touch every day of week one", windowDays: 7, ticks: [0, 1, 2, 3, 4, 5, 6, 7] },
-  life: { label: "Full lead life", goal: null, windowDays: null, ticks: null },
+const VIEWS: Record<ViewKey, {
+  label: string; blurb: string; goal: string | null;
+  windowDays: number | null; ticks: number[] | null;
+}> = {
+  quick: {
+    label: "Quick response", blurb: `First 24 hours · goal: reply inside ${FIRST_RESPONSE_TARGET_H}h`,
+    goal: `first touch inside ${FIRST_RESPONSE_TARGET_H}h`,
+    windowDays: 1, ticks: [0, 4, 8, 12, 16, 20, 24].map((h) => h / 24),
+  },
+  week: {
+    label: "Lead follow up", blurb: "First week · goal: a touch every day",
+    goal: "a touch every day of week one",
+    windowDays: 7, ticks: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  life: {
+    label: "Full lead life", blurb: "Everything, through to the outcome",
+    goal: null, windowDays: null, ticks: null,
+  },
 };
 
-const STATUS_CLASS: Record<string, string> = {
-  good: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  warning: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  critical: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-  serious: "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-200",
-  neutral: "bg-muted text-muted-foreground",
-};
+const STAGE_KEY: [string, string][] = [
+  ["Cold", "cold"], ["Lead generated", "generated"], ["Warm", "warm"],
+  ["Hot", "hot"], ["LT follow up", "ltfu"], ["DQ", "dead"],
+];
 
-function dur(hours: number | null): string {
+function dur(hours: number | null | undefined): string {
   if (hours === null || hours === undefined) return "—";
   if (hours < 1) return `${Math.round(hours * 60)}m`;
   if (hours < 48) return `${hours < 10 ? hours.toFixed(1) : Math.round(hours)}h`;
@@ -33,7 +43,24 @@ function dur(hours: number | null): string {
   return d < 100 ? `${d.toFixed(d < 10 ? 1 : 0)}d` : `${Math.round(d)}d`;
 }
 
-function verdictFor(view: ViewKey, l: Lead): { text: string; status: string } | null {
+function tickLabel(days: number): string {
+  return days < 1 ? `${Math.round(days * 24)}h` : `${days}d`;
+}
+
+function spanLabel(days: number): string {
+  if (days < 1) return `${Math.round(days * 24)}h`;
+  if (days < 60) return `${days.toFixed(days < 10 ? 1 : 0)}d`;
+  return `${Math.round(days / 30.4)}mo`;
+}
+
+function median(xs: (number | null)[]): number | null {
+  const s = xs.filter((v): v is number => v !== null && v !== undefined).sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : null;
+}
+
+const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "—");
+
+function verdictFor(view: ViewKey, l: Lead) {
   if (view === "quick") {
     const h = l.metrics.firstTouchHours;
     if (h === null) return { text: "never touched", status: "critical" };
@@ -51,87 +78,79 @@ function verdictFor(view: ViewKey, l: Lead): { text: string; status: string } | 
   return null;
 }
 
-function median(xs: number[]): number | null {
-  if (!xs.length) return null;
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.floor(s.length / 2)];
-}
-
 function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   const v = VIEWS[view];
-  // Life view gives every row its own scale, so a lead that arrived yesterday
-  // gets an hours-wide lane and an older one gets a weeks-wide lane.
-  const maxDays = v.windowDays ?? Math.max(0.5, lead.metrics.spanHours / 24) * 1.04;
-  const x = (days: number) => PAD + (days / maxDays) * (W - PAD * 2);
-  const mid = ROW_H / 2;
+  const spanDays = lead.metrics.spanHours / 24;
+  const rowMax = v.windowDays ?? Math.max(0.4, spanDays + lead.metrics.daysSinceLastEvent) * 1.04;
+  const x = (d: number) => (d / rowMax) * LANE_W;
+  const mid = LANE_H / 2;
 
-  const inWindow = lead.events.filter((e) => e.hours / 24 <= maxDays);
+  // The lane runs to today for an open lead, or to its last event once closed.
+  const open = !/^Closed/.test(lead.stage);
+  const laneEnd = Math.min(open ? spanDays + lead.metrics.daysSinceLastEvent : spanDays, rowMax);
+
+  const inWindow = lead.events.filter((e) => e.hours / 24 <= rowMax);
   const overflow = lead.events.length - inWindow.length;
 
-  // Week view shades any day that got no rep touch -- the gaps are the point.
-  const missedDays: number[] = [];
+  // Week view shades any day that got no rep touch — the gaps are the point.
+  const missed: number[] = [];
   if (view === "week") {
     const touched = new Set(
       lead.events
         .filter((e) => ["email_out", "call", "sms", "meeting_invite"].includes(e.kind))
         .map((e) => Math.floor(e.hours / 24))
     );
-    for (let d = 0; d < lead.metrics.firstWeekDaysElapsed; d++) {
-      if (!touched.has(d)) missedDays.push(d);
-    }
+    for (let d = 0; d < lead.metrics.firstWeekDaysElapsed; d++) if (!touched.has(d)) missed.push(d);
   }
 
   return (
-    <svg viewBox={`0 0 ${W} ${ROW_H}`} className="w-full" style={{ height: ROW_H }} role="img"
-         aria-label={`${lead.events.length} activities`}>
-      {missedDays.map((d) => (
-        <rect key={`miss-${d}`} x={x(d)} y={6} width={x(d + 1) - x(d) - 1} height={ROW_H - 12}
-              fill="var(--tl-miss)" fillOpacity={0.45} rx={2} />
+    <svg viewBox={`0 0 ${LANE_W} ${LANE_H}`} preserveAspectRatio="none" height={LANE_H}>
+      {missed.map((d) => (
+        <rect key={`m${d}`} className="missday" x={x(d)} y={2} width={x(d + 1) - x(d)} height={LANE_H - 4} />
       ))}
 
       {lead.stageSpans.map((span, i) => {
         const from = span.fromHours / 24;
-        const to = i + 1 < lead.stageSpans.length ? lead.stageSpans[i + 1].fromHours / 24 : maxDays;
-        if (from >= maxDays) return null;
+        if (from >= laneEnd) return null;
+        const to = i + 1 < lead.stageSpans.length ? lead.stageSpans[i + 1].fromHours / 24 : laneEnd;
+        const a = Math.max(0, from), b = Math.min(to, laneEnd);
+        if (b <= a) return null;
         return (
-          <rect key={`span-${i}`} x={x(from)} y={mid - 3}
-                width={Math.max(1, x(Math.min(to, maxDays)) - x(from))} height={6} rx={3}
-                fill={`var(--tl-${span.bucket})`}>
+          <line key={`s${i}`} x1={x(a)} x2={x(b)} y1={mid} y2={mid} strokeWidth={3} strokeLinecap="round"
+                stroke={`var(--st-${span.bucket})`}>
             <title>{span.stage ?? "stage before this window"}</title>
-          </rect>
+          </line>
         );
       })}
 
-      {v.ticks?.map((d) => (
-        <line key={`tick-${d}`} x1={x(d)} x2={x(d)} y1={ROW_H - 6} y2={ROW_H - 2}
-              stroke="var(--tl-lane)" strokeWidth={1} />
+      {v.ticks?.slice(1).map((d) => (
+        <line key={`t${d}`} className="gridline" x1={x(d)} x2={x(d)} y1={0} y2={LANE_H} />
       ))}
 
-      {view === "quick" && (
-        <line x1={x(FIRST_RESPONSE_TARGET_H / 24)} x2={x(FIRST_RESPONSE_TARGET_H / 24)}
-              y1={4} y2={ROW_H - 4} stroke="#16a34a" strokeWidth={1.5} strokeDasharray="3 3" />
+      {v.goal && view === "quick" && (
+        <line className="goalline" x1={x(FIRST_RESPONSE_TARGET_H / 24)} x2={x(FIRST_RESPONSE_TARGET_H / 24)}
+              y1={0} y2={LANE_H} />
       )}
 
       {inWindow.map((e) => (
-        <g key={e.id}>
+        <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer">
           <Mark kind={e.kind} x={x(e.hours / 24)} y={mid} />
           <title>{`${MARKS[e.kind]?.label ?? e.kind} · ${dur(e.hours)} in · ${e.detail}`}</title>
-        </g>
+        </a>
       ))}
 
       {overflow > 0 && (
-        <text x={W - 4} y={mid + 4} textAnchor="end" fontSize={11} fill="var(--tl-muted)">
-          +{overflow} →
-        </text>
+        <text className="ticktext" x={LANE_W - 4} y={mid + 4} textAnchor="end">+{overflow} →</text>
       )}
     </svg>
   );
 }
 
 export function TimelineBoard({
-  leads, reps, clients, generated,
+  leads, reps, clients, generated, coldAfterDays = 14, total,
 }: {
-  leads: Lead[]; reps: string[]; clients: string[]; generated: string;
+  leads: Lead[]; reps: string[]; clients: string[];
+  generated: string; coldAfterDays?: number; total?: number;
 }) {
   const [view, setView] = useState<ViewKey>("quick");
   const [rep, setRep] = useState("");
@@ -139,22 +158,17 @@ export function TimelineBoard({
   const [outcome, setOutcome] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
+  const [mode, setMode] = useState<"timeline" | "table">("timeline");
 
-  const outcomes = useMemo(
-    () => [...new Set(leads.map((l) => l.outcomeLabel))].sort(),
-    [leads]
-  );
+  const outcomes = useMemo(() => [...new Set(leads.map((l) => l.outcomeLabel))].sort(), [leads]);
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    let out = leads.filter(
+    const out = leads.filter(
       (l) =>
-        (!rep || l.rep === rep) &&
-        (!client || l.client === client) &&
+        (!rep || l.rep === rep) && (!client || l.client === client) &&
         (!outcome || l.outcomeLabel === outcome) &&
-        (!term ||
-          l.contact.toLowerCase().includes(term) ||
-          (l.account ?? "").toLowerCase().includes(term))
+        (!term || l.contact.toLowerCase().includes(term) || (l.account ?? "").toLowerCase().includes(term))
     );
     const by: Record<string, (a: Lead, b: Lead) => number> = {
       recent: (a, b) => (a.created < b.created ? 1 : -1),
@@ -166,127 +180,224 @@ export function TimelineBoard({
     return [...out].sort(by[sort] ?? by.recent);
   }, [leads, rep, client, outcome, search, sort]);
 
-  const tiles = useMemo(() => {
-    const firsts = rows.map((l) => l.metrics.firstTouchHours).filter((h): h is number => h !== null);
-    const replies = rows.map((l) => l.metrics.respondHours).filter((h): h is number => h !== null);
-    const never = rows.filter((l) => l.metrics.firstTouchHours === null).length;
-    const inTarget = firsts.filter((h) => h <= FIRST_RESPONSE_TARGET_H).length;
+  // The headline tiles follow the active view, so the numbers on screen always
+  // answer the question the view is asking.
+  const tiles: [string, string | number, string][] = useMemo(() => {
+    const n = rows.length;
+    const touches = rows.reduce((a, l) => a + l.metrics.touches, 0);
+    const hit = rows.filter((l) => l.metrics.firstTouchHours !== null && l.metrics.firstTouchHours <= FIRST_RESPONSE_TARGET_H).length;
+    if (view === "quick") {
+      return [
+        ["Leads", n, `${touches} rep touches`],
+        [`Hit ${FIRST_RESPONSE_TARGET_H}h target`, pct(hit, n), `${hit} of ${n} leads`],
+        ["Touched same day", pct(rows.filter((l) => l.metrics.firstDayTouches > 0).length, n), "first touch inside 24h"],
+        ["Never touched", rows.filter((l) => l.metrics.firstTouchHours === null).length, "no rep outreach at all"],
+        ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
+        ["Median reply to prospect", dur(median(rows.map((l) => l.metrics.respondHours))), "prospect replies → rep responds"],
+      ];
+    }
+    if (view === "week") {
+      const gap = median(rows.map((l) => l.metrics.medianGapDays));
+      return [
+        ["Leads", n, `${touches} rep touches`],
+        ["Touched every day", pct(rows.filter((l) => l.metrics.firstWeekDaysTouched >= l.metrics.firstWeekDaysElapsed).length, n), "no missed day in week one"],
+        ["Untouched all week", pct(rows.filter((l) => l.metrics.firstWeekDaysTouched === 0).length, n), "zero rep touches in week one"],
+        ["Median days touched", median(rows.map((l) => l.metrics.firstWeekDaysTouched)) ?? "—", "of the first seven"],
+        ["Median gap between touches", gap !== null ? `${gap}d` : "—", "across the whole lead"],
+        ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
+      ];
+    }
+    const meetings = rows.filter((l) => l.metrics.meetings > 0).length;
     return [
-      { label: "Leads", value: String(rows.length) },
-      { label: "Median first touch", value: dur(median(firsts)) },
-      { label: `First touch ≤ ${FIRST_RESPONSE_TARGET_H}h`, value: firsts.length ? `${Math.round((inTarget / rows.length) * 100)}%` : "—" },
-      { label: "Never touched", value: String(never) },
-      { label: "Median reply to prospect", value: dur(median(replies)) },
-      { label: "Median touches", value: String(median(rows.map((l) => l.metrics.touches)) ?? "—") },
+      ["Leads", n, `${touches} rep touches`],
+      ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
+      ["Median reply to prospect", dur(median(rows.map((l) => l.metrics.respondHours))), "prospect replies → rep responds"],
+      ["Median touches", median(rows.map((l) => l.metrics.touches)) ?? "—", "per lead"],
+      ["Meetings booked", meetings, meetings === 1 ? "lead with a confirmed invite" : "leads with a confirmed invite"],
+      ["Gone quiet", rows.filter((l) => l.outcome === "cold").length, `open, no touch in ${coldAfterDays}+ days`],
     ];
-  }, [rows]);
+  }, [rows, view, coldAfterDays]);
 
-  const select = "h-8 rounded-md border bg-background px-2 text-sm";
+  const v = VIEWS[view];
 
   return (
-    <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Opportunity Timelines</h1>
-        <p className="text-sm text-muted-foreground">
-          One row per lead, left to right by time since it arrived.{" "}
-          {VIEWS[view].goal && <>Goal: {VIEWS[view].goal}.</>} Data through{" "}
-          {new Date(generated).toLocaleString()}.
-        </p>
-      </div>
+    <div className="tl">
+      <div className="wrap">
+        <header>
+          <h1>Opportunity Timelines</h1>
+          <p>One row per lead. Left to right is time since the lead arrived, so follow-up speed reads straight down the page.</p>
+        </header>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <select className={select} value={rep} onChange={(e) => setRep(e.target.value)} aria-label="Rep">
-          <option value="">All reps</option>
-          {reps.map((r) => <option key={r}>{r}</option>)}
-        </select>
-        <select className={select} value={client} onChange={(e) => setClient(e.target.value)} aria-label="Client">
-          <option value="">All clients</option>
-          {clients.map((c) => <option key={c}>{c}</option>)}
-        </select>
-        <select className={select} value={outcome} onChange={(e) => setOutcome(e.target.value)} aria-label="Outcome">
-          <option value="">All outcomes</option>
-          {outcomes.map((o) => <option key={o}>{o}</option>)}
-        </select>
-        <input className={`${select} min-w-52`} type="search" placeholder="Search contact or company…"
-               value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
-        <select className={select} value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
-          <option value="recent">Newest first</option>
-          <option value="slowest_reply">Slowest reply to prospect</option>
-          <option value="slowest_first">Slowest first touch</option>
-          <option value="longest_silence">Longest silence</option>
-          <option value="fewest_touches">Fewest touches</option>
-        </select>
-        <div className="ml-auto flex rounded-md border p-0.5">
+        <div className="viewtabs">
           {(Object.keys(VIEWS) as ViewKey[]).map((k) => (
-            <button key={k} onClick={() => setView(k)}
-                    className={`rounded px-2.5 py-1 text-sm ${view === k ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}>
-              {VIEWS[k].label}
+            <button key={k} onClick={() => setView(k)} aria-selected={view === k}>
+              <span className="t">{VIEWS[k].label}</span>
+              <span className="g">{VIEWS[k].blurb}</span>
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {tiles.map((t) => (
-          <div key={t.label} className="rounded-md border bg-card p-3">
-            <p className="text-xs text-muted-foreground">{t.label}</p>
-            <p className="text-lg font-semibold">{t.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        {LEGEND_ORDER.map((k) => (
-          <span key={k} className="flex items-center gap-1.5">
-            <svg width={16} height={16} viewBox="0 0 16 16"><Mark kind={k} x={8} y={8} /></svg>
-            {MARKS[k].label}
-          </span>
-        ))}
-        {view === "week" && (
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-3 w-4 rounded-sm" style={{ background: "var(--tl-miss)" }} />
-            day with no rep touch
-          </span>
-        )}
-      </div>
-
-      <div className="rounded-md border bg-card divide-y">
-        {rows.length === 0 && (
-          <p className="p-6 text-sm text-muted-foreground">No leads match these filters.</p>
-        )}
-        {rows.map((lead) => {
-          const verdict = verdictFor(view, lead);
-          return (
-            <div key={lead.id} className="grid grid-cols-[minmax(180px,15rem)_1fr_minmax(120px,10rem)] items-center gap-3 px-3 py-1.5">
-              <div className="min-w-0">
-                <a href={lead.url} target="_blank" rel="noreferrer"
-                   className="block truncate text-sm font-medium hover:underline">
-                  {lead.contact}
-                </a>
-                <p className="truncate text-xs text-muted-foreground">
-                  {[lead.account, lead.client, lead.rep].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-
-              <Lane lead={lead} view={view} />
-
-              <div className="text-right">
-                {verdict ? (
-                  <span className={`inline-block rounded px-1.5 py-0.5 text-xs ${STATUS_CLASS[verdict.status]}`}>
-                    {verdict.text}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    {dur(lead.metrics.spanHours)} span
-                  </span>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {lead.outcomeLabel} · {lead.metrics.touches} touch{lead.metrics.touches === 1 ? "" : "es"}
-                </p>
-              </div>
+        <div className="tiles">
+          {tiles.map(([label, value, sub]) => (
+            <div className="tile" key={label}>
+              <div className="label">{label}</div>
+              <div className="value">{value}</div>
+              <div className="sub">{sub}</div>
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        <div className="controls">
+          <label htmlFor="f-rep">Rep</label>
+          <select id="f-rep" value={rep} onChange={(e) => setRep(e.target.value)}>
+            <option value="">All reps</option>
+            {reps.map((r) => <option key={r}>{r}</option>)}
+          </select>
+          <label htmlFor="f-client">Client</label>
+          <select id="f-client" value={client} onChange={(e) => setClient(e.target.value)}>
+            <option value="">All clients</option>
+            {clients.map((c) => <option key={c}>{c}</option>)}
+          </select>
+          <label htmlFor="f-outcome">Outcome</label>
+          <select id="f-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+            <option value="">All outcomes</option>
+            {outcomes.map((o) => <option key={o}>{o}</option>)}
+          </select>
+          <input type="search" placeholder="Search contact or company…" value={search}
+                 onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
+          <span className="spacer" />
+          <div className="sortgroup">
+            <label htmlFor="f-sort">Sort</label>
+            <select id="f-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="recent">Lead arrival (newest)</option>
+              <option value="slowest_reply">Slowest reply to prospect</option>
+              <option value="slowest_first">Slowest first touch</option>
+              <option value="longest_silence">Longest silence</option>
+              <option value="fewest_touches">Fewest touches</option>
+            </select>
+            <div className="toggle" role="group" aria-label="View">
+              <button aria-pressed={mode === "timeline"} onClick={() => setMode("timeline")}>Timeline</button>
+              <button aria-pressed={mode === "table"} onClick={() => setMode("table")}>Table</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="legend">
+          {LEGEND_ORDER.map((k) => (
+            <span className="item" key={k}>
+              <svg width={18} height={18} viewBox="0 0 18 18"><Mark kind={k} x={9} y={9} /></svg>
+              {MARKS[k].label}
+            </span>
+          ))}
+          <span className="item">
+            marks: <b style={{ color: "var(--rep)" }}>green = our team</b> ·{" "}
+            <b style={{ color: "var(--prospect)" }}>red = the prospect</b>
+          </span>
+          <span className="stagekey">
+            line:
+            {STAGE_KEY.map(([label, bucket]) => (
+              <span className="sw" key={bucket}>
+                <i style={{ background: `var(--st-${bucket})` }} />{label}
+              </span>
+            ))}
+          </span>
+        </div>
+
+        {mode === "timeline" ? (
+          <div className="board">
+            <div className="axis">
+              <div className="head">Lead</div>
+              <div className="ticks">
+                {v.windowDays === null ? (
+                  <>
+                    <span style={{ left: 0, transform: "none" }}>lead in</span>
+                    <span style={{ right: 0, left: "auto", transform: "none" }}>today / closed →</span>
+                  </>
+                ) : (
+                  v.ticks!.map((d) =>
+                    d === 0 ? (
+                      <span key={d} style={{ left: 0, transform: "none" }}>lead in</span>
+                    ) : (
+                      <span key={d} style={{ left: `${(d / v.windowDays!) * 100}%` }}>{tickLabel(d)}</span>
+                    )
+                  )
+                )}
+              </div>
+              <div className="head">{v.goal ? "Against goal" : "Outcome"}</div>
+            </div>
+
+            {rows.length === 0 && <div className="empty">No leads match these filters.</div>}
+
+            {rows.map((lead) => {
+              const verdict = verdictFor(view, lead);
+              const m = lead.metrics;
+              return (
+                <div className="row" key={lead.id}>
+                  <div className="who">
+                    <a href={lead.url} target="_blank" rel="noopener noreferrer">{lead.contact || lead.name}</a>
+                    <div className="sub">
+                      {lead.account}{lead.title && <> · <em>{lead.title}</em></>}
+                    </div>
+                    <div className="sub">
+                      <em>for</em> {lead.client || "—"} · <em>by</em> {lead.rep}
+                    </div>
+                  </div>
+                  <div className="lane"><Lane lead={lead} view={view} /></div>
+                  <div className="meta">
+                    {verdict ? (
+                      <>
+                        <span className={`chip ${verdict.status}`}>{verdict.text}</span>
+                        <div className="nums">{lead.outcomeLabel} · <b>{m.touches}</b> touch{m.touches === 1 ? "" : "es"}</div>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`chip ${lead.status}`}>{lead.outcomeLabel}</span>
+                        <div className="nums">
+                          <b>{m.touches}</b> touch{m.touches === 1 ? "" : "es"} · 1st in <b>{dur(m.firstTouchHours)}</b>
+                          {m.respondHours !== null && <> · reply in <b>{dur(m.respondHours)}</b></>}
+                          {" · "}<b>{spanLabel(m.spanHours / 24)}</b> span
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="board">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lead</th><th>Client</th><th>Rep</th><th>Outcome</th>
+                  <th>1st touch</th><th>Reply</th><th>Touches</th>
+                  <th>Calls / emails</th><th>Median gap</th><th>Silent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((l) => (
+                  <tr key={l.id}>
+                    <td><a href={l.url} target="_blank" rel="noopener noreferrer">{l.contact}</a></td>
+                    <td>{l.client || "—"}</td>
+                    <td>{l.rep}</td>
+                    <td>{l.outcomeLabel}</td>
+                    <td className="num">{dur(l.metrics.firstTouchHours)}</td>
+                    <td className="num">{dur(l.metrics.respondHours)}</td>
+                    <td className="num">{l.metrics.touches}</td>
+                    <td className="num">{l.metrics.calls} / {l.metrics.emails}</td>
+                    <td className="num">{l.metrics.medianGapDays !== null ? `${l.metrics.medianGapDays}d` : "—"}</td>
+                    <td className="num">{l.metrics.daysSinceLastEvent}d</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="foot">
+          {rows.length} of {total ?? leads.length} leads · {v.label}
+          {v.goal && <> — goal: {v.goal}</>} · data through {new Date(generated).toLocaleString()}
+        </p>
       </div>
     </div>
   );

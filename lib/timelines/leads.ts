@@ -36,7 +36,7 @@ export async function getLeads(filters: LeadFilters = {}) {
   const { data: leadRows, error } = await query.limit(limit);
   if (error) throw new Error(`leads query failed: ${error.message}`);
   const rows = (leadRows ?? []) as unknown as LeadRow[];
-  if (!rows.length) return { leads: [] as Lead[], generated: new Date().toISOString() };
+  if (!rows.length) return assembleLeads([], []);
 
   // Only the visible leads' activity is fetched. Supabase caps a response at
   // 1000 rows, so both the id filter and the result set are walked in chunks.

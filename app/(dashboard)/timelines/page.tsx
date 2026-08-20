@@ -1,3 +1,4 @@
+import "./timelines.css";
 import { getLeads, getFilterOptions } from "@/lib/timelines/leads";
 import { TimelineBoard } from "@/components/timelines/TimelineBoard";
 
@@ -6,7 +7,7 @@ import { TimelineBoard } from "@/components/timelines/TimelineBoard";
 export const dynamic = "force-dynamic";
 
 export default async function TimelinesPage() {
-  const [{ leads, generated }, { reps, clients }] = await Promise.all([
+  const [{ leads, generated, coldAfterDays }, { reps, clients }] = await Promise.all([
     getLeads({ limit: 150 }),
     getFilterOptions(),
   ]);
@@ -17,6 +18,7 @@ export default async function TimelinesPage() {
       reps={reps}
       clients={clients}
       generated={generated ?? new Date().toISOString()}
+      coldAfterDays={coldAfterDays}
     />
   );
 }
