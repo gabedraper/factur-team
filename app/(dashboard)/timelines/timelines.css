@@ -6,13 +6,15 @@
    in force at that moment. */
 
 .tl {
+  /* Neutrals follow the app's own palette so the page sits in the product
+     rather than beside it. The categorical colours below are left alone --
+     green/red for who acted and the stage hues are load-bearing. */
   --idcol: 272px;
   --metacol: 212px;
-  color-scheme: light;
-  --surface-0: #f4f3f0;
-  --surface-1: #fcfcfb;
-  --surface-2: #edece8;
-  --border:    #dedcd6;
+  --surface-0: hsl(var(--muted));
+  --surface-1: hsl(var(--card));
+  --surface-2: hsl(var(--secondary));
+  --border: hsl(var(--border));
   --stack:     14px;   
   --stage:     #7b53c9;   
   
@@ -21,18 +23,18 @@
   --st-warm:      #d8a412;
   --st-hot:       #d33f3f;
   --st-ltfu:      #d95fa8;
-  --st-dead:      #1c1c1a;
-  --st-other:     #8a8880;
-  --st-unknown:   #c9c6bd;
-  --border-strong: #c4c1b8;
-  --text-primary:   #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted:     #85837c;
+  --st-dead:      hsl(var(--foreground));
+  --st-other:     hsl(var(--muted-foreground));
+  --st-unknown:   hsl(var(--border));
+  --border-strong: hsl(var(--input));
+  --text-primary: hsl(var(--foreground));
+  --text-secondary: hsl(var(--muted-foreground));
+  --text-muted: hsl(var(--muted-foreground));
 
   
   --rep:      #12874a;   
   --prospect: #d33f3f;   
-  --goal:     #2a78d6;   
+  --goal: hsl(var(--primary));   
 
   
   --good:     #0ca30c;
@@ -40,32 +42,21 @@
   --serious:  #ec835a;
   --critical: #d03b3b;
 
-  --lane: #dedcd6;
+  --lane: hsl(var(--border));
 }
 
 .dark .tl {
-  color-scheme: dark;
-  --surface-0: #121211;
-  --surface-1: #1a1a19;
-  --surface-2: #232322;
-  --border:    #333331;
-  --border-strong: #4a4a47;
-  --text-primary:   #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted:     #8e8d84;
+  --surface-0: hsl(var(--background));
+  --surface-1: hsl(var(--secondary));
+  --surface-2: hsl(var(--muted));
   --rep:      #35b96b;
   --prospect: #e8615b;
-  --goal:     #5b9ff0;
   --stage:    #a98ae0;
   --st-cold:      #58a3ef;
   --st-generated: #35b96b;
   --st-warm:      #e0b336;
   --st-hot:       #e8615b;
   --st-ltfu:      #ef7fbd;
-  --st-dead:      #d8d5cc;
-  --st-other:     #8a8880;
-  --st-unknown:   #4a4845;
-  --lane: #383835;
 }
 
 .tl {
