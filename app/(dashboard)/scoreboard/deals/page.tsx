@@ -10,7 +10,7 @@ import { SourceRecordsBlurb } from "@/components/scoreboard/SourceRecordsBlurb";
 import { TeamBlurb } from "@/components/scoreboard/TeamBlurb";
 import { MaskedName } from "@/components/scoreboard/MaskedName";
 import { MaskedBlurb } from "@/components/scoreboard/MaskedBlurb";
-import { VERIFICATION_MODE_ACTIVE } from "@/lib/scoreboard/verification-mode";
+import { BOARD_MASKING } from "@/lib/scoreboard/verification-mode";
 import { getViewerRepId } from "@/lib/scoreboard/viewer";
 
 const DEAL_TYPES = ["New Client Deal", "New Customer PO"] as const;
@@ -91,7 +91,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
   }
   const managerRepIds = new Set(effectiveManagerId.values());
   const viewerIsManager = viewerRepId ? managerRepIds.has(viewerRepId) : false;
-  const masking = VERIFICATION_MODE_ACTIVE && !viewerIsManager;
+  const masking = BOARD_MASKING.deals && !viewerIsManager;
 
   const teamByManagerId = new Map<string, { id: string; display_name: string }[]>();
   for (const r of repsRows ?? []) {
