@@ -8,7 +8,7 @@ const FIRST_RESPONSE_TARGET_H = 1;
 const LANE_W = 1000;   // lane viewBox; preserveAspectRatio none stretches it
 const LANE_H = 34;
 
-type ViewKey = "quick" | "week" | "life";
+export type ViewKey = "quick" | "week" | "life";
 
 const VIEWS: Record<ViewKey, {
   label: string; blurb: string; goal: string | null;
@@ -147,12 +147,11 @@ function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
 }
 
 export function TimelineBoard({
-  leads, reps, clients, generated, coldAfterDays = 14, total,
+  view, leads, reps, clients, generated, coldAfterDays = 14, total,
 }: {
-  leads: Lead[]; reps: string[]; clients: string[];
+  view: ViewKey; leads: Lead[]; reps: string[]; clients: string[];
   generated: string; coldAfterDays?: number; total?: number;
 }) {
-  const [view, setView] = useState<ViewKey>("quick");
   const [rep, setRep] = useState("");
   const [client, setClient] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -225,17 +224,11 @@ export function TimelineBoard({
       <div className="wrap">
         <header>
           <h1>Opportunity Timelines</h1>
-          <p>One row per lead. Left to right is time since the lead arrived, so follow-up speed reads straight down the page.</p>
+          <p>
+            {VIEWS[view].blurb}. One row per lead; left to right is time since the
+            lead arrived, so follow-up speed reads straight down the page.
+          </p>
         </header>
-
-        <div className="viewtabs">
-          {(Object.keys(VIEWS) as ViewKey[]).map((k) => (
-            <button key={k} onClick={() => setView(k)} aria-selected={view === k}>
-              <span className="t">{VIEWS[k].label}</span>
-              <span className="g">{VIEWS[k].blurb}</span>
-            </button>
-          ))}
-        </div>
 
         <div className="tiles">
           {tiles.map(([label, value, sub]) => (
