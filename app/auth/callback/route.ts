@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const redirectTo = searchParams.get("redirectTo");
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
@@ -30,8 +30,18 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/unauthorized`);
   }
 
-  if (redirectTo?.startsWith("/")) {
-    return NextResponse.redirect(`${origin}${redirectTo}`);
+  // Set by the login page before handing off to Google; see the note there on
+  // why this cannot travel on the callback URL.
+  const jar = cookies();
+  const wanted = jar.get("post_login_redirect")?.value;
+  if (wanted) {
+    const path = decodeURIComponent(wanted);
+    // Only same-site paths, and never "//host" which browsers treat as absolute.
+    if (path.startsWith("/") && !path.startsWith("//")) {
+      const res = NextResponse.redirect(`${origin}${path}`);
+      res.cookies.delete("post_login_redirect");
+      return res;
+    }
   }
 
   const home: Record<string, string> = {
