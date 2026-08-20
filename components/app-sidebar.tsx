@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -92,8 +92,6 @@ export function AppSidebar({
 
       <Separator />
 
-      {!collapsed && profile}
-
       <nav className="flex-1 overflow-y-auto px-3 py-2">
         {groups.map((group, i) => {
           // Group collapsing only applies to the expanded sidebar; in icon mode
@@ -155,11 +153,30 @@ export function AppSidebar({
         })}
       </nav>
 
-      {!collapsed && footer}
+      <div className="mt-auto">
+        <Separator />
+        <Link
+          href="/settings"
+          title={collapsed ? "Settings" : undefined}
+          className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+            collapsed ? "justify-center px-0" : "mx-3 mt-3 rounded-md"
+          } ${
+            pathname.startsWith("/settings")
+              ? "bg-accent text-accent-foreground font-medium"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          }`}
+        >
+          <Settings className="h-4 w-4 shrink-0" />
+          {!collapsed && "Settings"}
+        </Link>
 
-      <div className="p-3">
-        <Separator className="mb-3" />
-        <ThemeToggle collapsed={collapsed} />
+        {profile}
+
+        {!collapsed && footer}
+
+        <div className="p-3 pt-0">
+          <ThemeToggle collapsed={collapsed} />
+        </div>
       </div>
     </aside>
   );

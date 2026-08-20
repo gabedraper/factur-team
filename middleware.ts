@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard", "/timelines"];
+  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard", "/timelines", "/settings"];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
   );
