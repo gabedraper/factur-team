@@ -181,9 +181,9 @@ export function TimelineBoard({
             <option value="">All clients</option>
             {clients.map((c) => <option key={c}>{c}</option>)}
           </select>
-          <label htmlFor="f-outcome">Outcome</label>
+          <label htmlFor="f-outcome">Stage</label>
           <select id="f-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-            <option value="">All outcomes</option>
+            <option value="">All stages</option>
             {outcomes.map((o) => <option key={o}>{o}</option>)}
           </select>
           <input type="search" placeholder="Search contact or company…" value={search}

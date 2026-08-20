@@ -82,7 +82,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
 
   const perRow = VIEW_WINDOW[view] === null;
   const H = perRow ? 54 : 46;
-  const y = perRow ? 32 : H / 2;
+  const y = H / 2;
 
   if (!w) return <div ref={host} style={{ height: H }} />;
 

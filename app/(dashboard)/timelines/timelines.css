@@ -214,3 +214,11 @@
 /* Added for the port: week-view missed-day shading and the footer line. */
 .tl .missday { fill: var(--warning); fill-opacity: .16; }
 .tl .foot { color: var(--text-muted); font-size: 12px; margin-top: var(--stack); }
+
+/* Requested adjustments to the prototype's layout. */
+.tl .tile { text-align: center; }
+.tl .row { align-items: center; }
+/* The lane measures its own width to draw 1:1, so its inner element must
+   fill the cell rather than shrink to its content. */
+.tl .lane { display: flex; align-items: center; }
+.tl .lane > div { width: 100%; }
