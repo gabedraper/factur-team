@@ -10,42 +10,66 @@ async function requireOrgManage() {
 }
 
 /**
- * Replaces the member's service roles with one choice. Roles that are not tied
- * to a service -- manager, app-admin -- are left alone, since those say what
- * someone may see rather than what job they do, and are granted separately.
+ * Add or update one service role for a member, with the share of their time it
+ * takes. Someone can hold several -- 60% OBDM, 40% OSDR is a real arrangement --
+ * and the database refuses anything summing past full time.
  */
-export async function setMemberRole(memberId: string, roleId: string | null) {
+export async function setMemberRoleAllocation(memberId: string, roleId: string, allocation: number) {
   await requireOrgManage();
+  if (!(allocation > 0 && allocation <= 100)) {
+    return { success: false, error: "Share must be between 1 and 100." };
+  }
   const db = createServiceClient();
 
-  const { data: serviceRoles } = await db
-    .from("org_roles").select("id").not("service_id", "is", null);
-  const serviceRoleIds = (serviceRoles ?? []).map((r) => (r as { id: string }).id);
+  const { data: role } = await db
+    .from("org_roles").select("service_id").eq("id", roleId).single();
+  const serviceId = (role as { service_id: string | null } | null)?.service_id ?? null;
 
-  await db.from("org_assignments").delete()
-    .eq("member_id", memberId).in("role_id", serviceRoleIds);
-
-  if (roleId) {
-    const { data: role } = await db
-      .from("org_roles").select("service_id").eq("id", roleId).single();
-    const serviceId = (role as { service_id: string | null } | null)?.service_id ?? null;
-
-    let teamId: string | null = null;
-    if (serviceId) {
-      const { data: team } = await db
-        .from("org_teams").select("id").eq("service_id", serviceId).limit(1).maybeSingle();
-      teamId = (team as { id: string } | null)?.id ?? null;
-    }
-
-    const { error } = await db.from("org_assignments")
-      .insert({ member_id: memberId, role_id: roleId, team_id: teamId, is_primary: true });
-    if (error) return { success: false, error: error.message };
+  let teamId: string | null = null;
+  if (serviceId) {
+    const { data: team } = await db
+      .from("org_teams").select("id").eq("service_id", serviceId).limit(1).maybeSingle();
+    teamId = (team as { id: string } | null)?.id ?? null;
   }
 
-  // Picking a role is the review.
-  await db.from("org_members").update({ needs_review: false }).eq("id", memberId);
+  const { error } = await db.from("org_assignments").upsert(
+    { member_id: memberId, role_id: roleId, team_id: teamId, allocation, is_primary: false },
+    { onConflict: "member_id,role_id,team_id" }
+  );
+  if (error) return { success: false, error: error.message };
+
+  await markPrimaryAndReviewed(db, memberId);
   revalidatePath("/settings/people");
   return { success: true };
+}
+
+export async function removeMemberRole(memberId: string, roleId: string) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_assignments")
+    .delete().eq("member_id", memberId).eq("role_id", roleId);
+  if (error) return { success: false, error: error.message };
+  await markPrimaryAndReviewed(db, memberId);
+  revalidatePath("/settings/people");
+  return { success: true };
+}
+
+/** Largest share is the primary role, and having any role at all is the review. */
+async function markPrimaryAndReviewed(db: ReturnType<typeof createServiceClient>, memberId: string) {
+  const { data } = await db
+    .from("org_assignments")
+    .select("id,allocation,org_roles(service_id)")
+    .eq("member_id", memberId);
+
+  type Row = { id: string; allocation: number; org_roles?: { service_id: string | null } | null };
+  const rows = ((data ?? []) as unknown as Row[]).filter((r) => r.org_roles?.service_id);
+  if (!rows.length) return;
+
+  const top = Math.max(...rows.map((r) => Number(r.allocation)));
+  await Promise.all(rows.map((r) =>
+    db.from("org_assignments").update({ is_primary: Number(r.allocation) === top }).eq("id", r.id)
+  ));
+  await db.from("org_members").update({ needs_review: false }).eq("id", memberId);
 }
 
 /** Grant or revoke a role that is not tied to a service: manager, app-admin. */

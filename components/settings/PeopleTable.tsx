@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
+import { setMemberRoleAllocation, removeMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
 import type { MemberRow } from "@/lib/org";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
@@ -79,7 +79,8 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
           </thead>
           <tbody>
             {shown.map((m) => {
-              const roleId = m.roleIds.find((id) => serviceRoles.some((r) => r.id === id)) ?? "";
+              const held = m.roles.filter((h) => serviceRoles.some((r) => r.id === h.roleId));
+              const heldTotal = held.reduce((a, h) => a + h.allocation, 0);
               return (
                 <tr key={m.id} className={`border-b last:border-0 ${m.needs_review ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                   <td className="px-3 py-2">
@@ -87,24 +88,70 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                     <div className="text-xs text-muted-foreground">{m.email}</div>
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      className="h-8 rounded-md border bg-background px-2 text-sm"
-                      value={roleId}
-                      onChange={(e) => {
-                        const next = e.target.value || null;
-                        run(
-                          () => setMemberRole(m.id, next),
-                          () => setRows((rs) => rs.map((r) => r.id === m.id
-                            ? { ...r, needs_review: false,
-                                roleIds: [...r.roleIds.filter((id) => !serviceRoles.some((sr) => sr.id === id)),
-                                          ...(next ? [next] : [])] }
-                            : r))
+                    <div className="space-y-1">
+                      {held.map((h) => {
+                        const role = serviceRoles.find((r) => r.id === h.roleId);
+                        if (!role) return null;
+                        return (
+                          <div key={h.roleId} className="flex items-center gap-1.5">
+                            <span className="min-w-16 text-sm">{role.name}</span>
+                            <input
+                              type="number" min={1} max={100}
+                              className="h-7 w-16 rounded-md border bg-background px-1.5 text-sm"
+                              defaultValue={h.allocation}
+                              onBlur={(e) => {
+                                const pct = Number(e.target.value);
+                                if (pct === h.allocation) return;
+                                run(
+                                  () => setMemberRoleAllocation(m.id, h.roleId, pct),
+                                  () => setRows((rs) => rs.map((r) => r.id === m.id
+                                    ? { ...r, needs_review: false, roles: r.roles.map((x) =>
+                                        x.roleId === h.roleId ? { ...x, allocation: pct } : x) }
+                                    : r))
+                                );
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">%</span>
+                            <button
+                              type="button"
+                              aria-label={`Remove ${role.name}`}
+                              className="px-1 text-muted-foreground hover:text-foreground"
+                              onClick={() => run(
+                                () => removeMemberRole(m.id, h.roleId),
+                                () => setRows((rs) => rs.map((r) => r.id === m.id
+                                  ? { ...r, roles: r.roles.filter((x) => x.roleId !== h.roleId) } : r))
+                              )}
+                            >
+                              ×
+                            </button>
+                          </div>
                         );
-                      }}
-                    >
-                      <option value="">— none —</option>
-                      {serviceRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
+                      })}
+
+                      <select
+                        className="h-7 rounded-md border bg-background px-1.5 text-xs text-muted-foreground"
+                        value=""
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          if (!id) return;
+                          const pct = Math.max(1, 100 - heldTotal);
+                          run(
+                            () => setMemberRoleAllocation(m.id, id, pct),
+                            () => setRows((rs) => rs.map((r) => r.id === m.id
+                              ? { ...r, needs_review: false, roles: [...r.roles, { roleId: id, allocation: pct }] }
+                              : r))
+                          );
+                        }}
+                      >
+                        <option value="">{held.length ? "+ add role" : "— set role —"}</option>
+                        {serviceRoles.filter((r) => !held.some((h) => h.roleId === r.id))
+                          .map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+
+                      {heldTotal > 0 && heldTotal !== 100 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">{heldTotal}% allocated</p>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <select
@@ -124,7 +171,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                     </select>
                   </td>
                   {([["manager", managerRole], ["app-admin", adminRole]] as const).map(([slug, role]) => {
-                    const on = role ? m.roleIds.includes(role.id) : false;
+                    const on = role ? m.roles.some((h) => h.roleId === role.id) : false;
                     return (
                       <td key={slug} className="px-3 py-2 text-center">
                         <input
@@ -137,7 +184,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                             run(
                               () => toggleStandaloneRole(m.id, slug, next),
                               () => setRows((rs) => rs.map((row) => row.id === m.id
-                                ? { ...row, roleIds: next ? [...row.roleIds, role.id] : row.roleIds.filter((id) => id !== role.id) }
+                                ? { ...row, roles: next ? [...row.roles, { roleId: role.id, allocation: 100 }] : row.roles.filter((x) => x.roleId !== role.id) }
                                 : row))
                             );
                           }}

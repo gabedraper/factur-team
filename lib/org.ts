@@ -38,7 +38,7 @@ export type MemberRow = {
   needs_review: boolean;
   manager_member_id: string | null;
   salesforce_user_id: string | null;
-  roleIds: string[];
+  roles: { roleId: string; allocation: number }[];
 };
 
 /**
@@ -54,19 +54,22 @@ export async function listMembers() {
       .select("id,email,full_name,active,needs_review,manager_member_id,salesforce_user_id")
       .order("needs_review", { ascending: false })
       .order("full_name"),
-    db.from("org_assignments").select("member_id,role_id"),
+    db.from("org_assignments").select("member_id,role_id,allocation"),
     db.from("org_roles").select("id,slug,name,service_id,active").order("name"),
   ]);
 
-  const byMember = new Map<string, string[]>();
-  for (const a of (assignments ?? []) as { member_id: string; role_id: string }[]) {
-    byMember.set(a.member_id, [...(byMember.get(a.member_id) ?? []), a.role_id]);
+  const byMember = new Map<string, { roleId: string; allocation: number }[]>();
+  for (const a of (assignments ?? []) as { member_id: string; role_id: string; allocation: number }[]) {
+    byMember.set(a.member_id, [
+      ...(byMember.get(a.member_id) ?? []),
+      { roleId: a.role_id, allocation: Number(a.allocation) },
+    ]);
   }
 
   return {
-    members: ((members ?? []) as Omit<MemberRow, "roleIds">[]).map((m) => ({
+    members: ((members ?? []) as Omit<MemberRow, "roles">[]).map((m) => ({
       ...m,
-      roleIds: byMember.get(m.id) ?? [],
+      roles: byMember.get(m.id) ?? [],
     })),
     roles: (roles ?? []) as { id: string; slug: string; name: string; service_id: string | null; active: boolean }[],
   };
