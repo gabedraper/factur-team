@@ -19,6 +19,7 @@ import {
   Trophy,
   Target,
   SlidersHorizontal,
+  Activity,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { RolePreviewSelector } from "@/components/role-preview-selector";
@@ -30,6 +31,7 @@ function getNavGroups(role: string): NavGroup[] {
     label: "Scoreboard",
     items: [
       { href: "/scoreboard", label: "Sales Scoreboard", icon: <Target className="h-4 w-4" /> },
+      { href: "/timelines", label: "Lead Timelines", icon: <Activity className="h-4 w-4" /> },
     ],
   };
 

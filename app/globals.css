@@ -57,3 +57,42 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Opportunity Timelines ---------------------------------------------------
+   Colour says who acted (rep vs prospect); the lane tint says what stage the
+   lead was in at that moment. Stage tints are deliberately low-saturation so
+   the marks stay the thing you notice. */
+@layer base {
+  :root {
+    --tl-rep: #2563eb;
+    --tl-prospect: #ea580c;
+    --tl-stage: #94a3b8;
+    --tl-muted: #94a3b8;
+    --tl-surface: hsl(var(--card));
+    --tl-lane: #e2e8f0;
+    --tl-hot: #fca5a5;
+    --tl-warm: #fdba74;
+    --tl-cold: #93c5fd;
+    --tl-ltfu: #c4b5fd;
+    --tl-generated: #86efac;
+    --tl-dead: #cbd5e1;
+    --tl-unknown: #e2e8f0;
+    --tl-miss: #fef3c7;
+  }
+  .dark {
+    --tl-rep: #60a5fa;
+    --tl-prospect: #fb923c;
+    --tl-stage: #64748b;
+    --tl-muted: #64748b;
+    --tl-surface: hsl(var(--card));
+    --tl-lane: #1e293b;
+    --tl-hot: #7f1d1d;
+    --tl-warm: #7c2d12;
+    --tl-cold: #1e3a8a;
+    --tl-ltfu: #4c1d95;
+    --tl-generated: #14532d;
+    --tl-dead: #334155;
+    --tl-unknown: #1e293b;
+    --tl-miss: #422006;
+  }
+}
