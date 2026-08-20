@@ -130,7 +130,7 @@ export default async function DashboardLayout({
         }
         profile={
           <div className="px-3 py-2">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-muted">
+            <div className="flex items-center gap-3 rounded-md bg-muted px-3 py-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
                 {profile?.full_name?.[0]?.toUpperCase() || "U"}
               </div>
