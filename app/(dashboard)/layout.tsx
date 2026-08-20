@@ -20,6 +20,8 @@ import {
   Target,
   SlidersHorizontal,
   Activity,
+  Handshake,
+  Repeat,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { RolePreviewSelector } from "@/components/role-preview-selector";
@@ -30,7 +32,9 @@ function getNavGroups(role: string): NavGroup[] {
   const scoreboard: NavGroup = {
     label: "Scoreboard",
     items: [
-      { href: "/scoreboard", label: "Sales Scoreboard", icon: <Target className="h-4 w-4" /> },
+      { href: "/scoreboard/hustle-points", label: "Hustle Points", icon: <Target className="h-4 w-4" /> },
+      { href: "/scoreboard/deals", label: "Deals", icon: <Handshake className="h-4 w-4" /> },
+      { href: "/scoreboard/retention", label: "Retention", icon: <Repeat className="h-4 w-4" /> },
       { href: "/timelines", label: "Lead Timelines", icon: <Activity className="h-4 w-4" /> },
     ],
   };
