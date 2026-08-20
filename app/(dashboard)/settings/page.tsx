@@ -74,15 +74,16 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
-            <div className="flex items-start gap-3 rounded-md border bg-card p-4">
+            <Link href="/settings/teams"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                <span className="block text-sm font-medium">Services &amp; teams</span>
+                <span className="block text-sm font-medium">Pods &amp; client coverage</span>
                 <span className="block text-xs text-muted-foreground">
-                  {services.length} services, seeded one team each. Editing these is not built yet.
+                  Who works together, and which of the {services.length} services&apos; clients they cover.
                 </span>
               </span>
-            </div>
+            </Link>
           </div>
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
