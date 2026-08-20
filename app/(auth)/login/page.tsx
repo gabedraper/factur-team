@@ -46,7 +46,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle>{process.env.NEXT_PUBLIC_SITE_NAME || "Factur Team"}</CardTitle>
+          <CardTitle>Factur Team</CardTitle>
           <CardDescription>Sign in with your Factur Google account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

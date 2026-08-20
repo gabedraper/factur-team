@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { DEFAULT_LANDING } from "@/lib/landing";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -76,7 +77,7 @@ export async function middleware(request: NextRequest) {
 
   // If logged in and hitting auth pages, redirect to appropriate dashboard
   if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/learner", request.url));
+    return NextResponse.redirect(new URL(DEFAULT_LANDING, request.url));
   }
 
   return supabaseResponse;

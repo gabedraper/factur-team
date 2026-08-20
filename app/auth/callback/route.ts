@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_LANDING } from "@/lib/landing";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -44,12 +45,5 @@ export async function GET(request: Request) {
     }
   }
 
-  const home: Record<string, string> = {
-    admin: "/admin",
-    manager: "/manager",
-    instructor: "/instructor",
-    learner: "/learner",
-  };
-
-  return NextResponse.redirect(`${origin}${home[profile.role] ?? "/learner"}`);
+  return NextResponse.redirect(`${origin}${DEFAULT_LANDING}`);
 }
