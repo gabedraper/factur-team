@@ -213,3 +213,14 @@
    fill the cell rather than shrink to its content. */
 .tl .lane { display: flex; align-items: center; }
 .tl .lane > div { width: 100%; }
+
+/* Row and header contrast.
+   The prototype separated rows with surface-2, which sat between its ground and
+   its card. The app's --secondary and --muted resolve to the same value in dark,
+   so that separation vanished. Deriving these from the text colour instead means
+   they contrast with whatever the card happens to be, in either theme. */
+.tl .row + .row { border-top: 1px solid var(--border); }
+.tl .row:nth-child(even) { background: color-mix(in oklab, var(--text-primary) 4%, transparent); }
+.tl .row:hover { background: color-mix(in oklab, var(--text-primary) 8%, transparent); }
+.tl .axis { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }
+.tl th { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }
