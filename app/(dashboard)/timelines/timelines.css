@@ -211,6 +211,7 @@
 .tl .ticktext { fill: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .tl .ticktext.strong { fill: var(--text-secondary); font-size: 10px; font-weight: 560; }
 .tl .goalline { stroke: var(--goal); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: .75; }
+.tl .eodline { stroke: var(--text-muted); stroke-width: 1.5; opacity: .55; }
 .tl .meta { padding: 9px 12px; font-size: 12px; text-align: right; }
 .tl .chip {
   display: inline-flex; align-items: center; gap: 5px;

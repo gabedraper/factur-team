@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Lead, StageSpan } from "@/lib/timelines/leads";
 import { Mark, markSide, markSentence } from "./marks";
 import { DEAD_BUCKETS, FIRST_RESPONSE_TARGET_H } from "@/lib/timelines/classify";
+import { hoursUntilEndOfDay } from "@/lib/timelines/business-day";
 
 export type ViewKey = "quick" | "week" | "life";
 
@@ -17,11 +18,14 @@ const MARK_PITCH = 15;
 const MAX_DRIFT = MARK_PITCH * 2;
 
 export const VIEW_WINDOW: Record<ViewKey, number | null> = { quick: 1, week: 7, life: null };
+// The quick view draws no gridlines: the axis labels above give the scale, and
+// the only line worth having on it is the end of the lead's arrival day.
 const GLOBAL_TICKS: Record<ViewKey, number[] | null> = {
-  quick: [0, 4, 8, 12, 16, 20, 24].map((h) => h / 24),
+  quick: [],
   week: [0, 1, 2, 3, 4, 5, 6, 7],
   life: null,
 };
+
 
 function lifetimeDays(lead: Lead): number {
   const span = lead.metrics.spanHours / 24;
@@ -94,6 +98,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   const laneEnd = Math.min(openStage ? spanDays + lead.metrics.daysSinceLastEvent : spanDays, windowEnd);
 
   const ticks = perRow ? niceTicks(rowMax(lead)) : (GLOBAL_TICKS[view] as number[]);
+  const endOfDay = hoursUntilEndOfDay(lead.created);
 
   // Stage dots and the DQ skull hold their true positions -- they mark where the
   // line changes -- so the activity marks are what move around them.
@@ -199,6 +204,14 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
         {view === "quick" && (
           <line className="goalline" x1={px(FIRST_RESPONSE_TARGET_H / 24)}
                 x2={px(FIRST_RESPONSE_TARGET_H / 24)} y1={0} y2={H} />
+        )}
+
+        {/* End of the arrival day. A first touch left of this was same-day. */}
+        {view === "quick" && endOfDay !== null && (
+          <g>
+            <line className="eodline" x1={px(endOfDay / 24)} x2={px(endOfDay / 24)} y1={0} y2={H} />
+            <title>5pm Central on the day the lead arrived — a touch before this is same-day</title>
+          </g>
         )}
 
         {/* A round cap reaches half the stroke width past its endpoint, so at
