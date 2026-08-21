@@ -66,9 +66,6 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
       { href: "/scoreboard/retention", label: "Retention", icon: <Repeat className="h-4 w-4" /> },
     );
   }
-  if (perms.has("scoreboard.weights.edit")) {
-    scoreboard.push({ href: "/admin/weights", label: "Scoring Weights", icon: <SlidersHorizontal className="h-4 w-4" /> });
-  }
   if (scoreboard.length) groups.push({ label: "Scoreboard", items: scoreboard });
 
   if (perms.has("timelines.view")) {

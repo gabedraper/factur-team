@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ShieldCheck, Building2, Link2, Briefcase } from "lucide-react";
+import { Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -13,6 +13,7 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const perms = await myPermissions();
   const canManage = perms.has("org.manage");
+  const canEditWeights = perms.has("scoreboard.weights.edit");
   // Preview is offered on what you really hold, not on what you are previewing
   // as -- otherwise stepping into a learner's shoes would strand you there.
   const canPreview = (await myRealPermissions()).has("org.manage");
@@ -129,6 +130,18 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            {canEditWeights && (
+              <Link href="/admin/weights"
+                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                <SlidersHorizontal className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>
+                  <span className="block text-sm font-medium">Scoring Weights</span>
+                  <span className="block text-xs text-muted-foreground">
+                    How hustle points and deals are scored.
+                  </span>
+                </span>
+              </Link>
+            )}
             <Link href="/settings/clients"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
