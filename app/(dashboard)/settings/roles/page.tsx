@@ -22,9 +22,6 @@ export default async function RolesPage() {
           <ChevronLeft className="h-4 w-4" /> Settings
         </Link>
         <h1 className="mt-1 text-xl font-semibold">Roles &amp; permissions</h1>
-        <p className="text-sm text-muted-foreground">
-          What each role is allowed to do. Changes take effect the next time someone loads a page.
-        </p>
       </div>
       <RolesScreen roles={roles} permissions={permissions} services={services} />
     </div>

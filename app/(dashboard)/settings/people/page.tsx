@@ -19,10 +19,6 @@ export default async function PeoplePage() {
           <ChevronLeft className="h-4 w-4" /> Settings
         </Link>
         <h1 className="mt-1 text-xl font-semibold">People</h1>
-        <p className="text-sm text-muted-foreground">
-          Everyone in the app. Role and manager are set here and nowhere else — the app is the
-          source of truth, not Salesforce.
-        </p>
       </div>
 
       <PeopleTable members={members} roles={roles} />
