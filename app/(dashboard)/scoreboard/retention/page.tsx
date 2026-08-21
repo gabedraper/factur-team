@@ -199,10 +199,14 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
     return b.renewalPct - a.renewalPct;
   };
 
-  const ranked = allStats
+  // A failed query means the numbers are unknown, not zero. Without this the
+  // rows still render at zero, which reads as a real result rather than a
+  // failure to load one.
+  const shown = error ? [] : allStats;
+  const ranked = shown
     .filter((r) => r.total >= MIN_OPPORTUNITIES_TO_RANK)
     .sort(byRenewalPct);
-  const unranked = allStats
+  const unranked = shown
     .filter((r) => r.total < MIN_OPPORTUNITIES_TO_RANK)
     .sort((a, b) => b.total - a.total);
   const avgSplit = companyAverageSplit(ranked, (rep) => rep.renewalPct ?? 0);

@@ -160,10 +160,15 @@ export default async function HustlePointsPage(
 
   // Managers with an active team show only their team-average row, not their own
   // personal activity as a second, competing entry.
-  const ranked = [
-    ...Array.from(totals.values()).filter((rep) => !teamByManagerId.has(rep.rep_id)),
-    ...managerRows,
-  ].sort((a, b) => b.totalPoints - a.totalPoints);
+  // A failed query means the numbers are unknown, not zero. Without this the
+  // manager rows still render -- at 0, under a "Company Average \u2014 0" line --
+  // which reads as everyone having scored nothing rather than as a failure.
+  const ranked = error
+    ? []
+    : [
+        ...Array.from(totals.values()).filter((rep) => !teamByManagerId.has(rep.rep_id)),
+        ...managerRows,
+      ].sort((a, b) => b.totalPoints - a.totalPoints);
   const avgSplit = companyAverageSplit(ranked, (rep) => rep.totalPoints);
 
   return (
