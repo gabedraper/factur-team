@@ -210,15 +210,6 @@ export function TimelineBoard({
       <div className="wrap">
         <header>
           <h1>Lead Response</h1>
-          <p>
-            {VIEWS[view].blurb}. One row per lead; left to right is time since the
-            lead arrived, so follow-up speed reads straight down the page.
-          </p>
-          <p>
-            Below: leads that arrived in the last {DISPLAY_DAYS} days, newest first.
-            The figures above cover {rep ? "this rep" : "everyone"} across all
-            {held ? ` ${held} ` : " "}leads held, so filtering the board does not move them.
-          </p>
         </header>
 
         <div className="tiles">
