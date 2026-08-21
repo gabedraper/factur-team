@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ClipboardList, Plus, Trash2, Calendar, Search } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
+import { useSort, SortHeader } from "@/components/ui/sortable";
 
 interface Enrollment {
   id: string;
@@ -107,6 +108,15 @@ export default function AdminEnrollmentsPage() {
     if (!deadline || completed) return false;
     return new Date(deadline) < new Date();
   };
+
+  // Status sorts by urgency rather than alphabetically -- overdue first, then
+  // in progress, then the ones that are done and need no attention.
+  const { sorted, sortProps } = useSort(filtered, {
+    user: (e) => e.profiles?.full_name,
+    course: (e) => e.courses?.title,
+    status: (e) => (isOverdue(e.deadline, e.completed_at) ? 0 : e.completed_at ? 2 : 1),
+    deadline: (e) => e.deadline,
+  });
 
   return (
     <div className="p-8">
@@ -203,15 +213,15 @@ export default function AdminEnrollmentsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">User</th>
-                <th className="text-left px-4 py-3 font-medium">Course</th>
-                <th className="text-left px-4 py-3 font-medium">Status</th>
-                <th className="text-left px-4 py-3 font-medium">Deadline</th>
+                <SortHeader className="text-left px-4 py-3" {...sortProps("user")}>User</SortHeader>
+                <SortHeader className="text-left px-4 py-3" {...sortProps("course")}>Course</SortHeader>
+                <SortHeader className="text-left px-4 py-3" {...sortProps("status")}>Status</SortHeader>
+                <SortHeader className="text-left px-4 py-3" {...sortProps("deadline")}>Deadline</SortHeader>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map((e) => {
+              {sorted.map((e) => {
                 const overdue = isOverdue(e.deadline, e.completed_at);
                 const deadlineValue = e.deadline
                   ? new Date(e.deadline).toISOString().split("T")[0]

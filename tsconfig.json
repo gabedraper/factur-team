@@ -36,6 +36,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    // Self-running tests: `node --experimental-strip-types lib/sort.test.ts`.
+    // They import with a .ts extension, which Node needs and the build's type
+    // check rejects -- and they are not part of the app that gets built.
+    "**/*.test.ts"
   ]
 }

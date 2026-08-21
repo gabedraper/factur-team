@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Lead } from "@/lib/timelines/leads";
 import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
+import { useSort, SortHeader } from "@/components/ui/sortable";
 
 
 export type { ViewKey };
@@ -115,6 +116,24 @@ export function TimelineBoard({
     };
     return [...out].sort(by[sort] ?? by.recent);
   }, [leads, rep, client, outcome, search, sort]);
+
+  // Column sorting sits on top of the Sort control: with no column chosen the
+  // rows keep whatever order that control asked for. Only the table view has
+  // headers to click, so the lane views are unaffected until one is used.
+  const { sorted: tableRows, sortProps } = useSort(rows, {
+    lead: (l) => l.contact,
+    client: (l) => l.client,
+    rep: (l) => l.rep,
+    stage: (l) => l.outcomeLabel,
+    first: (l) => l.metrics.firstTouchHours,
+    reply: (l) => l.metrics.respondHours,
+    touches: (l) => l.metrics.touches,
+    // The cell shows calls and emails separately; the column sorts on how much
+    // outreach there was in total.
+    activity: (l) => l.metrics.calls + l.metrics.emails,
+    gap: (l) => l.metrics.medianGapDays,
+    silent: (l) => l.metrics.daysSinceLastEvent,
+  });
 
   // The headline tiles follow the active view, so the numbers on screen always
   // answer the question the view is asking.
@@ -327,13 +346,20 @@ export function TimelineBoard({
             <table>
               <thead>
                 <tr>
-                  <th>Lead</th><th>Client</th><th>Rep</th><th>Outcome</th>
-                  <th>1st touch</th><th>Reply</th><th>Touches</th>
-                  <th>Calls / emails</th><th>Median gap</th><th>Silent</th>
+                  <SortHeader {...sortProps("lead")}>Lead</SortHeader>
+                  <SortHeader {...sortProps("client")}>Client</SortHeader>
+                  <SortHeader {...sortProps("rep")}>Rep</SortHeader>
+                  <SortHeader {...sortProps("stage")}>Outcome</SortHeader>
+                  <SortHeader align="right" {...sortProps("first")}>1st touch</SortHeader>
+                  <SortHeader align="right" {...sortProps("reply")}>Reply</SortHeader>
+                  <SortHeader align="right" {...sortProps("touches")}>Touches</SortHeader>
+                  <SortHeader align="right" {...sortProps("activity")}>Calls / emails</SortHeader>
+                  <SortHeader align="right" {...sortProps("gap")}>Median gap</SortHeader>
+                  <SortHeader align="right" {...sortProps("silent")}>Silent</SortHeader>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((l) => (
+                {tableRows.map((l) => (
                   <tr key={l.id}>
                     <td><a href={l.url} target="_blank" rel="noopener noreferrer">{l.contact}</a></td>
                     <td>{l.client || "—"}</td>

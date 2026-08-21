@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { linkSalesforceUser } from "@/actions/org";
 import type { MatchSuggestion } from "@/lib/org";
+import { useSort, SortHeader } from "@/components/ui/sortable";
 
 export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSuggestion[] }) {
   const [rows, setRows] = useState(suggestions);
@@ -31,6 +32,14 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
   const withCandidate = rows.filter((r) => r.sfId);
   const without = rows.filter((r) => !r.sfId);
 
+  // Confidence sorts on the score behind the badge, so "strong" rows order
+  // among themselves rather than tying on the word.
+  const { sorted, sortProps } = useSort(withCandidate, {
+    member: (s) => s.fullName ?? s.email,
+    match: (s) => s.sfName,
+    confidence: (s) => s.score,
+  });
+
   return (
     <div className="space-y-4">
       {error && (
@@ -43,14 +52,14 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">In the app</th>
-              <th className="px-3 py-2 font-medium">Best Salesforce match</th>
-              <th className="px-3 py-2 font-medium">Confidence</th>
+              <SortHeader className="px-3 py-2" {...sortProps("member")}>In the app</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("match")}>Best Salesforce match</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("confidence")}>Confidence</SortHeader>
               <th className="px-3 py-2 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {withCandidate.map((s) => {
+            {sorted.map((s) => {
               const b = band(s.score);
               return (
                 <tr key={s.memberId} className="border-b last:border-0">

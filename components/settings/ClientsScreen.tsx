@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { setClientOwner, setClientService } from "@/actions/org";
 import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
+import { useSort, SortHeader } from "@/components/ui/sortable";
 
 type Service = { id: string; name: string };
 
@@ -36,6 +37,19 @@ export function ClientsScreen({
         (!term || c.name.toLowerCase().includes(term))
     );
   }, [rows, filter, onlyUnassigned, status]);
+
+  // "Covered by" sorts on the name shown in the cell, not the id behind it.
+  const ownerName = (c: ClientRow) =>
+    c.team_id ? pods.find((t) => t.id === c.team_id)?.name
+    : c.member_id ? (() => { const m = members.find((x) => x.id === c.member_id); return m && (m.full_name ?? m.email); })()
+    : null;
+
+  const { sorted, sortProps } = useSort(shown, {
+    client: (c) => c.name,
+    status: (c) => c.status,
+    service: (c) => services.find((s) => s.id === c.service_id)?.name,
+    owner: ownerName,
+  });
 
   const statuses = useMemo(
     () => [...new Set(rows.map((c) => c.status).filter(Boolean))].sort() as string[],
@@ -95,14 +109,14 @@ export function ClientsScreen({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Client</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Service</th>
-              <th className="px-3 py-2 font-medium">Covered by</th>
+              <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("status")}>Status</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("service")}>Service</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("owner")}>Covered by</SortHeader>
             </tr>
           </thead>
           <tbody>
-            {shown.map((c) => (
+            {sorted.map((c) => (
               <tr key={c.id} className={`border-b last:border-0 ${!c.team_id && !c.member_id ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                 <td className="px-3 py-2">
                   <Link href={`/settings/clients/${c.id}`}

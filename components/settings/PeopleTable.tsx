@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
 import type { MemberRow } from "@/lib/org";
 import { isJobRole } from "@/lib/org-roles";
+import { useSort, SortHeader } from "@/components/ui/sortable";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
 type Service = { id: string; name: string };
@@ -59,6 +60,17 @@ export function PeopleTable(
     );
   }, [inScope, filter, onlyReview]);
 
+  // Unsorted, the list arrives with anyone needing review at the top -- worth
+  // being able to click back to, which is why the third click clears the sort.
+  const { sorted, sortProps } = useSort(shown, {
+    person: (m) => m.full_name ?? m.email,
+    role: (m) => roles.find((r) => r.id === m.roleIds.find((id) => jobRoles.some((jr) => jr.id === id)))?.name,
+    manager: (m) => rows.find((r) => r.id === m.manager_member_id)?.full_name,
+    mgr: (m) => (managerRole ? m.roleIds.includes(managerRole.id) : false),
+    admin: (m) => (adminRole ? m.roleIds.includes(adminRole.id) : false),
+    active: (m) => m.active,
+  });
+
   function run(fn: () => Promise<{ success: boolean; error?: string }>, optimistic: () => void) {
     setError("");
     optimistic();
@@ -103,16 +115,16 @@ export function PeopleTable(
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Person</th>
-              <th className="px-3 py-2 font-medium">Role</th>
-              <th className="px-3 py-2 font-medium">Manager</th>
-              <th className="px-3 py-2 font-medium text-center">Mgr</th>
-              <th className="px-3 py-2 font-medium text-center">Admin</th>
-              <th className="px-3 py-2 font-medium text-center">Active</th>
+              <SortHeader className="px-3 py-2" {...sortProps("person")}>Person</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("role")}>Role</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("manager")}>Manager</SortHeader>
+              <SortHeader className="px-3 py-2" align="center" {...sortProps("mgr")}>Mgr</SortHeader>
+              <SortHeader className="px-3 py-2" align="center" {...sortProps("admin")}>Admin</SortHeader>
+              <SortHeader className="px-3 py-2" align="center" {...sortProps("active")}>Active</SortHeader>
             </tr>
           </thead>
           <tbody>
-            {shown.map((m) => {
+            {sorted.map((m) => {
               const roleId = m.roleIds.find((id) => jobRoles.some((r) => r.id === id)) ?? "";
               // A role they hold that the list above leaves out, because it was
               // retired. Shown so the picker reflects reality.
