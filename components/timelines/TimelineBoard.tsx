@@ -309,7 +309,7 @@ export function TimelineBoard({
                   )
                 )}
               </div>
-              <div className="head">{v.goal ? "Against goal" : stageLabel}</div>
+              <div className="head">{v.goal ? "" : stageLabel}</div>
             </div>
 
             {rows.length === 0 && (
