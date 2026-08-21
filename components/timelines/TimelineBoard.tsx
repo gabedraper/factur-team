@@ -122,7 +122,7 @@ export function TimelineBoard({
     [leads, rep]
   );
   const prospecting = inScope.length > 0 && inScope.every((l) => l.pipeline === "prospecting");
-  const stageLabel = prospecting ? "Lead status" : "Stage";
+  const stageLabel = prospecting ? "Prospecting Lead Status" : "Stage";
   const stageKey = prospecting ? PROSPECTING_KEY : STAGE_KEY;
 
   const rows = useMemo(() => {
@@ -246,7 +246,7 @@ export function TimelineBoard({
           )}
           <label htmlFor="f-outcome">{stageLabel}</label>
           <select id="f-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-            <option value="">{prospecting ? "All lead statuses" : "All stages"}</option>
+            <option value="">{prospecting ? "All statuses" : "All stages"}</option>
             {outcomes.map((o) => <option key={o}>{o}</option>)}
           </select>
           <input type="search" placeholder="Search contact or company…" value={search}

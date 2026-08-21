@@ -32,15 +32,22 @@ for (const [status, bucket] of buckets) {
   check(`bucket: ${status}`, prospectingBucket(status), bucket);
 }
 
-// A fresh lead (0 days silent) reads as live; the same lead gone quiet past the
-// 14-day mark is flagged rather than still shown as healthy.
-check("Selling, active", prospectingOutcomeFor("Pipeline - Selling", "", 1, null).label, "Selling");
-check("Selling, gone quiet",
-  prospectingOutcomeFor("Pipeline - Selling", "", 40, null).label, "Selling — gone quiet");
-check("dead ends do not go quiet",
-  prospectingOutcomeFor("No Fit Ever - Account", "", 90, null).label, "No fit — company");
-check("Customer stays Customer",
-  prospectingOutcomeFor("Customer", "", 90, null).label, "Customer");
+// The label is always the Salesforce value, untouched. What a lead going quiet
+// changes is the colour and which bucket it is counted in, not what it is
+// called -- the sales team reads this field in Salesforce all day.
+for (const [status] of buckets) {
+  check(`label is verbatim: ${status}`, prospectingOutcomeFor(status, "", 1, null).label, status);
+  check(`still verbatim when quiet: ${status}`, prospectingOutcomeFor(status, "", 90, null).label, status);
+}
+
+check("open and quiet counts as gone quiet",
+  prospectingOutcomeFor("Pipeline - Selling", "", 40, null).key, "cold");
+check("open and active does not",
+  prospectingOutcomeFor("Pipeline - Selling", "", 1, null).key, "hot");
+check("a dead end is not 'gone quiet', it is finished",
+  prospectingOutcomeFor("No Fit Ever - Account", "", 90, null).key, "dq_company");
+check("nor is a customer",
+  prospectingOutcomeFor("Customer", "", 90, null).key, "won");
 
 // The handful of sales-team records that never entered the prospecting
 // pipeline still have a Stage, and should read from it rather than blank out.
