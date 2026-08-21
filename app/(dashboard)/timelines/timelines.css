@@ -127,7 +127,7 @@
   
   display: flex; flex-wrap: nowrap; gap: 8px; align-items: center;
   padding: 12px; background: var(--surface-1);
-  border: 0; border-radius: 10px; margin-bottom: var(--stack);
+  border: 1px solid var(--tl-border); border-radius: 10px; margin-bottom: var(--stack);
 }
 .tl .controls label { font-size: 12px; color: var(--text-muted); margin-right: -4px; white-space: nowrap; flex: none; }
 .tl .controls select { flex: 0 1 auto; min-width: 0; max-width: 150px; }
@@ -135,7 +135,7 @@
 .tl select, .tl input[type=search], .tl input[type=date] {
   font: inherit; font-size: 13px; padding: 4px 8px;
   background: hsl(var(--control)); color: var(--text-primary);
-  border: 1px solid var(--control-border); border-radius: 7px;
+  border: 0; border-radius: 7px;
 }
 .tl input[type=search] { flex: 1 1 130px; min-width: 90px; }
 .tl input[type=date] { min-width: 0; width: 124px; }
