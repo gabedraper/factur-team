@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getAuthedUser, getProfile } from "@/lib/supabase/session";
+import { myRoleIds } from "@/lib/org";
 import Link from "next/link";
 import {
   Card,
@@ -27,14 +28,17 @@ export default async function LearnerDashboard() {
   // Get user's role
   const profile = await getProfile(user.id);
 
-  const role = profile?.role || "sdr";
+  // Assigned training follows the roles held in Settings, so someone in two
+  // roles sees both sets rather than whichever single role happened to be on
+  // their profile.
+  const roleIds = await myRoleIds();
 
   // Get courses assigned to this role, and this user's enrollments, in parallel
   const [{ data: roleCourses }, { data: enrollments }] = await Promise.all([
     serviceClient
       .from("role_courses")
       .select("course_id, courses(id, title, description, thumbnail_url, is_published)")
-      .eq("role", role),
+      .in("role_id", roleIds.length ? roleIds : ["00000000-0000-0000-0000-000000000000"]),
     supabase
       .from("enrollments")
       .select("course_id, completed_at, enrolled_at")
@@ -68,7 +72,7 @@ export default async function LearnerDashboard() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">My Training</h1>
         <p className="text-muted-foreground mt-1">
-          {getRoleLabel(role)} — {coursesWithProgress.length} course{coursesWithProgress.length !== 1 ? "s" : ""} assigned
+          {coursesWithProgress.length} course{coursesWithProgress.length !== 1 ? "s" : ""} assigned
         </p>
       </div>
 

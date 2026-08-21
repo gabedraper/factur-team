@@ -63,14 +63,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Training administration is granted through the roles in Settings. The check
+  // runs against the org model rather than profiles.role so there is one answer
+  // to "what may this person do".
   if (user && pathname.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "admin") {
+    const { data: allowed } = await supabase.rpc("has_permission", { p_key: "lms.admin" });
+    const { data: manages } = await supabase.rpc("has_permission", { p_key: "org.manage" });
+    if (!allowed && !manages) {
       return NextResponse.redirect(new URL("/learner", request.url));
     }
   }

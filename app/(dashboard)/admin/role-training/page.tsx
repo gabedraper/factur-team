@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
-import { ROLES, LEARNER_ROLES, getRoleLabel, type RoleKey } from "@/lib/roles";
+
 import {
   getRoleCoursesAll,
   addRoleCourse,
@@ -26,13 +26,14 @@ interface Course {
 
 interface RoleCourse {
   id: string;
-  role: string;
+  role_id: string;
   course_id: string;
   courses: Course;
 }
 
 export default function RoleTrainingPage() {
   const [roleCourses, setRoleCourses] = useState<RoleCourse[]>([]);
+  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -44,6 +45,7 @@ export default function RoleTrainingPage() {
   async function load() {
     const data = await getRoleCoursesAll();
     setRoleCourses(data.roleCourses);
+    setRoles(data.roles);
     setAllCourses(data.courses);
   }
 
@@ -85,8 +87,9 @@ export default function RoleTrainingPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6">
-        {LEARNER_ROLES.map((role) => {
-          const assigned = roleCourses.filter((rc) => rc.role === role);
+        {roles.map((roleRow) => {
+          const role = roleRow.id;
+          const assigned = roleCourses.filter((rc) => rc.role_id === role);
           const assignedIds = assigned.map((rc) => rc.course_id);
           const available = allCourses.filter((c) => !assignedIds.includes(c.id));
 
@@ -94,7 +97,7 @@ export default function RoleTrainingPage() {
             <Card key={role}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
-                  {getRoleLabel(role)}
+                  {roleRow.name}
                   <Badge variant="secondary">{assigned.length} course{assigned.length !== 1 ? "s" : ""}</Badge>
                 </CardTitle>
               </CardHeader>

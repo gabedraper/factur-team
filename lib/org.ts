@@ -334,3 +334,33 @@ export async function maintenanceHealth(): Promise<MaintenanceHealth | null> {
   const row = (data as MaintenanceHealth[] | null)?.[0];
   return row ?? null;
 }
+
+/** Throws unless the caller holds the permission. For server actions. */
+export async function requirePermission(key: Permission) {
+  const perms = await myPermissions();
+  if (!perms.has(key)) throw new Error(`Forbidden: ${key} required`);
+}
+
+/**
+ * The org roles the viewer holds, used to work out which courses are assigned
+ * to them. Honours preview, so previewing a person shows their training.
+ */
+export async function myRoleIds(): Promise<string[]> {
+  const db = createServiceClient();
+  const previewing = await previewedMemberId();
+
+  let memberId = previewing;
+  if (!memberId) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await db
+      .from("org_members").select("id").eq("auth_user_id", user.id).maybeSingle();
+    memberId = (data as { id: string } | null)?.id ?? null;
+  }
+  if (!memberId) return [];
+
+  const { data } = await db
+    .from("org_assignments").select("role_id").eq("member_id", memberId);
+  return ((data ?? []) as { role_id: string }[]).map((r) => r.role_id);
+}
