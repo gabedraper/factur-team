@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import type { Lead } from "@/lib/timelines/leads";
-import { Mark, MARKS, LEGEND_ORDER } from "./marks";
 import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
 
 
@@ -210,12 +209,6 @@ export function TimelineBoard({
         </div>
 
         <div className="legend">
-          {LEGEND_ORDER.map((k) => (
-            <span className="item" key={k}>
-              <svg width={18} height={18} viewBox="0 0 18 18"><Mark kind={k} x={9} y={9} /></svg>
-              {MARKS[k].label}
-            </span>
-          ))}
           <span className="item">
             <b style={{ color: "var(--rep)" }}>Orange = Factur</b> ·{" "}
             <b style={{ color: "var(--prospect)" }}>Red = Prospect</b>
