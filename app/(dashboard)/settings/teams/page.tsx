@@ -23,10 +23,6 @@ export default async function TeamsPage() {
           <ChevronLeft className="h-4 w-4" /> Settings
         </Link>
         <h1 className="mt-1 text-xl font-semibold">Pods &amp; client coverage</h1>
-        <p className="text-sm text-muted-foreground">
-          Who works together, and which clients they look after. A client is covered by a pod or by
-          one person — never both.
-        </p>
       </div>
 
       <TeamsScreen
