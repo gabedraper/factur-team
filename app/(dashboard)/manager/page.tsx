@@ -15,7 +15,7 @@ import { getCourseProgress } from "@/lib/progress";
 import { Users } from "lucide-react";
 
 export default async function ManagerDashboard() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const user = await getAuthedUser();
 

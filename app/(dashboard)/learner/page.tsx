@@ -18,7 +18,7 @@ import { getRoleLabel } from "@/lib/roles";
 import { getCourseGradientStyle } from "@/lib/course-colors";
 
 export default async function LearnerDashboard() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const serviceClient = createServiceClient();
 
   const user = await getAuthedUser();

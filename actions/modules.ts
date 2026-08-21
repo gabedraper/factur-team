@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function createModule(courseId: string, title: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Get next position
   const { data: existing } = await supabase
@@ -33,7 +33,7 @@ export async function updateModule(
   title: string,
   courseId: string
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("modules")
@@ -47,7 +47,7 @@ export async function updateModule(
 }
 
 export async function deleteModule(moduleId: string, courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("modules")

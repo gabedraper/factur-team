@@ -18,9 +18,9 @@ const VIEW_BY_SLUG: Record<string, ViewKey> = {
 export default async function TimelinesViewPage({
   params,
 }: {
-  params: { view: string };
+  params: Promise<{ view: string }>;
 }) {
-  const view = VIEW_BY_SLUG[params.view];
+  const view = VIEW_BY_SLUG[(await params).view];
   if (!view) notFound();
 
   const [{ leads, generated, coldAfterDays, scope }, { reps, clients, showRepFilter }, perms] =

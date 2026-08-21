@@ -17,14 +17,14 @@ import { ArrowLeft, Award, CheckCircle } from "lucide-react";
 export default async function TeamMemberDetailPage({
   params,
 }: {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: member } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", params.userId)
+    .eq("id", (await params).userId)
     .single();
 
   if (!member) notFound();
@@ -32,12 +32,12 @@ export default async function TeamMemberDetailPage({
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select("*, courses(*)")
-    .eq("user_id", params.userId)
+    .eq("user_id", (await params).userId)
     .order("enrolled_at", { ascending: false });
 
   const enrollmentProgress = await Promise.all(
     (enrollments || []).map(async (e) => {
-      const progress = await getCourseProgress(supabase, params.userId, e.course_id);
+      const progress = await getCourseProgress(supabase, (await params).userId, e.course_id);
       return { ...e, progress };
     })
   );
@@ -45,7 +45,7 @@ export default async function TeamMemberDetailPage({
   const { data: certificates } = await supabase
     .from("certificates")
     .select("*, courses(title)")
-    .eq("user_id", params.userId);
+    .eq("user_id", (await params).userId);
 
   const avgProgress =
     enrollmentProgress.length > 0

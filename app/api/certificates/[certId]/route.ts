@@ -6,7 +6,7 @@ import { CertificateDocument } from "@/lib/certificate";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { certId: string } }
+  { params }: { params: Promise<{ certId: string }> }
 ) {
   const supabase = createServiceClient();
 
@@ -20,7 +20,7 @@ export async function GET(
       courses(title)
     `
     )
-    .eq("id", params.certId)
+    .eq("id", (await params).certId)
     .single();
 
   if (error || !cert) {

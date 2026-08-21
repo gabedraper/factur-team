@@ -8,11 +8,11 @@ import { ClientDetail } from "@/components/settings/ClientDetail";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientPage({ params }: { params: { clientId: string } }) {
+export default async function ClientPage({ params }: { params: Promise<{ clientId: string }> }) {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) redirect("/settings");
 
-  const detail = await getClientDetail(params.clientId);
+  const detail = await getClientDetail((await params).clientId);
   if (!detail) notFound();
 
   const [{ members }, { teams }, { services }] = await Promise.all([

@@ -11,7 +11,7 @@ export type LeadFilters = {
 };
 
 export async function getLeads(filters: LeadFilters = {}) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const limit = Math.min(filters.limit ?? 150, 500);
 
   // Reps see their own leads, managers their team's, admins everything.

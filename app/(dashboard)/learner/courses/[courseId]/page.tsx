@@ -51,7 +51,7 @@ async function enrollAction(formData: FormData) {
   "use server";
   const courseId = formData.get("courseId") as string;
   const { createClient: createSC } = await import("@/lib/supabase/server");
-  const sc = createSC();
+  const sc = await createSC();
   const { data: { user } } = await sc.auth.getUser();
   if (user && courseId) {
     await sc.from("enrollments").upsert({ user_id: user.id, course_id: courseId }, { onConflict: "user_id,course_id" });
@@ -62,9 +62,10 @@ async function enrollAction(formData: FormData) {
 export default async function CourseOutlinePage({
   params,
 }: {
-  params: { courseId: string };
+  params: Promise<{ courseId: string }>;
 }) {
-  const supabase = createClient();
+  const { courseId } = await params;
+  const supabase = await createClient();
 
   const user = await getAuthedUser();
 
@@ -73,7 +74,7 @@ export default async function CourseOutlinePage({
   const { data: course } = await supabase
     .from("courses")
     .select("*")
-    .eq("id", params.courseId)
+    .eq("id", courseId)
     .single();
 
   if (!course) notFound();
@@ -81,7 +82,7 @@ export default async function CourseOutlinePage({
   const { data: modulesData } = await supabase
     .from("modules")
     .select("*, lessons(*)")
-    .eq("course_id", params.courseId)
+    .eq("course_id", courseId)
     .order("position");
 
   const modules: Module[] = (modulesData || []).map((m) => ({
@@ -96,7 +97,7 @@ export default async function CourseOutlinePage({
     .from("enrollments")
     .select("*")
     .eq("user_id", user.id)
-    .eq("course_id", params.courseId)
+    .eq("course_id", courseId)
     .single();
 
   const isEnrolled = !!enrollment;
@@ -113,7 +114,7 @@ export default async function CourseOutlinePage({
 
   const completedIds = new Set(completedLessons?.map((p) => p.lesson_id) || []);
   const progress = isEnrolled
-    ? await getCourseProgress(supabase, user.id, params.courseId)
+    ? await getCourseProgress(supabase, user.id, courseId)
     : 0;
 
   const totalDuration = modules
@@ -149,7 +150,7 @@ export default async function CourseOutlinePage({
             style={
               course.thumbnail_url
                 ? { backgroundImage: `url(${course.thumbnail_url})`, backgroundSize: "cover", backgroundPosition: "center" }
-                : getCourseGradientStyle(params.courseId)
+                : getCourseGradientStyle(courseId)
             }
           />
           <div className="flex-1">
@@ -184,7 +185,7 @@ export default async function CourseOutlinePage({
         <div className="mt-4 flex gap-3">
           {!isEnrolled ? (
             <form action={enrollAction}>
-              <input type="hidden" name="courseId" value={params.courseId} />
+              <input type="hidden" name="courseId" value={courseId} />
               <Button type="submit">Enroll Now</Button>
             </form>
           ) : (
@@ -192,7 +193,7 @@ export default async function CourseOutlinePage({
               {firstIncompleteLessonId && (
                 <Button asChild>
                   <Link
-                    href={`/learner/courses/${params.courseId}/lessons/${firstIncompleteLessonId}`}
+                    href={`/learner/courses/${courseId}/lessons/${firstIncompleteLessonId}`}
                   >
                     {progress > 0 ? "Continue Course" : "Start Course"}
                   </Link>
@@ -253,7 +254,7 @@ export default async function CourseOutlinePage({
                         {isEnrolled && (
                           <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
                             <Link
-                              href={`/learner/courses/${params.courseId}/lessons/${lesson.id}`}
+                              href={`/learner/courses/${courseId}/lessons/${lesson.id}`}
                             >
                               {isCompleted ? "Review" : "Start"}
                             </Link>

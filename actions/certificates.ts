@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function issueCertificate(userId: string, courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Check if already issued
   const { data: existing } = await supabase

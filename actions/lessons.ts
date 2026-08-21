@@ -15,7 +15,7 @@ export async function createLesson(
     duration_minutes?: number;
   }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: existing } = await supabase
     .from("lessons")
@@ -57,7 +57,7 @@ export async function updateLesson(
     owner_id?: string | null;
   }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("lessons")
@@ -72,7 +72,7 @@ export async function updateLesson(
 }
 
 export async function deleteLesson(lessonId: string, courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("lessons")

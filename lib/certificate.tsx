@@ -1,5 +1,7 @@
-"use client";
-
+// Deliberately NOT a client component: this is rendered on the server by
+// renderToStream in the certificate route. It carried "use client", which
+// webpack tolerated and Turbopack does not -- the server cannot call a client
+// function, so the PDF failed to render at all under Next 16.
 import {
   Document,
   Page,

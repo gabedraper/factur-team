@@ -9,14 +9,14 @@ import { getCourseGradientStyle } from "@/lib/course-colors";
 export default async function AdminCourseDetailPage({
   params,
 }: {
-  params: { courseId: string };
+  params: Promise<{ courseId: string }>;
 }) {
   const supabase = createServiceClient();
 
   const { data: course } = await supabase
     .from("courses")
     .select("*, profiles(full_name)")
-    .eq("id", params.courseId)
+    .eq("id", (await params).courseId)
     .single();
 
   if (!course) notFound();
@@ -24,7 +24,7 @@ export default async function AdminCourseDetailPage({
   const { data: modules } = await supabase
     .from("modules")
     .select("id, title, position")
-    .eq("course_id", params.courseId)
+    .eq("course_id", (await params).courseId)
     .order("position");
 
   const moduleIds = (modules || []).map((m) => m.id);
@@ -57,7 +57,7 @@ export default async function AdminCourseDetailPage({
       </Link>
 
       {/* Course hero */}
-      <div className="h-40 rounded-xl mb-8 flex items-end p-6" style={getCourseGradientStyle(params.courseId)}>
+      <div className="h-40 rounded-xl mb-8 flex items-end p-6" style={getCourseGradientStyle((await params).courseId)}>
         <h1 className="text-3xl font-bold text-white drop-shadow">{course.title}</h1>
       </div>
 

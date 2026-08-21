@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus } from "lucide-react";
 
 export default async function InstructorCoursesPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const user = await getAuthedUser();
 

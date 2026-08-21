@@ -8,7 +8,7 @@ export async function markLessonComplete(
   lessonId: string,
   quizScore?: number
 ): Promise<{ progress: number; certificateIssued: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

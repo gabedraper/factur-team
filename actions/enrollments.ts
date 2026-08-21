@@ -47,7 +47,7 @@ export async function updateEnrollmentDeadline(id: string, deadline: string | nu
 }
 
 export async function enrollInCourse(courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -70,7 +70,7 @@ export async function enrollInCourse(courseId: string) {
 }
 
 export async function unenrollFromCourse(courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },

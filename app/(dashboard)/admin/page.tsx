@@ -9,7 +9,7 @@ import {
 import { Users, BookOpen, Map, Award } from "lucide-react";
 
 export default async function AdminDashboard() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [
     { count: userCount },

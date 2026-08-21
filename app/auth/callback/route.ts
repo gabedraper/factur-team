@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.user) {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
   // Set by the login page before handing off to Google; see the note there on
   // why this cannot travel on the callback URL.
-  const jar = cookies();
+  const jar = await cookies();
   const wanted = jar.get("post_login_redirect")?.value;
   if (wanted) {
     const path = decodeURIComponent(wanted);

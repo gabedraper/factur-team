@@ -46,7 +46,7 @@ export async function getCoursesWithStats() {
 }
 
 export async function createCourse(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -88,7 +88,7 @@ export async function updateCourse(
     instructor_id?: string;
   }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("courses")
@@ -102,7 +102,7 @@ export async function updateCourse(
 }
 
 export async function deleteCourse(courseId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("courses")

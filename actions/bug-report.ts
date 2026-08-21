@@ -28,7 +28,7 @@ export async function submitBugReport(
     attachments = [{ filename: screenshot.filename, content: base64Content }];
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
