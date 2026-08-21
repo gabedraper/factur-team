@@ -205,8 +205,8 @@
 .tl .who .sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl .who .sub em { font-style: normal; color: var(--text-muted); }
 .tl .who .sub b { font-weight: 620; }
-.tl .lane { position: relative; min-height: var(--laneh, 46px); }
-.tl .lane svg { display: block; width: 100%; height: var(--laneh, 46px); overflow: visible; }
+.tl .lane { position: relative; }
+.tl .lane svg { display: block; width: 100%; overflow: visible; }
 .tl .gridline { stroke: var(--tl-border); stroke-width: 1; }
 .tl .ticktext { fill: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .tl .ticktext.strong { fill: var(--text-secondary); font-size: 10px; font-weight: 560; }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Lead, StageSpan } from "@/lib/timelines/leads";
-import { Mark, MARKS } from "./marks";
+import { Mark, MARKS, markSide } from "./marks";
 import { DEAD_BUCKETS, FIRST_RESPONSE_TARGET_H } from "@/lib/timelines/classify";
 
 export type ViewKey = "quick" | "week" | "life";
@@ -83,8 +83,10 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   }, []);
 
   const perRow = VIEW_WINDOW[view] === null;
-  const H = perRow ? 54 : 46;
+  const H = perRow ? 62 : 54;
   const y = H / 2;
+  // Far enough off the line that a glyph clears it rather than sitting on it.
+  const OFFSET = 11;
 
   if (!w) return <div ref={host} style={{ height: H }} />;
 
@@ -143,22 +145,41 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   const inWindow = marks.filter((e) => e.hours / 24 <= windowEnd);
   const beyond = marks.length - inWindow.length;
 
-  // Two marks at the same moment sit side by side instead of on top of each
-  // other, stepping clear of any stage dot or skull they would land on.
-  const placed: [(typeof inWindow)[number], number][] = [];
-  let prev = -Infinity;
-  for (const ev of inWindow) {
-    const trueX = px(ev.hours / 24);
-    let at = Math.max(trueX, prev + MARK_PITCH);
-    for (let guard = 0; guard < reserved.length; guard++) {
-      const clash = reserved.find((rx) => Math.abs(at - rx) < MARK_PITCH);
-      if (clash === undefined) break;
-      at = clash + MARK_PITCH;
+  /*
+   * Two marks at the same moment sit side by side rather than on top of each
+   * other -- but only against the marks sharing their side of the line. A call
+   * out and a reply in at the same hour no longer shove each other along,
+   * because they are no longer in each other's way.
+   *
+   * Marks that straddle the line still step clear of the stage dots and the
+   * skull, which sit on it.
+   */
+  type Placed = { ev: (typeof inWindow)[number]; x: number; side: -1 | 0 | 1 };
+  const placeRow = (row: typeof inWindow, side: -1 | 0 | 1): Placed[] => {
+    const out: Placed[] = [];
+    let prev = -Infinity;
+    for (const ev of row) {
+      const trueX = px(ev.hours / 24);
+      let at = Math.max(trueX, prev + MARK_PITCH);
+      if (side === 0) {
+        for (let guard = 0; guard < reserved.length; guard++) {
+          const clash = reserved.find((rx) => Math.abs(at - rx) < MARK_PITCH);
+          if (clash === undefined) break;
+          at = clash + MARK_PITCH;
+        }
+      }
+      // Past this much drift the mark would be lying about when it happened,
+      // so it goes back to its true position and overlaps instead.
+      if (at - trueX > MAX_DRIFT) at = trueX;
+      out.push({ ev, x: at, side });
+      prev = at;
     }
-    if (at - trueX > MAX_DRIFT) at = trueX;
-    placed.push([ev, at]);
-    prev = at;
-  }
+    return out;
+  };
+
+  const placed: Placed[] = ([-1, 0, 1] as const).flatMap((side) =>
+    placeRow(inWindow.filter((e) => markSide(e.kind) === side), side)
+  );
 
   return (
     <div ref={host}>
@@ -218,10 +239,12 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
         {/* Lead arrival. */}
         <line x1={0.5} x2={0.5} y1={y - 11} y2={y + 11} stroke="var(--border-strong)" strokeWidth={2} />
 
-        {placed.map(([ev, mx]) => (
+        {placed.map(({ ev, x: mx, side }) => {
+          const my = y + side * OFFSET;
+          return (
           <a key={ev.id} href={ev.url} target="_blank" rel="noopener noreferrer" style={{ cursor: "pointer" }}>
-            <Mark kind={ev.kind} x={mx} y={y} />
-            <circle cx={mx} cy={y} r={10} fill="transparent" />
+            <Mark kind={ev.kind} x={mx} y={my} />
+            <circle cx={mx} cy={my} r={10} fill="transparent" />
             <title>
               {`${MARKS[ev.kind]?.label ?? ev.kind} · ${ev.detail.slice(0, 180)} · ` +
                `${fmtDateTime(ev.at)} · ${dur(ev.hours)} in` +
@@ -229,7 +252,8 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
                (ev.sequence ? ` · Sequence: ${ev.sequence}` : "")}
             </title>
           </a>
-        ))}
+          );
+        })}
 
         {/* Everything past the window is summarised rather than dropped, so a
             row never implies a lead went quiet when it ran on past the goal. */}

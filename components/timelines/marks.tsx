@@ -61,6 +61,25 @@ export const MARKS: Record<string, { label: string; color: string; shape: string
   other: { label: "Activity", color: "var(--text-muted)", shape: "dot" },
 };
 
+/**
+ * Which side of the line a mark sits on: -1 above, 1 below, 0 straddling it.
+ *
+ * Taken from the mark's colour rather than from the REP_TOUCH / PROSPECT_SIGNAL
+ * sets, because the colour is what a reader actually sees -- orange above, red
+ * below, matching the key. The two disagree on one kind: a booked meeting is a
+ * signal from the prospect but is drawn in Factur's orange, and it belongs with
+ * the colour it is drawn in.
+ *
+ * Stage marks and the skull straddle the line: they are not activity by either
+ * side, they are the lead's own state changing.
+ */
+export function markSide(kind: string): -1 | 0 | 1 {
+  const mark = MARKS[kind] ?? MARKS.other;
+  if (mark.color === "var(--prospect)") return 1;
+  if (mark.color === "var(--rep)") return -1;
+  return 0;
+}
+
 export const LEGEND_ORDER: EventKind[] = [
   "email_out", "call", "meeting_invite", "meeting_booked", "email_in", "call_in",
 ];
