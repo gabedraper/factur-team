@@ -187,10 +187,11 @@
 .tl .row:nth-child(even) { background: color-mix(in oklab, var(--surface-2) 55%, transparent); }
 .tl .row:hover { background: var(--surface-2); }
 .tl .who { padding: 9px 12px; min-width: 0; }
-.tl .who a {
-  color: var(--text-primary); text-decoration: none; font-weight: 560;
-  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+/* Name and company share the first line, so the line truncates rather than the
+   link -- otherwise the company would be clipped away before the dash. */
+.tl .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl .who a { color: var(--text-primary); text-decoration: none; font-weight: 560; }
+.tl .who .co { color: var(--text-secondary); font-weight: 400; }
 .tl .who a:hover { text-decoration: underline; text-decoration-color: hsl(var(--primary)); }
 .tl .who .sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl .who .sub em { font-style: normal; color: var(--text-muted); }

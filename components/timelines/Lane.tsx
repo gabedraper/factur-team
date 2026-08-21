@@ -165,18 +165,12 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
       <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`}>
         {ticks.map((d) => (
           <g key={`t${d}`}>
-            <line className="gridline" x1={px(d)} x2={px(d)} y1={14} y2={H} />
+            <line className="gridline" x1={px(d)} x2={px(d)} y1={perRow ? 14 : 0} y2={H} />
             {perRow && d > 0 && (
               <text className="ticktext" x={px(d) + 3} y={11}>{tickLabel(d)}</text>
             )}
           </g>
         ))}
-
-        <text className="ticktext" x={3} y={11}>
-          {new Date(lead.created).toLocaleDateString(undefined, {
-            day: "numeric", month: "short", year: "numeric",
-          })}
-        </text>
 
         {perRow && (
           <text className="ticktext strong" x={w} y={11} textAnchor="end">

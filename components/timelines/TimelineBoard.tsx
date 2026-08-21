@@ -344,13 +344,23 @@ export function TimelineBoard({
               return (
                 <div className="row" key={lead.id}>
                   <div className="who">
-                    <a href={lead.url} target="_blank" rel="noopener noreferrer">{lead.contact || lead.name}</a>
-                    <div className="sub">
-                      {lead.account}{lead.title && <> · <em>{lead.title}</em></>}
+                    <div className="name">
+                      <a href={lead.url} target="_blank" rel="noopener noreferrer">
+                        {lead.contact || lead.name}
+                      </a>
+                      {lead.account && <span className="co"> — {lead.account}</span>}
                     </div>
                     <div className="sub">
-                      {!prospecting && <><em>for</em> {lead.client || "—"} · </>}
-                      <em>by</em> {lead.rep}
+                      {lead.rep}
+                      {/* Every lead in the prospecting pipeline is for the same
+                          client, so naming it on each row says nothing. */}
+                      {!prospecting && lead.client && <> — {lead.client}</>}
+                    </div>
+                    <div className="sub">
+                      <em>arrived</em>{" "}
+                      {new Date(lead.created).toLocaleDateString(undefined, {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
                     </div>
                   </div>
                   <div className="lane"><Lane lead={lead} view={view} /></div>
