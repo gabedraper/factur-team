@@ -257,7 +257,7 @@ export function TimelineBoard({
             <b style={{ color: "var(--prospect)" }}>Red = Prospect</b>
           </span>
           <span className="stagekey">
-            line:
+            {stageLabel}:
             {stageKey.map(([label, bucket]) => (
               <span className="sw" key={bucket}>
                 <i style={{ background: `var(--st-${bucket})` }} />{label}

@@ -165,7 +165,9 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
       <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`}>
         {ticks.map((d) => (
           <g key={`t${d}`}>
-            <line className="gridline" x1={px(d)} x2={px(d)} y1={perRow ? 14 : 0} y2={H} />
+            {d > 0 && (
+              <line className="gridline" x1={px(d)} x2={px(d)} y1={perRow ? 14 : 0} y2={H} />
+            )}
             {perRow && d > 0 && (
               <text className="ticktext" x={px(d) + 3} y={11}>{tickLabel(d)}</text>
             )}
