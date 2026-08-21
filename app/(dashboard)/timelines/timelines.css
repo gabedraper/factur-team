@@ -40,7 +40,10 @@
   --st-ltfu:      #d95fa8;
   --st-dead:      hsl(var(--foreground));
   --st-other:     hsl(var(--muted-foreground));
-  --st-unknown:   hsl(var(--tl-border));
+  /* Before the first recorded change there is no way to know what the lead was
+     in. That is a real state and should read as a grey line, not as a gap --
+     this was the border colour, which is to say invisible. */
+  --st-unknown:   color-mix(in oklab, hsl(var(--muted-foreground)) 62%, hsl(var(--card)));
 
   /* The sales team's pipeline gets a colour per Prospecting Lead Status rather
      than sharing the stage buckets, so a lane reads as the exact value on the

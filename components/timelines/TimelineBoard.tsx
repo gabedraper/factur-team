@@ -89,7 +89,6 @@ export function TimelineBoard({
   const [client, setClient] = useState("");
   const [outcome, setOutcome] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
 
   const outcomes = useMemo(
@@ -129,15 +128,10 @@ export function TimelineBoard({
         (!outcome || l.outcomeLabel === outcome) &&
         (!term || l.contact.toLowerCase().includes(term) || (l.account ?? "").toLowerCase().includes(term))
     );
-    const by: Record<string, (a: Lead, b: Lead) => number> = {
-      recent: (a, b) => (a.created < b.created ? 1 : -1),
-      slowest_reply: (a, b) => (b.metrics.respondHours ?? -1) - (a.metrics.respondHours ?? -1),
-      slowest_first: (a, b) => (b.metrics.firstTouchHours ?? 1e9) - (a.metrics.firstTouchHours ?? 1e9),
-      longest_silence: (a, b) => b.metrics.daysSinceLastEvent - a.metrics.daysSinceLastEvent,
-      fewest_touches: (a, b) => a.metrics.touches - b.metrics.touches,
-    };
-    return [...out].sort(by[sort] ?? by.recent);
-  }, [leads, rep, client, outcome, search, sort, prospecting]);
+    // Newest arrival first. In the table view the column headers re-sort on
+    // top of this, and clicking back to no column returns to it.
+    return [...out].sort((a, b) => (a.created < b.created ? 1 : -1));
+  }, [leads, rep, client, outcome, search, prospecting]);
 
   // Column sorting sits on top of the Sort control: with no column chosen the
   // rows keep whatever order that control asked for. Only the table view has
@@ -250,14 +244,6 @@ export function TimelineBoard({
                  onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
           <span className="spacer" />
           <div className="sortgroup">
-            <label htmlFor="f-sort">Sort</label>
-            <select id="f-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
-              <option value="recent">Lead arrival (newest)</option>
-              <option value="slowest_reply">Slowest reply to prospect</option>
-              <option value="slowest_first">Slowest first touch</option>
-              <option value="longest_silence">Longest silence</option>
-              <option value="fewest_touches">Fewest touches</option>
-            </select>
             <div className="toggle" role="group" aria-label="View">
               <button aria-pressed={mode === "timeline"} onClick={() => setMode("timeline")}>Timeline</button>
               <button aria-pressed={mode === "table"} onClick={() => setMode("table")}>Table</button>
