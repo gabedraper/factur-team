@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ShieldCheck, Building2, Link2 } from "lucide-react";
+import { Users, ShieldCheck, Building2, Link2, Briefcase } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -128,13 +128,23 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            <Link href="/settings/clients"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Clients</span>
+                <span className="block text-xs text-muted-foreground">
+                  Assign each client a service and the pod or person covering it.
+                </span>
+              </span>
+            </Link>
             <Link href="/settings/teams"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
-                <span className="block text-sm font-medium">Pods &amp; client coverage</span>
+                <span className="block text-sm font-medium">Pods</span>
                 <span className="block text-xs text-muted-foreground">
-                  Who works together, and which of the {services.length} services&apos; clients they cover.
+                  Pods, who is in them, and who runs them.
                 </span>
               </span>
             </Link>

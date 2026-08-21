@@ -107,53 +107,53 @@ export async function listServicesAndTeams() {
 }
 
 export type TeamRow = {
-  id: string; service_id: string; name: string; slug: string;
+  id: string; service_id: string | null; name: string; slug: string;
   kind: "pod" | "group"; active: boolean;
+  manager_member_id: string | null;
   memberIds: string[];
-  clients: { id: string; client_id: string; client_name: string | null }[];
+  clients: { id: string; name: string }[];
+};
+
+export type ClientRow = {
+  id: string; salesforce_client_id: string | null; name: string;
+  status: string | null; service_id: string | null;
+  team_id: string | null; member_id: string | null; active: boolean;
 };
 
 /**
- * Pods and groups, with who is in them and which clients they cover. Coverage
- * held by an individual rather than a pod comes back separately, since the two
- * are deliberately different arrangements.
+ * Pods with their people and, read-only, the clients pointing at them. Coverage
+ * is set on the client record -- a client is the thing that has one owner, so a
+ * pod's client list is a view of that rather than the place it is decided.
  */
-export async function listTeamsAndCoverage() {
+export async function listPodsAndClients() {
   const db = createServiceClient();
 
-  const [{ data: teams }, { data: assignments }, { data: coverage }, { data: clients }] =
-    await Promise.all([
-      db.from("org_teams").select("id,service_id,name,slug,kind,active").order("name"),
-      db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
-      db.from("org_client_coverage").select("id,client_id,client_name,team_id,member_id"),
-      db.from("sf_clients_raw")
-        .select("id,client_account__r_name,client_status__c")
-        .order("client_account__r_name"),
-    ]);
+  const [{ data: teams }, { data: assignments }, { data: clients }] = await Promise.all([
+    db.from("org_teams").select("id,service_id,name,slug,kind,active,manager_member_id").order("name"),
+    db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
+    db.from("org_clients")
+      .select("id,salesforce_client_id,name,status,service_id,team_id,member_id,active")
+      .order("name"),
+  ]);
 
   const membersByTeam = new Map<string, string[]>();
   for (const a of (assignments ?? []) as { member_id: string; team_id: string }[]) {
     membersByTeam.set(a.team_id, [...(membersByTeam.get(a.team_id) ?? []), a.member_id]);
   }
 
-  type Cov = { id: string; client_id: string; client_name: string | null; team_id: string | null; member_id: string | null };
-  const cov = (coverage ?? []) as Cov[];
-  const clientsByTeam = new Map<string, Cov[]>();
-  for (const c of cov.filter((c) => c.team_id)) {
-    clientsByTeam.set(c.team_id!, [...(clientsByTeam.get(c.team_id!) ?? []), c]);
+  const rows = (clients ?? []) as ClientRow[];
+  const clientsByTeam = new Map<string, { id: string; name: string }[]>();
+  for (const c of rows.filter((c) => c.team_id)) {
+    clientsByTeam.set(c.team_id!, [...(clientsByTeam.get(c.team_id!) ?? []), { id: c.id, name: c.name }]);
   }
 
   return {
     teams: ((teams ?? []) as Omit<TeamRow, "memberIds" | "clients">[]).map((t) => ({
       ...t,
       memberIds: [...new Set(membersByTeam.get(t.id) ?? [])],
-      clients: (clientsByTeam.get(t.id) ?? []).map((c) => ({
-        id: c.id, client_id: c.client_id, client_name: c.client_name,
-      })),
+      clients: clientsByTeam.get(t.id) ?? [],
     })),
-    individualCoverage: cov.filter((c) => c.member_id),
-    clients: ((clients ?? []) as { id: string; client_account__r_name: string | null; client_status__c: string | null }[])
-      .map((c) => ({ id: c.id, name: c.client_account__r_name, status: c.client_status__c })),
+    clients: rows,
   };
 }
 

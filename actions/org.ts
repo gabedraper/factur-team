@@ -99,20 +99,21 @@ export async function setMemberActive(memberId: string, active: boolean) {
   return { success: true };
 }
 
-export async function createTeam(serviceId: string, name: string, kind: "pod" | "group") {
+export async function createTeam(name: string, kind: "pod" | "group") {
   await requireOrgManage();
   const trimmed = name.trim();
   if (!trimmed) return { success: false, error: "A pod needs a name." };
   const db = createServiceClient();
 
   const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // No service: a pod covers several, and which ones follows from its clients.
   const { error } = await db.from("org_teams")
-    .insert({ service_id: serviceId, name: trimmed, slug, kind });
+    .insert({ name: trimmed, slug, kind });
   if (error) {
     return {
       success: false,
       error: error.message.includes("duplicate")
-        ? "A team with that name already exists in this service."
+        ? "A team with that name already exists."
         : error.message,
     };
   }
@@ -172,37 +173,40 @@ export async function setMemberTeam(memberId: string, teamId: string, inTeam: bo
   return { success: true };
 }
 
-/** A client is covered by a pod or by one person, never both. */
-export async function addCoverage(
-  clientId: string, clientName: string | null,
-  owner: { teamId: string } | { memberId: string }
-) {
+export async function setPodManager(teamId: string, memberId: string | null) {
   await requireOrgManage();
   const db = createServiceClient();
-  const { error } = await db.from("org_client_coverage").insert({
-    client_id: clientId,
-    client_name: clientName,
-    team_id: "teamId" in owner ? owner.teamId : null,
-    member_id: "memberId" in owner ? owner.memberId : null,
-  });
-  if (error) {
-    return {
-      success: false,
-      error: error.message.includes("duplicate")
-        ? "That client is already covered by them."
-        : error.message,
-    };
-  }
+  const { error } = await db.from("org_teams")
+    .update({ manager_member_id: memberId }).eq("id", teamId);
+  if (error) return { success: false, error: error.message };
   revalidatePath("/settings/teams");
   return { success: true };
 }
 
-export async function removeCoverage(coverageId: string) {
+/** Coverage is set on the client: it is the thing that has exactly one owner. */
+export async function setClientOwner(
+  clientId: string,
+  owner: { teamId: string } | { memberId: string } | null
+) {
   await requireOrgManage();
   const db = createServiceClient();
-  const { error } = await db.from("org_client_coverage").delete().eq("id", coverageId);
+  const { error } = await db.from("org_clients").update({
+    team_id: owner && "teamId" in owner ? owner.teamId : null,
+    member_id: owner && "memberId" in owner ? owner.memberId : null,
+  }).eq("id", clientId);
   if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/clients");
   revalidatePath("/settings/teams");
+  return { success: true };
+}
+
+export async function setClientService(clientId: string, serviceId: string | null) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_clients")
+    .update({ service_id: serviceId }).eq("id", clientId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/clients");
   return { success: true };
 }
 
