@@ -72,7 +72,7 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
     groups.push({
       label: "Opportunity Timelines",
       items: [
-        { href: "/timelines/quick-response", label: "Quick response", icon: <Zap className="h-4 w-4" /> },
+        { href: "/timelines/quick-response", label: "Lead Response", icon: <Zap className="h-4 w-4" /> },
         { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },
         { href: "/timelines/full-life", label: "Full lead life", icon: <Activity className="h-4 w-4" /> },
       ],
