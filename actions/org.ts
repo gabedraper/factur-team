@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
+import { isJobRole, isStandaloneRole, type StandaloneRoleSlug } from "@/lib/org-roles";
 
 async function requireOrgManage() {
   const perms = await myPermissions();
@@ -18,12 +19,15 @@ export async function setMemberRole(memberId: string, roleId: string | null) {
   await requireOrgManage();
   const db = createServiceClient();
 
-  const { data: serviceRoles } = await db
-    .from("org_roles").select("id").not("service_id", "is", null);
-  const serviceRoleIds = (serviceRoles ?? []).map((r) => (r as { id: string }).id);
+  // Someone holds one job at a time, so setting a role replaces whatever job
+  // they held. Manager and app-admin are not jobs and are left alone -- they
+  // are their own checkboxes.
+  const { data: allRoles } = await db.from("org_roles").select("id,slug");
+  const jobRoleIds = ((allRoles ?? []) as { id: string; slug: string }[])
+    .filter(isJobRole).map((r) => r.id);
 
   await db.from("org_assignments").delete()
-    .eq("member_id", memberId).in("role_id", serviceRoleIds);
+    .eq("member_id", memberId).in("role_id", jobRoleIds);
 
   if (roleId) {
     const { data: role } = await db
@@ -49,7 +53,7 @@ export async function setMemberRole(memberId: string, roleId: string | null) {
 }
 
 /** Grant or revoke a role that is not tied to a service: manager, app-admin. */
-export async function toggleStandaloneRole(memberId: string, roleSlug: "manager" | "app-admin", on: boolean) {
+export async function toggleStandaloneRole(memberId: string, roleSlug: StandaloneRoleSlug, on: boolean) {
   await requireOrgManage();
   const db = createServiceClient();
 
@@ -350,7 +354,7 @@ export async function deleteRole(roleId: string) {
 
   const { data: role } = await db.from("org_roles").select("slug").eq("id", roleId).maybeSingle();
   const slug = (role as { slug: string } | null)?.slug;
-  if (slug === "app-admin" || slug === "manager") {
+  if (slug && isStandaloneRole(slug)) {
     return { success: false, error: "That role is built in and cannot be deleted." };
   }
 

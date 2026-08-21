@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { createRole, updateRole, deleteRole, setRolePermission } from "@/actions/org";
+import { isStandaloneRole } from "@/lib/org-roles";
 import type { RoleDetail } from "@/lib/org";
 
 type Service = { id: string; name: string };
@@ -83,7 +84,7 @@ export function RolesScreen({
       </section>
 
       {roles.map((r) => {
-        const builtIn = r.slug === "app-admin" || r.slug === "manager";
+        const builtIn = isStandaloneRole(r.slug);
         return (
           <section key={r.id} className={`rounded-md border bg-card p-4 space-y-3 ${r.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">

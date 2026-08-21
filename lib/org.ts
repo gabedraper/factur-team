@@ -82,14 +82,18 @@ export type MemberRow = {
 export async function listMembers() {
   const db = createServiceClient();
 
-  const [{ data: members }, { data: assignments }, { data: roles }] = await Promise.all([
-    db.from("org_members")
-      .select("id,email,full_name,active,needs_review,manager_member_id,salesforce_user_id")
-      .order("needs_review", { ascending: false })
-      .order("full_name"),
-    db.from("org_assignments").select("member_id,role_id"),
-    db.from("org_roles").select("id,slug,name,service_id,active").order("name"),
-  ]);
+  const [{ data: members }, { data: assignments }, { data: roles }, { data: services }] =
+    await Promise.all([
+      db.from("org_members")
+        .select("id,email,full_name,active,needs_review,manager_member_id,salesforce_user_id")
+        .order("needs_review", { ascending: false })
+        .order("full_name"),
+      db.from("org_assignments").select("member_id,role_id"),
+      db.from("org_roles").select("id,slug,name,service_id,active").order("name"),
+      // Names for the services, so the role picker can group by them rather
+      // than showing eleven roles as one flat list.
+      db.from("org_services").select("id,name").order("name"),
+    ]);
 
   const byMember = new Map<string, string[]>();
   for (const a of (assignments ?? []) as { member_id: string; role_id: string }[]) {
@@ -102,6 +106,7 @@ export async function listMembers() {
       roleIds: byMember.get(m.id) ?? [],
     })),
     roles: (roles ?? []) as { id: string; slug: string; name: string; service_id: string | null; active: boolean }[],
+    services: (services ?? []) as { id: string; name: string }[],
   };
 }
 

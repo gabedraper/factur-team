@@ -3,19 +3,38 @@
 import { useMemo, useState, useTransition } from "react";
 import { setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
 import type { MemberRow } from "@/lib/org";
+import { isJobRole } from "@/lib/org-roles";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
+type Service = { id: string; name: string };
 
-export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: Role[] }) {
+export function PeopleTable(
+  { members, roles, services }: { members: MemberRow[]; roles: Role[]; services: Service[] }
+) {
   const [rows, setRows] = useState(members);
   const [filter, setFilter] = useState("");
   const [onlyReview, setOnlyReview] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  // Service roles are the job. Manager and app-admin say what someone may see
-  // rather than what they do, so they sit alongside as toggles.
-  const serviceRoles = useMemo(() => roles.filter((r) => r.service_id), [roles]);
+  // Every role defined in Settings is offered here, except the two that are
+  // already their own checkboxes. A role with no service is still a job someone
+  // can hold -- it just has no service to file it under.
+  const jobRoles = useMemo(() => roles.filter(isJobRole), [roles]);
+
+  // Grouped by service so a long list reads as the org chart it describes.
+  // Retired roles stay out of the list, but a person still holding one keeps
+  // seeing it (below) rather than having their role silently read as none.
+  const roleGroups = useMemo(() => {
+    const live = jobRoles.filter((r) => r.active);
+    const groups = services
+      .map((s) => ({ label: s.name, roles: live.filter((r) => r.service_id === s.id) }))
+      .filter((g) => g.roles.length);
+    const unfiled = live.filter((r) => !r.service_id);
+    if (unfiled.length) groups.push({ label: "No service", roles: unfiled });
+    return groups;
+  }, [jobRoles, services]);
+
   const managerRole = roles.find((r) => r.slug === "manager");
   const adminRole = roles.find((r) => r.slug === "app-admin");
 
@@ -79,7 +98,10 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
           </thead>
           <tbody>
             {shown.map((m) => {
-              const roleId = m.roleIds.find((id) => serviceRoles.some((r) => r.id === id)) ?? "";
+              const roleId = m.roleIds.find((id) => jobRoles.some((r) => r.id === id)) ?? "";
+              // A role they hold that the list above leaves out, because it was
+              // retired. Shown so the picker reflects reality.
+              const retired = jobRoles.find((r) => r.id === roleId && !r.active);
               return (
                 <tr key={m.id} className={`border-b last:border-0 ${m.needs_review ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                   <td className="px-3 py-2">
@@ -96,14 +118,19 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                           () => setMemberRole(m.id, next),
                           () => setRows((rs) => rs.map((r) => r.id === m.id
                             ? { ...r, needs_review: false,
-                                roleIds: [...r.roleIds.filter((id) => !serviceRoles.some((sr) => sr.id === id)),
+                                roleIds: [...r.roleIds.filter((id) => !jobRoles.some((jr) => jr.id === id)),
                                           ...(next ? [next] : [])] }
                             : r))
                         );
                       }}
                     >
                       <option value="">— none —</option>
-                      {serviceRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      {retired && <option value={retired.id}>{retired.name} (retired)</option>}
+                      {roleGroups.map((g) => (
+                        <optgroup key={g.label} label={g.label}>
+                          {g.roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   </td>
                   <td className="px-3 py-2">

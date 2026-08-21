@@ -10,7 +10,7 @@ export default async function PeoplePage() {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) redirect("/settings");
 
-  const { members, roles } = await listMembers();
+  const { members, roles, services } = await listMembers();
 
   return (
     <div className="p-6 space-y-4">
@@ -21,7 +21,7 @@ export default async function PeoplePage() {
         <h1 className="mt-1 text-xl font-semibold">People</h1>
       </div>
 
-      <PeopleTable members={members} roles={roles} />
+      <PeopleTable members={members} roles={roles} services={services} />
     </div>
   );
 }
