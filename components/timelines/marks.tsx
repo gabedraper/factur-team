@@ -80,6 +80,40 @@ export function markSide(kind: string): -1 | 0 | 1 {
   return 0;
 }
 
+/** What each mark says happened, as a verb phrase. */
+const DID: Record<string, string> = {
+  email_out: "sent an email",
+  call: "called",
+  sms: "sent a text",
+  meeting_invite: "sent a meeting invite",
+  meeting_booked: "booked a meeting",
+  email_in: "emailed in",
+  call_in: "called in",
+  meeting_declined: "declined a meeting",
+  stage_change: "changed the stage",
+  status_change: "changed the status",
+  other: "logged an activity",
+};
+
+/**
+ * One plain line for the hover: who did what, and when.
+ *
+ * Only the first name -- these are colleagues, and the full name pushed the
+ * time onto a second line. The prospect's own marks name Factur's task owner
+ * in Salesforce rather than the prospect, so those are left unattributed
+ * instead of crediting the wrong person.
+ */
+export function markSentence(kind: string, actor: string | null, when: string): string {
+  const did = DID[kind] ?? DID.other;
+  const theirs = markSide(kind) === 1;
+  const first = actor?.trim().split(/\s+/)[0];
+
+  if (theirs || !first) {
+    return `${did[0].toUpperCase()}${did.slice(1)} at ${when}`;
+  }
+  return `${first} ${did} at ${when}`;
+}
+
 export const LEGEND_ORDER: EventKind[] = [
   "email_out", "call", "meeting_invite", "meeting_booked", "email_in", "call_in",
 ];

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Lead, StageSpan } from "@/lib/timelines/leads";
-import { Mark, MARKS, markSide } from "./marks";
+import { Mark, markSide, markSentence } from "./marks";
 import { DEAD_BUCKETS, FIRST_RESPONSE_TARGET_H } from "@/lib/timelines/classify";
 
 export type ViewKey = "quick" | "week" | "life";
@@ -59,12 +59,6 @@ function spanLabel(days: number): string {
 const fmtDateTime = (d: string) =>
   new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-function dur(hours: number): string {
-  if (hours < 1) return `${Math.round(hours * 60)}m`;
-  if (hours < 48) return `${hours < 10 ? hours.toFixed(1) : Math.round(hours)}h`;
-  const d = hours / 24;
-  return d < 100 ? `${d.toFixed(d < 10 ? 1 : 0)}d` : `${Math.round(d)}d`;
-}
 
 export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   const host = useRef<HTMLDivElement>(null);
@@ -245,12 +239,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
           <a key={ev.id} href={ev.url} target="_blank" rel="noopener noreferrer" style={{ cursor: "pointer" }}>
             <Mark kind={ev.kind} x={mx} y={my} />
             <circle cx={mx} cy={my} r={10} fill="transparent" />
-            <title>
-              {`${MARKS[ev.kind]?.label ?? ev.kind} · ${ev.detail.slice(0, 180)} · ` +
-               `${fmtDateTime(ev.at)} · ${dur(ev.hours)} in` +
-               (ev.actor ? ` · ${ev.actor}` : "") +
-               (ev.sequence ? ` · Sequence: ${ev.sequence}` : "")}
-            </title>
+            <title>{markSentence(ev.kind, ev.actor, fmtDateTime(ev.at))}</title>
           </a>
           );
         })}
