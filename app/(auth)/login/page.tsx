@@ -4,13 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -43,25 +36,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center bg-neutral-950 bg-cover bg-center p-4"
-      style={{ backgroundImage: "url('/login-bg.jpg')" }}
-    >
-      {/* Sits between the photograph and the card so the text stays legible
-          whatever the image happens to be doing behind it. */}
-      <div aria-hidden className="absolute inset-0 bg-black/55" />
-      <Card className="relative w-full max-w-sm border-white/10 bg-background/90 backdrop-blur">
-        <CardHeader className="text-center">
-          <CardTitle>Factur Team</CardTitle>
-          <CardDescription>Sign in with your Factur Google account</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button onClick={signInWithGoogle} disabled={loading} className="w-full">
-            {loading ? "Redirecting..." : "Sign in with Google"}
-          </Button>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-        </CardContent>
-      </Card>
+    <div className="flex min-h-screen items-center justify-center bg-[#0f172a] p-4">
+      {/* One white circle holding everything. A circle wastes its corners, so
+          the content sits in a narrower column than the width suggests --
+          hence the heavy horizontal padding. Capped against the viewport so it
+          cannot overflow a short window. */}
+      <div className="flex aspect-square w-[26rem] max-w-[min(90vw,80vh)] flex-col items-center justify-center gap-5 rounded-full bg-white px-14 text-center shadow-2xl">
+        <Image
+          src="https://facturmfg.com/wp-content/uploads/2022/11/Factur-Logo-300x94.png"
+          alt="Factur"
+          width={180}
+          height={56}
+          priority
+          className="h-auto w-40 object-contain"
+        />
+
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">Factur Team</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Sign in with your Factur Google account
+          </p>
+        </div>
+
+        <Button onClick={signInWithGoogle} disabled={loading} className="w-full">
+          {loading ? "Redirecting…" : "Sign in with Google"}
+        </Button>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+      </div>
     </div>
   );
 }
