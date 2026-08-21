@@ -18,9 +18,12 @@ export function ClientsScreen({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  const pods = teams.filter((t) => t.kind === "pod" && t.active);
+  const pods = teams.filter((t) => t.kind === "pod" && t.active)
+    .sort((a, b) => a.name.localeCompare(b.name));
   // Leavers keep their clients on record but stop being offered.
-  const selectable = members.filter((m) => m.active);
+  const selectable = members
+    .filter((m) => m.active)
+    .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
 
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();

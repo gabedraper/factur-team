@@ -171,8 +171,8 @@ export default async function HustlePointsPage(
       <div className="mb-4 group relative inline-block">
         <h1 className="cursor-default text-xl font-semibold">Hustle Points</h1>
 
-        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md border border-neutral-800 bg-neutral-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-          <p className="mb-2 font-medium uppercase tracking-wide text-neutral-500">
+        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+          <p className="mb-2 font-medium uppercase tracking-wide text-slate-500">
             Points per activity
           </p>
           {sortedWeights
@@ -180,10 +180,10 @@ export default async function HustlePointsPage(
             .map((w) => (
             <div
               key={w.effort_source}
-              className="flex items-center justify-between gap-2 py-0.5 text-neutral-400"
+              className="flex items-center justify-between gap-2 py-0.5 text-slate-400"
             >
               <span className="truncate">{w.effort_source}</span>
-              <span className="shrink-0 font-medium text-neutral-300">
+              <span className="shrink-0 font-medium text-slate-300">
                 {Number(w.points).toFixed(2)}
               </span>
             </div>
@@ -198,8 +198,8 @@ export default async function HustlePointsPage(
             href={`/scoreboard/hustle-points?period=${btn.key}`}
             className={`flex items-center justify-center rounded-md px-3 py-1.5 text-center text-sm ${
               periodKey === btn.key
-                ? "bg-white text-neutral-900"
-                : "bg-neutral-900 text-neutral-400 hover:text-neutral-100"
+                ? "bg-white text-slate-900"
+                : "bg-slate-900 text-slate-400 hover:text-slate-100"
             }`}
           >
             {btn.label}
@@ -207,12 +207,12 @@ export default async function HustlePointsPage(
         ))}
       </div>
 
-      <p className="mb-6 flex items-center justify-end gap-3 text-right text-xs text-neutral-500">
+      <p className="mb-6 flex items-center justify-end gap-3 text-right text-xs text-slate-500">
         <a
           href="https://app.coupler.io/app/dataflows/32e79f15-7a56-4018-9493-5fe58138e8d4/edit"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline decoration-dotted hover:text-neutral-300"
+          className="underline decoration-dotted hover:text-slate-300"
         >
           Source report ↗
         </a>
@@ -226,7 +226,7 @@ export default async function HustlePointsPage(
       )}
 
       <div>
-        <ol className="divide-y divide-neutral-900">
+        <ol className="divide-y divide-slate-900">
           {ranked.map((rep, i) => {
             const isOwnRow = rep.rep_id === viewerRepId;
             const maskRow = masking && !isOwnRow;
@@ -235,17 +235,17 @@ export default async function HustlePointsPage(
               <Fragment key={rep.rep_id}>
               {avgSplit && i === avgSplit.insertAt && (
                 <li className="flex items-center gap-3 py-2">
-                  <span className="h-px flex-1 bg-neutral-800" />
-                  <span className="shrink-0 text-xs font-medium text-neutral-500">
+                  <span className="h-px flex-1 bg-slate-800" />
+                  <span className="shrink-0 text-xs font-medium text-slate-500">
                     Company Average — {Math.round(avgSplit.average)}
                   </span>
-                  <span className="h-px flex-1 bg-neutral-800" />
+                  <span className="h-px flex-1 bg-slate-800" />
                 </li>
               )}
               <li
                 className="group relative flex items-center gap-4 py-3"
               >
-                <span className="w-6 text-sm text-neutral-500">{i + 1}</span>
+                <span className="w-6 text-sm text-slate-500">{i + 1}</span>
                 <span className="flex-1 text-sm">
                   {maskRow ? (
                     <MaskedName />
@@ -253,7 +253,7 @@ export default async function HustlePointsPage(
                     <>
                       {rep.display_name}
                       {rep.isManager && (
-                        <span className="ml-2 rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                        <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
                           Manager avg
                         </span>
                       )}
@@ -279,9 +279,9 @@ export default async function HustlePointsPage(
                   />
                 ) : (
                   <div className="pointer-events-none absolute right-full top-1/2 z-10 -translate-y-1/2 pr-3 group-hover:pointer-events-auto">
-                    <div className="relative max-h-96 w-[28rem] overflow-y-auto rounded-md border border-neutral-800 bg-neutral-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      <div className="absolute -right-1 top-8 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-neutral-800 bg-neutral-900" />
-                      <p className="sticky top-0 mb-2 bg-neutral-900 pb-1 font-medium text-neutral-100">
+                    <div className="relative max-h-96 w-[28rem] overflow-y-auto rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      <div className="absolute -right-1 top-8 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-slate-800 bg-slate-900" />
+                      <p className="sticky top-0 mb-2 bg-slate-900 pb-1 font-medium text-slate-100">
                         {rep.display_name} — {rep.records.length} record
                         {rep.records.length === 1 ? "" : "s"}
                       </p>
@@ -291,17 +291,17 @@ export default async function HustlePointsPage(
                           href={row.sf_link ?? undefined}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 border-t border-neutral-800 py-1.5 first:border-t-0 hover:bg-neutral-800"
+                          className="flex items-center gap-2 border-t border-slate-800 py-1.5 first:border-t-0 hover:bg-slate-800"
                         >
-                          <span className="shrink-0 text-neutral-500">{row.activity_date}</span>
-                          <span className="shrink-0 rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                          <span className="shrink-0 text-slate-500">{row.activity_date}</span>
+                          <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
                             {row.category}
                           </span>
-                          <span className="truncate text-neutral-300">{row.subject ?? "(no subject)"}</span>
+                          <span className="truncate text-slate-300">{row.subject ?? "(no subject)"}</span>
                         </a>
                       ))}
                       {rep.records.length === 0 && (
-                        <p className="py-2 text-neutral-500">No records in this period.</p>
+                        <p className="py-2 text-slate-500">No records in this period.</p>
                       )}
                     </div>
                   </div>
@@ -312,18 +312,18 @@ export default async function HustlePointsPage(
                   <MaskedBlurb side="right" />
                 ) : (
                   <div className="pointer-events-none absolute left-full top-1/2 z-10 -translate-y-1/2 pl-3">
-                    <div className="relative w-56 rounded-md border border-neutral-800 bg-neutral-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-neutral-800 bg-neutral-900" />
-                      <p className="mb-2 truncate font-medium text-neutral-100">
+                    <div className="relative w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-slate-800 bg-slate-900" />
+                      <p className="mb-2 truncate font-medium text-slate-100">
                         {rep.display_name}
                       </p>
                       {BUCKETS.map((b) => (
-                        <div key={b} className="flex justify-between py-0.5 text-neutral-400">
+                        <div key={b} className="flex justify-between py-0.5 text-slate-400">
                           <span>{b}</span>
                           <span>{rep.isManager ? Math.round(rep.counts[b]) : rep.counts[b]}</span>
                         </div>
                       ))}
-                      <div className="mt-1 flex justify-between border-t border-neutral-800 pt-1 font-medium text-neutral-100">
+                      <div className="mt-1 flex justify-between border-t border-slate-800 pt-1 font-medium text-slate-100">
                         <span>{rep.isManager ? "Team Avg Points" : "Hustle Points"}</span>
                         <span>{rep.totalPoints.toFixed(1)}</span>
                       </div>
@@ -336,15 +336,15 @@ export default async function HustlePointsPage(
           })}
           {avgSplit && avgSplit.insertAt === ranked.length && (
             <li className="flex items-center gap-3 py-2">
-              <span className="h-px flex-1 bg-neutral-800" />
-              <span className="shrink-0 text-xs font-medium text-neutral-500">
+              <span className="h-px flex-1 bg-slate-800" />
+              <span className="shrink-0 text-xs font-medium text-slate-500">
                 Company Average — {Math.round(avgSplit.average)}
               </span>
-              <span className="h-px flex-1 bg-neutral-800" />
+              <span className="h-px flex-1 bg-slate-800" />
             </li>
           )}
           {ranked.length === 0 && !error && (
-            <li className="py-6 text-center text-sm text-neutral-500">
+            <li className="py-6 text-center text-sm text-slate-500">
               No activity in this period.
             </li>
           )}

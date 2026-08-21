@@ -134,7 +134,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Deals</h1>
-          <p className="text-sm text-neutral-500">New Customers closed per person</p>
+          <p className="text-sm text-slate-500">New Customers closed per person</p>
         </div>
         <div className="flex gap-2">
           {DEAL_PERIODS.map((p) => (
@@ -143,8 +143,8 @@ export default async function DealsPage(props: ScoreboardPageProps) {
               href={`/scoreboard/deals?period=${p}`}
               className={`flex items-center justify-center rounded-md px-3 py-1.5 text-center text-sm ${
                 period === p
-                  ? "bg-white text-neutral-900"
-                  : "bg-neutral-900 text-neutral-400 hover:text-neutral-100"
+                  ? "bg-white text-slate-900"
+                  : "bg-slate-900 text-slate-400 hover:text-slate-100"
               }`}
             >
               {DEAL_PERIOD_LABEL[p]}
@@ -159,7 +159,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
         </p>
       )}
 
-      <ol className="divide-y divide-neutral-900">
+      <ol className="divide-y divide-slate-900">
         {ranked.map((rep, i) => {
           const isOwnRow = rep.rep_id === viewerRepId;
           const maskRow = masking && !isOwnRow;
@@ -168,15 +168,15 @@ export default async function DealsPage(props: ScoreboardPageProps) {
             <Fragment key={rep.rep_id}>
             {avgSplit && i === avgSplit.insertAt && (
               <li className="flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-neutral-800" />
-                <span className="shrink-0 text-xs font-medium text-neutral-500">
+                <span className="h-px flex-1 bg-slate-800" />
+                <span className="shrink-0 text-xs font-medium text-slate-500">
                   Company Average — {Math.round(avgSplit.average)}
                 </span>
-                <span className="h-px flex-1 bg-neutral-800" />
+                <span className="h-px flex-1 bg-slate-800" />
               </li>
             )}
             <li className="group relative flex items-center gap-4 py-3">
-              <span className="w-6 text-sm text-neutral-500">{i + 1}</span>
+              <span className="w-6 text-sm text-slate-500">{i + 1}</span>
               <span className="flex-1 text-sm">
                 {maskRow ? (
                   <MaskedName />
@@ -184,7 +184,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
                   <>
                     {rep.display_name}
                     {rep.isManager && (
-                      <span className="ml-2 rounded-full bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                      <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
                         Manager avg
                       </span>
                     )}
@@ -215,15 +215,15 @@ export default async function DealsPage(props: ScoreboardPageProps) {
         })}
         {avgSplit && avgSplit.insertAt === ranked.length && (
           <li className="flex items-center gap-3 py-2">
-            <span className="h-px flex-1 bg-neutral-800" />
-            <span className="shrink-0 text-xs font-medium text-neutral-500">
+            <span className="h-px flex-1 bg-slate-800" />
+            <span className="shrink-0 text-xs font-medium text-slate-500">
               Company Average — {Math.round(avgSplit.average)}
             </span>
-            <span className="h-px flex-1 bg-neutral-800" />
+            <span className="h-px flex-1 bg-slate-800" />
           </li>
         )}
         {ranked.length === 0 && !error && (
-          <li className="py-6 text-center text-sm text-neutral-500">
+          <li className="py-6 text-center text-sm text-slate-500">
             No deals in this period.
           </li>
         )}

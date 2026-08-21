@@ -120,6 +120,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                     >
                       <option value="">— none —</option>
                       {rows.filter((r) => r.id !== m.id && r.active)
+                           .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email))
                            .map((r) => <option key={r.id} value={r.id}>{r.full_name ?? r.email}</option>)}
                     </select>
                   </td>

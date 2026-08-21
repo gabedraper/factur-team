@@ -26,7 +26,9 @@ export function TeamsScreen({
 
   const pods = teams.filter((t) => t.kind === "pod");
   // Leavers keep their history but stop being offered as a choice.
-  const selectable = members.filter((m) => m.active);
+  const selectable = members
+    .filter((m) => m.active)
+    .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email));
 
   return (
     <div className="space-y-6">

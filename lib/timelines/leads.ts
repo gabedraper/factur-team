@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { visibleOwnerIds } from "@/lib/org";
 import { assembleLeads, contactName, type Lead, type LeadRow, type TaskRow } from "./assemble";
 
 export type { Lead, TimelineEvent, StageSpan } from "./assemble";
@@ -13,6 +14,12 @@ export async function getLeads(filters: LeadFilters = {}) {
   const supabase = createClient();
   const limit = Math.min(filters.limit ?? 150, 500);
 
+  // Reps see their own leads, managers their team's, admins everything.
+  const owners = await visibleOwnerIds();
+  if (owners !== null && owners.length === 0) {
+    return assembleLeads([], []);
+  }
+
   let query = supabase
     .from("sf_opp_leads_raw")
     .select(
@@ -22,6 +29,7 @@ export async function getLeads(filters: LeadFilters = {}) {
     )
     .order("createddate", { ascending: false });
 
+  if (owners !== null) query = query.in("ownerid", owners);
   if (filters.rep) query = query.eq("owner_name", filters.rep);
   if (filters.client) query = query.eq("client__r_name", filters.client);
   if (filters.arrivedDays) {
@@ -75,8 +83,9 @@ export async function getFilterOptions() {
     if (r.owner_name) reps.add(r.owner_name);
     if (r.client__r_name) clients.add(r.client__r_name);
   }
+  // localeCompare so accented names sort where a reader expects, not by byte.
   return {
-    reps: [...reps].sort(),
-    clients: [...clients].sort(),
+    reps: [...reps].sort((a, b) => a.localeCompare(b)),
+    clients: [...clients].sort((a, b) => a.localeCompare(b)),
   };
 }

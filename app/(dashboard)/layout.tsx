@@ -28,6 +28,8 @@ import {
 import { getRoleLabel } from "@/lib/roles";
 import { BugReportWidget } from "@/components/bug-report-widget";
 import { AppSidebar, type NavGroup } from "@/components/app-sidebar";
+import { PreviewBanner } from "@/components/preview-banner";
+import { previewedMember } from "@/lib/org";
 
 function getNavGroups(role: string): NavGroup[] {
   const scoreboard: NavGroup = {
@@ -109,6 +111,10 @@ export default async function DashboardLayout({
   const previewRole = actualRole === "admin" ? (cookieStore.get("preview_role")?.value ?? null) : null;
 
   const role = previewRole ?? actualRole;
+
+  // Previewing a person changes who the app answers as; the identity block and
+  // the banner have to say so or it looks like the app is just misbehaving.
+  const previewing = await previewedMember();
   const navGroups = getNavGroups(actualRole === "admin" && !previewRole ? "admin" : role);
   const homeHref = actualRole === "admin" && !previewRole ? "/admin" : "/learner";
 
@@ -134,9 +140,15 @@ export default async function DashboardLayout({
                 {profile?.full_name?.[0]?.toUpperCase() || "U"}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{profile?.full_name || "User"}</p>
+                <p className="text-sm font-medium truncate">
+                  {previewing?.full_name ?? previewing?.email ?? profile?.full_name ?? "User"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  {previewRole ? `Previewing: ${getRoleLabel(previewRole)}` : getRoleLabel(actualRole)}
+                  {previewing
+                    ? "Previewing"
+                    : previewRole
+                      ? `Previewing: ${getRoleLabel(previewRole)}`
+                      : getRoleLabel(actualRole)}
                 </p>
               </div>
             </div>
@@ -159,8 +171,14 @@ export default async function DashboardLayout({
       />
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        {children}
+      <main className="flex flex-1 flex-col overflow-auto">
+        {(previewing || previewRole) && (
+          <PreviewBanner
+            as={previewing ? (previewing.full_name ?? previewing.email) : getRoleLabel(previewRole!)}
+            kind={previewing ? "person" : "role"}
+          />
+        )}
+        <div className="flex-1">{children}</div>
       </main>
     </div>
   );

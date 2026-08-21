@@ -50,7 +50,8 @@ export default async function SettingsPage() {
     const { data } = await db
       .from("org_members").select("id,full_name,email").eq("active", true).order("full_name");
     people = ((data ?? []) as { id: string; full_name: string | null; email: string }[])
-      .map((p) => ({ id: p.id, name: p.full_name ?? p.email }));
+      .map((p) => ({ id: p.id, name: p.full_name ?? p.email }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return (

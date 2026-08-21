@@ -3,7 +3,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
-  | "scoreboard.retention.unmask" | "scoreboard.weights.edit" | "timelines.view";
+  | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
+  | "timelines.view" | "timelines.view.all";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers
@@ -44,6 +45,16 @@ export async function previewedMemberId(): Promise<string | null> {
   // A stale cookie must not grant anything, so the real rights are rechecked.
   const real = await myRealPermissions();
   return real.has("org.manage") ? id : null;
+}
+
+/** The person being previewed, for the banner and the identity block. */
+export async function previewedMember() {
+  const id = await previewedMemberId();
+  if (!id) return null;
+  const db = createServiceClient();
+  const { data } = await db
+    .from("org_members").select("id,full_name,email").eq("id", id).maybeSingle();
+  return (data as { id: string; full_name: string | null; email: string } | null) ?? null;
 }
 
 export async function myPermissions(): Promise<Set<Permission>> {
@@ -223,4 +234,50 @@ export async function listSalesforceSuggestions(): Promise<MatchSuggestion[]> {
     };
   }));
   return out;
+}
+
+/**
+ * Which Salesforce owners the viewer may see leads for.
+ *
+ * null means no restriction. An empty array means nothing -- which is the right
+ * answer for someone with no Salesforce account, since none of these leads are
+ * theirs, and is deliberately distinct from "show everything".
+ *
+ * Honours the preview cookie, so previewing a rep really does narrow the page.
+ */
+export async function visibleOwnerIds(): Promise<string[] | null> {
+  const perms = await myPermissions();
+  if (perms.has("timelines.view.all")) return null;
+
+  const db = createServiceClient();
+
+  type Me = { id: string; salesforce_user_id: string | null };
+  const previewing = await previewedMemberId();
+  let me: Me | null = null;
+
+  if (previewing) {
+    const { data } = await db
+      .from("org_members").select("id,salesforce_user_id").eq("id", previewing).maybeSingle();
+    me = data as unknown as Me | null;
+  } else {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await db
+      .from("org_members").select("id,salesforce_user_id").eq("auth_user_id", user.id).maybeSingle();
+    me = data as unknown as Me | null;
+  }
+  if (!me) return [];
+
+  const ids = me.salesforce_user_id ? [me.salesforce_user_id] : [];
+
+  // A manager is someone people report to -- taken from the reporting line
+  // rather than a permission, so nobody has to grant it per person.
+  const { data: reports } = await db
+    .from("org_members").select("salesforce_user_id").eq("manager_member_id", me.id);
+  for (const r of (reports ?? []) as { salesforce_user_id: string | null }[]) {
+    if (r.salesforce_user_id) ids.push(r.salesforce_user_id);
+  }
+
+  return ids;
 }

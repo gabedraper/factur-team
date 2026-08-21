@@ -32,7 +32,7 @@
   --text-muted: hsl(var(--muted-foreground));
 
   
-  --rep:      #12874a;   
+  --rep:      #e8792b;   
   --prospect: #d33f3f;   
   --goal: hsl(var(--primary));   
 
@@ -49,7 +49,7 @@
   --surface-0: hsl(var(--background));
   --surface-1: hsl(var(--secondary));
   --surface-2: hsl(var(--muted));
-  --rep:      #35b96b;
+  --rep:      #f59245;
   --prospect: #e8615b;
   --stage:    #a98ae0;
   --st-cold:      #58a3ef;
@@ -106,7 +106,7 @@
   font: inherit; font-size: 12px; padding: 5px 11px; border: 0; cursor: pointer;
   background: var(--surface-1); color: var(--text-secondary);
 }
-.tl .toggle button[aria-pressed="true"] { background: var(--rep); color: #fff; }
+.tl .toggle button[aria-pressed="true"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .tl .viewtabs { display: flex; gap: 10px; margin-bottom: var(--stack); flex-wrap: wrap; }
 .tl .viewtabs button {
   flex: 1 1 220px; min-width: 200px; text-align: left; cursor: pointer;
@@ -119,10 +119,10 @@
 .tl .viewtabs button .t { display: block; font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .tl .viewtabs button .g { display: block; font-size: 11.5px; margin-top: 2px; }
 .tl .viewtabs button[aria-selected="true"] {
-  background: color-mix(in oklab, var(--rep) 13%, var(--surface-1));
-  box-shadow: inset 0 0 0 2px var(--rep);
+  background: color-mix(in oklab, hsl(var(--primary)) 13%, var(--surface-1));
+  box-shadow: inset 0 0 0 2px hsl(var(--primary));
 }
-.tl .viewtabs button[aria-selected="true"] .t { color: var(--rep); }
+.tl .viewtabs button[aria-selected="true"] .t { color: hsl(var(--primary)); }
 .tl .stagekey { display: inline-flex; flex-wrap: wrap; gap: 11px; align-items: center; color: var(--text-muted); }
 .tl .stagekey .sw { display: inline-flex; align-items: center; gap: 5px; }
 .tl .stagekey .sw i { width: 15px; height: 3px; border-radius: 2px; display: block; }
@@ -157,7 +157,7 @@
   color: var(--text-primary); text-decoration: none; font-weight: 560;
   display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.tl .who a:hover { text-decoration: underline; text-decoration-color: var(--rep); }
+.tl .who a:hover { text-decoration: underline; text-decoration-color: hsl(var(--primary)); }
 .tl .who .sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl .who .sub em { font-style: normal; color: var(--text-muted); }
 .tl .lane { position: relative; min-height: var(--laneh, 46px); }
@@ -197,7 +197,7 @@
 .tl th, .tl td { text-align: left; padding: 7px 10px; white-space: nowrap; }
 .tl th { position: sticky; top: 0; background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); z-index: 2; }
 .tl td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.tl td a { color: var(--rep); text-decoration: none; }
+.tl td a { color: hsl(var(--primary)); text-decoration: none; }
 .tl .hidden { display: none; }
 .tl .empty { padding: 40px; text-align: center; color: var(--text-muted); }
 .tl footer { margin-top: 16px; font-size: 12px; color: var(--text-muted); }

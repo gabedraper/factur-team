@@ -89,7 +89,11 @@ export function TimelineBoard({
   const [sort, setSort] = useState("recent");
   const [mode, setMode] = useState<"timeline" | "table">("timeline");
 
-  const outcomes = useMemo(() => [...new Set(leads.map((l) => l.outcomeLabel))].sort(), [leads]);
+  const outcomes = useMemo(
+    () => [...new Set(leads.map((l) => l.outcomeLabel))]
+      .sort((a, b) => a.localeCompare(b)),
+    [leads]
+  );
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -213,8 +217,8 @@ export function TimelineBoard({
             </span>
           ))}
           <span className="item">
-            marks: <b style={{ color: "var(--rep)" }}>green = our team</b> ·{" "}
-            <b style={{ color: "var(--prospect)" }}>red = the prospect</b>
+            <b style={{ color: "var(--rep)" }}>Orange = Factur</b> ·{" "}
+            <b style={{ color: "var(--prospect)" }}>Red = Prospect</b>
           </span>
           <span className="stagekey">
             line:
@@ -263,6 +267,12 @@ export function TimelineBoard({
                     </div>
                     <div className="sub">
                       <em>for</em> {lead.client || "—"} · <em>by</em> {lead.rep}
+                    </div>
+                    <div className="sub">
+                      <em>arrived</em>{" "}
+                      {new Date(lead.created).toLocaleDateString(undefined, {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
                     </div>
                   </div>
                   <div className="lane"><Lane lead={lead} view={view} /></div>

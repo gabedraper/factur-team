@@ -90,7 +90,7 @@ export function PreviewPanel({
             onChange={(e) => {
               const v = e.target.value;
               if (!v) return act(() => clearPreviewUser());
-              act(() => setPreviewUser(v), "/");
+              act(() => setPreviewUser(v));
             }}
           >
             <option value="">— not previewing —</option>
