@@ -168,6 +168,13 @@
 .tl .stagekey { display: inline-flex; flex-wrap: wrap; gap: 11px; align-items: center; color: var(--text-muted); }
 .tl .stagekey .sw { display: inline-flex; align-items: center; gap: 5px; }
 .tl .stagekey .sw i { width: 15px; height: 3px; border-radius: 2px; display: block; }
+/* The two callout lines are vertical on the lane, so their swatches are too. */
+.tl .stagekey .sw i.v { width: 3px; height: 13px; }
+.tl .stagekey .sw i.vgoal {
+  background: repeating-linear-gradient(to bottom, var(--goal) 0 2px, transparent 2px 5px);
+  opacity: .75;
+}
+.tl .stagekey .sw i.veod { background: var(--text-muted); opacity: .55; }
 .tl .legend {
   display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center;
   text-align: center;

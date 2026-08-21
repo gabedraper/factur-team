@@ -265,6 +265,13 @@ export function TimelineBoard({
               </span>
             ))}
           </span>
+          {/* The two vertical lines only exist on this view. */}
+          {view === "quick" && (
+            <span className="stagekey">
+              <span className="sw"><i className="v vgoal" />{FIRST_RESPONSE_TARGET_H}h reply target</span>
+              <span className="sw"><i className="v veod" />5pm CT — same day</span>
+            </span>
+          )}
         </div>
 
         {mode === "timeline" ? (
