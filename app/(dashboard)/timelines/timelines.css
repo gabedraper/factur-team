@@ -33,6 +33,11 @@
   --goal:     hsl(var(--primary));
   --stage:    #7b53c9;
 
+  /* Its own token rather than reusing --rep: the lane's orange means "Factur
+     acted", and this is the prospect's company. Same hue, different job, so a
+     change to one does not silently move the other. */
+  --company:  #e8792b;
+
   --st-cold:      #2f7fd6;
   --st-generated: #12874a;
   --st-warm:      #d8a412;
@@ -76,6 +81,7 @@
   --rep:      #f59245;
   --prospect: #e8615b;
   --stage:    #a98ae0;
+  --company:  #f59245;
   --st-cold:      #58a3ef;
   --st-generated: #35b96b;
   --st-warm:      #e0b336;
@@ -194,10 +200,11 @@
    link -- otherwise the company would be clipped away before the dash. */
 .tl .who .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl .who a { color: var(--text-primary); text-decoration: none; font-weight: 560; }
-.tl .who .co { color: var(--text-secondary); font-weight: 400; }
+.tl .who .co { color: var(--company); font-weight: 400; }
 .tl .who a:hover { text-decoration: underline; text-decoration-color: hsl(var(--primary)); }
 .tl .who .sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl .who .sub em { font-style: normal; color: var(--text-muted); }
+.tl .who .sub b { font-weight: 620; }
 .tl .lane { position: relative; min-height: var(--laneh, 46px); }
 .tl .lane svg { display: block; width: 100%; height: var(--laneh, 46px); overflow: visible; }
 .tl .gridline { stroke: var(--tl-border); stroke-width: 1; }

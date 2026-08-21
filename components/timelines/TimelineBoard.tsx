@@ -331,7 +331,7 @@ export function TimelineBoard({
                       {lead.rep}
                       {/* Every lead in the prospecting pipeline is for the same
                           client, so naming it on each row says nothing. */}
-                      {!prospecting && lead.client && <> — {lead.client}</>}
+                      {!prospecting && lead.client && <> — <b>{lead.client}</b></>}
                     </div>
                     <div className="sub">
                       <em>arrived</em>{" "}
