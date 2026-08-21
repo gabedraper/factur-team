@@ -14,6 +14,7 @@ export function PeopleTable(
   const [rows, setRows] = useState(members);
   const [filter, setFilter] = useState("");
   const [onlyReview, setOnlyReview] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -38,16 +39,25 @@ export function PeopleTable(
   const managerRole = roles.find((r) => r.slug === "manager");
   const adminRole = roles.find((r) => r.slug === "app-admin");
 
+  // People who have left are kept, not deleted, so their history still reads
+  // correctly -- but they are not who this screen is usually about, so they sit
+  // behind a checkbox. Everything below counts within whatever is in scope, so
+  // the numbers match what is on screen.
+  const inScope = useMemo(
+    () => (showInactive ? rows : rows.filter((m) => m.active)),
+    [rows, showInactive]
+  );
+
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();
-    return rows.filter(
+    return inScope.filter(
       (m) =>
         (!onlyReview || m.needs_review) &&
         (!term ||
           (m.full_name ?? "").toLowerCase().includes(term) ||
           m.email.toLowerCase().includes(term))
     );
-  }, [rows, filter, onlyReview]);
+  }, [inScope, filter, onlyReview]);
 
   function run(fn: () => Promise<{ success: boolean; error?: string }>, optimistic: () => void) {
     setError("");
@@ -58,7 +68,8 @@ export function PeopleTable(
     });
   }
 
-  const reviewCount = rows.filter((r) => r.needs_review).length;
+  const reviewCount = inScope.filter((r) => r.needs_review).length;
+  const inactiveCount = rows.filter((r) => !r.active).length;
 
   return (
     <div className="space-y-3">
@@ -73,8 +84,12 @@ export function PeopleTable(
           <input type="checkbox" checked={onlyReview} onChange={(e) => setOnlyReview(e.target.checked)} />
           Needs review ({reviewCount})
         </label>
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+          Show inactive ({inactiveCount})
+        </label>
         <span className="ml-auto text-xs text-muted-foreground">
-          {shown.length} of {rows.length}{pending && " · saving…"}
+          {shown.length} of {inScope.length}{pending && " · saving…"}
         </span>
       </div>
 
