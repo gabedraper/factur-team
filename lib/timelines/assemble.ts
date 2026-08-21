@@ -3,8 +3,9 @@
 import {
   classify, stageBucket, outcomeFor, prospectingBucket, prospectingOutcomeFor,
   norm, SEQUENCE_RE, REP_TOUCH, PROSPECT_SIGNAL, DROPPED, COLD_AFTER_DAYS,
-  type EventKind,
+  FIRST_RESPONSE_TARGET_H, type EventKind,
 } from "./classify";
+import { median } from "./stats";
 
 /**
  * Two pipelines run through the same Opportunity object.
@@ -290,4 +291,76 @@ export function assembleLeads(
     coldAfterDays: COLD_AFTER_DAYS,
     sfBase: SF_BASE,
   };
+}
+
+
+/**
+ * The numbers behind the headline tiles, for one set of leads.
+ *
+ * Kept separate from the leads sent to the browser because the tiles answer a
+ * different question from the board: the board shows the leads that arrived
+ * this week, while the tiles are meant to be the rep's record over everything
+ * held -- so filtering the board must not move them.
+ */
+export type RepSummary = {
+  leads: number; touches: number;
+  hitTarget: number; sameDay: number; neverTouched: number;
+  medianFirstTouch: number | null; medianRespond: number | null;
+  touchedEveryDay: number; untouchedAllWeek: number;
+  medianDaysTouched: number | null; medianGap: number | null;
+  medianTouches: number | null; meetings: number; goneQuiet: number;
+};
+
+export { median };
+
+export function summarise(leads: Lead[]): RepSummary {
+  const m = (pick: (l: Lead) => number | null) => median(leads.map(pick));
+  const count = (test: (l: Lead) => boolean) => leads.filter(test).length;
+
+  return {
+    leads: leads.length,
+    touches: leads.reduce((a, l) => a + l.metrics.touches, 0),
+    hitTarget: count(
+      (l) => l.metrics.firstTouchHours !== null && l.metrics.firstTouchHours <= FIRST_RESPONSE_TARGET_H
+    ),
+    sameDay: count((l) => l.metrics.firstDayTouches > 0),
+    neverTouched: count((l) => l.metrics.firstTouchHours === null),
+    medianFirstTouch: m((l) => l.metrics.firstTouchHours),
+    medianRespond: m((l) => l.metrics.respondHours),
+    touchedEveryDay: count((l) => l.metrics.firstWeekDaysTouched >= l.metrics.firstWeekDaysElapsed),
+    untouchedAllWeek: count((l) => l.metrics.firstWeekDaysTouched === 0),
+    medianDaysTouched: m((l) => l.metrics.firstWeekDaysTouched),
+    medianGap: m((l) => l.metrics.medianGapDays),
+    medianTouches: m((l) => l.metrics.touches),
+    meetings: count((l) => l.metrics.meetings > 0),
+    goneQuiet: count((l) => l.outcome === "cold"),
+  };
+}
+
+/**
+ * How far back the board itself shows leads. Everything held is still read and
+ * summarised, because the headline tiles cover the whole record, not this
+ * window.
+ */
+export const DISPLAY_DAYS = 7;
+
+/** Key used for the summary covering everyone in view, not one rep. */
+export const ALL_REPS = "__all";
+
+/**
+ * One summary per rep, plus one for everyone. Medians cannot be combined after
+ * the fact, so each set is summarised over its own leads rather than rolled up.
+ */
+export function summariseByOwner(leads: Lead[]): Record<string, RepSummary> {
+  const byOwner = new Map<string, Lead[]>();
+  for (const l of leads) {
+    if (!l.ownerId) continue;
+    const list = byOwner.get(l.ownerId);
+    if (list) list.push(l);
+    else byOwner.set(l.ownerId, [l]);
+  }
+
+  const out: Record<string, RepSummary> = { [ALL_REPS]: summarise(leads) };
+  for (const [ownerId, own] of byOwner) out[ownerId] = summarise(own);
+  return out;
 }

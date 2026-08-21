@@ -93,26 +93,44 @@ export function stageBucket(stage: string | null): string {
 }
 
 /**
- * The sales team works a different pipeline from the account managers, and
- * records it in a different field. Prospecting Lead Status has its own
- * vocabulary, so it needs its own mapping onto the same lane colours -- the
- * words differ, what they mean about a lead's temperature does not.
+ * The sales team works a different pipeline from the account managers and
+ * records it in a different field. Prospecting Lead Status gets a lane colour
+ * per value rather than being folded into the stage buckets, so a lane reads
+ * as the exact value sitting on the record.
+ *
+ * Keyed on the whole value, not matched loosely: "Pipeline - Warm" and
+ * "Pipeline - Warm SDR" differ only by a suffix, and a test for "Warm" would
+ * collapse the two into one colour.
  */
-const PROSPECTING_BUCKETS: [string, RegExp][] = [
-  ["dead", /No Fit Ever|Lost Follow Up/i],
-  ["generated", /Customer/i],
-  ["ltfu", /LTFU/i],
-  ["cold", /Cold/i],
-  ["warm", /Warm/i],
-  ["hot", /Selling|Closing/i],
-];
+const PROSPECTING_BUCKETS: Record<string, string> = {
+  "Pipeline - Cold":       "pls-cold",
+  "Pipeline - Warm SDR":   "pls-warm-sdr",
+  "Pipeline - Warm":       "pls-warm",
+  "Pipeline - Selling":    "pls-selling",
+  "Closing":               "pls-closing",
+  "LTFU":                  "pls-ltfu",
+  "Customer":              "pls-customer",
+  "Relationship":          "pls-relationship",
+  "Lost Follow Up":        "pls-lost",
+  "No Fit Ever - Contact": "pls-nofit-contact",
+  "No Fit Ever - Account": "pls-nofit-account",
+};
 
 export function prospectingBucket(status: string | null): string {
-  for (const [name, pattern] of PROSPECTING_BUCKETS) {
-    if (pattern.test(status || "")) return name;
-  }
-  return "other";
+  return PROSPECTING_BUCKETS[(status || "").trim()] ?? "pls-other";
 }
+
+/** Every status and its colour, in pipeline order, for the lane colour key. */
+export const PROSPECTING_KEY: [string, string][] =
+  Object.entries(PROSPECTING_BUCKETS) as [string, string][];
+
+/**
+ * Buckets meaning the lead is finished and went nowhere. The lane draws a skull
+ * where a lead entered one.
+ */
+export const DEAD_BUCKETS = new Set([
+  "dead", "pls-lost", "pls-nofit-contact", "pls-nofit-account",
+]);
 
 // Marks the rep made: the touches follow-up speed is measured on.
 export const REP_TOUCH = new Set<EventKind>(["email_out", "call", "sms", "meeting_invite"]);
@@ -122,6 +140,9 @@ export const PROSPECT_SIGNAL = new Set<EventKind>(["email_in", "call_in", "meeti
 export const DROPPED = new Set<EventKind>(["system_email"]);
 
 export const COLD_AFTER_DAYS = 14;
+
+/** A first touch inside this many hours of the lead arriving counts as met. */
+export const FIRST_RESPONSE_TARGET_H = 1;
 
 export type Outcome = { key: string; label: string; status: string };
 

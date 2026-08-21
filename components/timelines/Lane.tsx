@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { Lead, StageSpan } from "@/lib/timelines/leads";
 import { Mark, MARKS } from "./marks";
+import { DEAD_BUCKETS, FIRST_RESPONSE_TARGET_H } from "@/lib/timelines/classify";
 
 export type ViewKey = "quick" | "week" | "life";
 
-export const FIRST_RESPONSE_TARGET_H = 1;
+// Re-exported so the board keeps importing it from the lane it draws on.
+export { FIRST_RESPONSE_TARGET_H };
 
 // Marks closer together than this are nudged apart rather than stacked.
 const MARK_PITCH = 15;
@@ -130,7 +132,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
 
   const skulls: { x: number; stage: string | null }[] = [];
   for (const s of spans) {
-    if (s.bucket !== "dead") continue;
+    if (!DEAD_BUCKETS.has(s.bucket)) continue;
     const at = s.fromHours / 24;
     if (at > laneEnd) continue;
     const sx = px(at) + MARK_PITCH;

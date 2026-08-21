@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { Lead } from "@/lib/timelines/leads";
 import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
 import { useSort, SortHeader } from "@/components/ui/sortable";
+import { PROSPECTING_KEY } from "@/lib/timelines/classify";
+import { ALL_REPS, DISPLAY_DAYS, type RepSummary } from "@/lib/timelines/assemble";
 
 
 export type { ViewKey };
@@ -33,12 +35,6 @@ const STAGE_KEY: [string, string][] = [
   ["Hot", "hot"], ["LT follow up", "ltfu"], ["DQ", "dead"],
 ];
 
-// The sales team's pipeline uses the same lane colours under its own names.
-const PROSPECTING_KEY: [string, string][] = [
-  ["Cold", "cold"], ["Warm", "warm"], ["Selling / closing", "hot"],
-  ["LTFU", "ltfu"], ["Customer", "generated"], ["No fit / lost", "dead"],
-];
-
 function dur(hours: number | null | undefined): string {
   if (hours === null || hours === undefined) return "—";
   if (hours < 1) return `${Math.round(hours * 60)}m`;
@@ -57,10 +53,6 @@ function spanLabel(days: number): string {
   return `${Math.round(days / 30.4)}mo`;
 }
 
-function median(xs: (number | null)[]): number | null {
-  const s = xs.filter((v): v is number => v !== null && v !== undefined).sort((a, b) => a - b);
-  return s.length ? s[Math.floor(s.length / 2)] : null;
-}
 
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : "—");
 
@@ -83,10 +75,11 @@ function verdictFor(view: ViewKey, l: Lead) {
 }
 
 export function TimelineBoard({
-  view, leads, reps, clients, generated, coldAfterDays = 14, total,
+  view, leads, reps, clients, summaries = {}, held, generated, coldAfterDays = 14, total,
   showRepFilter = true, scope = "all", canManageOrg = false,
 }: {
   view: ViewKey; leads: Lead[]; reps: { id: string; name: string }[]; clients: string[];
+  summaries?: Record<string, RepSummary>; held?: number;
   generated: string; coldAfterDays?: number; total?: number;
   showRepFilter?: boolean;
   scope?: "all" | "scoped" | "unlinked";
@@ -164,43 +157,51 @@ export function TimelineBoard({
     silent: (l) => l.metrics.daysSinceLastEvent,
   });
 
-  // The headline tiles follow the active view, so the numbers on screen always
-  // answer the question the view is asking.
+  /*
+   * The tiles are the rep's record over everything held, not a description of
+   * the rows below them. Those are two different questions -- "how did this
+   * week's leads arrive" and "how does this rep work leads" -- and the second
+   * one should not move when you search the first.
+   *
+   * Summarised on the server, per rep, because a median cannot be recombined
+   * after the fact: picking a rep swaps to their set rather than recomputing.
+   */
+  const summary = summaries[rep || ALL_REPS];
+
   const tiles: [string, string | number, string][] = useMemo(() => {
-    const n = rows.length;
-    const touches = rows.reduce((a, l) => a + l.metrics.touches, 0);
-    const hit = rows.filter((l) => l.metrics.firstTouchHours !== null && l.metrics.firstTouchHours <= FIRST_RESPONSE_TARGET_H).length;
+    if (!summary) return [];
+    const s = summary;
+    const n = s.leads;
+
     if (view === "quick") {
       return [
-        ["Leads", n, `${touches} rep touches`],
-        [`Hit ${FIRST_RESPONSE_TARGET_H}h target`, pct(hit, n), `${hit} of ${n} leads`],
-        ["Touched same day", pct(rows.filter((l) => l.metrics.firstDayTouches > 0).length, n), "first touch inside 24h"],
-        ["Never touched", rows.filter((l) => l.metrics.firstTouchHours === null).length, "no rep outreach at all"],
-        ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
-        ["Median reply to prospect", dur(median(rows.map((l) => l.metrics.respondHours))), "prospect replies → rep responds"],
+        ["Leads", n, `${s.touches} rep touches`],
+        [`Hit ${FIRST_RESPONSE_TARGET_H}h target`, pct(s.hitTarget, n), `${s.hitTarget} of ${n} leads`],
+        ["Touched same day", pct(s.sameDay, n), "first touch inside 24h"],
+        ["Never touched", s.neverTouched, "no rep outreach at all"],
+        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
+        ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds"],
       ];
     }
     if (view === "week") {
-      const gap = median(rows.map((l) => l.metrics.medianGapDays));
       return [
-        ["Leads", n, `${touches} rep touches`],
-        ["Touched every day", pct(rows.filter((l) => l.metrics.firstWeekDaysTouched >= l.metrics.firstWeekDaysElapsed).length, n), "no missed day in week one"],
-        ["Untouched all week", pct(rows.filter((l) => l.metrics.firstWeekDaysTouched === 0).length, n), "zero rep touches in week one"],
-        ["Median days touched", median(rows.map((l) => l.metrics.firstWeekDaysTouched)) ?? "—", "of the first seven"],
-        ["Median gap between touches", gap !== null ? `${gap}d` : "—", "across the whole lead"],
-        ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
+        ["Leads", n, `${s.touches} rep touches`],
+        ["Touched every day", pct(s.touchedEveryDay, n), "no missed day in week one"],
+        ["Untouched all week", pct(s.untouchedAllWeek, n), "zero rep touches in week one"],
+        ["Median days touched", s.medianDaysTouched ?? "—", "of the first seven"],
+        ["Median gap between touches", s.medianGap !== null ? `${s.medianGap}d` : "—", "across the whole lead"],
+        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
       ];
     }
-    const meetings = rows.filter((l) => l.metrics.meetings > 0).length;
     return [
-      ["Leads", n, `${touches} rep touches`],
-      ["Median time to first touch", dur(median(rows.map((l) => l.metrics.firstTouchHours))), "lead created → first outreach"],
-      ["Median reply to prospect", dur(median(rows.map((l) => l.metrics.respondHours))), "prospect replies → rep responds"],
-      ["Median touches", median(rows.map((l) => l.metrics.touches)) ?? "—", "per lead"],
-      ["Meetings booked", meetings, meetings === 1 ? "lead with a confirmed invite" : "leads with a confirmed invite"],
-      ["Gone quiet", rows.filter((l) => l.outcome === "cold").length, `open, no touch in ${coldAfterDays}+ days`],
+      ["Leads", n, `${s.touches} rep touches`],
+      ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
+      ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds"],
+      ["Median touches", s.medianTouches ?? "—", "per lead"],
+      ["Meetings booked", s.meetings, s.meetings === 1 ? "lead with a confirmed invite" : "leads with a confirmed invite"],
+      ["Gone quiet", s.goneQuiet, `open, no touch in ${coldAfterDays}+ days`],
     ];
-  }, [rows, view, coldAfterDays]);
+  }, [summary, view, coldAfterDays]);
 
   const v = VIEWS[view];
 
@@ -208,10 +209,15 @@ export function TimelineBoard({
     <div className="tl">
       <div className="wrap">
         <header>
-          <h1>Opportunity Timelines</h1>
+          <h1>Lead Response</h1>
           <p>
             {VIEWS[view].blurb}. One row per lead; left to right is time since the
             lead arrived, so follow-up speed reads straight down the page.
+          </p>
+          <p>
+            Below: leads that arrived in the last {DISPLAY_DAYS} days, newest first.
+            The figures above cover {rep ? "this rep" : "everyone"} across all
+            {held ? ` ${held} ` : " "}leads held, so filtering the board does not move them.
           </p>
         </header>
 

@@ -1,8 +1,12 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
-import { assembleLeads, contactName, type Lead, type LeadRow, type TaskRow } from "./assemble";
+import {
+  assembleLeads, contactName, summariseByOwner, ALL_REPS,
+  DISPLAY_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
+} from "./assemble";
 
-export type { Lead, TimelineEvent, StageSpan, Pipeline } from "./assemble";
+export type { Lead, TimelineEvent, StageSpan, Pipeline, RepSummary } from "./assemble";
+export { ALL_REPS, DISPLAY_DAYS };
 export { contactName };
 
 // A rep is identified by their Salesforce user id, never by their name --
@@ -11,12 +15,10 @@ export type RepOption = { id: string; name: string };
 
 export type LeadFilters = {
   rep?: string; client?: string; outcome?: string; search?: string;
-  arrivedDays?: number; limit?: number;
 };
 
 export async function getLeads(filters: LeadFilters = {}) {
   const supabase = await createClient();
-  const limit = Math.min(filters.limit ?? 150, 500);
 
   // Reps see their own leads, managers their team's, admins everything.
   const [owners, prospectors] = await Promise.all([visibleOwnerIds(), prospectingOwnerIds()]);
@@ -29,42 +31,62 @@ export async function getLeads(filters: LeadFilters = {}) {
     // No Salesforce account, so nothing here is theirs. Distinct from "no rows
     // matched": the page needs to say which, or an unlinked person sees a blank
     // table and reasonably concludes it is broken.
-    return { ...assembleLeads([], []), scope: "unlinked" as const };
+    return {
+      ...assembleLeads([], []),
+      summaries: {} as Record<string, RepSummary>,
+      held: 0,
+      scope: "unlinked" as const,
+    };
   }
 
-  let query = supabase
-    .from("sf_opp_leads_raw")
-    .select(
-      "id,name,stagename,createddate,ownerid,owner_name,accountid,account_name," +
-        "account_contact_name__c,contact_title__c,client__r_name,lead_source__c," +
-        "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
-        "referred_by_name__c"
-    )
-    .order("createddate", { ascending: false });
+  // Everything held for this scope is read, not just the week on show: the
+  // headline tiles are meant to be the rep's whole record, so filtering or
+  // narrowing the board must not move them.
+  const rows: LeadRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    let query = supabase
+      .from("sf_opp_leads_raw")
+      .select(
+        "id,name,stagename,createddate,ownerid,owner_name,accountid,account_name," +
+          "account_contact_name__c,contact_title__c,client__r_name,lead_source__c," +
+          "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
+          "referred_by_name__c"
+      )
+      .order("createddate", { ascending: false });
 
-  if (owners !== null) query = query.in("ownerid", owners);
-  if (filters.rep) query = query.eq("ownerid", filters.rep);
-  if (filters.client) query = query.eq("client__r_name", filters.client);
-  if (filters.arrivedDays) {
-    const since = new Date(Date.now() - filters.arrivedDays * 86400000);
-    query = query.gte("createddate", since.toISOString());
+    if (owners !== null) query = query.in("ownerid", owners);
+    if (filters.rep) query = query.eq("ownerid", filters.rep);
+    if (filters.client) query = query.eq("client__r_name", filters.client);
+    if (filters.search) {
+      const term = `%${filters.search}%`;
+      query = query.or(`name.ilike.${term},account_name.ilike.${term}`);
+    }
+
+    const { data, error } = await query.range(from, from + 999);
+    if (error) throw new Error(`leads query failed: ${error.message}`);
+    const page = (data ?? []) as unknown as LeadRow[];
+    rows.push(...page);
+    if (page.length < 1000) break;
   }
-  if (filters.search) {
-    const term = `%${filters.search}%`;
-    query = query.or(`name.ilike.${term},account_name.ilike.${term}`);
+
+  const emptyScope = (owners === null ? "all" : "scoped") as "all" | "scoped";
+  if (!rows.length) {
+    return { ...assembleLeads([], []), summaries: {} as Record<string, RepSummary>, held: 0, scope: emptyScope };
   }
 
-  const { data: leadRows, error } = await query.limit(limit);
-  if (error) throw new Error(`leads query failed: ${error.message}`);
-  const rows = (leadRows ?? []) as unknown as LeadRow[];
-  if (!rows.length) return { ...assembleLeads([], []), scope: (owners === null ? "all" : "scoped") as "all" | "scoped" };
-
-  // Only the visible leads' activity is fetched. Supabase caps a response at
-  // 1000 rows, so both the id filter and the result set are walked in chunks.
+  /*
+   * Supabase caps a response at 1000 rows, and a URL can only carry so many ids
+   * in one `in` filter, so the activity is fetched in chunks. Reading the whole
+   * window instead of one page of leads turned this from two round trips into
+   * around fifty, which run a few at a time rather than one after another --
+   * sequentially that is seconds of dead time on every page load.
+   */
   const ids = rows.map((r) => r.id);
-  const tasks: TaskRow[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
-    const slice = ids.slice(i, i + 100);
+  const slices: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) slices.push(ids.slice(i, i + 100));
+
+  async function fetchSlice(slice: string[]): Promise<TaskRow[]> {
+    const out: TaskRow[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error: taskErr } = await supabase
         .from("sf_opp_tasks_raw")
@@ -74,15 +96,33 @@ export async function getLeads(filters: LeadFilters = {}) {
         .range(from, from + 999);
       if (taskErr) throw new Error(`activity query failed: ${taskErr.message}`);
       const page = (data ?? []) as unknown as TaskRow[];
-      tasks.push(...page);
+      out.push(...page);
       if (page.length < 1000) break;
     }
+    return out;
   }
 
+  // Six at a time: enough to hide the latency, not so many that a large scope
+  // opens fifty connections at once.
+  const tasks: TaskRow[] = [];
+  for (let i = 0; i < slices.length; i += 6) {
+    const batch = await Promise.all(slices.slice(i, i + 6).map(fetchSlice));
+    for (const page of batch) tasks.push(...page);
+  }
+
+  const assembled = assembleLeads(rows, tasks, pipelineFor);
+
+  // The tiles read the whole set; only the recent arrivals travel to the
+  // browser, newest first -- which is the order the query already returned.
+  const since = Date.now() - DISPLAY_DAYS * 86400000;
+  const recent = assembled.leads.filter((l) => new Date(l.created).getTime() >= since);
 
   return {
-    ...assembleLeads(rows, tasks, pipelineFor),
-    scope: (owners === null ? "all" : "scoped") as "all" | "scoped",
+    ...assembled,
+    leads: recent,
+    summaries: summariseByOwner(assembled.leads),
+    held: assembled.leads.length,
+    scope: emptyScope,
   };
 }
 

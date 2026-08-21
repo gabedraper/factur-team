@@ -18,7 +18,7 @@
   --surface-1: hsl(var(--card));
   --surface-2: hsl(var(--elevated));
   --control: var(--field);
-  --control-border: var(--field-border);
+  --control-border: color-mix(in oklab, hsl(var(--foreground)) 34%, hsl(var(--field)));
   --tl-border: hsl(var(--border));
   --border-strong: hsl(var(--field-border));
   --lane: hsl(var(--tl-border));
@@ -42,6 +42,24 @@
   --st-other:     hsl(var(--muted-foreground));
   --st-unknown:   hsl(var(--tl-border));
 
+  /* The sales team's pipeline gets a colour per Prospecting Lead Status rather
+     than sharing the stage buckets, so a lane reads as the exact value on the
+     record. Cold through selling walks blue -> amber -> orange -> red the way
+     the stage colours do; the endings are separated because "no fit" and
+     "lost" mean different things to whoever is working the list. */
+  --st-pls-cold:          #2f7fd6;
+  --st-pls-warm-sdr:      #d8a412;
+  --st-pls-warm:          #e8952b;
+  --st-pls-selling:       #d33f3f;
+  --st-pls-closing:       #7c56d4;
+  --st-pls-ltfu:          #d95fa8;
+  --st-pls-customer:      #12874a;
+  --st-pls-relationship:  #0f8f8f;
+  --st-pls-lost:          #9a3b3b;
+  --st-pls-nofit-contact: #7b8494;
+  --st-pls-nofit-account: #464f5e;
+  --st-pls-other:         hsl(var(--muted-foreground));
+
   /* Reserved status roles -- never used for a series. */
   --good:     #0ca30c;
   --warning:  #fab219;
@@ -60,6 +78,18 @@
   --st-warm:      #e0b336;
   --st-hot:       #e8615b;
   --st-ltfu:      #ef7fbd;
+
+  --st-pls-cold:          #58a3ef;
+  --st-pls-warm-sdr:      #e0b336;
+  --st-pls-warm:          #f0a44a;
+  --st-pls-selling:       #e8615b;
+  --st-pls-closing:       #a98ae0;
+  --st-pls-ltfu:          #ef7fbd;
+  --st-pls-customer:      #35b96b;
+  --st-pls-relationship:  #2bb3b3;
+  --st-pls-lost:          #c47070;
+  --st-pls-nofit-contact: #98a1b1;
+  --st-pls-nofit-account: #6b7484;
 }
 
 .tl {
@@ -96,7 +126,7 @@
 .tl select, .tl input[type=search], .tl input[type=date] {
   font: inherit; font-size: 13px; padding: 4px 8px;
   background: hsl(var(--control)); color: var(--text-primary);
-  border: 1px solid hsl(var(--control-border)); border-radius: 7px;
+  border: 1px solid var(--control-border); border-radius: 7px;
 }
 .tl input[type=search] { flex: 1 1 130px; min-width: 90px; }
 .tl input[type=date] { min-width: 0; width: 124px; }
@@ -130,7 +160,8 @@
 .tl .stagekey .sw { display: inline-flex; align-items: center; gap: 5px; }
 .tl .stagekey .sw i { width: 15px; height: 3px; border-radius: 2px; display: block; }
 .tl .legend {
-  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center;
+  text-align: center;
   padding: 9px 12px; margin-bottom: var(--stack); font-size: 12px;
   color: var(--text-secondary);
   background: var(--surface-1); border: 1px solid var(--tl-border); border-radius: 10px;

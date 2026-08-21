@@ -23,13 +23,18 @@ export default async function TimelinesViewPage({
   const view = VIEW_BY_SLUG[(await params).view];
   if (!view) notFound();
 
-  const [{ leads, generated, coldAfterDays, scope }, { reps, clients, showRepFilter }, perms] =
-    await Promise.all([getLeads({ limit: 150 }), getFilterOptions(), myPermissions()]);
+  const [
+    { leads, summaries, held, generated, coldAfterDays, scope },
+    { reps, clients, showRepFilter },
+    perms,
+  ] = await Promise.all([getLeads(), getFilterOptions(), myPermissions()]);
 
   return (
     <TimelineBoard
       view={view}
       leads={leads}
+      summaries={summaries}
+      held={held}
       reps={reps}
       clients={clients}
       generated={generated ?? new Date().toISOString()}

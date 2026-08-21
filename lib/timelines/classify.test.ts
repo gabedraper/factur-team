@@ -5,7 +5,8 @@
  * value on the opportunity and every value the change history moves through.
  * If Salesforce gains a new one, this is where it will show up as "other".
  */
-import { prospectingBucket, prospectingOutcomeFor, classify } from "./classify.ts";
+import { readFileSync } from "node:fs";
+import { prospectingBucket, prospectingOutcomeFor, classify, PROSPECTING_KEY } from "./classify.ts";
 
 let failed = 0;
 function check(label: string, got: unknown, want: unknown) {
@@ -14,23 +15,39 @@ function check(label: string, got: unknown, want: unknown) {
   else console.log(`ok   ${label}`);
 }
 
-// value -> lane colour bucket. Every bucket named here has a --st-* colour.
+// value -> its own lane colour. Each status gets one rather than sharing a
+// bucket, so a lane reads as the exact value on the record.
 const buckets: [string, string][] = [
-  ["LTFU", "ltfu"],
-  ["Pipeline - Warm", "warm"],
-  ["Pipeline - Warm SDR", "warm"],
-  ["Pipeline - Cold", "cold"],
-  ["No Fit Ever - Account", "dead"],
-  ["No Fit Ever - Contact", "dead"],
-  ["Lost Follow Up", "dead"],
-  ["Pipeline - Selling", "hot"],
-  ["Closing", "hot"],
-  ["Customer", "generated"],
-  ["Relationship", "other"],
+  ["Pipeline - Cold", "pls-cold"],
+  ["Pipeline - Warm SDR", "pls-warm-sdr"],
+  ["Pipeline - Warm", "pls-warm"],
+  ["Pipeline - Selling", "pls-selling"],
+  ["Closing", "pls-closing"],
+  ["LTFU", "pls-ltfu"],
+  ["Customer", "pls-customer"],
+  ["Relationship", "pls-relationship"],
+  ["Lost Follow Up", "pls-lost"],
+  ["No Fit Ever - Contact", "pls-nofit-contact"],
+  ["No Fit Ever - Account", "pls-nofit-account"],
 ];
 for (const [status, bucket] of buckets) {
   check(`bucket: ${status}`, prospectingBucket(status), bucket);
 }
+
+// "Pipeline - Warm" and "Pipeline - Warm SDR" differ only by a suffix; a loose
+// match on "Warm" would give them the same colour.
+check("near-identical values stay apart",
+  prospectingBucket("Pipeline - Warm") !== prospectingBucket("Pipeline - Warm SDR"), true);
+check("an unknown value does not borrow another status's colour",
+  prospectingBucket("Something New"), "pls-other");
+
+// A colour with no CSS variable behind it draws as nothing at all, which is
+// the failure mode you would not notice until a lane came out blank.
+const css = readFileSync(new URL("../../app/(dashboard)/timelines/timelines.css", import.meta.url), "utf8");
+for (const [, bucket] of [...PROSPECTING_KEY, ["", "pls-other"] as [string, string]]) {
+  check(`--st-${bucket} is defined`, css.includes(`--st-${bucket}:`), true);
+}
+check("the key offers every status", PROSPECTING_KEY.length, buckets.length);
 
 // The label is always the Salesforce value, untouched. What a lead going quiet
 // changes is the colour and which bucket it is counted in, not what it is
