@@ -12,6 +12,9 @@ export function ClientsScreen({
   const [rows, setRows] = useState(clients);
   const [filter, setFilter] = useState("");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
+  // 773 of the 985 clients are Inactive; showing them by default would bury
+  // the ones anybody needs to assign.
+  const [status, setStatus] = useState("current");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -23,12 +26,21 @@ export function ClientsScreen({
     const term = filter.trim().toLowerCase();
     return rows.filter(
       (c) =>
+        (status === "all" ||
+          (status === "current" ? c.status !== "Inactive" : c.status === status)) &&
         (!onlyUnassigned || (!c.team_id && !c.member_id)) &&
         (!term || c.name.toLowerCase().includes(term))
     );
-  }, [rows, filter, onlyUnassigned]);
+  }, [rows, filter, onlyUnassigned, status]);
 
-  const unassigned = rows.filter((c) => !c.team_id && !c.member_id).length;
+  const statuses = useMemo(
+    () => [...new Set(rows.map((c) => c.status).filter(Boolean))].sort() as string[],
+    [rows]
+  );
+
+  const unassigned = rows.filter(
+    (c) => c.status !== "Inactive" && !c.team_id && !c.member_id
+  ).length;
 
   function run(fn: () => Promise<{ success: boolean; error?: string }>, optimistic: () => void) {
     setError("");
@@ -53,6 +65,12 @@ export function ClientsScreen({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
+        <select className="h-8 rounded-md border bg-background px-2 text-sm"
+                value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="current">Current clients</option>
+          <option value="all">All statuses</option>
+          {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
         <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <input type="checkbox" checked={onlyUnassigned}
                  onChange={(e) => setOnlyUnassigned(e.target.checked)} />
@@ -146,7 +164,8 @@ export function ClientsScreen({
 
       <p className="text-xs text-muted-foreground">
         Coverage is set here, not on the pod — a client has exactly one owner, and the pod screen
-        shows what points at it. Amber rows have nobody.
+        shows what points at it. Amber rows have nobody. “Current clients” hides the {" "}
+        {rows.filter((c) => c.status === "Inactive").length} inactive ones.
       </p>
     </div>
   );
