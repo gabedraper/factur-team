@@ -77,10 +77,11 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   }, []);
 
   const perRow = VIEW_WINDOW[view] === null;
-  const H = perRow ? 62 : 54;
+  const H = perRow ? 70 : 62;
   const y = H / 2;
   // Far enough off the line that a glyph clears it rather than sitting on it.
-  const OFFSET = 11;
+  const OFFSET = 15;
+  const LINE_W = 6;
 
   if (!w) return <div ref={host} style={{ height: H }} />;
 
@@ -200,18 +201,22 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
                 x2={px(FIRST_RESPONSE_TARGET_H / 24)} y1={0} y2={H} />
         )}
 
+        {/* A round cap reaches half the stroke width past its endpoint, so at
+            day zero the line would poke out to the left of the arrival marker.
+            Starting it half a width in puts the cap's outer edge exactly on
+            zero, which is where the line should appear to begin. */}
         {segments.map((s, i) => (
-          <line key={`s${i}`} x1={s.x1} x2={s.x2} y1={y} y2={y}
-                stroke={`var(--st-${s.bucket})`} strokeWidth={3} strokeLinecap="round" />
+          <line key={`s${i}`} x1={Math.max(s.x1, LINE_W / 2)} x2={s.x2} y1={y} y2={y}
+                stroke={`var(--st-${s.bucket})`} strokeWidth={LINE_W} strokeLinecap="round" />
         ))}
 
         {/* Every stage change gets a two-tone dot: the colour it left on the
             left half, the colour it entered on the right. */}
         {stageDots.map((d, i) => (
           <g key={`d${i}`}>
-            <path d={`M${d.cx},${y - 5.5} A5.5,5.5 0 0 0 ${d.cx},${y + 5.5} Z`}
+            <path d={`M${d.cx},${y - 7.5} A7.5,7.5 0 0 0 ${d.cx},${y + 7.5} Z`}
                   fill={`var(--st-${d.from.bucket})`} stroke="var(--surface-1)" strokeWidth={1.2} />
-            <path d={`M${d.cx},${y - 5.5} A5.5,5.5 0 0 1 ${d.cx},${y + 5.5} Z`}
+            <path d={`M${d.cx},${y - 7.5} A7.5,7.5 0 0 1 ${d.cx},${y + 7.5} Z`}
                   fill={`var(--st-${d.to.bucket})`} stroke="var(--surface-1)" strokeWidth={1.2} />
             <circle cx={d.cx} cy={y} r={10} fill="transparent" />
             <title>
@@ -231,7 +236,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
         ))}
 
         {/* Lead arrival. */}
-        <line x1={0.5} x2={0.5} y1={y - 11} y2={y + 11} stroke="var(--border-strong)" strokeWidth={2} />
+        <line x1={1} x2={1} y1={y - 14} y2={y + 14} stroke="var(--border-strong)" strokeWidth={2} />
 
         {placed.map(({ ev, x: mx, side }) => {
           const my = y + side * OFFSET;
