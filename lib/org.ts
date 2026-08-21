@@ -281,3 +281,31 @@ export async function visibleOwnerIds(): Promise<string[] | null> {
 
   return ids;
 }
+
+export { CLIENT_ROLE_FIELDS, type ClientRoleField } from "./client-roles";
+
+/** One client with its team and everything Salesforce knows about it. */
+export async function getClientDetail(clientId: string) {
+  const db = createServiceClient();
+
+  const { data: client } = await db
+    .from("org_clients").select("*").eq("id", clientId).maybeSingle();
+  if (!client) return null;
+
+  const row = client as Record<string, unknown> & { salesforce_client_id: string | null };
+
+  const { data: sf } = row.salesforce_client_id
+    ? await db.from("sf_clients_raw").select("*").eq("id", row.salesforce_client_id).maybeSingle()
+    : { data: null };
+
+  // Leads are derived from the reporting line unless overridden, so read them
+  // from the view rather than recomputing here.
+  const { data: team } = await db
+    .from("org_client_team").select("*").eq("client_id", clientId).maybeSingle();
+
+  return {
+    client: row,
+    salesforce: (sf ?? null) as Record<string, unknown> | null,
+    team: (team ?? null) as Record<string, unknown> | null,
+  };
+}

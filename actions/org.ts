@@ -378,3 +378,35 @@ export async function setRolePermission(roleId: string, permissionKey: string, o
   revalidatePath("/settings/roles");
   return { success: true };
 }
+
+/** Set one of a client's support roles, or clear it. */
+export async function setClientRole(
+  clientId: string,
+  field: "account_manager_id" | "sdr_id" | "marketing_strategist_id" | "data_analyst_id" | "data_engineer_id",
+  memberId: string | null
+) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_clients").update({ [field]: memberId }).eq("id", clientId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/settings/clients/${clientId}`);
+  revalidatePath("/settings/clients");
+  return { success: true };
+}
+
+/**
+ * Override a lead, or clear the override so it goes back to following the
+ * reporting line -- which is what null means here, not "nobody".
+ */
+export async function setClientLead(
+  clientId: string,
+  field: "team_lead_id" | "data_team_lead_id",
+  memberId: string | null
+) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_clients").update({ [field]: memberId }).eq("id", clientId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/settings/clients/${clientId}`);
+  return { success: true };
+}

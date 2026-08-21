@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { setClientOwner, setClientService } from "@/actions/org";
 import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
 
@@ -104,7 +105,10 @@ export function ClientsScreen({
             {shown.map((c) => (
               <tr key={c.id} className={`border-b last:border-0 ${!c.team_id && !c.member_id ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                 <td className="px-3 py-2">
-                  <div className="font-medium">{c.name}</div>
+                  <Link href={`/settings/clients/${c.id}`}
+                        className="font-medium hover:underline">
+                    {c.name}
+                  </Link>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{c.status ?? "—"}</td>
                 <td className="px-3 py-2">
