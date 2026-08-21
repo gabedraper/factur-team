@@ -352,12 +352,6 @@ export function TimelineBoard({
                       {!prospecting && <><em>for</em> {lead.client || "—"} · </>}
                       <em>by</em> {lead.rep}
                     </div>
-                    <div className="sub">
-                      <em>arrived</em>{" "}
-                      {new Date(lead.created).toLocaleDateString(undefined, {
-                        day: "numeric", month: "short", year: "numeric",
-                      })}
-                    </div>
                   </div>
                   <div className="lane"><Lane lead={lead} view={view} /></div>
                   <div className="meta">

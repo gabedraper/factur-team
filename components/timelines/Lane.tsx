@@ -102,23 +102,18 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   // line changes -- so the activity marks are what move around them.
   const reserved: number[] = [];
 
-  const segments: { x1: number; x2: number; bucket: string; silent: boolean }[] = [];
+  // The line runs to the last activity and stops. Beyond that there is nothing
+  // to draw, and the empty stretch to the right edge is itself the silence.
+  const segments: { x1: number; x2: number; bucket: string }[] = [];
   const spans: StageSpan[] = lead.stageSpans;
+  const drawnEnd = Math.min(laneEnd, spanDays);
   for (let i = 0; i < spans.length; i++) {
     const from = spans[i].fromHours / 24;
-    if (from >= laneEnd) break;
-    const to = i + 1 < spans.length ? spans[i + 1].fromHours / 24 : laneEnd;
-    const a = Math.max(0, from), b = Math.min(to, laneEnd);
+    if (from >= drawnEnd) break;
+    const to = i + 1 < spans.length ? spans[i + 1].fromHours / 24 : drawnEnd;
+    const a = Math.max(0, from), b = Math.min(to, drawnEnd);
     if (b <= a) continue;
-    // A segment can straddle the last touch, so the live and silent parts are
-    // drawn separately rather than letting one style win the whole span.
-    for (const [s, e, silent] of [
-      [a, Math.min(b, spanDays), false],
-      [Math.max(a, spanDays), b, true],
-    ] as [number, number, boolean][]) {
-      if (e <= s) continue;
-      segments.push({ x1: px(s), x2: px(e), bucket: spans[i].bucket, silent });
-    }
+    segments.push({ x1: px(a), x2: px(b), bucket: spans[i].bucket });
   }
 
   const stageDots: { cx: number; from: StageSpan; to: StageSpan; at: number }[] = [];
@@ -170,12 +165,18 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
       <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`}>
         {ticks.map((d) => (
           <g key={`t${d}`}>
-            <line className="gridline" x1={px(d)} x2={px(d)} y1={perRow ? 14 : 0} y2={H} />
+            <line className="gridline" x1={px(d)} x2={px(d)} y1={14} y2={H} />
             {perRow && d > 0 && (
               <text className="ticktext" x={px(d) + 3} y={11}>{tickLabel(d)}</text>
             )}
           </g>
         ))}
+
+        <text className="ticktext" x={3} y={11}>
+          {new Date(lead.created).toLocaleDateString(undefined, {
+            day: "numeric", month: "short", year: "numeric",
+          })}
+        </text>
 
         {perRow && (
           <text className="ticktext strong" x={w} y={11} textAnchor="end">
@@ -190,9 +191,7 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
 
         {segments.map((s, i) => (
           <line key={`s${i}`} x1={s.x1} x2={s.x2} y1={y} y2={y}
-                stroke={`var(--st-${s.bucket})`} strokeWidth={s.silent ? 2 : 3}
-                strokeLinecap={s.silent ? "butt" : "round"}
-                strokeDasharray={s.silent ? "3 4" : undefined} />
+                stroke={`var(--st-${s.bucket})`} strokeWidth={3} strokeLinecap="round" />
         ))}
 
         {/* Every stage change gets a two-tone dot: the colour it left on the
