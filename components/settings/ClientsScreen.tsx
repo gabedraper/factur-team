@@ -64,12 +64,12 @@ export function ClientsScreen({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="h-8 min-w-56 rounded-md border bg-background px-2 text-sm"
+          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
           placeholder="Search clients…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <select className="h-8 rounded-md border bg-background px-2 text-sm"
+        <select className="h-8 rounded-md border bg-field px-2 text-sm"
                 value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="current">Current clients</option>
           <option value="all">All statuses</option>
@@ -113,7 +113,7 @@ export function ClientsScreen({
                 <td className="px-3 py-2 text-muted-foreground">{c.status ?? "—"}</td>
                 <td className="px-3 py-2">
                   <select
-                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                    className="h-8 rounded-md border bg-field px-2 text-sm"
                     value={c.service_id ?? ""}
                     onChange={(e) => {
                       const next = e.target.value || null;
@@ -129,7 +129,7 @@ export function ClientsScreen({
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    className="h-8 max-w-56 rounded-md border bg-background px-2 text-sm"
+                    className="h-8 max-w-56 rounded-md border bg-field px-2 text-sm"
                     value={ownerValue(c)}
                     onChange={(e) => {
                       const v = e.target.value;

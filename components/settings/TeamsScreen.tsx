@@ -42,7 +42,7 @@ export function TeamsScreen({
         <h2 className="mb-2 text-sm font-medium">New pod</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
-            className="h-8 min-w-48 rounded-md border bg-background px-2 text-sm"
+            className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm"
             placeholder="Pod name"
             value={newPod}
             onChange={(e) => setNewPod(e.target.value)}
@@ -70,7 +70,7 @@ export function TeamsScreen({
           <div key={pod.id} className={`rounded-md border bg-card p-4 space-y-3 ${pod.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                className="h-8 min-w-48 rounded-md border bg-background px-2 text-sm font-medium"
+                className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm font-medium"
                 defaultValue={pod.name}
                 onBlur={(e) => {
                   if (e.target.value.trim() !== pod.name) run(() => renameTeam(pod.id, e.target.value));
@@ -79,7 +79,7 @@ export function TeamsScreen({
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 Manager
                 <select
-                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                  className="h-8 rounded-md border bg-field px-2 text-sm"
                   defaultValue={pod.manager_member_id ?? ""}
                   onChange={(e) => run(() => setPodManager(pod.id, e.target.value || null))}
                 >
@@ -110,7 +110,7 @@ export function TeamsScreen({
                     </div>
                   ))}
                   <select
-                    className="h-7 rounded-md border bg-background px-1.5 text-xs text-muted-foreground"
+                    className="h-7 rounded-md border bg-field px-1.5 text-xs text-muted-foreground"
                     value=""
                     onChange={(e) => { if (e.target.value) run(() => setMemberTeam(e.target.value, pod.id, true)); }}
                   >

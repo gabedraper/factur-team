@@ -45,7 +45,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="h-8 min-w-56 rounded-md border bg-background px-2 text-sm"
+          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
           placeholder="Search name or email…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -88,7 +88,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                   </td>
                   <td className="px-3 py-2">
                     <select
-                      className="h-8 rounded-md border bg-background px-2 text-sm"
+                      className="h-8 rounded-md border bg-field px-2 text-sm"
                       value={roleId}
                       onChange={(e) => {
                         const next = e.target.value || null;
@@ -108,7 +108,7 @@ export function PeopleTable({ members, roles }: { members: MemberRow[]; roles: R
                   </td>
                   <td className="px-3 py-2">
                     <select
-                      className="h-8 max-w-48 rounded-md border bg-background px-2 text-sm"
+                      className="h-8 max-w-48 rounded-md border bg-field px-2 text-sm"
                       value={m.manager_member_id ?? ""}
                       onChange={(e) => {
                         const next = e.target.value || null;

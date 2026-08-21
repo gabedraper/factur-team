@@ -9,9 +9,9 @@ export function MaskedBlurb({ side = "left" }: { side?: "left" | "right" }) {
         isLeft ? "right-full pr-3" : "left-full pl-3"
       }`}
     >
-      <div className="relative w-80 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+      <div className="relative w-80 rounded-md border border-border bg-popover p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
         <div
-          className={`absolute top-8 h-2 w-2 -translate-y-1/2 rotate-45 border-slate-800 bg-slate-900 ${
+          className={`absolute top-8 h-2 w-2 -translate-y-1/2 rotate-45 border-border bg-popover ${
             isLeft ? "-right-1 border-r border-t" : "-left-1 border-b border-l"
           }`}
         />
@@ -19,7 +19,7 @@ export function MaskedBlurb({ side = "left" }: { side?: "left" | "right" }) {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-2 border-t border-slate-800 py-1.5 first:border-t-0"
+            className="flex items-center gap-2 border-t border-border py-1.5 first:border-t-0"
           >
             <span className="h-3 w-12 shrink-0 rounded bg-slate-800" />
             <span className="h-3 w-14 shrink-0 rounded-full bg-slate-800" />

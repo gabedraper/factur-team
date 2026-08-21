@@ -41,7 +41,7 @@ export function ClientDetail({
     value, onChange, placeholder = "— none —",
   }: { value: string; onChange: (v: string | null) => void; placeholder?: string }) => (
     <select
-      className="h-8 w-full max-w-64 rounded-md border bg-background px-2 text-sm"
+      className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
       value={value}
       disabled={pending}
       onChange={(e) => onChange(e.target.value || null)}
@@ -109,7 +109,7 @@ export function ClientDetail({
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">Covered by</span>
             <select
-              className="h-8 w-full max-w-64 rounded-md border bg-background px-2 text-sm"
+              className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
               value={ownerValue}
               disabled={pending}
               onChange={(e) => {
@@ -133,7 +133,7 @@ export function ClientDetail({
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">Service</span>
             <select
-              className="h-8 w-full max-w-64 rounded-md border bg-background px-2 text-sm"
+              className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
               value={String(client.service_id ?? "")}
               disabled={pending}
               onChange={(e) => run(() => setClientService(id, e.target.value || null))}

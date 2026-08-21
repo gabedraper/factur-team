@@ -67,7 +67,7 @@ export function PreviewPanel({
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Preview as role</span>
           <select
-            className="h-8 w-full rounded-md border bg-background px-2 text-sm"
+            className="h-8 w-full rounded-md border bg-field px-2 text-sm"
             value={currentRole ?? ""}
             disabled={pending}
             onChange={(e) => {
@@ -84,7 +84,7 @@ export function PreviewPanel({
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Preview as person</span>
           <select
-            className="h-8 w-full rounded-md border bg-background px-2 text-sm"
+            className="h-8 w-full rounded-md border bg-field px-2 text-sm"
             value={currentMemberId ?? ""}
             disabled={pending}
             onChange={(e) => {

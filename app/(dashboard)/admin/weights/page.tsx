@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { WeightsEditor } from "./WeightsEditor";
 import { HIDDEN_EFFORT_SOURCES, sortByEffortCategory } from "@/lib/scoreboard/effort-weights";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
 export default async function AdminWeightsPage() {
   const supabase = await createClient();
@@ -31,8 +33,11 @@ export default async function AdminWeightsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-1 text-xl font-semibold">Effort Weights</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <Link href="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="h-4 w-4" /> Settings
+      </Link>
+      <h1 className="mb-1 mt-1 text-xl font-semibold">Effort Weights</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
         Points per activity type. Changes apply to the leaderboard on the next
         recompute.
       </p>

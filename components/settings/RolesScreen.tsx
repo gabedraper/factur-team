@@ -55,16 +55,16 @@ export function RolesScreen({
       <section className="rounded-md border bg-card p-4 space-y-2">
         <h2 className="text-sm font-medium">New role</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <input className="h-8 min-w-40 rounded-md border bg-background px-2 text-sm"
+          <input className="h-8 min-w-40 rounded-md border bg-field px-2 text-sm"
                  placeholder="Role name" value={draft.name}
                  onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
-          <select className="h-8 rounded-md border bg-background px-2 text-sm"
+          <select className="h-8 rounded-md border bg-field px-2 text-sm"
                   value={draft.serviceId}
                   onChange={(e) => setDraft((d) => ({ ...d, serviceId: e.target.value }))}>
             <option value="">No service (visibility only)</option>
             {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <input className="h-8 min-w-56 flex-1 rounded-md border bg-background px-2 text-sm"
+          <input className="h-8 min-w-56 flex-1 rounded-md border bg-field px-2 text-sm"
                  placeholder="What is this role? (optional)" value={draft.description}
                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
           <button className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
@@ -87,10 +87,10 @@ export function RolesScreen({
         return (
           <section key={r.id} className={`rounded-md border bg-card p-4 space-y-3 ${r.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
-              <input className="h-8 min-w-40 rounded-md border bg-background px-2 text-sm font-medium"
+              <input className="h-8 min-w-40 rounded-md border bg-field px-2 text-sm font-medium"
                      defaultValue={r.name}
                      onBlur={(e) => { if (e.target.value.trim() !== r.name) run(() => updateRole(r.id, { name: e.target.value })); }} />
-              <select className="h-8 rounded-md border bg-background px-2 text-sm"
+              <select className="h-8 rounded-md border bg-field px-2 text-sm"
                       defaultValue={r.service_id ?? ""}
                       onChange={(e) => run(() => updateRole(r.id, { service_id: e.target.value || null }))}>
                 <option value="">No service</option>

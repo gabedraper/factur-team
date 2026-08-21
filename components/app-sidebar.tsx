@@ -47,11 +47,15 @@ export function AppSidebar({
     }
   }, [groups]);
 
+  // One section open at a time. With three sections and fourteen links, having
+  // them all open pushed the footer off screen -- opening one now closes the
+  // others rather than adding to a pile.
   function toggleGroup(label: string) {
     setShutGroups((shut) => {
-      const next = shut.includes(label)
-        ? shut.filter((l) => l !== label)
-        : [...shut, label];
+      const opening = shut.includes(label);
+      const next = opening
+        ? groups.filter((g) => g.label !== label).map((g) => g.label)
+        : groups.map((g) => g.label);
       localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
       return next;
     });
