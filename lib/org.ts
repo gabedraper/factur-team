@@ -79,6 +79,28 @@ export type MemberRow = {
  * people screen is gated on org.manage in the app, and reading it through the
  * user's own session would hide rows behind RLS mid-edit.
  */
+/**
+ * Salesforce ids of the people whose work is selling Factur's own services --
+ * the BDMs and SDRs. Their opportunities are recorded in Prospecting Lead
+ * Status rather than Stage, so the timeline has to know who they are. The app
+ * roles are the source of truth, not anything read off the Salesforce record.
+ */
+export async function prospectingOwnerIds(): Promise<Set<string>> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("org_assignments")
+    .select("org_roles!inner(slug),org_members!inner(salesforce_user_id)")
+    .in("org_roles.slug", ["bdm", "sdr"]);
+
+  type Row = { org_members: { salesforce_user_id: string | null } | null };
+  const ids = new Set<string>();
+  for (const r of ((data ?? []) as unknown as Row[])) {
+    const id = r.org_members?.salesforce_user_id;
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
 export async function listMembers() {
   const db = createServiceClient();
 

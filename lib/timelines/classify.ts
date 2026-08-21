@@ -92,6 +92,28 @@ export function stageBucket(stage: string | null): string {
   return "other";
 }
 
+/**
+ * The sales team works a different pipeline from the account managers, and
+ * records it in a different field. Prospecting Lead Status has its own
+ * vocabulary, so it needs its own mapping onto the same lane colours -- the
+ * words differ, what they mean about a lead's temperature does not.
+ */
+const PROSPECTING_BUCKETS: [string, RegExp][] = [
+  ["dead", /No Fit Ever|Lost Follow Up/i],
+  ["generated", /Customer/i],
+  ["ltfu", /LTFU/i],
+  ["cold", /Cold/i],
+  ["warm", /Warm/i],
+  ["hot", /Selling|Closing/i],
+];
+
+export function prospectingBucket(status: string | null): string {
+  for (const [name, pattern] of PROSPECTING_BUCKETS) {
+    if (pattern.test(status || "")) return name;
+  }
+  return "other";
+}
+
 // Marks the rep made: the touches follow-up speed is measured on.
 export const REP_TOUCH = new Set<EventKind>(["email_out", "call", "sms", "meeting_invite"]);
 // Marks the prospect made: a live signal the rep is expected to answer.
@@ -141,6 +163,43 @@ export function outcomeFor(
   }
 
   return o("other", stage, "neutral");
+}
+
+/**
+ * The prospecting equivalent of outcomeFor. Falls back to the stage reading
+ * when the status is blank, which happens on a few referral records the sales
+ * team never moved into the prospecting pipeline.
+ */
+export function prospectingOutcomeFor(
+  status: string | null,
+  stage: string,
+  lastEventDays: number | null,
+  referredBy: string | null
+): Outcome {
+  if (!status) return outcomeFor(stage, lastEventDays, referredBy);
+
+  const o = (key: string, label: string, s: string) => ({ key, label, status: s });
+  const cold = lastEventDays !== null && lastEventDays >= COLD_AFTER_DAYS;
+  const quiet = (key: string, label: string, live: string) =>
+    cold ? o("cold", `${label} — gone quiet`, "warning") : o(key, label, live);
+
+  switch (status) {
+    case "Customer":              return o("won", "Customer", "good");
+    case "No Fit Ever - Account": return o("dq_company", "No fit — company", "serious");
+    case "No Fit Ever - Contact": return o("dq_contact", "No fit — contact", "serious");
+    case "Lost Follow Up":        return o("lost", "Lost", "critical");
+    case "LTFU":                  return o("nurture", "Long-term follow up", "warning");
+    case "Relationship":          return o("referred", "Relationship", "neutral");
+    case "Closing":               return quiet("hot", "Closing", "good");
+    case "Pipeline - Selling":    return quiet("hot", "Selling", "good");
+    case "Pipeline - Warm SDR":   return quiet("warm", "Warm (SDR)", "neutral");
+    case "Pipeline - Warm":       return quiet("warm", "Warm", "neutral");
+    case "Pipeline - Cold":
+      return cold
+        ? o("cold", "Cold — no traction", "warning")
+        : o("prospecting", "Cold", "neutral");
+  }
+  return o("other", status, "neutral");
 }
 
 /** Loose key for comparing company names across fields. */

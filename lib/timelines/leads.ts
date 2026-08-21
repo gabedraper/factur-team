@@ -1,8 +1,8 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { visibleOwnerIds } from "@/lib/org";
+import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import { assembleLeads, contactName, type Lead, type LeadRow, type TaskRow } from "./assemble";
 
-export type { Lead, TimelineEvent, StageSpan } from "./assemble";
+export type { Lead, TimelineEvent, StageSpan, Pipeline } from "./assemble";
 export { contactName };
 
 // A rep is identified by their Salesforce user id, never by their name --
@@ -19,7 +19,12 @@ export async function getLeads(filters: LeadFilters = {}) {
   const limit = Math.min(filters.limit ?? 150, 500);
 
   // Reps see their own leads, managers their team's, admins everything.
-  const owners = await visibleOwnerIds();
+  const [owners, prospectors] = await Promise.all([visibleOwnerIds(), prospectingOwnerIds()]);
+
+  // A lead belongs to the prospecting pipeline when its owner's role in the app
+  // says so, rather than anything read off the Salesforce record.
+  const pipelineFor = (row: LeadRow) =>
+    row.ownerid && prospectors.has(row.ownerid) ? ("prospecting" as const) : ("client" as const);
   if (owners !== null && owners.length === 0) {
     // No Salesforce account, so nothing here is theirs. Distinct from "no rows
     // matched": the page needs to say which, or an unlinked person sees a blank
@@ -32,7 +37,8 @@ export async function getLeads(filters: LeadFilters = {}) {
     .select(
       "id,name,stagename,createddate,ownerid,owner_name,accountid,account_name," +
         "account_contact_name__c,contact_title__c,client__r_name,lead_source__c," +
-        "cadence__c,sequence_name__c,lost_reason__c,referred_by_name__c"
+        "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
+        "referred_by_name__c"
     )
     .order("createddate", { ascending: false });
 
@@ -75,7 +81,7 @@ export async function getLeads(filters: LeadFilters = {}) {
 
 
   return {
-    ...assembleLeads(rows, tasks),
+    ...assembleLeads(rows, tasks, pipelineFor),
     scope: (owners === null ? "all" : "scoped") as "all" | "scoped",
   };
 }

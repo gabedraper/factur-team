@@ -33,6 +33,12 @@ const STAGE_KEY: [string, string][] = [
   ["Hot", "hot"], ["LT follow up", "ltfu"], ["DQ", "dead"],
 ];
 
+// The sales team's pipeline uses the same lane colours under its own names.
+const PROSPECTING_KEY: [string, string][] = [
+  ["Cold", "cold"], ["Warm", "warm"], ["Selling / closing", "hot"],
+  ["LTFU", "ltfu"], ["Customer", "generated"], ["No fit / lost", "dead"],
+];
+
 function dur(hours: number | null | undefined): string {
   if (hours === null || hours === undefined) return "—";
   if (hours < 1) return `${Math.round(hours * 60)}m`;
@@ -99,11 +105,34 @@ export function TimelineBoard({
     [leads]
   );
 
+  /*
+   * BDMs and SDRs sell Factur's own services: their progress lives in
+   * Prospecting Lead Status, not Stage, and every one of their opportunities is
+   * for the same client -- "Factur Outsourced Prospecting" -- so a Client
+   * column would repeat one value down the page.
+   *
+   * Which pipeline is on screen follows the rep filter, not the other
+   * controls: it should track *who* is being looked at, and taking the client
+   * filter into account here would be circular, since that filter is one of the
+   * things this decides to show. A mixed set falls back to Stage, the only
+   * field both halves share.
+   */
+  const inScope = useMemo(
+    () => (rep ? leads.filter((l) => l.ownerId === rep) : leads),
+    [leads, rep]
+  );
+  const prospecting = inScope.length > 0 && inScope.every((l) => l.pipeline === "prospecting");
+  const stageLabel = prospecting ? "Lead status" : "Stage";
+  const stageKey = prospecting ? PROSPECTING_KEY : STAGE_KEY;
+
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const out = leads.filter(
       (l) =>
-        (!rep || l.ownerId === rep) && (!client || l.client === client) &&
+        (!rep || l.ownerId === rep) &&
+        // The client picker is hidden in the prospecting pipeline, so a value
+        // left over from before must stop filtering with it.
+        (prospecting || !client || l.client === client) &&
         (!outcome || l.outcomeLabel === outcome) &&
         (!term || l.contact.toLowerCase().includes(term) || (l.account ?? "").toLowerCase().includes(term))
     );
@@ -115,7 +144,7 @@ export function TimelineBoard({
       fewest_touches: (a, b) => a.metrics.touches - b.metrics.touches,
     };
     return [...out].sort(by[sort] ?? by.recent);
-  }, [leads, rep, client, outcome, search, sort]);
+  }, [leads, rep, client, outcome, search, sort, prospecting]);
 
   // Column sorting sits on top of the Sort control: with no column chosen the
   // rows keep whatever order that control asked for. Only the table view has
@@ -206,14 +235,18 @@ export function TimelineBoard({
               </select>
             </>
           )}
-          <label htmlFor="f-client">Client</label>
-          <select id="f-client" value={client} onChange={(e) => setClient(e.target.value)}>
-            <option value="">All clients</option>
-            {clients.map((c) => <option key={c}>{c}</option>)}
-          </select>
-          <label htmlFor="f-outcome">Stage</label>
+          {!prospecting && (
+            <>
+              <label htmlFor="f-client">Client</label>
+              <select id="f-client" value={client} onChange={(e) => setClient(e.target.value)}>
+                <option value="">All clients</option>
+                {clients.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </>
+          )}
+          <label htmlFor="f-outcome">{stageLabel}</label>
           <select id="f-outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-            <option value="">All stages</option>
+            <option value="">{prospecting ? "All lead statuses" : "All stages"}</option>
             {outcomes.map((o) => <option key={o}>{o}</option>)}
           </select>
           <input type="search" placeholder="Search contact or company…" value={search}
@@ -242,7 +275,7 @@ export function TimelineBoard({
           </span>
           <span className="stagekey">
             line:
-            {STAGE_KEY.map(([label, bucket]) => (
+            {stageKey.map(([label, bucket]) => (
               <span className="sw" key={bucket}>
                 <i style={{ background: `var(--st-${bucket})` }} />{label}
               </span>
@@ -270,7 +303,7 @@ export function TimelineBoard({
                   )
                 )}
               </div>
-              <div className="head">{v.goal ? "Against goal" : "Outcome"}</div>
+              <div className="head">{v.goal ? "Against goal" : stageLabel}</div>
             </div>
 
             {rows.length === 0 && (
@@ -310,7 +343,8 @@ export function TimelineBoard({
                       {lead.account}{lead.title && <> · <em>{lead.title}</em></>}
                     </div>
                     <div className="sub">
-                      <em>for</em> {lead.client || "—"} · <em>by</em> {lead.rep}
+                      {!prospecting && <><em>for</em> {lead.client || "—"} · </>}
+                      <em>by</em> {lead.rep}
                     </div>
                     <div className="sub">
                       <em>arrived</em>{" "}
@@ -347,9 +381,9 @@ export function TimelineBoard({
               <thead>
                 <tr>
                   <SortHeader {...sortProps("lead")}>Lead</SortHeader>
-                  <SortHeader {...sortProps("client")}>Client</SortHeader>
+                  {!prospecting && <SortHeader {...sortProps("client")}>Client</SortHeader>}
                   <SortHeader {...sortProps("rep")}>Rep</SortHeader>
-                  <SortHeader {...sortProps("stage")}>Outcome</SortHeader>
+                  <SortHeader {...sortProps("stage")}>{stageLabel}</SortHeader>
                   <SortHeader align="right" {...sortProps("first")}>1st touch</SortHeader>
                   <SortHeader align="right" {...sortProps("reply")}>Reply</SortHeader>
                   <SortHeader align="right" {...sortProps("touches")}>Touches</SortHeader>
@@ -362,7 +396,7 @@ export function TimelineBoard({
                 {tableRows.map((l) => (
                   <tr key={l.id}>
                     <td><a href={l.url} target="_blank" rel="noopener noreferrer">{l.contact}</a></td>
-                    <td>{l.client || "—"}</td>
+                    {!prospecting && <td>{l.client || "—"}</td>}
                     <td>{l.rep}</td>
                     <td>{l.outcomeLabel}</td>
                     <td className="num">{dur(l.metrics.firstTouchHours)}</td>

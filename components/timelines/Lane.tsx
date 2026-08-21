@@ -139,7 +139,10 @@ export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {
   }
 
   // Stage changes are the lane's colour now, so they no longer get a mark.
-  const marks = lead.events.filter((e) => e.kind !== "stage_change");
+  // Whichever change kind drives this pipeline's spans is already drawn as the
+  // two-tone dots on the line, so it is not also drawn as a tick.
+  const spanKind = lead.pipeline === "prospecting" ? "status_change" : "stage_change";
+  const marks = lead.events.filter((e) => e.kind !== spanKind);
   const inWindow = marks.filter((e) => e.hours / 24 <= windowEnd);
   const beyond = marks.length - inWindow.length;
 

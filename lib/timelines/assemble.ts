@@ -1,10 +1,21 @@
 // Pure assembly: rows in, timeline shape out. No Supabase and no request
 // context, so this can be exercised directly against live or fixture rows.
 import {
-  classify, stageBucket, outcomeFor, norm, SEQUENCE_RE,
-  REP_TOUCH, PROSPECT_SIGNAL, DROPPED, COLD_AFTER_DAYS,
+  classify, stageBucket, outcomeFor, prospectingBucket, prospectingOutcomeFor,
+  norm, SEQUENCE_RE, REP_TOUCH, PROSPECT_SIGNAL, DROPPED, COLD_AFTER_DAYS,
   type EventKind,
 } from "./classify";
+
+/**
+ * Two pipelines run through the same Opportunity object.
+ *
+ * Account managers serve clients and record progress in Stage. The sales team
+ * -- BDMs and SDRs -- sell Factur's own services and record progress in
+ * Prospecting Lead Status instead, always against the one client "Factur
+ * Outsourced Prospecting". Same records, different field, different vocabulary,
+ * so the timeline reads whichever one the owner's role says is in use.
+ */
+export type Pipeline = "client" | "prospecting";
 
 export const SF_BASE = "https://factur.lightning.force.com";
 export { COLD_AFTER_DAYS };
@@ -30,6 +41,7 @@ export type Lead = {
   id: string; url: string; name: string; contact: string;
   title: string | null; account: string | null; accountUrl: string | null;
   client: string | null; rep: string | null; ownerId: string | null; source: string;
+  pipeline: Pipeline;
   cadence: string | null; sequence: string | null; created: string;
   stage: string; stageSpans: StageSpan[];
   outcome: string; outcomeLabel: string; status: string;
@@ -50,6 +62,7 @@ export type LeadRow = {
   accountid: string | null; account_name: string | null;
   account_contact_name__c: string | null; contact_title__c: string | null;
   client__r_name: string | null; lead_source__c: string | null;
+  prospecting_lead_status__c: string | null;
   cadence__c: string | null; sequence_name__c: string | null;
   lost_reason__c: string | null; referred_by_name__c: string | null;
 };
@@ -102,10 +115,15 @@ export function contactName(row: LeadRow): string {
   return (row.name || "").trim();
 }
 
-function stageSpans(events: TimelineEvent[], stage: string): StageSpan[] {
-  const changes = events.filter((e) => e.kind === "stage_change");
+function stageSpans(events: TimelineEvent[], stage: string, pipeline: Pipeline): StageSpan[] {
+  // Each pipeline's changes are logged as their own kind of Task, so the lane
+  // is drawn from the history of whichever field that pipeline actually uses.
+  const kind = pipeline === "prospecting" ? "status_change" : "stage_change";
+  const bucketOf = pipeline === "prospecting" ? prospectingBucket : stageBucket;
+
+  const changes = events.filter((e) => e.kind === kind);
   if (!changes.length) {
-    return [{ fromHours: 0, stage, bucket: stageBucket(stage), at: null, actor: null }];
+    return [{ fromHours: 0, stage, bucket: bucketOf(stage), at: null, actor: null }];
   }
   // A stage-change Task records the stage moved *to*, so the stretch before the
   // first one is a stage this export cannot name -- marked unknown, not guessed.
@@ -116,7 +134,7 @@ function stageSpans(events: TimelineEvent[], stage: string): StageSpan[] {
     spans.push({
       fromHours: e.hours,
       stage: e.detail,
-      bucket: stageBucket(e.detail),
+      bucket: bucketOf(e.detail),
       at: e.at,
       actor: e.actor,
     });
@@ -125,7 +143,7 @@ function stageSpans(events: TimelineEvent[], stage: string): StageSpan[] {
 }
 
 
-function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date): Lead {
+function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date, pipeline: Pipeline): Lead {
 
   const created = parseUtc(row.createddate);
   const events: TimelineEvent[] = [];
@@ -184,8 +202,16 @@ function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date): Lead {
       ((now.getTime() - (last ? parseUtc(last.at) : created).getTime()) / 86400000) * 100
     ) / 100;
 
-  const stage = row.stagename || "";
-  const { key, label, status } = outcomeFor(stage, daysSince, row.referred_by_name__c);
+  const stageName = row.stagename || "";
+  // What the lane and the chip are actually about: the field this pipeline
+  // records progress in.
+  const stage =
+    pipeline === "prospecting" ? row.prospecting_lead_status__c || stageName : stageName;
+
+  const { key, label, status } =
+    pipeline === "prospecting"
+      ? prospectingOutcomeFor(row.prospecting_lead_status__c, stageName, daysSince, row.referred_by_name__c)
+      : outcomeFor(stageName, daysSince, row.referred_by_name__c);
 
   return {
     id: row.id,
@@ -200,16 +226,19 @@ function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date): Lead {
     client: row.client__r_name,
     rep: row.owner_name,
     ownerId: row.ownerid,
+    pipeline,
     source: row.lead_source__c || "Unattributed",
     cadence: row.cadence__c,
     sequence: row.sequence_name__c,
     created: row.createddate,
     stage,
-    stageSpans: stageSpans(events, stage),
+    stageSpans: stageSpans(events, stage, pipeline),
     outcome: key,
     outcomeLabel: label,
     status,
-    journey: events.filter((e) => e.kind === "stage_change").map((e) => e.detail),
+    journey: events
+      .filter((e) => e.kind === (pipeline === "prospecting" ? "status_change" : "stage_change"))
+      .map((e) => e.detail),
     referredBy: row.referred_by_name__c,
     lostReason: row.lost_reason__c,
     metrics: {
@@ -237,7 +266,11 @@ function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date): Lead {
   
 }
 
-export function assembleLeads(rows: LeadRow[], tasks: TaskRow[]) {
+export function assembleLeads(
+  rows: LeadRow[],
+  tasks: TaskRow[],
+  pipelineFor: (row: LeadRow) => Pipeline = () => "client"
+) {
   const byOpp = new Map<string, TaskRow[]>();
   for (const t of tasks) {
     const list = byOpp.get(t.whatid);
@@ -252,7 +285,7 @@ export function assembleLeads(rows: LeadRow[], tasks: TaskRow[]) {
     : new Date();
 
   return {
-    leads: rows.map((row) => buildLead(row, byOpp.get(row.id) ?? [], now)),
+    leads: rows.map((row) => buildLead(row, byOpp.get(row.id) ?? [], now, pipelineFor(row))),
     generated: now.toISOString(),
     coldAfterDays: COLD_AFTER_DAYS,
     sfBase: SF_BASE,
