@@ -95,6 +95,14 @@ export default async function DashboardLayout({
 
   const profile = await getProfile(user.id);
 
+  // Signing in with a non-Factur Google account produces a session but no
+  // profile, since handle_new_user only creates one for the allowed domains.
+  // Checked here rather than in middleware, where it cost a database round trip
+  // on every request in the app.
+  if (!profile) {
+    redirect("/unauthorized");
+  }
+
   const actualRole = profile?.role || "learner";
 
   // Read preview role cookie (only honored if user is admin)

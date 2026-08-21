@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LANDING } from "@/lib/landing";
 
+/**
+ * Refreshes the session and turns signed-out visitors away. Nothing else.
+ *
+ * This runs on every request, so each database call is paid on all of them. It
+ * previously also looked up a profile and made two permission calls, which
+ * together timed out on the live site. Those checks live in the pages now,
+ * where they run once per render and can use the service client.
+ */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -36,22 +44,6 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Sign-in with a non-Factur Google account produces a session but no profile
-  // (handle_new_user only creates one for the allowed domains). Send those
-  // straight out rather than letting them bounce around the dashboard.
-  if (user && !pathname.startsWith("/unauthorized")) {
-    const { data: hasProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (!hasProfile) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(new URL("/unauthorized", request.url));
-    }
-  }
-
   const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard", "/timelines", "/settings"];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
@@ -61,17 +53,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Training administration is granted through the roles in Settings. The check
-  // runs against the org model rather than profiles.role so there is one answer
-  // to "what may this person do".
-  if (user && pathname.startsWith("/admin")) {
-    const { data: allowed } = await supabase.rpc("has_permission", { p_key: "lms.admin" });
-    const { data: manages } = await supabase.rpc("has_permission", { p_key: "org.manage" });
-    if (!allowed && !manages) {
-      return NextResponse.redirect(new URL("/learner", request.url));
-    }
   }
 
   // If logged in and hitting auth pages, redirect to appropriate dashboard
