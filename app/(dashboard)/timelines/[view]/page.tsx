@@ -22,7 +22,7 @@ export default async function TimelinesViewPage({
   const view = VIEW_BY_SLUG[params.view];
   if (!view) notFound();
 
-  const [{ leads, generated, coldAfterDays }, { reps, clients }] = await Promise.all([
+  const [{ leads, generated, coldAfterDays }, { reps, clients, showRepFilter }] = await Promise.all([
     getLeads({ limit: 150 }),
     getFilterOptions(),
   ]);
@@ -35,6 +35,7 @@ export default async function TimelinesViewPage({
       clients={clients}
       generated={generated ?? new Date().toISOString()}
       coldAfterDays={coldAfterDays}
+      showRepFilter={showRepFilter}
     />
   );
 }

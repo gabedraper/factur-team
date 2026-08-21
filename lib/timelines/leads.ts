@@ -70,22 +70,40 @@ export async function getLeads(filters: LeadFilters = {}) {
   return assembleLeads(rows, tasks);
 }
 
-/** Distinct values for the filter dropdowns, cheap enough to run every load. */
+/**
+ * Values for the filter dropdowns, scoped the same way the leads are.
+ *
+ * Offering a client nobody can see leads for is a dead end, and worse, it leaks
+ * the client list to someone whose own leads never mention them.
+ *
+ * showRepFilter is false for anyone who only sees their own leads -- filtering
+ * by rep when every row is yours does nothing.
+ */
 export async function getFilterOptions() {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("sf_opp_leads_raw")
-    .select("owner_name,client__r_name")
-    .limit(6000);
+  const supabase = await createClient();
+  const owners = await visibleOwnerIds();
+
+  if (owners !== null && owners.length === 0) {
+    return { reps: [] as string[], clients: [] as string[], showRepFilter: false };
+  }
+
+  let query = supabase.from("sf_opp_leads_raw").select("owner_name,client__r_name").limit(6000);
+  if (owners !== null) query = query.in("ownerid", owners);
+
+  const { data } = await query;
   const reps = new Set<string>();
   const clients = new Set<string>();
   for (const r of (data ?? []) as { owner_name: string | null; client__r_name: string | null }[]) {
     if (r.owner_name) reps.add(r.owner_name);
     if (r.client__r_name) clients.add(r.client__r_name);
   }
+
   // localeCompare so accented names sort where a reader expects, not by byte.
   return {
     reps: [...reps].sort((a, b) => a.localeCompare(b)),
     clients: [...clients].sort((a, b) => a.localeCompare(b)),
+    // More than one visible owner means a manager or wider; exactly one means
+    // every row is already theirs.
+    showRepFilter: owners === null || owners.length > 1,
   };
 }

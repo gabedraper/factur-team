@@ -77,9 +77,11 @@ function verdictFor(view: ViewKey, l: Lead) {
 
 export function TimelineBoard({
   view, leads, reps, clients, generated, coldAfterDays = 14, total,
+  showRepFilter = true,
 }: {
   view: ViewKey; leads: Lead[]; reps: string[]; clients: string[];
   generated: string; coldAfterDays?: number; total?: number;
+  showRepFilter?: boolean;
 }) {
   const [rep, setRep] = useState("");
   const [client, setClient] = useState("");
@@ -174,11 +176,15 @@ export function TimelineBoard({
         </div>
 
         <div className="controls">
-          <label htmlFor="f-rep">Rep</label>
-          <select id="f-rep" value={rep} onChange={(e) => setRep(e.target.value)}>
-            <option value="">All reps</option>
-            {reps.map((r) => <option key={r}>{r}</option>)}
-          </select>
+          {showRepFilter && (
+            <>
+              <label htmlFor="f-rep">Rep</label>
+              <select id="f-rep" value={rep} onChange={(e) => setRep(e.target.value)}>
+                <option value="">All reps</option>
+                {reps.map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </>
+          )}
           <label htmlFor="f-client">Client</label>
           <select id="f-client" value={client} onChange={(e) => setClient(e.target.value)}>
             <option value="">All clients</option>
