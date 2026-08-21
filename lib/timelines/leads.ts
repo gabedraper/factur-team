@@ -1,9 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds } from "@/lib/org";
 import { assembleLeads, contactName, type Lead, type LeadRow, type TaskRow } from "./assemble";
 
 export type { Lead, TimelineEvent, StageSpan } from "./assemble";
 export { contactName };
+
+// A rep is identified by their Salesforce user id, never by their name --
+// see getFilterOptions below.
+export type RepOption = { id: string; name: string };
 
 export type LeadFilters = {
   rep?: string; client?: string; outcome?: string; search?: string;
@@ -33,7 +37,7 @@ export async function getLeads(filters: LeadFilters = {}) {
     .order("createddate", { ascending: false });
 
   if (owners !== null) query = query.in("ownerid", owners);
-  if (filters.rep) query = query.eq("owner_name", filters.rep);
+  if (filters.rep) query = query.eq("ownerid", filters.rep);
   if (filters.client) query = query.eq("client__r_name", filters.client);
   if (filters.arrivedDays) {
     const since = new Date(Date.now() - filters.arrivedDays * 86400000);
@@ -86,27 +90,47 @@ export async function getLeads(filters: LeadFilters = {}) {
  * by rep when every row is yours does nothing.
  */
 export async function getFilterOptions() {
-  const supabase = await createClient();
   const owners = await visibleOwnerIds();
 
   if (owners !== null && owners.length === 0) {
-    return { reps: [] as string[], clients: [] as string[], showRepFilter: false };
+    return { reps: [] as RepOption[], clients: [] as string[], showRepFilter: false };
   }
 
-  let query = supabase.from("sf_opp_leads_raw").select("owner_name,client__r_name").limit(6000);
-  if (owners !== null) query = query.in("ownerid", owners);
+  const db = createServiceClient();
 
-  const { data } = await query;
-  const reps = new Set<string>();
+  // Reps come from the people in the app, not from whoever happens to own a
+  // lead this month. That means someone with no current leads still appears --
+  // filtering to them and finding nothing is a real answer -- and a name spelled
+  // two ways in Salesforce cannot split one person into two entries, because
+  // the match is on their Salesforce id.
+  let people = db
+    .from("org_members")
+    .select("full_name,email,salesforce_user_id")
+    .eq("active", true)
+    .not("salesforce_user_id", "is", null)
+    .order("full_name");
+  if (owners !== null) people = people.in("salesforce_user_id", owners);
+
+  const { data: members } = await people;
+  const reps: RepOption[] = ((members ?? []) as {
+    full_name: string | null; email: string; salesforce_user_id: string;
+  }[]).map((m) => ({ id: m.salesforce_user_id, name: m.full_name ?? m.email }));
+
+  // Clients still come from the leads: a client with nothing to show is not a
+  // useful filter, and the list is only meaningful in terms of the visible rows.
+  const supabase = await createClient();
+  let leadQuery = supabase.from("sf_opp_leads_raw").select("client__r_name").limit(6000);
+  if (owners !== null) leadQuery = leadQuery.in("ownerid", owners);
+  const { data } = await leadQuery;
+
   const clients = new Set<string>();
-  for (const r of (data ?? []) as { owner_name: string | null; client__r_name: string | null }[]) {
-    if (r.owner_name) reps.add(r.owner_name);
+  for (const r of (data ?? []) as { client__r_name: string | null }[]) {
     if (r.client__r_name) clients.add(r.client__r_name);
   }
 
   // localeCompare so accented names sort where a reader expects, not by byte.
   return {
-    reps: [...reps].sort((a, b) => a.localeCompare(b)),
+    reps: reps.sort((a, b) => a.name.localeCompare(b.name)),
     clients: [...clients].sort((a, b) => a.localeCompare(b)),
     // More than one visible owner means a manager or wider; exactly one means
     // every row is already theirs.

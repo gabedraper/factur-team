@@ -79,7 +79,7 @@ export function TimelineBoard({
   view, leads, reps, clients, generated, coldAfterDays = 14, total,
   showRepFilter = true, scope = "all", canManageOrg = false,
 }: {
-  view: ViewKey; leads: Lead[]; reps: string[]; clients: string[];
+  view: ViewKey; leads: Lead[]; reps: { id: string; name: string }[]; clients: string[];
   generated: string; coldAfterDays?: number; total?: number;
   showRepFilter?: boolean;
   scope?: "all" | "scoped" | "unlinked";
@@ -102,7 +102,7 @@ export function TimelineBoard({
     const term = search.trim().toLowerCase();
     const out = leads.filter(
       (l) =>
-        (!rep || l.rep === rep) && (!client || l.client === client) &&
+        (!rep || l.ownerId === rep) && (!client || l.client === client) &&
         (!outcome || l.outcomeLabel === outcome) &&
         (!term || l.contact.toLowerCase().includes(term) || (l.account ?? "").toLowerCase().includes(term))
     );
@@ -183,7 +183,7 @@ export function TimelineBoard({
               <label htmlFor="f-rep">Rep</label>
               <select id="f-rep" value={rep} onChange={(e) => setRep(e.target.value)}>
                 <option value="">All reps</option>
-                {reps.map((r) => <option key={r}>{r}</option>)}
+                {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </>
           )}

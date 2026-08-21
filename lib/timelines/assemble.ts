@@ -29,7 +29,7 @@ export type StageSpan = {
 export type Lead = {
   id: string; url: string; name: string; contact: string;
   title: string | null; account: string | null; accountUrl: string | null;
-  client: string | null; rep: string | null; source: string;
+  client: string | null; rep: string | null; ownerId: string | null; source: string;
   cadence: string | null; sequence: string | null; created: string;
   stage: string; stageSpans: StageSpan[];
   outcome: string; outcomeLabel: string; status: string;
@@ -199,6 +199,7 @@ function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date): Lead {
       : null,
     client: row.client__r_name,
     rep: row.owner_name,
+    ownerId: row.ownerid,
     source: row.lead_source__c || "Unattributed",
     cadence: row.cadence__c,
     sequence: row.sequence_name__c,
