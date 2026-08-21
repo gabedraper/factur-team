@@ -224,3 +224,8 @@
 .tl .row:hover { background: color-mix(in oklab, var(--text-primary) 8%, transparent); }
 .tl .axis { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }
 .tl th { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }
+
+/* The empty state now explains itself rather than saying "no rows", so it needs
+   room to read as a sentence. */
+.tl .empty { max-width: 34rem; margin: 0 auto; line-height: 1.5; }
+.tl .empty b { color: var(--text-primary); }

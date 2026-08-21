@@ -77,11 +77,13 @@ function verdictFor(view: ViewKey, l: Lead) {
 
 export function TimelineBoard({
   view, leads, reps, clients, generated, coldAfterDays = 14, total,
-  showRepFilter = true,
+  showRepFilter = true, scope = "all", canManageOrg = false,
 }: {
   view: ViewKey; leads: Lead[]; reps: string[]; clients: string[];
   generated: string; coldAfterDays?: number; total?: number;
   showRepFilter?: boolean;
+  scope?: "all" | "scoped" | "unlinked";
+  canManageOrg?: boolean;
 }) {
   const [rep, setRep] = useState("");
   const [client, setClient] = useState("");
@@ -252,7 +254,31 @@ export function TimelineBoard({
               <div className="head">{v.goal ? "Against goal" : "Outcome"}</div>
             </div>
 
-            {rows.length === 0 && <div className="empty">No leads match these filters.</div>}
+            {rows.length === 0 && (
+              <div className="empty">
+                {scope === "unlinked" ? (
+                  <>
+                    <p><b>Your account isn&apos;t linked to Salesforce yet.</b></p>
+                    <p className="mt-1">
+                      Leads are attributed through Salesforce, so until yours is linked there is
+                      nothing here to show — this isn&apos;t a fault.{" "}
+                      {canManageOrg
+                        ? "Link it under Settings → Salesforce accounts."
+                        : "Ask an administrator to link it under Settings → Salesforce accounts."}
+                    </p>
+                  </>
+                ) : leads.length === 0 ? (
+                  <>
+                    <p><b>No leads are assigned to you.</b></p>
+                    <p className="mt-1">
+                      Opportunities created in the last 30 days and owned by you appear here.
+                    </p>
+                  </>
+                ) : (
+                  "No leads match these filters."
+                )}
+              </div>
+            )}
 
             {rows.map((lead) => {
               const verdict = verdictFor(view, lead);

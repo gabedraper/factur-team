@@ -17,7 +17,10 @@ export async function getLeads(filters: LeadFilters = {}) {
   // Reps see their own leads, managers their team's, admins everything.
   const owners = await visibleOwnerIds();
   if (owners !== null && owners.length === 0) {
-    return assembleLeads([], []);
+    // No Salesforce account, so nothing here is theirs. Distinct from "no rows
+    // matched": the page needs to say which, or an unlinked person sees a blank
+    // table and reasonably concludes it is broken.
+    return { ...assembleLeads([], []), scope: "unlinked" as const };
   }
 
   let query = supabase
@@ -44,7 +47,7 @@ export async function getLeads(filters: LeadFilters = {}) {
   const { data: leadRows, error } = await query.limit(limit);
   if (error) throw new Error(`leads query failed: ${error.message}`);
   const rows = (leadRows ?? []) as unknown as LeadRow[];
-  if (!rows.length) return assembleLeads([], []);
+  if (!rows.length) return { ...assembleLeads([], []), scope: (owners === null ? "all" : "scoped") as "all" | "scoped" };
 
   // Only the visible leads' activity is fetched. Supabase caps a response at
   // 1000 rows, so both the id filter and the result set are walked in chunks.
@@ -67,7 +70,10 @@ export async function getLeads(filters: LeadFilters = {}) {
   }
 
 
-  return assembleLeads(rows, tasks);
+  return {
+    ...assembleLeads(rows, tasks),
+    scope: (owners === null ? "all" : "scoped") as "all" | "scoped",
+  };
 }
 
 /**
