@@ -4,6 +4,7 @@ import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
   DISPLAY_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
+import { parseUtc } from "./business-day";
 
 export type { Lead, TimelineEvent, StageSpan, Pipeline, RepSummary } from "./assemble";
 export { ALL_REPS, DISPLAY_DAYS };
@@ -115,7 +116,7 @@ export async function getLeads(filters: LeadFilters = {}) {
   // The tiles read the whole set; only the recent arrivals travel to the
   // browser, newest first -- which is the order the query already returned.
   const since = Date.now() - DISPLAY_DAYS * 86400000;
-  const recent = assembled.leads.filter((l) => new Date(l.created).getTime() >= since);
+  const recent = assembled.leads.filter((l) => parseUtc(l.created).getTime() >= since);
 
   return {
     ...assembled,

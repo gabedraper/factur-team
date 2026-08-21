@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Lead, StageSpan } from "@/lib/timelines/leads";
 import { Mark, markSide, markSentence } from "./marks";
 import { DEAD_BUCKETS, FIRST_RESPONSE_TARGET_H } from "@/lib/timelines/classify";
-import { hoursUntilEndOfDay } from "@/lib/timelines/business-day";
+import { hoursUntilEndOfDay, formatBusinessDateTime as fmtDateTime } from "@/lib/timelines/business-day";
 
 export type ViewKey = "quick" | "week" | "life";
 
@@ -60,8 +60,7 @@ function spanLabel(days: number): string {
   return `${Math.round(days / 30.4)} months`;
 }
 
-const fmtDateTime = (d: string) =>
-  new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
 
 
 export function Lane({ lead, view }: { lead: Lead; view: ViewKey }) {

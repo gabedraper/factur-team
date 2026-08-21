@@ -1,5 +1,5 @@
 /** node --experimental-strip-types lib/timelines/business-day.test.ts */
-import { hoursUntilEndOfDay } from "./business-day.ts";
+import { hoursUntilEndOfDay, parseUtc, formatBusinessDateTime, formatBusinessDate } from "./business-day.ts";
 
 let failed = 0;
 function check(label: string, got: unknown, want: unknown) {
@@ -8,6 +8,32 @@ function check(label: string, got: unknown, want: unknown) {
   } else console.log(`ok   ${label}`);
 }
 const round = (v: number | null) => (v === null ? null : Math.round(v * 100) / 100);
+
+/*
+ * The bug this all exists for: Coupler stores UTC in a column with no zone, so
+ * the value arrives as "2026-08-21 23:00:26". Plain `new Date` on that reads it
+ * as the *reader's* local time, which in Central dated every activity five
+ * hours into the future -- an email "sent" at 8:14 PM when it was 6:44 PM.
+ */
+check("a bare timestamp is read as UTC",
+  parseUtc("2026-08-21 23:00:26").toISOString(), "2026-08-21T23:00:26.000Z");
+check("with a T separator too",
+  parseUtc("2026-08-21T23:00:26").toISOString(), "2026-08-21T23:00:26.000Z");
+check("an explicit Z is left alone",
+  parseUtc("2026-08-21T23:00:26Z").toISOString(), "2026-08-21T23:00:26.000Z");
+check("an explicit offset is left alone",
+  parseUtc("2026-08-21T18:00:26-05:00").toISOString(), "2026-08-21T23:00:26.000Z");
+
+// The screenshot that started this: 23:00 UTC is 6:00 PM Central, not 11:00 PM.
+check("shown in company time, not the reader's",
+  formatBusinessDateTime("2026-08-21 23:00:26"), "Aug 21, 6:00 PM");
+check("winter, when Central is an hour further from UTC",
+  formatBusinessDateTime("2026-01-21 23:00:26"), "Jan 21, 5:00 PM");
+// Late UTC is still the previous day in Central -- the date has to move too.
+check("a UTC timestamp after midnight is still the day before in Central",
+  formatBusinessDate("2026-08-22T03:00:00Z"), "Aug 21, 2026");
+check("bad input formats to nothing rather than 'Invalid Date'",
+  formatBusinessDateTime("not a date"), "");
 
 // Summer: Chicago is UTC-5 (CDT). 14:00Z is 9am there, eight hours to 5pm.
 check("summer morning", round(hoursUntilEndOfDay("2026-08-21T14:00:00Z")), 8);

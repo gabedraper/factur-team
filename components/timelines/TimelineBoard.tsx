@@ -5,6 +5,7 @@ import type { Lead } from "@/lib/timelines/leads";
 import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { PROSPECTING_KEY } from "@/lib/timelines/classify";
+import { formatBusinessDate, formatBusinessDateTime } from "@/lib/timelines/business-day";
 import { ALL_REPS, DISPLAY_DAYS, type RepSummary } from "@/lib/timelines/assemble";
 
 
@@ -335,9 +336,7 @@ export function TimelineBoard({
                     </div>
                     <div className="sub">
                       <em>arrived</em>{" "}
-                      {new Date(lead.created).toLocaleDateString(undefined, {
-                        day: "numeric", month: "short", year: "numeric",
-                      })}
+                      {formatBusinessDate(lead.created)}
                     </div>
                   </div>
                   <div className="lane"><Lane lead={lead} view={view} /></div>
@@ -401,7 +400,7 @@ export function TimelineBoard({
 
         <p className="foot">
           {rows.length} of {total ?? leads.length} leads · {v.label}
-          {v.goal && <> — goal: {v.goal}</>} · data through {new Date(generated).toLocaleString()}
+          {v.goal && <> — goal: {v.goal}</>} · data through {formatBusinessDateTime(generated)} CT
         </p>
       </div>
     </div>

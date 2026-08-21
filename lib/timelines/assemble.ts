@@ -6,6 +6,7 @@ import {
   FIRST_RESPONSE_TARGET_H, type EventKind,
 } from "./classify";
 import { median } from "./stats";
+import { parseUtc } from "./business-day";
 
 /**
  * Two pipelines run through the same Opportunity object.
@@ -21,12 +22,6 @@ export type Pipeline = "client" | "prospecting";
 export const SF_BASE = "https://factur.lightning.force.com";
 export { COLD_AFTER_DAYS };
 
-// Coupler writes `timestamp without time zone` holding UTC. Postgres hands
-// those back with no zone, which Date would read as local time -- an offset
-// large enough to move events across day boundaries in the week view.
-function parseUtc(value: string): Date {
-  return new Date(/[Zz]|[+-]\d{2}:?\d{2}$/.test(value) ? value : value + "Z");
-}
 
 export type TimelineEvent = {
   id: string; kind: EventKind; detail: string; at: string;

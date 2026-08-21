@@ -1,9 +1,41 @@
 /**
- * Where the working day ends, for judging whether a first touch was same-day.
- * No imports, so it can be run on its own.
+ * Reading Salesforce timestamps, and where the working day ends. No imports, so
+ * it can be run on its own.
  */
 export const END_OF_DAY_HOUR = 17;
+
+/** Everything is shown in the company's own time, not the reader's. */
 export const BUSINESS_TZ = "America/Chicago";
+
+/**
+ * Coupler writes `timestamp without time zone` holding UTC, so the values come
+ * back as "2026-08-21 23:00:26" with nothing to say which zone that is -- and
+ * `new Date` on a bare timestamp reads it as the *reader's* local time. In
+ * Central that dated every activity five hours into the future, which is how it
+ * surfaced: an email "sent" at 8:14 PM when it was only 6:44 PM.
+ */
+export function parseUtc(value: string): Date {
+  return new Date(/[Zz]|[+-]\d{2}:?\d{2}$/.test(value) ? value : value.replace(" ", "T") + "Z");
+}
+
+/** "Aug 21, 3:14 PM" in company time. */
+export function formatBusinessDateTime(value: string): string {
+  const when = parseUtc(value);
+  if (Number.isNaN(when.getTime())) return "";
+  return when.toLocaleString("en-US", {
+    timeZone: BUSINESS_TZ, month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+}
+
+/** "Aug 21, 2026" in company time. */
+export function formatBusinessDate(value: string): string {
+  const when = parseUtc(value);
+  if (Number.isNaN(when.getTime())) return "";
+  return when.toLocaleDateString("en-US", {
+    timeZone: BUSINESS_TZ, day: "numeric", month: "short", year: "numeric",
+  });
+}
 
 /**
  * Hours from a lead arriving until 5pm Central that same day.
@@ -20,7 +52,7 @@ export function hoursUntilEndOfDay(created: string): number | null {
   // formatToParts throws on an invalid date rather than returning nonsense, and
   // this runs inside the lane drawing -- one bad timestamp would take the whole
   // board down instead of costing one line.
-  const when = new Date(created);
+  const when = parseUtc(created);
   if (Number.isNaN(when.getTime())) return null;
 
   const parts = new Intl.DateTimeFormat("en-US", {
