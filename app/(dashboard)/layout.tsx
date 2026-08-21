@@ -29,7 +29,8 @@ import { getRoleLabel } from "@/lib/roles";
 import { BugReportWidget } from "@/components/bug-report-widget";
 import { AppSidebar, type NavGroup } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
-import { previewedMember } from "@/lib/org";
+import { MaintenanceAlert } from "@/components/maintenance-alert";
+import { previewedMember, myPermissions } from "@/lib/org";
 
 function getNavGroups(role: string): NavGroup[] {
   const scoreboard: NavGroup = {
@@ -115,6 +116,7 @@ export default async function DashboardLayout({
   // Previewing a person changes who the app answers as; the identity block and
   // the banner have to say so or it looks like the app is just misbehaving.
   const previewing = await previewedMember();
+  const perms = await myPermissions();
   const navGroups = getNavGroups(actualRole === "admin" && !previewRole ? "admin" : role);
   const homeHref = actualRole === "admin" && !previewRole ? "/admin" : "/learner";
 
@@ -172,6 +174,7 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="flex flex-1 flex-col overflow-auto">
+        <MaintenanceAlert canSee={perms.has("org.manage")} />
         {(previewing || previewRole) && (
           <PreviewBanner
             as={previewing ? (previewing.full_name ?? previewing.email) : getRoleLabel(previewRole!)}

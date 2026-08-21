@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { createRole, updateRole, deleteRole, setRolePermission } from "@/actions/org";
 import type { RoleDetail } from "@/lib/org";
 
 type Service = { id: string; name: string };
-type Perm = { key: string; name: string; description: string | null };
+type Perm = {
+  key: string; name: string; description: string | null;
+  category: string; position: number;
+};
+
+// Mirrors the order of the sidebar, so the roles screen reads like the app
+// rather than like the database.
+const CATEGORY_ORDER = ["Learn", "Scoreboard", "Timelines", "Administration"];
 
 export function RolesScreen({
   roles, permissions, services,
@@ -13,6 +20,21 @@ export function RolesScreen({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [draft, setDraft] = useState({ name: "", serviceId: "", description: "" });
+
+  const grouped = useMemo(() => {
+    const byCategory = new Map<string, Perm[]>();
+    for (const p of permissions) {
+      byCategory.set(p.category, [...(byCategory.get(p.category) ?? []), p]);
+    }
+    // Anything with an unrecognised category still shows, after the known ones,
+    // rather than silently disappearing from the screen.
+    const known = CATEGORY_ORDER.filter((c) => byCategory.has(c));
+    const rest = [...byCategory.keys()].filter((c) => !CATEGORY_ORDER.includes(c)).sort();
+    return [...known, ...rest].map((c) => ({
+      category: c,
+      perms: (byCategory.get(c) ?? []).sort((a, b) => a.position - b.position),
+    }));
+  }, [permissions]);
 
   function run(fn: () => Promise<{ success: boolean; error?: string }>) {
     setError("");
@@ -92,14 +114,24 @@ export function RolesScreen({
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-              {permissions.map((p) => (
-                <label key={p.key} className="flex items-center gap-1.5 text-sm" title={p.description ?? undefined}>
-                  <input type="checkbox"
-                         defaultChecked={r.permissionKeys.includes(p.key)}
-                         onChange={(e) => run(() => setRolePermission(r.id, p.key, e.target.checked))} />
-                  {p.name}
-                </label>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {grouped.map(({ category, perms }) => (
+                <div key={category}>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {category}
+                  </p>
+                  <div className="space-y-1">
+                    {perms.map((p) => (
+                      <label key={p.key} className="flex items-start gap-1.5 text-sm"
+                             title={p.description ?? undefined}>
+                        <input type="checkbox" className="mt-0.5"
+                               defaultChecked={r.permissionKeys.includes(p.key)}
+                               onChange={(e) => run(() => setRolePermission(r.id, p.key, e.target.checked))} />
+                        <span>{p.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </section>

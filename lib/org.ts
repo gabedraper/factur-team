@@ -179,7 +179,7 @@ export async function listRolesAndPermissions() {
   const [{ data: roles }, { data: perms }, { data: rolePerms }, { data: assignments }] =
     await Promise.all([
       db.from("org_roles").select("id,slug,name,description,service_id,active").order("name"),
-      db.from("org_permissions").select("key,name,description").order("key"),
+      db.from("org_permissions").select("key,name,description,category,position").order("position"),
       db.from("org_role_permissions").select("role_id,permission_key"),
       db.from("org_assignments").select("role_id"),
     ]);
@@ -199,7 +199,10 @@ export async function listRolesAndPermissions() {
       permissionKeys: byRole.get(r.id) ?? [],
       holders: holders.get(r.id) ?? 0,
     })),
-    permissions: (perms ?? []) as { key: string; name: string; description: string | null }[],
+    permissions: (perms ?? []) as {
+      key: string; name: string; description: string | null;
+      category: string; position: number;
+    }[],
   };
 }
 
@@ -308,4 +311,26 @@ export async function getClientDetail(clientId: string) {
     salesforce: (sf ?? null) as Record<string, unknown> | null,
     team: (team ?? null) as Record<string, unknown> | null,
   };
+}
+
+export type MaintenanceHealth = {
+  healthy: boolean;
+  last_success: string | null;
+  last_failure: string | null;
+  consecutive_failures: number;
+  hours_since_success: number | null;
+  newest_activity: string | null;
+  problem: string | null;
+};
+
+/**
+ * Whether the hourly job is working. Only worth showing to people who can act
+ * on it, so callers gate on org.manage.
+ */
+export async function maintenanceHealth(): Promise<MaintenanceHealth | null> {
+  const db = createServiceClient();
+  const { data, error } = await db.rpc("maintenance_health");
+  if (error) return null;
+  const row = (data as MaintenanceHealth[] | null)?.[0];
+  return row ?? null;
 }
