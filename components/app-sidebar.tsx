@@ -6,7 +6,6 @@ import { ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings } fr
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const STORAGE_KEY = "factur-nav-collapsed";
 const GROUPS_KEY = "factur-nav-groups";
@@ -173,10 +172,6 @@ export function AppSidebar({
         {profile}
 
         {!collapsed && footer}
-
-        <div className="p-3 pt-0">
-          <ThemeToggle collapsed={collapsed} />
-        </div>
       </div>
     </aside>
   );

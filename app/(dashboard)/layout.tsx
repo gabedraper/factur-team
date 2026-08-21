@@ -26,7 +26,6 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
-import { RolePreviewSelector } from "@/components/role-preview-selector";
 import { BugReportWidget } from "@/components/bug-report-widget";
 import { AppSidebar, type NavGroup } from "@/components/app-sidebar";
 
@@ -145,12 +144,6 @@ export default async function DashboardLayout({
         }
         footer={
           <>
-            {actualRole === "admin" && (
-              <>
-                <Separator className="mx-3" />
-                <RolePreviewSelector currentPreviewRole={previewRole} />
-              </>
-            )}
             <div className="p-3 pb-0">
               <Separator className="mb-3" />
               <BugReportWidget />

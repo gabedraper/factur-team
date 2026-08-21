@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export type Permission =
@@ -9,15 +10,12 @@ export type Permission =
  * usually need to ask about several at once (a page that shows an admin tab and
  * an unmasked column would otherwise query twice).
  */
-export async function myPermissions(): Promise<Set<Permission>> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Set();
-
-  const { data } = await supabase
+async function permissionsForMember(column: "auth_user_id" | "id", value: string) {
+  const db = createServiceClient();
+  const { data } = await db
     .from("org_members")
     .select("org_assignments(org_roles(org_role_permissions(permission_key)))")
-    .eq("auth_user_id", user.id)
+    .eq(column, value)
     .maybeSingle();
 
   const keys = new Set<Permission>();
@@ -28,6 +26,30 @@ export async function myPermissions(): Promise<Set<Permission>> {
     }
   }
   return keys;
+}
+
+/** What the signed-in person actually holds, ignoring any preview. */
+export async function myRealPermissions(): Promise<Set<Permission>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+  return permissionsForMember("auth_user_id", user.id);
+}
+
+/** Who the app should behave as: normally you, or someone you are previewing. */
+export async function previewedMemberId(): Promise<string | null> {
+  const jar = await cookies();
+  const id = jar.get("preview_member")?.value ?? null;
+  if (!id) return null;
+  // A stale cookie must not grant anything, so the real rights are rechecked.
+  const real = await myRealPermissions();
+  return real.has("org.manage") ? id : null;
+}
+
+export async function myPermissions(): Promise<Set<Permission>> {
+  const previewing = await previewedMemberId();
+  if (previewing) return permissionsForMember("id", previewing);
+  return myRealPermissions();
 }
 
 export type MemberRow = {

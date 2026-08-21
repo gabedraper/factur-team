@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Users, ShieldCheck, Building2 } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { myPermissions, listServicesAndTeams } from "@/lib/org";
+import { cookies } from "next/headers";
+import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
+import { ROLES } from "@/lib/roles";
+import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +13,13 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const perms = await myPermissions();
   const canManage = perms.has("org.manage");
+  // Preview is offered on what you really hold, not on what you are previewing
+  // as -- otherwise stepping into a learner's shoes would strand you there.
+  const canPreview = (await myRealPermissions()).has("org.manage");
+
+  const jar = await cookies();
+  const previewRole = jar.get("preview_role")?.value ?? null;
+  const previewMember = jar.get("preview_member")?.value ?? null;
 
   const db = createServiceClient();
   const { data: me } = await db
@@ -35,6 +45,14 @@ export default async function SettingsPage() {
 
   const { services } = canManage ? await listServicesAndTeams() : { services: [] };
 
+  let people: { id: string; name: string }[] = [];
+  if (canPreview) {
+    const { data } = await db
+      .from("org_members").select("id,full_name,email").eq("active", true).order("full_name");
+    people = ((data ?? []) as { id: string; full_name: string | null; email: string }[])
+      .map((p) => ({ id: p.id, name: p.full_name ?? p.email }));
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <div>
@@ -59,6 +77,23 @@ export default async function SettingsPage() {
           are set by an administrator.
         </p>
       </section>
+
+      <section className="rounded-md border bg-card p-4 space-y-3">
+        <h2 className="text-sm font-medium">Appearance</h2>
+        <ThemePanel />
+      </section>
+
+      {canPreview && (
+        <section className="rounded-md border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-medium">Preview</h2>
+          <PreviewPanel
+            roles={Object.entries(ROLES).map(([value, label]) => ({ value, label: label as string }))}
+            people={people}
+            currentRole={previewRole}
+            currentMemberId={previewMember}
+          />
+        </section>
+      )}
 
       {canManage && (
         <section className="space-y-3">
