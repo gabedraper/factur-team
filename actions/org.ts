@@ -205,3 +205,172 @@ export async function removeCoverage(coverageId: string) {
   revalidatePath("/settings/teams");
   return { success: true };
 }
+
+// --- people -----------------------------------------------------------------
+
+export async function createMember(email: string, fullName: string) {
+  await requireOrgManage();
+  const address = email.trim().toLowerCase();
+  const domain = address.split("@")[1];
+  if (domain !== "bethefactur.com" && domain !== "facturmfg.com") {
+    return { success: false, error: "Only @bethefactur.com and @facturmfg.com addresses can sign in." };
+  }
+  const db = createServiceClient();
+
+  // Same person under a second address is how six duplicates got into this
+  // table once already, so a name clash is refused rather than merged blind.
+  const { data: clash } = await db
+    .from("org_members").select("email").ilike("full_name", fullName.trim()).maybeSingle();
+  if (clash) {
+    return {
+      success: false,
+      error: `${fullName.trim()} is already here as ${(clash as { email: string }).email}. Edit that person instead.`,
+    };
+  }
+
+  const { error } = await db.from("org_members")
+    .insert({ email: address, full_name: fullName.trim(), needs_review: true });
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate") ? "That address is already in the app." : error.message,
+    };
+  }
+  revalidatePath("/settings/people");
+  return { success: true };
+}
+
+export async function updateMember(memberId: string, fields: { full_name?: string; email?: string }) {
+  await requireOrgManage();
+  const patch: Record<string, string> = {};
+  if (fields.full_name !== undefined) patch.full_name = fields.full_name.trim();
+  if (fields.email !== undefined) {
+    const address = fields.email.trim().toLowerCase();
+    const domain = address.split("@")[1];
+    if (domain !== "bethefactur.com" && domain !== "facturmfg.com") {
+      return { success: false, error: "Only @bethefactur.com and @facturmfg.com addresses can sign in." };
+    }
+    patch.email = address;
+  }
+  if (!Object.keys(patch).length) return { success: true };
+
+  const db = createServiceClient();
+  const { error } = await db.from("org_members").update(patch).eq("id", memberId);
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate") ? "Another person already uses that address." : error.message,
+    };
+  }
+  revalidatePath("/settings/people");
+  return { success: true };
+}
+
+/**
+ * Removing someone is usually the wrong tool -- deactivating keeps their history
+ * attached. Deletion is refused while anything still points at them.
+ */
+export async function deleteMember(memberId: string) {
+  await requireOrgManage();
+  const db = createServiceClient();
+
+  const [{ count: reports }, { count: coverage }] = await Promise.all([
+    db.from("org_members").select("id", { count: "exact", head: true }).eq("manager_member_id", memberId),
+    db.from("org_client_coverage").select("id", { count: "exact", head: true }).eq("member_id", memberId),
+  ]);
+  if (reports) return { success: false, error: `${reports} people report to them. Move those first.` };
+  if (coverage) return { success: false, error: `They cover ${coverage} clients. Reassign those first.` };
+
+  const { data: m } = await db
+    .from("org_members").select("auth_user_id").eq("id", memberId).maybeSingle();
+  if ((m as { auth_user_id: string | null } | null)?.auth_user_id) {
+    return {
+      success: false,
+      error: "They have signed in, so deleting would orphan their history. Set them inactive instead.",
+    };
+  }
+
+  const { error } = await db.from("org_members").delete().eq("id", memberId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/people");
+  return { success: true };
+}
+
+export async function linkSalesforceUser(memberId: string, salesforceUserId: string | null) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_members")
+    .update({ salesforce_user_id: salesforceUserId }).eq("id", memberId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/people");
+  return { success: true };
+}
+
+// --- roles ------------------------------------------------------------------
+
+export async function createRole(name: string, serviceId: string | null, description: string | null) {
+  await requireOrgManage();
+  const trimmed = name.trim();
+  if (!trimmed) return { success: false, error: "A role needs a name." };
+  const db = createServiceClient();
+
+  const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const { error } = await db.from("org_roles")
+    .insert({ name: trimmed, slug, service_id: serviceId, description });
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate") ? "A role with that name already exists." : error.message,
+    };
+  }
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+export async function updateRole(
+  roleId: string,
+  fields: { name?: string; service_id?: string | null; description?: string | null; active?: boolean }
+) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db.from("org_roles").update(fields).eq("id", roleId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+/** Refused while anyone holds it: deleting would silently strip their access. */
+export async function deleteRole(roleId: string) {
+  await requireOrgManage();
+  const db = createServiceClient();
+
+  const { data: role } = await db.from("org_roles").select("slug").eq("id", roleId).maybeSingle();
+  const slug = (role as { slug: string } | null)?.slug;
+  if (slug === "app-admin" || slug === "manager") {
+    return { success: false, error: "That role is built in and cannot be deleted." };
+  }
+
+  const { count } = await db.from("org_assignments")
+    .select("id", { count: "exact", head: true }).eq("role_id", roleId);
+  if (count) return { success: false, error: `${count} people hold this role. Move them first.` };
+
+  const { error } = await db.from("org_roles").delete().eq("id", roleId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+export async function setRolePermission(roleId: string, permissionKey: string, on: boolean) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  if (on) {
+    const { error } = await db.from("org_role_permissions")
+      .insert({ role_id: roleId, permission_key: permissionKey });
+    if (error && !error.message.includes("duplicate")) return { success: false, error: error.message };
+  } else {
+    await db.from("org_role_permissions")
+      .delete().eq("role_id", roleId).eq("permission_key", permissionKey);
+  }
+  revalidatePath("/settings/roles");
+  return { success: true };
+}

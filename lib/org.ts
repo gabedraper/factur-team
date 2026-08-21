@@ -156,3 +156,71 @@ export async function listTeamsAndCoverage() {
       .map((c) => ({ id: c.id, name: c.client_account__r_name, status: c.client_status__c })),
   };
 }
+
+export type RoleDetail = {
+  id: string; slug: string; name: string; description: string | null;
+  service_id: string | null; active: boolean;
+  permissionKeys: string[]; holders: number;
+};
+
+export async function listRolesAndPermissions() {
+  const db = createServiceClient();
+  const [{ data: roles }, { data: perms }, { data: rolePerms }, { data: assignments }] =
+    await Promise.all([
+      db.from("org_roles").select("id,slug,name,description,service_id,active").order("name"),
+      db.from("org_permissions").select("key,name,description").order("key"),
+      db.from("org_role_permissions").select("role_id,permission_key"),
+      db.from("org_assignments").select("role_id"),
+    ]);
+
+  const byRole = new Map<string, string[]>();
+  for (const rp of (rolePerms ?? []) as { role_id: string; permission_key: string }[]) {
+    byRole.set(rp.role_id, [...(byRole.get(rp.role_id) ?? []), rp.permission_key]);
+  }
+  const holders = new Map<string, number>();
+  for (const a of (assignments ?? []) as { role_id: string }[]) {
+    holders.set(a.role_id, (holders.get(a.role_id) ?? 0) + 1);
+  }
+
+  return {
+    roles: ((roles ?? []) as Omit<RoleDetail, "permissionKeys" | "holders">[]).map((r) => ({
+      ...r,
+      permissionKeys: byRole.get(r.id) ?? [],
+      holders: holders.get(r.id) ?? 0,
+    })),
+    permissions: (perms ?? []) as { key: string; name: string; description: string | null }[],
+  };
+}
+
+export type MatchSuggestion = {
+  memberId: string; fullName: string | null; email: string;
+  sfId: string | null; sfName: string | null; sfEmail: string | null;
+  score: number | null; basis: string | null;
+};
+
+/**
+ * Best Salesforce candidate for each unlinked person. Nothing is linked
+ * automatically -- near-misses like "Matt Cool" against "Matt Beaver" score
+ * high enough to be dangerous and need a human.
+ */
+export async function listSalesforceSuggestions(): Promise<MatchSuggestion[]> {
+  const db = createServiceClient();
+  const { data: unlinked } = await db
+    .from("org_members").select("id,full_name,email")
+    .is("salesforce_user_id", null).eq("active", true).order("full_name");
+
+  const rows = (unlinked ?? []) as { id: string; full_name: string | null; email: string }[];
+  const out = await Promise.all(rows.map(async (m) => {
+    const { data } = await db.rpc("suggest_salesforce_matches", { p_member_id: m.id });
+    const best = ((data ?? []) as {
+      salesforce_user_id: string; sf_name: string; sf_email: string; score: number; basis: string;
+    }[])[0];
+    return {
+      memberId: m.id, fullName: m.full_name, email: m.email,
+      sfId: best?.salesforce_user_id ?? null, sfName: best?.sf_name ?? null,
+      sfEmail: best?.sf_email ?? null,
+      score: best ? Number(best.score) : null, basis: best?.basis ?? null,
+    };
+  }));
+  return out;
+}

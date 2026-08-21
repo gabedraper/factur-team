@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ShieldCheck, Building2 } from "lucide-react";
+import { Users, ShieldCheck, Building2, Link2 } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -57,7 +57,6 @@ export default async function SettingsPage() {
     <div className="p-6 space-y-6 max-w-3xl">
       <div>
         <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">Your account, and — if you administer the app — everyone else&apos;s.</p>
       </div>
 
       <section className="rounded-md border bg-card p-4 space-y-3">
@@ -106,6 +105,26 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">People</span>
                 <span className="block text-xs text-muted-foreground">
                   Assign roles and managers. Everyone in the app.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/roles"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Roles &amp; permissions</span>
+                <span className="block text-xs text-muted-foreground">
+                  Create roles and choose what each one is allowed to do.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/salesforce"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Salesforce accounts</span>
+                <span className="block text-xs text-muted-foreground">
+                  Match people to their Salesforce user so activity is attributed correctly.
                 </span>
               </span>
             </Link>
