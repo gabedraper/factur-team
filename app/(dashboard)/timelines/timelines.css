@@ -6,18 +6,33 @@
    in force at that moment. */
 
 .tl {
-  /* Neutrals follow the app's own palette so the page sits in the product
-     rather than beside it. The categorical colours below are left alone --
-     green/red for who acted and the stage hues are load-bearing. */
+  /* No colours of its own except the ones that carry meaning here. Every grey,
+     surface and border comes from the app's palette in globals.css, so there is
+     one definition of "how dark is a card" rather than two that drift apart --
+     which is what made dropdowns the same colour as the panel behind them. */
   --idcol: 272px;
   --metacol: 212px;
-  --surface-0: hsl(var(--muted));
+  --stack: 14px;
+
+  --surface-0: hsl(var(--background));
   --surface-1: hsl(var(--card));
-  --surface-2: hsl(var(--secondary));
-  --border: hsl(var(--border));
-  --stack:     14px;   
-  --stage:     #7b53c9;   
-  
+  --surface-2: hsl(var(--elevated));
+  --control: var(--field);
+  --control-border: var(--field-border);
+  --tl-border: hsl(var(--border));
+  --border-strong: hsl(var(--field-border));
+  --lane: hsl(var(--tl-border));
+
+  --text-primary: hsl(var(--foreground));
+  --text-secondary: hsl(var(--muted-foreground));
+  --text-muted: hsl(var(--muted-foreground));
+
+  /* Meaning, not decoration: who acted, and what stage the lead was in. */
+  --rep:      #e8792b;
+  --prospect: #d33f3f;
+  --goal:     hsl(var(--primary));
+  --stage:    #7b53c9;
+
   --st-cold:      #2f7fd6;
   --st-generated: #12874a;
   --st-warm:      #d8a412;
@@ -25,30 +40,18 @@
   --st-ltfu:      #d95fa8;
   --st-dead:      hsl(var(--foreground));
   --st-other:     hsl(var(--muted-foreground));
-  --st-unknown:   hsl(var(--border));
-  --border-strong: hsl(var(--input));
-  --text-primary: hsl(var(--foreground));
-  --text-secondary: hsl(var(--muted-foreground));
-  --text-muted: hsl(var(--muted-foreground));
+  --st-unknown:   hsl(var(--tl-border));
 
-  
-  --rep:      #e8792b;   
-  --prospect: #d33f3f;   
-  --goal: hsl(var(--primary));   
-
-  
+  /* Reserved status roles -- never used for a series. */
   --good:     #0ca30c;
   --warning:  #fab219;
   --serious:  #ec835a;
   --critical: #d03b3b;
-
-  --lane: hsl(var(--border));
 }
 
 .dark .tl {
-  --surface-0: hsl(var(--background));
-  --surface-1: hsl(var(--secondary));
-  --surface-2: hsl(var(--muted));
+  /* Only the meaningful colours need a dark variant; the surfaces follow the
+     app's own dark palette without restating anything. */
   --rep:      #f59245;
   --prospect: #e8615b;
   --stage:    #a98ae0;
@@ -75,7 +78,7 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 .tl .tile {
-  background: var(--surface-1); border: 0;
+  background: var(--surface-1); border: 1px solid var(--tl-border);
   border-radius: 10px; padding: 12px 14px;
 }
 .tl .tile .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
@@ -91,9 +94,9 @@
 .tl .controls select { flex: 0 1 auto; min-width: 0; max-width: 150px; }
 .tl .controls .toggle, .tl .controls #f-custom { flex: none; }
 .tl select, .tl input[type=search], .tl input[type=date] {
-  font: inherit; font-size: 13px; padding: 5px 8px;
-  background: var(--surface-2); color: var(--text-primary);
-  border: 0; border-radius: 7px;
+  font: inherit; font-size: 13px; padding: 4px 8px;
+  background: hsl(var(--control)); color: var(--text-primary);
+  border: 1px solid hsl(var(--control-border)); border-radius: 7px;
 }
 .tl input[type=search] { flex: 1 1 130px; min-width: 90px; }
 .tl input[type=date] { min-width: 0; width: 124px; }
@@ -130,10 +133,10 @@
   display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
   padding: 9px 12px; margin-bottom: var(--stack); font-size: 12px;
   color: var(--text-secondary);
-  background: var(--surface-1); border: 0; border-radius: 10px;
+  background: var(--surface-1); border: 1px solid var(--tl-border); border-radius: 10px;
 }
 .tl .legend .item { display: inline-flex; align-items: center; gap: 6px; }
-.tl .board { background: var(--surface-1); border: 0; border-radius: 10px; overflow: hidden; }
+.tl .board { background: var(--surface-1); border: 1px solid var(--tl-border); border-radius: 10px; overflow: hidden; }
 .tl .axis {
   position: sticky; top: 0; z-index: 3; display: grid;
   grid-template-columns: var(--idcol) 1fr var(--metacol);
@@ -162,7 +165,7 @@
 .tl .who .sub em { font-style: normal; color: var(--text-muted); }
 .tl .lane { position: relative; min-height: var(--laneh, 46px); }
 .tl .lane svg { display: block; width: 100%; height: var(--laneh, 46px); overflow: visible; }
-.tl .gridline { stroke: var(--border); stroke-width: 1; }
+.tl .gridline { stroke: var(--tl-border); stroke-width: 1; }
 .tl .ticktext { fill: var(--text-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .tl .ticktext.strong { fill: var(--text-secondary); font-size: 10px; font-weight: 560; }
 .tl .goalline { stroke: var(--goal); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: .75; }
@@ -219,7 +222,7 @@
    its card. The app's --secondary and --muted resolve to the same value in dark,
    so that separation vanished. Deriving these from the text colour instead means
    they contrast with whatever the card happens to be, in either theme. */
-.tl .row + .row { border-top: 1px solid var(--border); }
+.tl .row + .row { border-top: 1px solid var(--tl-border); }
 .tl .row:nth-child(even) { background: color-mix(in oklab, var(--text-primary) 4%, transparent); }
 .tl .row:hover { background: color-mix(in oklab, var(--text-primary) 8%, transparent); }
 .tl .axis { background: color-mix(in oklab, var(--text-primary) 6%, var(--surface-1)); }

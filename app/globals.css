@@ -23,6 +23,12 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --field: 0 0% 100%;
+    /* The one place surface depth is defined for the whole app. Everything --
+       shadcn components and the timelines stylesheet alike -- reads these, so
+       there is a single answer to "how dark is a card". Two parallel sets is
+       what made dropdowns invisible against their own panel. */
+    --elevated: 210 40% 98%;
+    --field-border: 214.3 31.8% 85%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
@@ -48,7 +54,9 @@
     --input: 217.2 32.6% 20%;
     /* Field fill. Left as the page colour by default in this palette, which put
        a black box on every form; it now sits above the card instead. */
-    --field: 217.2 30% 15%;
+    --field: 217.2 32.6% 24%;
+    --elevated: 217.2 32.6% 17.5%;
+    --field-border: 217.2 32.6% 32%;
     --ring: 224.3 76.3% 48%;
   }
 }

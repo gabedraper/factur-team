@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -9,23 +10,36 @@ export const metadata: Metadata = {
   description: "Training, sales leaderboards and reporting for Factur staff",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  /*
+   * The theme is decided here, on the server, from a cookie.
+   *
+   * It used to be applied by an inline script reading localStorage. React 19
+   * handles <script> children itself and runs them after hydration, by which
+   * point it has already rendered <html> without the class -- so a refresh
+   * flipped a dark-mode user back to light. The server cannot read
+   * localStorage, so the preference travels in a cookie instead and the correct
+   * class is in the HTML before the browser paints anything.
+   */
+  const theme = (await cookies()).get("factur-theme")?.value;
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={theme === "dark" ? "dark" : undefined} suppressHydrationWarning>
       <body className={inter.className}>
-        {/* Applies the saved theme before first paint, so a dark-mode user
-            never sees a white flash on the way in. Must not live in a manual
-            <head> element -- App Router owns that, and adding one displaces
-            the stylesheet it injects. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("factur-theme");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}`,
-          }}
-        />
+        {/* Only for a first visit, where there is no cookie yet: follow the
+            operating system's setting rather than assuming light. Once anyone
+            chooses, the cookie decides and this does nothing. */}
+        {!theme && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark");document.cookie="factur-theme=dark;path=/;max-age=31536000;samesite=lax"}}catch(e){}`,
+            }}
+          />
+        )}
         {children}
       </body>
     </html>

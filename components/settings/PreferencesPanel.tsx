@@ -16,9 +16,13 @@ export function ThemePanel() {
     setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
   }, []);
 
+  // A cookie, not local storage: the server renders the theme class into the
+  // HTML, and it can only read a cookie. Local storage would leave the first
+  // paint wrong on every visit.
+
   function choose(next: "light" | "dark") {
     document.documentElement.classList.toggle("dark", next === "dark");
-    localStorage.setItem(THEME_KEY, next);
+    document.cookie = `${THEME_KEY}=${next}; path=/; max-age=31536000; samesite=lax`;
     setTheme(next);
   }
 
