@@ -87,8 +87,8 @@ const DID: Record<string, string> = {
   sms: "sent a text",
   meeting_invite: "sent a meeting invite",
   meeting_booked: "booked a meeting",
-  email_in: "emailed in",
-  call_in: "called in",
+  email_in: "emailed",
+  call_in: "called",
   meeting_declined: "declined a meeting",
   stage_change: "changed the stage",
   status_change: "changed the status",
@@ -100,17 +100,16 @@ const DID: Record<string, string> = {
  *
  * Only the first name -- these are colleagues, and the full name pushed the
  * time onto a second line. The prospect's own marks name Factur's task owner
- * in Salesforce rather than the prospect, so those are left unattributed
- * instead of crediting the wrong person.
+ * in Salesforce rather than the prospect, so they read "Prospect" rather than
+ * crediting the wrong person.
  */
 export function markSentence(kind: string, actor: string | null, when: string): string {
   const did = DID[kind] ?? DID.other;
   const theirs = markSide(kind) === 1;
   const first = actor?.trim().split(/\s+/)[0];
 
-  if (theirs || !first) {
-    return `${did[0].toUpperCase()}${did.slice(1)} at ${when}`;
-  }
+  if (theirs) return `Prospect ${did} at ${when}`;
+  if (!first) return `${did[0].toUpperCase()}${did.slice(1)} at ${when}`;
   return `${first} ${did} at ${when}`;
 }
 
