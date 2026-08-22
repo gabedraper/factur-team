@@ -2,12 +2,12 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
-  DISPLAY_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
+  DISPLAY_DAYS, METRICS_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 import { parseUtc } from "./business-day";
 
 export type { Lead, TimelineEvent, StageSpan, Pipeline, RepSummary } from "./assemble";
-export { ALL_REPS, DISPLAY_DAYS };
+export { ALL_REPS, DISPLAY_DAYS, METRICS_DAYS };
 export { contactName };
 
 // A rep is identified by their Salesforce user id, never by their name --
@@ -40,9 +40,10 @@ export async function getLeads(filters: LeadFilters = {}) {
     };
   }
 
-  // Everything held for this scope is read, not just the week on show: the
-  // headline tiles are meant to be the rep's whole record, so filtering or
-  // narrowing the board must not move them.
+  // More than the week on show, because the headline tiles are meant to be the
+  // rep's record rather than a description of the rows below them -- but capped
+  // at METRICS_DAYS rather than everything the sync holds, since this path
+  // assembles every lead and its activity in memory.
   const rows: LeadRow[] = [];
   for (let from = 0; ; from += 1000) {
     let query = supabase
@@ -53,7 +54,8 @@ export async function getLeads(filters: LeadFilters = {}) {
           "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
           "referred_by_name__c"
       )
-      .order("createddate", { ascending: false });
+      .order("createddate", { ascending: false })
+      .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString());
 
     if (owners !== null) query = query.in("ownerid", owners);
     if (filters.rep) query = query.eq("ownerid", filters.rep);

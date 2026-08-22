@@ -332,12 +332,19 @@ export function summarise(leads: Lead[]): RepSummary {
   };
 }
 
-/**
- * How far back the board itself shows leads. Everything held is still read and
- * summarised, because the headline tiles cover the whole record, not this
- * window.
- */
+/** How far back the board itself shows leads. */
 export const DISPLAY_DAYS = 7;
+
+/**
+ * How far back the headline tiles reach.
+ *
+ * Deliberately shorter than the 90 days the sync now holds. The tiles are built
+ * by assembling every lead and its activity in memory, which is the right tool
+ * for a few thousand leads and the wrong one for thirteen thousand -- that is
+ * what the Stage Journey page uses SQL for. Thirty days is also the honest span
+ * for "how is this rep working leads now".
+ */
+export const METRICS_DAYS = 30;
 
 /** Key used for the summary covering everyone in view, not one rep. */
 export const ALL_REPS = "__all";
