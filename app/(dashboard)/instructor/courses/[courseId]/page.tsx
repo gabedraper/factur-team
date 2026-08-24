@@ -95,6 +95,9 @@ export default function CourseEditorPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("");
   const [allUsers, setAllUsers] = useState<{ id: string; full_name: string }[]>([]);
+  // Three states, not two: still fetching, versus fetched and there is nothing
+  // to show. Collapsing them left the page saying "Loading course..." forever.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourse();
@@ -105,12 +108,25 @@ export default function CourseEditorPage() {
   }, [courseId]);
 
   async function loadCourse() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("courses")
       .select("*")
       .eq("id", courseId)
-      .single();
-    if (data) setCourse(data);
+      .maybeSingle();
+
+    if (data) {
+      setCourse(data);
+      setLoadError(null);
+      return;
+    }
+    // An unpublished course someone else owns is hidden by the database rather
+    // than reported as an error, so "no row" and "no permission" arrive looking
+    // identical. Either way the honest answer is that it cannot be opened.
+    setLoadError(
+      error
+        ? error.message
+        : "This course either doesn't exist or isn't yours to edit. Unpublished courses are only visible to the person who owns them."
+    );
   }
 
   async function loadModules() {
@@ -179,7 +195,21 @@ export default function CourseEditorPage() {
 
   if (!course) {
     return (
-      <div className="p-8 text-muted-foreground">Loading course...</div>
+      <div className="p-8">
+        {loadError ? (
+          <>
+            <h1 className="text-xl font-semibold">Can&apos;t open this course</h1>
+            <p className="mt-2 max-w-prose text-sm text-muted-foreground">{loadError}</p>
+            <Button asChild variant="outline" className="mt-4">
+              <Link href="/instructor/courses">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to courses
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <p className="text-muted-foreground">Loading course...</p>
+        )}
+      </div>
     );
   }
 
