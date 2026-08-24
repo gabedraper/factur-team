@@ -183,12 +183,14 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                           </div>
                         ))}
                       </div>
-                      <Link
-                        href={`/settings/clients/${c.clientId}`}
-                        className="mt-3 inline-block text-sm underline"
-                      >
-                        Open client record
-                      </Link>
+                      <div className="mt-3 flex gap-4">
+                        <Link href={`/clients/${c.clientId}`} className="text-sm underline">
+                          Money conversation
+                        </Link>
+                        <Link href={`/settings/clients/${c.clientId}`} className="text-sm underline">
+                          Client record
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 )}
