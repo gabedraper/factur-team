@@ -12,7 +12,7 @@ type Row = {
   nps_score: number | null;
   quoted: number; no_quoted: number; dm_known: number | null;
   engagement_score: number | null;
-  open_balance: number | null; days_since_payment: number | null;
+  ar_total: number | null; ar_overdue_60_plus: number | null;
   receivables_score: number | null;
   inputs_measured: number; overall_score: number | null;
 };
@@ -82,14 +82,14 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           label: "Receivables",
           score: r.receivables_score,
           detail:
-            r.open_balance === null
-              ? "no balance on file"
-              : r.open_balance <= 0
+            r.ar_total === null
+              ? "not matched in QuickBooks"
+              : r.ar_total <= 0
                 ? "nothing outstanding"
-                : `${money.format(r.open_balance)} outstanding` +
-                  (r.days_since_payment === null
-                    ? ", no payment recorded"
-                    : `, paid ${r.days_since_payment}d ago`),
+                : `${money.format(r.ar_total)} owed` +
+                  (r.ar_overdue_60_plus && r.ar_overdue_60_plus > 0
+                    ? ` · ${money.format(r.ar_overdue_60_plus)} past 60 days`
+                    : ", all recent"),
         },
       ],
     }))
