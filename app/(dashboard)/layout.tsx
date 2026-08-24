@@ -44,10 +44,7 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
       { href: "/admin/enrollments", label: "Enrollments", icon: <ClipboardList className="h-4 w-4" /> },
       { href: "/admin/role-training", label: "Role Training", icon: <Map className="h-4 w-4" /> },
       { href: "/admin/courses", label: "All Courses", icon: <BookOpen className="h-4 w-4" /> },
-      { href: "/admin/progress", label: "Team Progress", icon: <BarChart2 className="h-4 w-4" /> },
     );
-  } else if (perms.has("lms.manage_team")) {
-    learn.push({ href: "/manager", label: "Team Progress", icon: <BarChart2 className="h-4 w-4" /> });
   }
   if (perms.has("lms.learn")) {
     learn.push(
@@ -56,6 +53,10 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
       { href: "/leaderboard", label: "Leaderboard", icon: <Trophy className="h-4 w-4" /> },
     );
   }
+  // Training progress is open to the whole company, like the scoreboards, so it
+  // is not gated on anything.
+  learn.push({ href: "/progress", label: "Team Progress", icon: <BarChart2 className="h-4 w-4" /> });
+
   if (learn.length) groups.push({ label: "Learn", items: learn });
 
   const scoreboard: NavItem[] = [];

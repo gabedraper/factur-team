@@ -1,9 +1,17 @@
 "use server";
 
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getRoleLabel } from "@/lib/roles";
 
 export async function getProgressReport() {
+  // A server action is reachable over HTTP by anyone who can reach the app, and
+  // this one reads with the service key -- which ignores row security. The page
+  // above it is inside the signed-in area; this makes the action itself say so.
+  const {
+    data: { user },
+  } = await (await createClient()).auth.getUser();
+  if (!user) throw new Error("Not signed in");
+
   const supabase = createServiceClient();
 
   // All non-admin profiles

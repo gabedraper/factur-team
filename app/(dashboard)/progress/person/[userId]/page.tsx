@@ -58,7 +58,7 @@ export default async function TeamMemberDetailPage({
   return (
     <div className="p-8 max-w-4xl">
       <Button variant="ghost" asChild className="mb-6 -ml-2">
-        <Link href="/manager">
+        <Link href="/progress">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Team
         </Link>
