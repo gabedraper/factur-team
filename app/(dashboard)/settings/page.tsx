@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal } from "lucide-react";
+import {
+  Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -127,6 +128,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Salesforce accounts</span>
                 <span className="block text-xs text-muted-foreground">
                   Match people to their Salesforce user so activity is attributed correctly.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/google"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Google Workspace</span>
+                <span className="block text-xs text-muted-foreground">
+                  Check the connection used to read billing mail, chat and meeting transcripts.
                 </span>
               </span>
             </Link>
