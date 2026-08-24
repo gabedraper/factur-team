@@ -5,6 +5,8 @@ import {
   myPermissions, getClientDetail, listMembers, listPodsAndClients, listServicesAndTeams,
 } from "@/lib/org";
 import { ClientDetail } from "@/components/settings/ClientDetail";
+import { NpsPanel } from "@/components/clients/NpsPanel";
+import { listNps } from "@/actions/nps";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +17,9 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
   const detail = await getClientDetail((await params).clientId);
   if (!detail) notFound();
 
-  const [{ members }, { teams }, { services }] = await Promise.all([
+  const [{ members }, { teams }, { services }, nps] = await Promise.all([
     listMembers(), listPodsAndClients(), listServicesAndTeams(),
+    listNps((await params).clientId),
   ]);
 
   const people = members
@@ -46,6 +49,19 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
         pods={pods}
         services={services}
       />
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          NPS
+        </h2>
+        <div className="rounded-md border bg-card p-3">
+          <NpsPanel
+            clientId={detail.client.id as string}
+            entries={nps}
+            canEdit={perms.has("org.manage")}
+          />
+        </div>
+      </section>
     </div>
   );
 }
