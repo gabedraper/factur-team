@@ -97,12 +97,5 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
                     : ", all recent"),
         },
       ],
-    }))
-    // Worst first: this screen exists to surface the clients in trouble, and a
-    // client with nothing measured is not evidence of health, so it sorts last.
-    .sort((a, b) => {
-      if (a.overall === null) return b.overall === null ? 0 : 1;
-      if (b.overall === null) return -1;
-      return a.overall - b.overall;
-    });
+    }));
 }

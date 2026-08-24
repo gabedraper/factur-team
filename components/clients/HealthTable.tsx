@@ -27,6 +27,7 @@ function Score({ value }: { value: number | null }) {
 
 export function HealthTable({ clients }: { clients: ClientHealth[] }) {
   const [filter, setFilter] = useState("");
+  const [letter, setLetter] = useState("All");
   const [onlyDisagreements, setOnlyDisagreements] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
 
@@ -42,16 +43,34 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
     return Math.abs(manual - c.overall) >= 30;
   };
 
+  /** First letter of a client's name; anything not A-Z lands under "#". */
+  const initial = (name: string) => {
+    const ch = name.trim().charAt(0).toUpperCase();
+    return ch >= "A" && ch <= "Z" ? ch : "#";
+  };
+
+  // Only the letters that actually have clients behind them, so no dead keys.
+  const letters = useMemo(() => {
+    const present = new Set(clients.map((c) => initial(c.name)));
+    const az = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter((l) => present.has(l));
+    return present.has("#") ? [...az, "#"] : az;
+  }, [clients]);
+
   const shown = useMemo(() => {
     const term = filter.trim().toLowerCase();
     return clients.filter(
       (c) =>
         (!onlyDisagreements || disagrees(c)) &&
+        (letter === "All" || initial(c.name) === letter) &&
         (!term ||
           c.name.toLowerCase().includes(term) ||
           (c.accountManager ?? "").toLowerCase().includes(term))
-    );
-  }, [clients, filter, onlyDisagreements]);
+    )
+      // Alphabetical to start with, so the list reads as a directory. Clicking
+      // a column header re-sorts on top of this, and clicking it off comes back
+      // here.
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients, filter, letter, onlyDisagreements]);
 
   const at = (c: ClientHealth, key: string) =>
     c.inputs.find((i) => i.key === key)?.score ?? null;
@@ -73,6 +92,23 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1">
+        {["All", ...letters].map((l) => (
+          <button
+            key={l}
+            onClick={() => setLetter(l)}
+            aria-pressed={letter === l}
+            className={`h-7 min-w-7 rounded-md border px-2 text-xs ${
+              letter === l
+                ? "border-transparent bg-primary text-primary-foreground"
+                : "bg-card hover:bg-muted"
+            }`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
