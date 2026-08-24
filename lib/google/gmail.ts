@@ -23,13 +23,21 @@ const HEADERS = ["From", "To", "Cc", "Subject", "Date", "Message-ID"];
 
 /** Gmail's search syntax. `-in:chats` keeps Hangouts history out of the mail results. */
 export const BILLING_QUERY =
-  '(invoice OR payment OR "past due" OR remittance OR receivable OR billing ' +
-  'OR overdue OR statement OR collections) ' +
-  // Automated notices that a purchase order was won. They name a client and an
-  // amount, so they match on every keyword and read like billing, but nothing
-  // about them is owed or chased. "purchase order" was dropped from the terms
-  // above for the same reason.
+  // Subject only, deliberately.
+  //
+  // Gmail's default search reads the whole message, which pulled in any sales
+  // email that happened to mention a payment somewhere -- an NDA covering note
+  // for a client's prospect arrived looking like a collections thread. Billing
+  // correspondence nearly always says so in its subject: "Factur Invoice
+  // 104223", "Payment for the month of July", "Quick check-in on outstanding
+  // invoices". Precision matters more than reach here, because a trail with
+  // sales email in it cannot be trusted about money.
+  'subject:(invoice OR invoices OR payment OR payments OR "past due" OR ' +
+  'remittance OR receivable OR overdue OR "outstanding balance" OR ' +
+  'collections OR "credit hold") ' +
+  // Sales paperwork that carries a billing word in its subject.
   '-subject:"PO Won" -subject:"Lead Generated" -subject:"Deal Won" ' +
+  '-subject:NDA -subject:RFQ -subject:quote -subject:quoting -subject:proposal ' +
   '-in:chats -in:drafts';
 
 function addresses(value: string | null): string[] {
