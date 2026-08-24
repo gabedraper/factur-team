@@ -102,6 +102,29 @@ export async function prospectingOwnerIds(): Promise<Set<string>> {
   return ids;
 }
 
+export type RoleDrift = {
+  client_id: string; client_name: string; role_label: string;
+  in_app: string | null; in_salesforce: string; kind: string;
+};
+
+/**
+ * Clients whose cover the app and Salesforce disagree about.
+ *
+ * The app owns these assignments, so this is a list to act on rather than a
+ * sync: nothing is changed automatically, because which side is right is a
+ * judgement about who actually works the account.
+ */
+export async function listClientRoleDrift(): Promise<RoleDrift[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_client_role_drift");
+  if (error) throw new Error(`client role drift failed: ${error.message}`);
+  return ((data ?? []) as RoleDrift[]).sort(
+    (a, b) =>
+      a.client_name.localeCompare(b.client_name) ||
+      a.role_label.localeCompare(b.role_label)
+  );
+}
+
 export async function listMembers() {
   const db = createServiceClient();
 
