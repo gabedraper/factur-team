@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { myPermissions } from "@/lib/org";
 
 export async function updateWeights(
   updates: { effort_source: string; points: number }[]
@@ -12,12 +13,10 @@ export async function updateWeights(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const { data: rep } = await supabase
-    .from("reps")
-    .select("is_admin")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-  if (!rep?.is_admin) throw new Error("Forbidden");
+  // reps.is_admin was a third way of saying "admin", maintained nowhere. The
+  // permission for exactly this lives in Settings.
+  const perms = await myPermissions();
+  if (!perms.has("scoreboard.weights.edit")) throw new Error("Forbidden");
 
   for (const { effort_source, points } of updates) {
     if (!effort_source || Number.isNaN(points)) throw new Error("Invalid input");

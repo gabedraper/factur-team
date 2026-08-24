@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { myPermissions } from "@/lib/org";
+import { NoAccess } from "@/components/no-access";
 import { WeightsEditor } from "./WeightsEditor";
 import { HIDDEN_EFFORT_SOURCES, sortByEffortCategory } from "@/lib/scoreboard/effort-weights";
 import Link from "next/link";
@@ -6,24 +8,9 @@ import { ChevronLeft } from "lucide-react";
 
 export default async function AdminWeightsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: rep } = await supabase
-    .from("reps")
-    .select("is_admin")
-    .eq("auth_user_id", user?.id ?? "")
-    .maybeSingle();
-
-  if (!rep?.is_admin) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-8">
-        <p className="text-sm text-neutral-400">
-          You don&apos;t have access to this page.
-        </p>
-      </div>
-    );
+  const perms = await myPermissions();
+  if (!perms.has("scoreboard.weights.edit")) {
+    return <NoAccess section="Effort Weights" need="Edit scoring weights" />;
   }
 
   const { data: weightsRaw } = await supabase

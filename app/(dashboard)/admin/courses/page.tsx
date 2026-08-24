@@ -17,14 +17,18 @@ export default function AdminCoursesPage() {
   const [search, setSearch] = useState("");
   const [letter, setLetter] = useState("All");
   const [loading, setLoading] = useState(true);
+  // Cleared in `finally`, so a failed load stops rather than spinning forever.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    getCoursesWithStats().then((data) => {
-      setCourses(data);
-      setLoading(false);
-    });
+    getCoursesWithStats()
+      .then(setCourses)
+      .catch((e) =>
+        setLoadError(e instanceof Error ? e.message : "Couldn't load courses.")
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleCreate() {
@@ -96,6 +100,10 @@ export default function AdminCoursesPage() {
       {/* Course grid */}
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
+      ) : loadError ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          {loadError}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
           <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />

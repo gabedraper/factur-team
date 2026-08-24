@@ -39,6 +39,8 @@ export default function AdminEnrollmentsPage() {
   const [users, setUsers] = useState<{ id: string; full_name: string; role: string }[]>([]);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  // Cleared in `finally`, so a failed load stops rather than spinning forever.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -54,15 +56,21 @@ export default function AdminEnrollmentsPage() {
 
   async function loadData() {
     const supabase = createClient();
-    const [enrollData, usersData, coursesData] = await Promise.all([
-      getEnrollmentsAdmin(),
-      supabase.from("profiles").select("id, full_name, role").order("full_name"),
-      supabase.from("courses").select("id, title").order("title"),
-    ]);
-    setEnrollments(enrollData as unknown as Enrollment[]);
-    setUsers((usersData.data || []) as any);
-    setCourses((coursesData.data || []) as any);
-    setLoading(false);
+    try {
+      const [enrollData, usersData, coursesData] = await Promise.all([
+        getEnrollmentsAdmin(),
+        supabase.from("profiles").select("id, full_name, role").order("full_name"),
+        supabase.from("courses").select("id, title").order("title"),
+      ]);
+      setEnrollments(enrollData as unknown as Enrollment[]);
+      setUsers((usersData.data || []) as any);
+      setCourses((coursesData.data || []) as any);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Couldn't load enrollments.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleEnroll(e: React.FormEvent) {
@@ -203,6 +211,10 @@ export default function AdminEnrollmentsPage() {
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
+      ) : loadError ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          {loadError}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
           <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-30" />
