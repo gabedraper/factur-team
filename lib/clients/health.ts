@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import type { ClientHealth } from "./health-score";
 
 export * from "./health-score";
@@ -30,7 +30,12 @@ function movement(now: number, before: number, noun: string): string {
 }
 
 export async function getClientHealth(): Promise<ClientHealth[]> {
-  const { data, error } = await createServiceClient().rpc("get_client_health");
+  // The signed-in person's own connection, not the service key: the function
+  // checks is_factur_user(), which reads the email out of their token. Asked
+  // with the service key there is no token to read, so it would answer "not a
+  // Factur user" and return nothing at all.
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_client_health");
   if (error) throw new Error(`client health query failed: ${error.message}`);
 
   return ((data ?? []) as Row[])
