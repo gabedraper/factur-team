@@ -5,6 +5,8 @@ const OUR_DOMAINS = new Set(["facturmfg.com", "bethefactur.com"]);
 
 export type IngestReport = {
   account: string;
+  /** Everything matching the search, whether or not it was fetched. */
+  matching: number;
   found: number;
   attached: number;
   byDomain: number;
@@ -86,7 +88,7 @@ export async function ingestBillingMailFor(
 
   try {
     {
-      const { messages, hitCap } = await fetchBillingMail(account, sinceDays);
+      const { messages, matching, hitCap } = await fetchBillingMail(account, sinceDays);
 
       /*
        * First pass: anything with a recognisable client domain. Done for the
@@ -167,6 +169,7 @@ export async function ingestBillingMailFor(
 
       return {
         account,
+        matching,
         found: messages.length,
         attached: rows.length,
         byDomain: counts.domain,
@@ -178,7 +181,7 @@ export async function ingestBillingMailFor(
     }
   } catch (e) {
     return {
-      account, found: 0, attached: 0,
+      account, matching: 0, found: 0, attached: 0,
       byDomain: 0, byThread: 0, byName: 0,
       hitCap: false,
       problem: e instanceof Error ? e.message : "Unknown error",

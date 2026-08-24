@@ -82,7 +82,8 @@ export function GoogleCheck() {
         <div className="space-y-2">
           <p className="text-sm">
             {reports.reduce((n: number, r: IngestReport) => n + r.attached, 0)} messages attached
-            to a client, out of {reports.reduce((n: number, r: IngestReport) => n + r.found, 0)} found
+            to a client, out of {reports.reduce((n: number, r: IngestReport) => n + r.found, 0)} read
+            — {reports.reduce((n: number, r: IngestReport) => n + r.matching, 0)} matched the search
           </p>
           <p className="max-w-prose text-xs text-muted-foreground">
             By domain: the client was on the message. By thread: an internal
@@ -94,7 +95,8 @@ export function GoogleCheck() {
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-3 py-2 font-medium">Mailbox</th>
-                  <th className="px-3 py-2 font-medium text-right">Found</th>
+                  <th className="px-3 py-2 font-medium text-right">Matching</th>
+                  <th className="px-3 py-2 font-medium text-right">Read</th>
                   <th className="px-3 py-2 font-medium text-right">Attached</th>
                   <th className="px-3 py-2 font-medium text-right">By domain</th>
                   <th className="px-3 py-2 font-medium text-right">By thread</th>
@@ -106,6 +108,7 @@ export function GoogleCheck() {
                 {reports.map((r: IngestReport) => (
                   <tr key={r.account} className="border-b last:border-0">
                     <td className="px-3 py-2">{r.account}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.matching}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.found}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.attached}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byDomain}</td>
@@ -115,7 +118,7 @@ export function GoogleCheck() {
                       {r.problem
                         ? <span className="text-red-600 dark:text-red-400">{r.problem}</span>
                         : r.hitCap
-                          ? "more than the 150 cap — older ones not pulled"
+                          ? `only the newest ${r.found} of ${r.matching} were read`
                           : ""}
                     </td>
                   </tr>

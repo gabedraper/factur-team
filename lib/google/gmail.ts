@@ -48,11 +48,17 @@ async function call<T>(url: string, token: string): Promise<T> {
 export async function fetchBillingMail(
   actAs: string,
   sinceDays: number,
-  cap = 150
-): Promise<{ messages: GmailMessage[]; hitCap: boolean }> {
+  cap = 600
+): Promise<{ messages: GmailMessage[]; matching: number; hitCap: boolean }> {
   const token = await tokenFor("gmail", actAs);
   const q = encodeURIComponent(`${BILLING_QUERY} newer_than:${sinceDays}d`);
 
+  /*
+   * Listing ids is cheap -- a hundred per request -- so the whole matching set
+   * is counted even when only part of it is fetched. Reporting the fetched
+   * count as though it were the total made every mailbox look like it held
+   * exactly 150 messages, which said nothing about how much was being missed.
+   */
   const ids: string[] = [];
   let pageToken: string | undefined;
 
@@ -63,9 +69,11 @@ export async function fetchBillingMail(
     const page = await call<{ messages?: { id: string }[]; nextPageToken?: string }>(url, token);
     for (const m of page.messages ?? []) ids.push(m.id);
     pageToken = page.nextPageToken;
-  } while (pageToken && ids.length < cap);
+  } while (pageToken);
 
-  const hitCap = ids.length > cap;
+  const matching = ids.length;
+  const hitCap = matching > cap;
+  // Gmail returns newest first, so a truncated run keeps the recent end.
   const wanted = ids.slice(0, cap);
 
   /*
@@ -112,5 +120,5 @@ export async function fetchBillingMail(
     messages.push(...batch);
   }
 
-  return { messages, hitCap };
+  return { messages, matching, hitCap };
 }

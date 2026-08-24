@@ -112,7 +112,7 @@ export async function runBillingIngestFor(
   const perms = await myPermissions();
   if (!perms.has("org.manage")) {
     return {
-      account, found: 0, attached: 0, byDomain: 0, byThread: 0, byName: 0,
+      account, matching: 0, found: 0, attached: 0, byDomain: 0, byThread: 0, byName: 0,
       hitCap: false, problem: "Not permitted.",
     };
   }
