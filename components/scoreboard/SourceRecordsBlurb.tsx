@@ -1,3 +1,5 @@
+import { SalesforceIcon } from "@/components/salesforce-icon";
+
 type SourceRecord = {
   date: string;
   label: string;
@@ -29,6 +31,7 @@ export function SourceRecordsBlurb({
             rel="noopener noreferrer"
             className="flex items-center gap-2 border-t border-border py-1.5 first:border-t-0 hover:bg-slate-800"
           >
+            <SalesforceIcon className="shrink-0" />
             <span className="shrink-0 text-slate-500">{r.date}</span>
             <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
               {r.label}

@@ -6,6 +6,7 @@ import { Lane, FIRST_RESPONSE_TARGET_H, type ViewKey } from "./Lane";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { PROSPECTING_KEY } from "@/lib/timelines/classify";
 import { formatBusinessDate, formatBusinessDateTime } from "@/lib/timelines/business-day";
+import { SalesforceIcon } from "@/components/salesforce-icon";
 import { ALL_REPS, DISPLAY_DAYS, type RepSummary } from "@/lib/timelines/assemble";
 
 
@@ -331,7 +332,7 @@ export function TimelineBoard({
                   <div className="who">
                     <div className="name">
                       <a href={lead.url} target="_blank" rel="noopener noreferrer">
-                        {lead.contact || lead.name}
+                        {lead.contact || lead.name} <SalesforceIcon />
                       </a>
                       {lead.account && <span className="co"> — {lead.account}</span>}
                     </div>
@@ -388,7 +389,7 @@ export function TimelineBoard({
               <tbody>
                 {tableRows.map((l) => (
                   <tr key={l.id}>
-                    <td><a href={l.url} target="_blank" rel="noopener noreferrer">{l.contact}</a></td>
+                    <td><a href={l.url} target="_blank" rel="noopener noreferrer">{l.contact} <SalesforceIcon /></a></td>
                     {!prospecting && <td>{l.client || "—"}</td>}
                     <td>{l.rep}</td>
                     <td>{l.outcomeLabel}</td>
