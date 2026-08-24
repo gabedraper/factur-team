@@ -56,6 +56,11 @@ export function GoogleCheck() {
             {ingest.reports.reduce((n, r) => n + r.attached, 0)} messages attached to a client,
             out of {ingest.reports.reduce((n, r) => n + r.found, 0)} found
           </p>
+          <p className="max-w-prose text-xs text-muted-foreground">
+            By domain: the client was on the message. By thread: an internal
+            reply on a thread the client is on. By name: an internal message
+            naming the client in its subject — the least certain of the three.
+          </p>
           <div className="overflow-x-auto rounded-md border bg-card">
             <table className="w-full text-sm">
               <thead>
@@ -63,6 +68,9 @@ export function GoogleCheck() {
                   <th className="px-3 py-2 font-medium">Mailbox</th>
                   <th className="px-3 py-2 font-medium text-right">Found</th>
                   <th className="px-3 py-2 font-medium text-right">Attached</th>
+                  <th className="px-3 py-2 font-medium text-right">By domain</th>
+                  <th className="px-3 py-2 font-medium text-right">By thread</th>
+                  <th className="px-3 py-2 font-medium text-right">By name</th>
                   <th className="px-3 py-2 font-medium">Note</th>
                 </tr>
               </thead>
@@ -72,6 +80,9 @@ export function GoogleCheck() {
                     <td className="px-3 py-2">{r.account}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.found}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.attached}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byDomain}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byThread}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byName}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {r.problem
                         ? <span className="text-red-600 dark:text-red-400">{r.problem}</span>
