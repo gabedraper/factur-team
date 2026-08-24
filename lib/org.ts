@@ -5,7 +5,7 @@ import { isJobRole } from "@/lib/org-roles";
 export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
-  | "timelines.view" | "timelines.view.all";
+  | "timelines.view" | "timelines.view.all" | "clients.health";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers

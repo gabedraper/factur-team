@@ -24,6 +24,7 @@ import {
   Repeat,
   Zap,
   CalendarClock,
+  HeartPulse,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { BugReportWidget } from "@/components/bug-report-widget";
@@ -68,6 +69,15 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
     );
   }
   if (scoreboard.length) groups.push({ label: "Scoreboard", items: scoreboard });
+
+  if (perms.has("clients.health")) {
+    groups.push({
+      label: "Clients",
+      items: [
+        { href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> },
+      ],
+    });
+  }
 
   if (perms.has("timelines.view")) {
     groups.push({
