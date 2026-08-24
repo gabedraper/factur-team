@@ -38,6 +38,10 @@ export const BILLING_QUERY =
   // Sales paperwork that carries a billing word in its subject.
   '-subject:"PO Won" -subject:"Lead Generated" -subject:"Deal Won" ' +
   '-subject:NDA -subject:RFQ -subject:quote -subject:quoting -subject:proposal ' +
+  // A bracketed prefix is task tooling, not money: "[Overdue] Weekly Data
+  // Request // Nippon Tungsten" is a late report, not a late payment. It reads
+  // as A/R to a keyword and to nothing else.
+  '-subject:"[Overdue]" -subject:"[Due]" -subject:"[Reminder]" ' +
   '-in:chats -in:drafts';
 
 function addresses(value: string | null): string[] {
