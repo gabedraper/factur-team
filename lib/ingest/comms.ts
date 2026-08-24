@@ -140,7 +140,10 @@ export async function ingestBillingMailFor(
           const fromUs = m.from ? OUR_DOMAINS.has(domainOf(m.from)) : false;
           return {
             source: "gmail",
-            external_id: m.id,
+            // The sender's own id where there is one, so the same message
+            // arriving in four mailboxes is stored once.
+            external_id: m.rfcId ?? m.id,
+            gmail_id: m.id,
             thread_id: m.threadId,
             client_id: clientId,
             matched_by: matchedBy,

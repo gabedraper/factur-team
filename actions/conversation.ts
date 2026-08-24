@@ -57,7 +57,7 @@ export async function getMessageBody(externalId: string): Promise<{
     .from("comm_messages")
     .select("participants,author_email")
     .eq("source", "gmail")
-    .eq("external_id", externalId)
+    .eq("gmail_id", externalId)
     .maybeSingle();
 
   if (!data) return { body: null, problem: "That message isn't in the trail." };

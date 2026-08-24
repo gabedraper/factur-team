@@ -1,7 +1,10 @@
 import { tokenFor } from "./auth";
 
 export type GmailMessage = {
+  /** Gmail's own id. Per-mailbox: the same email has a different one for each recipient. */
   id: string;
+  /** The sender's Message-ID header, identical in every copy. Null on the odd malformed message. */
+  rfcId: string | null;
   threadId: string;
   occurredAt: Date;
   subject: string | null;
@@ -16,12 +19,18 @@ export type GmailMessage = {
  * to know a chase happened, when, and roughly what it said -- not to hold the
  * full correspondence of eighteen people in a web application.
  */
-const HEADERS = ["From", "To", "Cc", "Subject", "Date"];
+const HEADERS = ["From", "To", "Cc", "Subject", "Date", "Message-ID"];
 
 /** Gmail's search syntax. `-in:chats` keeps Hangouts history out of the mail results. */
 export const BILLING_QUERY =
   '(invoice OR payment OR "past due" OR remittance OR receivable OR billing ' +
-  'OR overdue OR statement OR collections OR "purchase order") -in:chats -in:drafts';
+  'OR overdue OR statement OR collections) ' +
+  // Automated notices that a purchase order was won. They name a client and an
+  // amount, so they match on every keyword and read like billing, but nothing
+  // about them is owed or chased. "purchase order" was dropped from the terms
+  // above for the same reason.
+  '-subject:"PO Won" -subject:"Lead Generated" -subject:"Deal Won" ' +
+  '-in:chats -in:drafts';
 
 function addresses(value: string | null): string[] {
   if (!value) return [];
@@ -102,6 +111,7 @@ export async function fetchBillingMail(
 
         return {
           id: m.id,
+          rfcId: header("Message-ID"),
           threadId: m.threadId,
           occurredAt: new Date(Number(m.internalDate)),
           subject: header("Subject"),
