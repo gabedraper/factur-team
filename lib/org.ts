@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { isJobRole } from "@/lib/org-roles";
 
 export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
@@ -372,19 +373,49 @@ export async function requirePermission(key: Permission) {
  * The org roles the viewer holds, used to work out which courses are assigned
  * to them. Honours preview, so previewing a person shows their training.
  */
+/** Whose roles the app is answering as: the previewed person, or the signed-in one. */
+async function currentMemberId(): Promise<string | null> {
+  const previewing = await previewedMemberId();
+  if (previewing) return previewing;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await createServiceClient()
+    .from("org_members").select("id").eq("auth_user_id", user.id).maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+/**
+ * The job title to show against someone's name, taken from the roles defined in
+ * Settings.
+ *
+ * The sidebar used to read profiles.role, which said "learner" for everyone the
+ * old system never labelled -- including people who administer training. That
+ * column no longer decides anything, so it should not be describing anyone
+ * either. Split roles are both shown, since someone who is 60% OBDM and 40%
+ * OSDR is genuinely both.
+ */
+export async function myRoleLabel(): Promise<string | null> {
+  const memberId = await currentMemberId();
+  if (!memberId) return null;
+
+  const { data } = await createServiceClient()
+    .from("org_assignments").select("org_roles(name,slug)").eq("member_id", memberId);
+
+  type Row = { org_roles: { name: string; slug: string } | null };
+  const names = ((data ?? []) as unknown as Row[])
+    .map((r) => r.org_roles)
+    .filter((r): r is { name: string; slug: string } => !!r && isJobRole(r))
+    .map((r) => r.name);
+
+  return [...new Set(names)].sort().join(" · ") || null;
+}
+
 export async function myRoleIds(): Promise<string[]> {
   const db = createServiceClient();
-  const previewing = await previewedMemberId();
-
-  let memberId = previewing;
-  if (!memberId) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-    const { data } = await db
-      .from("org_members").select("id").eq("auth_user_id", user.id).maybeSingle();
-    memberId = (data as { id: string } | null)?.id ?? null;
-  }
+  const memberId = await currentMemberId();
   if (!memberId) return [];
 
   const { data } = await db

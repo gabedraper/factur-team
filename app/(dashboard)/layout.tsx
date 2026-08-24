@@ -30,7 +30,7 @@ import { BugReportWidget } from "@/components/bug-report-widget";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
-import { previewedMember, myPermissions } from "@/lib/org";
+import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "@/lib/org";
 
 function getNavGroups(perms: Set<string>): NavGroup[] {
   const groups: NavGroup[] = [];
@@ -104,18 +104,20 @@ export default async function DashboardLayout({
     redirect("/unauthorized");
   }
 
-  const actualRole = profile?.role || "learner";
-
-  // Read preview role cookie (only honored if user is admin)
+  // Role preview is honoured on the *real* rights, not on profiles.role -- that
+  // column no longer decides anything, so someone granted org.manage in Settings
+  // could set the cookie and then have it quietly ignored here.
   const cookieStore = await cookies();
-  const previewRole = actualRole === "admin" ? (cookieStore.get("preview_role")?.value ?? null) : null;
-
-  const role = previewRole ?? actualRole;
+  const realPerms = await myRealPermissions();
+  const previewRole = realPerms.has("org.manage")
+    ? (cookieStore.get("preview_role")?.value ?? null)
+    : null;
 
   // Previewing a person changes who the app answers as; the identity block and
   // the banner have to say so or it looks like the app is just misbehaving.
   const previewing = await previewedMember();
   const perms = await myPermissions();
+  const roleLabel = await myRoleLabel();
   const navGroups = getNavGroups(perms as Set<string>);
   const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
 
@@ -149,7 +151,7 @@ export default async function DashboardLayout({
                     ? "Previewing"
                     : previewRole
                       ? `Previewing: ${getRoleLabel(previewRole)}`
-                      : getRoleLabel(actualRole)}
+                      : (roleLabel ?? "No role set")}
                 </p>
               </div>
             </div>
