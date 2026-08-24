@@ -156,7 +156,14 @@ export function GoogleCheck() {
                       <div className="font-medium">{a.name ?? a.email}</div>
                       <div className="text-xs text-muted-foreground">{a.email}</div>
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{a.why}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {a.why}
+                      {a.why.includes("by hand") && (
+                        <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                          not from a role
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       {a.ok ? (
                         <span className="text-emerald-600 dark:text-emerald-400">reachable</span>
