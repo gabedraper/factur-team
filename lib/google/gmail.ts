@@ -68,30 +68,48 @@ export async function fetchBillingMail(
   const hitCap = ids.length > cap;
   const wanted = ids.slice(0, cap);
 
+  /*
+   * Gmail has no way to ask for many messages at once, so each needs its own
+   * request. Fetched twelve at a time: sequentially this was 150 round trips
+   * per mailbox and the whole run was killed by the function timeout after five
+   * minutes. Twelve is well inside Gmail's per-user rate limit and turns
+   * minutes into seconds.
+   */
   const messages: GmailMessage[] = [];
-  for (const id of wanted) {
-    const url =
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}` +
-      `?format=metadata&${HEADERS.map((h) => `metadataHeaders=${h}`).join("&")}`;
-    const m = await call<{
-      id: string; threadId: string; internalDate: string; snippet?: string;
-      payload?: { headers?: { name: string; value: string }[] };
-    }>(url, token);
+  const BATCH = 12;
 
-    const header = (name: string) =>
-      m.payload?.headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? null;
+  for (let i = 0; i < wanted.length; i += BATCH) {
+    const batch = await Promise.all(
+      wanted.slice(i, i + BATCH).map(async (id) => {
+        const url =
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}` +
+          `?format=metadata&${HEADERS.map((h) => `metadataHeaders=${h}`).join("&")}`;
+        const m = await call<{
+          id: string; threadId: string; internalDate: string; snippet?: string;
+          payload?: { headers?: { name: string; value: string }[] };
+        }>(url, token);
 
-    messages.push({
-      id: m.id,
-      threadId: m.threadId,
-      occurredAt: new Date(Number(m.internalDate)),
-      subject: header("Subject"),
-      snippet: m.snippet?.slice(0, 400) ?? null,
-      from: addresses(header("From"))[0] ?? null,
-      participants: Array.from(
-        new Set([...addresses(header("From")), ...addresses(header("To")), ...addresses(header("Cc"))])
-      ),
-    });
+        const header = (name: string) =>
+          m.payload?.headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? null;
+
+        return {
+          id: m.id,
+          threadId: m.threadId,
+          occurredAt: new Date(Number(m.internalDate)),
+          subject: header("Subject"),
+          snippet: m.snippet?.slice(0, 400) ?? null,
+          from: addresses(header("From"))[0] ?? null,
+          participants: Array.from(
+            new Set([
+              ...addresses(header("From")),
+              ...addresses(header("To")),
+              ...addresses(header("Cc")),
+            ])
+          ),
+        } satisfies GmailMessage;
+      })
+    );
+    messages.push(...batch);
   }
 
   return { messages, hitCap };

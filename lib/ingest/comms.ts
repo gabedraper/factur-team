@@ -40,11 +40,13 @@ function normalise(text: string): string {
  * be attached (someone forwarding a client thread), and dropped when they
  * cannot, rather than stored against nobody.
  */
-export async function ingestBillingMail(sinceDays = 90): Promise<IngestReport[]> {
+export async function ingestBillingMailFor(
+  account: string,
+  sinceDays = 90
+): Promise<IngestReport> {
   const db = createServiceClient();
 
-  const [{ data: accounts }, { data: domains }, { data: names }] = await Promise.all([
-    db.rpc("get_ingest_accounts"),
+  const [{ data: domains }, { data: names }] = await Promise.all([
     db.rpc("get_client_domains"),
     db.rpc("get_client_name_patterns"),
   ]);
@@ -82,11 +84,9 @@ export async function ingestBillingMail(sinceDays = 90): Promise<IngestReport[]>
     clientByThread.set(t.thread_id, t.client_id);
   }
 
-  const reports: IngestReport[] = [];
-
-  for (const a of (accounts ?? []) as { email: string }[]) {
-    try {
-      const { messages, hitCap } = await fetchBillingMail(a.email, sinceDays);
+  try {
+    {
+      const { messages, hitCap } = await fetchBillingMail(account, sinceDays);
 
       /*
        * First pass: anything with a recognisable client domain. Done for the
@@ -165,8 +165,8 @@ export async function ingestBillingMail(sinceDays = 90): Promise<IngestReport[]>
         if (error) throw new Error(error.message);
       }
 
-      reports.push({
-        account: a.email,
+      return {
+        account,
         found: messages.length,
         attached: rows.length,
         byDomain: counts.domain,
@@ -174,16 +174,14 @@ export async function ingestBillingMail(sinceDays = 90): Promise<IngestReport[]>
         byName: counts.name,
         hitCap,
         problem: null,
-      });
-    } catch (e) {
-      reports.push({
-        account: a.email, found: 0, attached: 0,
-        byDomain: 0, byThread: 0, byName: 0,
-        hitCap: false,
-        problem: e instanceof Error ? e.message : "Unknown error",
-      });
+      };
     }
+  } catch (e) {
+    return {
+      account, found: 0, attached: 0,
+      byDomain: 0, byThread: 0, byName: 0,
+      hitCap: false,
+      problem: e instanceof Error ? e.message : "Unknown error",
+    };
   }
-
-  return reports;
 }

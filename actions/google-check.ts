@@ -1,7 +1,7 @@
 "use server";
 
 import { tokenFor } from "@/lib/google/auth";
-import { ingestBillingMail, type IngestReport } from "@/lib/ingest/comms";
+import { ingestBillingMailFor, type IngestReport } from "@/lib/ingest/comms";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 
@@ -87,31 +87,34 @@ export async function checkGoogleAccess(): Promise<{
   };
 }
 
+/** The mailboxes the ingest would read, so the browser can work through them. */
+export async function listIngestAccounts(): Promise<string[]> {
+  const perms = await myPermissions();
+  if (!perms.has("org.manage")) return [];
+
+  const { data } = await createServiceClient().rpc("get_ingest_accounts");
+  return ((data ?? []) as { email: string }[]).map((a) => a.email).sort();
+}
+
 /**
- * Run the billing-mail ingest by hand.
+ * Read one mailbox.
  *
- * Deliberately manual for now. It reads twenty-two mailboxes and writes what it
- * finds; putting that on a schedule before anyone has seen what it collects
- * would be the wrong order.
+ * One per call on purpose. Doing all twenty-two in a single request took five
+ * minutes and was killed by the function timeout, which the browser reports as
+ * the page failing to load -- indistinguishable from a crash. A mailbox at a
+ * time finishes well inside the limit, shows progress as it goes, and a failure
+ * on one account no longer loses the other twenty-one.
  */
-export async function runBillingIngest(sinceDays = 90): Promise<{
-  ok: boolean;
-  problem: string | null;
-  reports: IngestReport[];
-}> {
+export async function runBillingIngestFor(
+  account: string,
+  sinceDays = 90
+): Promise<IngestReport> {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) {
-    return { ok: false, problem: "Not permitted.", reports: [] };
-  }
-
-  try {
-    const reports = await ingestBillingMail(sinceDays);
-    return { ok: reports.every((r) => !r.problem), problem: null, reports };
-  } catch (e) {
     return {
-      ok: false,
-      problem: e instanceof Error ? e.message : "The ingest failed",
-      reports: [],
+      account, found: 0, attached: 0, byDomain: 0, byThread: 0, byName: 0,
+      hitCap: false, problem: "Not permitted.",
     };
   }
+  return ingestBillingMailFor(account, sinceDays);
 }

@@ -2,21 +2,47 @@
 
 import { useState, useTransition } from "react";
 import {
-  checkGoogleAccess, runBillingIngest,
+  checkGoogleAccess, listIngestAccounts, runBillingIngestFor,
   type AccountCheck,
 } from "@/actions/google-check";
+import type { IngestReport } from "@/lib/ingest/comms";
 
 export function GoogleCheck() {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<Awaited<ReturnType<typeof checkGoogleAccess>> | null>(null);
-  const [ingest, setIngest] = useState<Awaited<ReturnType<typeof runBillingIngest>> | null>(null);
+  const [reports, setReports] = useState<IngestReport[]>([]);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [ingestProblem, setIngestProblem] = useState<string | null>(null);
 
   function run() {
     startTransition(async () => setResult(await checkGoogleAccess()));
   }
 
-  function pull() {
-    startTransition(async () => setIngest(await runBillingIngest(90)));
+  /*
+   * One mailbox at a time, from the browser.
+   *
+   * All twenty-two in a single request took five minutes and was killed by the
+   * function timeout, which the browser shows as the page failing to load. This
+   * way each call is small, the count moves while it works, and one bad mailbox
+   * does not lose the rest.
+   */
+  async function pull() {
+    setIngestProblem(null);
+    setReports([]);
+
+    const accounts = await listIngestAccounts();
+    if (accounts.length === 0) {
+      setIngestProblem("No mailboxes to read.");
+      return;
+    }
+
+    setProgress({ done: 0, total: accounts.length });
+    for (const [i, account] of accounts.entries()) {
+      const report = await runBillingIngestFor(account, 90);
+      setReports((prev) => [...prev, report]);
+      setProgress({ done: i + 1, total: accounts.length });
+    }
+    setProgress(null);
   }
 
   return (
@@ -31,10 +57,12 @@ export function GoogleCheck() {
         </button>
         <button
           onClick={pull}
-          disabled={pending}
+          disabled={pending || progress !== null}
           className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
         >
-          {pending ? "Working…" : "Pull billing mail (90 days)"}
+          {progress
+            ? `Reading mailbox ${progress.done + 1} of ${progress.total}…`
+            : "Pull billing mail (90 days)"}
         </button>
       </div>
 
@@ -44,17 +72,17 @@ export function GoogleCheck() {
         </p>
       )}
 
-      {ingest?.problem && (
+      {ingestProblem && (
         <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          {ingest.problem}
+          {ingestProblem}
         </p>
       )}
 
-      {ingest && !ingest.problem && (
+      {reports.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm">
-            {ingest.reports.reduce((n, r) => n + r.attached, 0)} messages attached to a client,
-            out of {ingest.reports.reduce((n, r) => n + r.found, 0)} found
+            {reports.reduce((n: number, r: IngestReport) => n + r.attached, 0)} messages attached
+            to a client, out of {reports.reduce((n: number, r: IngestReport) => n + r.found, 0)} found
           </p>
           <p className="max-w-prose text-xs text-muted-foreground">
             By domain: the client was on the message. By thread: an internal
@@ -75,7 +103,7 @@ export function GoogleCheck() {
                 </tr>
               </thead>
               <tbody>
-                {ingest.reports.map((r) => (
+                {reports.map((r: IngestReport) => (
                   <tr key={r.account} className="border-b last:border-0">
                     <td className="px-3 py-2">{r.account}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.found}</td>
