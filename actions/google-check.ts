@@ -1,6 +1,7 @@
 "use server";
 
 import { tokenFor } from "@/lib/google/auth";
+import { ingestBillingMail, type IngestReport } from "@/lib/ingest/comms";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 
@@ -84,4 +85,33 @@ export async function checkGoogleAccess(): Promise<{
     problem: null,
     accounts: results,
   };
+}
+
+/**
+ * Run the billing-mail ingest by hand.
+ *
+ * Deliberately manual for now. It reads twenty-two mailboxes and writes what it
+ * finds; putting that on a schedule before anyone has seen what it collects
+ * would be the wrong order.
+ */
+export async function runBillingIngest(sinceDays = 90): Promise<{
+  ok: boolean;
+  problem: string | null;
+  reports: IngestReport[];
+}> {
+  const perms = await myPermissions();
+  if (!perms.has("org.manage")) {
+    return { ok: false, problem: "Not permitted.", reports: [] };
+  }
+
+  try {
+    const reports = await ingestBillingMail(sinceDays);
+    return { ok: reports.every((r) => !r.problem), problem: null, reports };
+  } catch (e) {
+    return {
+      ok: false,
+      problem: e instanceof Error ? e.message : "The ingest failed",
+      reports: [],
+    };
+  }
 }
