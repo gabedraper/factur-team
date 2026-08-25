@@ -133,7 +133,6 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
                       </span>
                       {e.amount !== null && <> for <b className="text-foreground">{money.format(e.amount)}</b></>}
                       {e.service_month && <> sent for {monthName(e.service_month)}&apos;s services</>}
-                      {e.service && <span className="text-muted-foreground"> · {e.service}</span>}
                       {e.outstanding !== null && e.outstanding > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {" · "}{money.format(e.outstanding)} outstanding
