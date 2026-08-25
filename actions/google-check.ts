@@ -14,6 +14,8 @@ export type AccountCheck = {
   why: string;
   ok: boolean;
   problem: string | null;
+  /** Which of the three reads Google will allow for this person. */
+  scopes: { mail: boolean; chat: boolean; drive: boolean };
 };
 
 /** Google's failures here are terse; these are what they actually mean. */
@@ -67,17 +69,32 @@ export async function checkGoogleAccess(): Promise<{
     email: string; full_name: string | null; why: string; is_shared_mailbox: boolean;
   }[];
 
+  /*
+   * Each scope is granted separately in the Admin console, so each is asked
+   * for separately. One token for all three would pass on the day Gmail was
+   * authorised and hide that Chat and Drive were not -- which shows up later
+   * as a pull that fails for every account with an error about a client id.
+   */
   const results: AccountCheck[] = [];
   for (const a of accounts) {
-    try {
-      await tokenFor("gmail", a.email);
-      results.push({ email: a.email, name: a.full_name, why: a.why, ok: true, problem: null });
-    } catch (e) {
-      results.push({
-        email: a.email, name: a.full_name, why: a.why, ok: false,
-        problem: explain(e instanceof Error ? e.message : "Unknown error"),
-      });
-    }
+    const [mail, chat, drive] = await Promise.all(
+      (["gmail", "chat", "drive"] as const).map((svc) =>
+        tokenFor(svc, a.email).then(
+          () => null,
+          (e: unknown) => (e instanceof Error ? e.message : "Unknown error")
+        )
+      )
+    );
+
+    const failure = mail ?? chat ?? drive;
+    results.push({
+      email: a.email,
+      name: a.full_name,
+      why: a.why,
+      ok: failure === null,
+      problem: failure ? explain(failure) : null,
+      scopes: { mail: !mail, chat: !chat, drive: !drive },
+    });
   }
 
   results.sort((x, y) => Number(x.ok) - Number(y.ok) || x.email.localeCompare(y.email));

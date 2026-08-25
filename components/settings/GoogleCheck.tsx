@@ -181,6 +181,24 @@ export function GoogleCheck() {
                       ) : (
                         <span className="text-red-600 dark:text-red-400">{a.problem}</span>
                       )}
+                      <div className="mt-0.5 flex gap-2 text-xs">
+                        {([
+                          ["Mail", a.scopes.mail],
+                          ["Chat", a.scopes.chat],
+                          ["Drive", a.scopes.drive],
+                        ] as const).map(([label, granted]) => (
+                          <span
+                            key={label}
+                            className={
+                              granted
+                                ? "text-muted-foreground"
+                                : "text-red-600 line-through dark:text-red-400"
+                            }
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 ))}
