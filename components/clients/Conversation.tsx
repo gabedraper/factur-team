@@ -7,11 +7,26 @@ const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
 });
 
+/** A message happened at a moment, so it is shown in company time. */
 function when(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
     timeZone: "America/Chicago",
     day: "numeric", month: "short", year: "numeric",
     hour: "numeric", minute: "2-digit",
+  });
+}
+
+/**
+ * An invoice is recorded against a day, not a moment.
+ *
+ * Parsed piece by piece rather than through Date, because `new Date("2026-01-09")`
+ * is midnight UTC and displaying that in Central moved every invoice back to
+ * six o'clock the evening before.
+ */
+function onDay(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    day: "numeric", month: "short", year: "numeric",
   });
 }
 
@@ -65,23 +80,35 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
         const key = `${e.kind}-${e.external_id ?? i}`;
 
         if (e.kind === "event") {
+          // Aligned by who did it: we raise invoices, they send payments.
+          const ours = e.side === "us";
           return (
-            <div key={key} className="flex items-center gap-3 py-1">
-              <span className="h-px flex-1 bg-border" />
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {e.title}
-                {e.amount !== null && <> · <b className="text-foreground">{money.format(e.amount)}</b></>}
-                {e.outstanding !== null && e.outstanding > 0 && <> · {money.format(e.outstanding)} outstanding</>}
-                {e.preview && <> · {e.preview}</>}
-                {" · "}{when(e.occurred_at)}
-              </span>
-              <span className="h-px flex-1 bg-border" />
+            <div key={key} className={`flex ${ours ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[80%] rounded-lg border border-dashed px-3 py-1.5 text-xs ${
+                  ours ? "bg-primary/5" : "bg-emerald-500/5"
+                }`}
+              >
+                <span className="font-medium text-foreground">{e.title}</span>
+                {e.amount !== null && (
+                  <> · <b className="text-foreground">{money.format(e.amount)}</b></>
+                )}
+                {e.outstanding !== null && e.outstanding > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {" · "}{money.format(e.outstanding)} outstanding
+                  </span>
+                )}
+                {e.preview && <span className="text-muted-foreground"> · {e.preview}</span>}
+                <span className="text-muted-foreground">
+                  {" · "}{e.on_date ? onDay(e.on_date) : ""}
+                </span>
+              </div>
             </div>
           );
         }
 
-        const mine = e.direction === "outbound";
-        const internal = e.direction === "internal";
+        const mine = e.side === "us";
+        const internal = e.side === "internal";
         const isOpen = open === e.external_id;
 
         return (
@@ -102,7 +129,7 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
               <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">{e.author ?? "unknown"}</span>
                 {internal && <span className="italic">internal</span>}
-                <span>{when(e.occurred_at)}</span>
+                <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
                 <MatchNote by={e.matched_by} />
               </div>
 

@@ -5,9 +5,13 @@ import { myPermissions } from "@/lib/org";
 import { tokenFor } from "@/lib/google/auth";
 
 export type ConversationEntry = {
-  occurred_at: string;
+  /** Set for messages, which happened at a moment. */
+  occurred_at: string | null;
+  /** Set for invoices and payments, which QuickBooks records against a day. */
+  on_date: string | null;
   kind: "message" | "event";
   direction: "inbound" | "outbound" | "internal" | null;
+  side: "us" | "client" | "internal";
   author: string | null;
   title: string;
   preview: string | null;
