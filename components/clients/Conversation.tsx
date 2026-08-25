@@ -117,39 +117,126 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
         if (e.kind === "invoice" || e.kind === "payment") {
           // Aligned by who did it: we raise invoices, they send payments.
           const ours = e.side === "us";
+          const isInvoice = e.kind === "invoice";
+          const openHere = isInvoice && open === `inv-${e.external_id}`;
+
           return (
             <div key={key} className={`flex ${ours ? "justify-end" : "justify-start"}`}>
               <div
-                className={`flex max-w-[80%] items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-xs ${
+                className={`max-w-[80%] rounded-lg border border-dashed ${
                   ours ? "bg-primary/5" : "bg-emerald-500/5"
                 }`}
               >
-                <Icon entry={e} />
-                <span>
-                  {e.kind === "invoice" ? (
-                    <>
-                      <span className="font-medium text-foreground">
-                        Invoice {e.invoice_no}
-                      </span>
-                      {e.amount !== null && <> for <b className="text-foreground">{money.format(e.amount)}</b></>}
-                      {e.service_month && <> sent for {monthName(e.service_month)}&apos;s services</>}
-                      {e.outstanding !== null && e.outstanding > 0 && (
-                        <span className="text-amber-600 dark:text-amber-400">
-                          {" · "}{money.format(e.outstanding)} outstanding
+                <button
+                  onClick={() =>
+                    isInvoice && setOpen(openHere ? null : `inv-${e.external_id}`)
+                  }
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+                    isInvoice ? "cursor-pointer" : "cursor-default"
+                  }`}
+                >
+                  <Icon entry={e} />
+                  <span>
+                    {isInvoice ? (
+                      <>
+                        <span className="font-medium text-foreground">
+                          Invoice {e.invoice_no}
                         </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium text-foreground">Payment received</span>
-                      {e.amount !== null && <> · <b className="text-foreground">{money.format(e.amount)}</b></>}
-                    </>
-                  )}
-                  {e.preview && <span className="text-muted-foreground"> · {e.preview}</span>}
-                  <span className="text-muted-foreground">
-                    {" · "}{e.on_date ? onDay(e.on_date) : ""}
+                        {e.amount !== null && <> for <b className="text-foreground">{money.format(e.amount)}</b></>}
+                        {e.service_month && <> sent for {monthName(e.service_month)}&apos;s services</>}
+                        {e.outstanding !== null && e.outstanding > 0 && (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            {" · "}{money.format(e.outstanding)} outstanding
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium text-foreground">Payment received</span>
+                        {e.amount !== null && <> · <b className="text-foreground">{money.format(e.amount)}</b></>}
+                      </>
+                    )}
+                    {e.preview && <span className="text-muted-foreground"> · {e.preview}</span>}
+                    <span className="text-muted-foreground">
+                      {" · "}{e.on_date ? onDay(e.on_date) : ""}
+                    </span>
                   </span>
-                </span>
+                </button>
+
+                {/*
+                  * The invoice itself, drawn from what QuickBooks gave us.
+                  *
+                  * Intuit's own invoice page sends x-frame-options: SAMEORIGIN,
+                  * so it cannot be put in a frame here -- it would render blank.
+                  * These are the same figures off the same record.
+                  */}
+                {openHere && (
+                  <div className="border-t border-dashed px-3 py-2 text-xs">
+                    <div className="mb-2 flex items-baseline justify-between gap-4">
+                      <span className="text-sm font-semibold">Invoice {e.invoice_no}</span>
+                      <span className="text-muted-foreground">
+                        {e.on_date ? onDay(e.on_date) : ""}
+                        {e.due_date && <> · due {onDay(e.due_date)}</>}
+                      </span>
+                    </div>
+
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <th className="py-1 font-medium">Item</th>
+                          <th className="py-1 text-right font-medium">Unit</th>
+                          <th className="py-1 text-right font-medium">Qty</th>
+                          <th className="py-1 text-right font-medium">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="py-1 pr-2">
+                            {e.service ?? "—"}
+                            {e.line_description && (
+                              <div className="text-muted-foreground">{e.line_description}</div>
+                            )}
+                          </td>
+                          <td className="py-1 text-right tabular-nums">
+                            {e.unit_price !== null ? money.format(e.unit_price) : "—"}
+                          </td>
+                          <td className="py-1 text-right tabular-nums">{e.quantity ?? "—"}</td>
+                          <td className="py-1 text-right tabular-nums">
+                            {e.amount !== null ? money.format(e.amount) : "—"}
+                          </td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t">
+                          <td colSpan={3} className="py-1 text-right text-muted-foreground">Total</td>
+                          <td className="py-1 text-right font-semibold tabular-nums">
+                            {e.amount !== null ? money.format(e.amount) : "—"}
+                          </td>
+                        </tr>
+                        {e.outstanding !== null && (
+                          <tr>
+                            <td colSpan={3} className="py-1 text-right text-muted-foreground">Outstanding</td>
+                            <td className={`py-1 text-right font-semibold tabular-nums ${
+                              e.outstanding > 0 ? "text-amber-600 dark:text-amber-400" : ""
+                            }`}>
+                              {money.format(e.outstanding)}
+                            </td>
+                          </tr>
+                        )}
+                      </tfoot>
+                    </table>
+
+                    {e.bill_email && (
+                      <p className="mt-2 text-muted-foreground">Billed to {e.bill_email}</p>
+                    )}
+                    {e.url && (
+                      <a href={e.url} target="_blank" rel="noopener noreferrer"
+                         className="mt-2 inline-block underline">
+                        Open in QuickBooks
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );

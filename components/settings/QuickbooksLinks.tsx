@@ -66,7 +66,7 @@ export function QuickbooksLinks({
               <th className="px-3 py-2 font-medium">In QuickBooks</th>
               <th className="px-3 py-2 font-medium text-right">Owed</th>
               <th className="px-3 py-2 font-medium text-right">Past 60 days</th>
-              <th className="px-3 py-2 font-medium">Is this…</th>
+              <th className="px-3 py-2 font-medium">Salesforce Client</th>
               {canDecide && <th className="px-3 py-2" />}
             </tr>
           </thead>

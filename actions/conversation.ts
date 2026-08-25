@@ -20,6 +20,11 @@ export type ConversationEntry = {
   invoice_no: string | null;
   service_month: string | null;
   service: string | null;
+  line_description: string | null;
+  unit_price: number | null;
+  quantity: number | null;
+  due_date: string | null;
+  bill_email: string | null;
   amount: number | null;
   outstanding: number | null;
   matched_by: "domain" | "thread" | "name" | null;
@@ -52,8 +57,8 @@ export async function getConversation(clientId: string): Promise<ConversationEnt
  * app can show any message in full without holding the correspondence of
  * eighteen people at rest.
  *
- * Read as whoever the message was already collected from -- this grants no
- * access that the ingest did not already have.
+ * Read as whoever already holds a copy -- this grants no access that the
+ * ingest did not already have.
  */
 export async function getMessageBody(externalId: string): Promise<{
   body: string | null;
@@ -64,7 +69,7 @@ export async function getMessageBody(externalId: string): Promise<{
   const db = createServiceClient();
   const { data } = await db
     .from("comm_messages")
-    .select("ingested_from,participants,author_email")
+    .select("ingested_from,external_id,participants,author_email")
     .eq("source", "gmail")
     .eq("gmail_id", externalId)
     .maybeSingle();
@@ -73,39 +78,91 @@ export async function getMessageBody(externalId: string): Promise<{
 
   const row = data as {
     ingested_from: string | null;
+    external_id: string | null;
     participants: string[];
     author_email: string | null;
   };
 
-  /*
-   * Read it from the mailbox it was collected from.
-   *
-   * A Gmail id only resolves in its own mailbox. Picking any participant meant
-   * asking Brenolene for an id that belonged to Dylan's copy, which is a 404 --
-   * and the screen showed "Gmail 404" with no way to tell that from the message
-   * having been deleted.
-   */
-  let actAs = row.ingested_from;
+  const { data: accounts } = await db.rpc("get_ingest_accounts");
+  const readable = ((accounts ?? []) as { email: string }[]).map((a) => a.email.toLowerCase());
 
-  if (!actAs) {
-    // Collected before the source mailbox was recorded; fall back to guessing.
-    const { data: accounts } = await db.rpc("get_ingest_accounts");
-    const readable = new Set(
-      ((accounts ?? []) as { email: string }[]).map((a) => a.email.toLowerCase())
+  /*
+   * Where to read it from.
+   *
+   * A Gmail id only resolves in the mailbox it belongs to, so the mailbox it
+   * was collected from is tried first. Messages gathered before that was
+   * recorded have nothing to go on, and guessing a participant produced two
+   * different lies: "no longer in that mailbox" when the guess was wrong, and
+   * "nobody whose mail we read is on this" when the only participants were a
+   * client and a mailbox not on the list.
+   *
+   * So when the source is unknown, the message is looked up by the sender's
+   * Message-ID -- which is the same in every copy -- across the mailboxes we
+   * can read, and whichever holds it answers.
+   */
+  async function locate(): Promise<{ token: string; id: string; who: string } | null> {
+    if (row.ingested_from) {
+      try {
+        return {
+          token: await tokenFor("gmail", row.ingested_from),
+          id: externalId,
+          who: row.ingested_from,
+        };
+      } catch {
+        // Fall through and search instead.
+      }
+    }
+    if (!row.external_id) return null;
+
+    const rfc = row.external_id.replace(/[<>]/g, "");
+    // Anyone on the message first, then the rest: usually one of them has it.
+    const onIt = new Set(
+      [...(row.participants ?? []), row.author_email ?? ""].map((p) => p.toLowerCase())
     );
-    actAs = [...(row.participants ?? []), row.author_email ?? ""]
-      .map((p) => p.toLowerCase())
-      .find((p) => readable.has(p)) ?? null;
+    const order = [
+      ...readable.filter((a) => onIt.has(a)),
+      ...readable.filter((a) => !onIt.has(a)),
+    ];
+
+    for (const who of order) {
+      try {
+        const token = await tokenFor("gmail", who);
+        const res = await fetch(
+          "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=1&q=" +
+            encodeURIComponent(`rfc822msgid:${rfc}`),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) continue;
+        const found = (await res.json()) as { messages?: { id: string }[] };
+        if (found.messages?.[0]?.id) return { token, id: found.messages[0].id, who };
+      } catch {
+        continue;
+      }
+    }
+    return null;
   }
 
-  if (!actAs) {
-    return { body: null, problem: "Nobody whose mail we read is on this message." };
+  const located = await locate();
+  if (!located) {
+    return {
+      body: null,
+      problem: "This message isn't in any mailbox we can read — open it in Gmail instead.",
+    };
+  }
+  const { token, id: messageId, who } = located;
+
+  // Remember where it was found, so the search only ever happens once.
+  if (!row.ingested_from) {
+    await db
+      .from("comm_messages")
+      .update({ ingested_from: who, gmail_id: messageId })
+      .eq("source", "gmail")
+      .eq("gmail_id", externalId);
   }
 
   try {
-    const token = await tokenFor("gmail", actAs);
     const res = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${externalId}?format=full`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!res.ok) {
