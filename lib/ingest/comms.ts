@@ -1,10 +1,13 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { fetchBillingMail } from "@/lib/google/gmail";
+import { fetchChat } from "@/lib/google/chat";
+import { fetchTranscripts } from "@/lib/google/drive";
 
 const OUR_DOMAINS = new Set(["facturmfg.com", "bethefactur.com"]);
 
 export type IngestReport = {
   account: string;
+  kind: "mail" | "chat" | "meetings";
   /** Everything matching the search, whether or not it was fetched. */
   matching: number;
   found: number;
@@ -182,6 +185,7 @@ export async function ingestBillingMailFor(
 
       return {
         account,
+        kind: "mail",
         matching,
         found: messages.length,
         attached: rows.length,
@@ -194,10 +198,232 @@ export async function ingestBillingMailFor(
     }
   } catch (e) {
     return {
-      account, matching: 0, found: 0, attached: 0,
+      account, kind: "mail", matching: 0, found: 0, attached: 0,
       byDomain: 0, byThread: 0, byName: 0,
       hitCap: false,
       problem: e instanceof Error ? e.message : "Unknown error",
     };
+  }
+}
+
+
+/*
+ * Words that make a line about getting paid.
+ *
+ * Mail is narrowed by its subject, which chat and meetings do not have -- a
+ * chat message is one line and a transcript is an hour of talk. So they are
+ * narrowed by what is said instead. Deliberately plain words: the internal
+ * chatter this is for sounds like "did they ever pay the June one", not like
+ * an accounts-receivable report.
+ */
+const MONEY_TALK =
+  /\b(invoic\w*|payment|paid|pay(ing|s)?|past due|overdue|owe[sd]?|owing|balance|remit\w*|receivable|collection|credit hold|statement|billing|billed|unpaid|outstanding|net ?(30|45|60)|wire|ach|check|cheque)\b/i;
+
+function mentions(text: string): boolean {
+  return MONEY_TALK.test(text);
+}
+
+/** Client lookups, built once and shared by the chat and meeting ingests. */
+async function clientIndex(db: ReturnType<typeof createServiceClient>) {
+  const [{ data: domains }, { data: names }] = await Promise.all([
+    db.rpc("get_client_domains"),
+    db.rpc("get_client_name_patterns"),
+  ]);
+
+  const byDomain = new Map<string, string>();
+  for (const d of (domains ?? []) as { client_id: string; domain: string }[]) {
+    byDomain.set(d.domain, d.client_id);
+  }
+
+  // Longest first, so "Geospace 2" is tried before "Geospace".
+  const patterns = ((names ?? []) as { client_id: string; client_name: string }[])
+    .map((n) => ({ clientId: n.client_id, key: normalise(n.client_name) }))
+    .filter((n) => n.key.length >= 6)
+    .sort((a, b) => b.key.length - a.key.length);
+
+  return { byDomain, patterns };
+}
+
+function empty(account: string, kind: IngestReport["kind"], problem: string | null): IngestReport {
+  return {
+    account, kind, matching: 0, found: 0, attached: 0,
+    byDomain: 0, byThread: 0, byName: 0, hitCap: false, problem,
+  };
+}
+
+/**
+ * Internal Google Chat about getting paid.
+ *
+ * This is the conversation that never reaches the client: finance, the team
+ * lead and the account manager working out what to do about an unpaid invoice.
+ * There is no client on the thread and no subject line, so a message can only
+ * be attached by naming the client -- either in what was said, or in the name
+ * of the space it was said in.
+ *
+ * Only the first hundred and sixty characters are kept, the same as mail. The
+ * full line is fetched from Google when someone opens it.
+ */
+export async function ingestChatFor(account: string, sinceDays = 90): Promise<IngestReport> {
+  const db = createServiceClient();
+
+  try {
+    const { byDomain, patterns } = await clientIndex(db);
+    const { messages } = await fetchChat(account, sinceDays);
+
+    const counts = { domain: 0, name: 0 };
+
+    const rows = messages
+      .map((m) => {
+        if (!mentions(m.text)) return null;
+
+        const said = normalise(m.text);
+        const space = normalise(m.spaceLabel ?? "");
+
+        // The space name first: a space called "Mako - collections" is about
+        // Mako even on a line that only says "still nothing".
+        let clientId = patterns.find((n) => space.includes(n.key))?.clientId ?? null;
+        let matchedBy: "domain" | "name" | null = clientId ? "domain" : null;
+
+        if (!clientId) {
+          clientId = patterns.find((n) => said.includes(n.key))?.clientId ?? null;
+          matchedBy = clientId ? "name" : null;
+        }
+        if (!clientId || !matchedBy) return null;
+        counts[matchedBy]++;
+
+        return {
+          source: "google_chat",
+          // Chat ids are already domain-wide, so the same message reached from
+          // two people's space lists stores once.
+          external_id: m.id,
+          gmail_id: null,
+          ingested_from: account,
+          thread_id: m.spaceName,
+          client_id: clientId,
+          matched_by: matchedBy,
+          occurred_at: m.createdAt.toISOString(),
+          // Nobody outside the company is in these spaces.
+          direction: "internal",
+          author_email: null,
+          author_name: m.author,
+          participants: [],
+          subject: m.spaceLabel ?? "Chat",
+          extract: m.text.slice(0, 160),
+          topics: ["billing"],
+          url: `https://mail.google.com/chat/u/0/#chat/space/${
+            m.spaceName.split("/").pop() ?? ""
+          }`,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    if (rows.length) {
+      const { error } = await db
+        .from("comm_messages")
+        .upsert(rows, { onConflict: "source,external_id" });
+      if (error) throw new Error(error.message);
+    }
+
+    return {
+      account, kind: "chat",
+      matching: messages.length,
+      found: messages.length,
+      attached: rows.length,
+      byDomain: counts.domain, byThread: 0, byName: counts.name,
+      hitCap: false, problem: null,
+    };
+  } catch (e) {
+    return empty(account, "chat", e instanceof Error ? e.message : "Unknown error");
+  }
+}
+
+/**
+ * Meeting transcripts where money came up.
+ *
+ * Google files a recorded meeting's transcript in the organiser's Drive, so
+ * these arrive as documents rather than messages. The client is read off the
+ * attendee list, which is the strongest signal any of the three sources has --
+ * an email address on the invitation, not a name in a subject line.
+ *
+ * A whole meeting is rarely about an invoice, so what is kept is the part that
+ * was: the passage around the first time payment is mentioned. Opening the
+ * message fetches the full transcript from Drive.
+ */
+export async function ingestTranscriptsFor(
+  account: string,
+  sinceDays = 90
+): Promise<IngestReport> {
+  const db = createServiceClient();
+
+  try {
+    const { byDomain, patterns } = await clientIndex(db);
+    const { transcripts, matching, hitCap } = await fetchTranscripts(account, sinceDays);
+
+    const counts = { domain: 0, name: 0 };
+
+    const rows = transcripts
+      .map((t) => {
+        const hit = MONEY_TALK.exec(t.text);
+        if (!hit) return null;
+
+        const outside = t.attendees.filter((a) => !OUR_DOMAINS.has(domainOf(a)));
+        let clientId = outside.map((a) => byDomain.get(domainOf(a))).find(Boolean) ?? null;
+        let matchedBy: "domain" | "name" | null = clientId ? "domain" : null;
+
+        // A meeting with no outside attendee is an internal one; the title has
+        // to say who it was about.
+        if (!clientId) {
+          const title = normalise(t.title);
+          clientId = patterns.find((n) => title.includes(n.key))?.clientId ?? null;
+          matchedBy = clientId ? "name" : null;
+        }
+        if (!clientId || !matchedBy) return null;
+        counts[matchedBy]++;
+
+        // The sentence where it came up, with a little either side of it.
+        const at = hit.index ?? 0;
+        const extract = t.text
+          .slice(Math.max(0, at - 60), at + 200)
+          .replace(/\s+/g, " ")
+          .trim();
+
+        return {
+          source: "meet_transcript",
+          external_id: t.id,
+          gmail_id: null,
+          ingested_from: account,
+          thread_id: null,
+          client_id: clientId,
+          matched_by: matchedBy,
+          occurred_at: t.createdAt.toISOString(),
+          direction: outside.length === 0 ? "internal" : "outbound",
+          author_email: null,
+          author_name: null,
+          participants: t.attendees,
+          subject: t.title,
+          extract: extract ? `…${extract}…` : null,
+          topics: ["billing"],
+          url: t.url,
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    if (rows.length) {
+      const { error } = await db
+        .from("comm_messages")
+        .upsert(rows, { onConflict: "source,external_id" });
+      if (error) throw new Error(error.message);
+    }
+
+    return {
+      account, kind: "meetings",
+      matching,
+      found: transcripts.length,
+      attached: rows.length,
+      byDomain: counts.domain, byThread: 0, byName: counts.name,
+      hitCap, problem: null,
+    };
+  } catch (e) {
+    return empty(account, "meetings", e instanceof Error ? e.message : "Unknown error");
   }
 }

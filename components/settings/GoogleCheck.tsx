@@ -2,16 +2,24 @@
 
 import { useState, useTransition } from "react";
 import {
-  checkGoogleAccess, listIngestAccounts, runBillingIngestFor,
+  checkGoogleAccess, listIngestAccounts, runIngest,
   type AccountCheck,
 } from "@/actions/google-check";
 import type { IngestReport } from "@/lib/ingest/comms";
+
+const LANES: { kind: IngestReport["kind"]; label: string; doing: string }[] = [
+  { kind: "mail", label: "Pull billing mail (90 days)", doing: "Reading mailbox" },
+  { kind: "chat", label: "Pull chat (90 days)", doing: "Reading chat for" },
+  { kind: "meetings", label: "Pull meetings (90 days)", doing: "Reading Drive for" },
+];
 
 export function GoogleCheck() {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<Awaited<ReturnType<typeof checkGoogleAccess>> | null>(null);
   const [reports, setReports] = useState<IngestReport[]>([]);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<
+    { kind: IngestReport["kind"]; done: number; total: number } | null
+  >(null);
   const [ingestProblem, setIngestProblem] = useState<string | null>(null);
 
   function run() {
@@ -26,21 +34,21 @@ export function GoogleCheck() {
    * way each call is small, the count moves while it works, and one bad mailbox
    * does not lose the rest.
    */
-  async function pull() {
+  async function pull(kind: IngestReport["kind"]) {
     setIngestProblem(null);
     setReports([]);
 
     const accounts = await listIngestAccounts();
     if (accounts.length === 0) {
-      setIngestProblem("No mailboxes to read.");
+      setIngestProblem("No accounts to read.");
       return;
     }
 
-    setProgress({ done: 0, total: accounts.length });
+    setProgress({ kind, done: 0, total: accounts.length });
     for (const [i, account] of accounts.entries()) {
-      const report = await runBillingIngestFor(account, 90);
+      const report = await runIngest(kind, account, 90);
       setReports((prev) => [...prev, report]);
-      setProgress({ done: i + 1, total: accounts.length });
+      setProgress({ kind, done: i + 1, total: accounts.length });
     }
     setProgress(null);
   }
@@ -55,15 +63,18 @@ export function GoogleCheck() {
         >
           {pending ? "Working…" : "Check connection"}
         </button>
-        <button
-          onClick={pull}
-          disabled={pending || progress !== null}
-          className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
-        >
-          {progress
-            ? `Reading mailbox ${progress.done + 1} of ${progress.total}…`
-            : "Pull billing mail (90 days)"}
-        </button>
+        {LANES.map((lane) => (
+          <button
+            key={lane.kind}
+            onClick={() => pull(lane.kind)}
+            disabled={pending || progress !== null}
+            className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+          >
+            {progress?.kind === lane.kind
+              ? `${lane.doing} ${progress.done + 1} of ${progress.total}…`
+              : lane.label}
+          </button>
+        ))}
       </div>
 
       {result?.problem && (
@@ -94,7 +105,7 @@ export function GoogleCheck() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Mailbox</th>
+                  <th className="px-3 py-2 font-medium">Account</th>
                   <th className="px-3 py-2 font-medium text-right">Matching</th>
                   <th className="px-3 py-2 font-medium text-right">Read</th>
                   <th className="px-3 py-2 font-medium text-right">Attached</th>
@@ -106,7 +117,7 @@ export function GoogleCheck() {
               </thead>
               <tbody>
                 {reports.map((r: IngestReport) => (
-                  <tr key={r.account} className="border-b last:border-0">
+                  <tr key={`${r.kind}-${r.account}`} className="border-b last:border-0">
                     <td className="px-3 py-2">{r.account}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.matching}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.found}</td>

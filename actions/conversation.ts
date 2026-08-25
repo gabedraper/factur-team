@@ -67,23 +67,34 @@ export async function getMessageBody(externalId: string): Promise<{
   if (!(await mayRead())) return { body: null, problem: "Not permitted." };
 
   const db = createServiceClient();
-  const { data } = await db
-    .from("comm_messages")
-    .select("ingested_from,external_id,participants,author_email")
-    .eq("source", "gmail")
-    .eq("gmail_id", externalId)
-    .maybeSingle();
+  /*
+   * The conversation identifies a row by its Gmail id where it has one and by
+   * its own id otherwise, so both are tried -- as two queries rather than one
+   * `or`, because a chat id and a Message-ID both carry punctuation that
+   * PostgREST reads as filter syntax.
+   */
+  const cols = "source,ingested_from,external_id,participants,author_email";
+  const found = await db.from("comm_messages").select(cols).eq("gmail_id", externalId).limit(1);
+  const data =
+    found.data?.[0] ??
+    (await db.from("comm_messages").select(cols).eq("external_id", externalId).limit(1))
+      .data?.[0];
 
   if (!data) return { body: null, problem: "That message isn't in the trail." };
 
   const row = data as {
+    source: "gmail" | "google_chat" | "meet_transcript";
     ingested_from: string | null;
     external_id: string | null;
     participants: string[];
     author_email: string | null;
   };
 
+  if (row.source === "google_chat") return readChat(row);
+  if (row.source === "meet_transcript") return readTranscript(row);
+
   const { data: accounts } = await db.rpc("get_ingest_accounts");
+
   const readable = ((accounts ?? []) as { email: string }[]).map((a) => a.email.toLowerCase());
 
   /*
@@ -199,5 +210,64 @@ export async function getMessageBody(externalId: string): Promise<{
     return { body: body ? body.slice(0, 20000) : null, problem: body ? null : "No plain text in this message." };
   } catch (e) {
     return { body: null, problem: e instanceof Error ? e.message : "Couldn't fetch it." };
+  }
+}
+
+
+/** One chat line, read back as whoever collected it. */
+async function readChat(row: {
+  ingested_from: string | null;
+  external_id: string | null;
+}): Promise<{ body: string | null; problem: string | null }> {
+  if (!row.ingested_from || !row.external_id) {
+    return { body: null, problem: "This message can't be opened — see it in Chat instead." };
+  }
+  try {
+    const token = await tokenFor("chat", row.ingested_from);
+    const res = await fetch(`https://chat.googleapis.com/v1/${row.external_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      return {
+        body: null,
+        problem: "This message is no longer in that space — open it in Chat instead.",
+      };
+    }
+    const m = (await res.json()) as { text?: string };
+    return { body: m.text ?? null, problem: m.text ? null : "This message has no text." };
+  } catch (e) {
+    return { body: null, problem: e instanceof Error ? e.message : "Could not read it." };
+  }
+}
+
+/**
+ * One meeting transcript, exported at the moment it is opened.
+ *
+ * A transcript is long, which is the reason none of it is stored: an hour of
+ * talk about one invoice would otherwise sit in the database for every meeting
+ * anyone recorded.
+ */
+async function readTranscript(row: {
+  ingested_from: string | null;
+  external_id: string | null;
+}): Promise<{ body: string | null; problem: string | null }> {
+  if (!row.ingested_from || !row.external_id) {
+    return { body: null, problem: "This transcript can't be opened — see it in Drive instead." };
+  }
+  try {
+    const token = await tokenFor("drive", row.ingested_from);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${row.external_id}/export?mimeType=text/plain`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) {
+      return {
+        body: null,
+        problem: "This transcript is no longer in Drive — it may have been deleted.",
+      };
+    }
+    return { body: await res.text(), problem: null };
+  } catch (e) {
+    return { body: null, problem: e instanceof Error ? e.message : "Could not read it." };
   }
 }

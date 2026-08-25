@@ -1,7 +1,10 @@
 "use server";
 
 import { tokenFor } from "@/lib/google/auth";
-import { ingestBillingMailFor, type IngestReport } from "@/lib/ingest/comms";
+import {
+  ingestBillingMailFor, ingestChatFor, ingestTranscriptsFor,
+  type IngestReport,
+} from "@/lib/ingest/comms";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 
@@ -109,12 +112,31 @@ export async function runBillingIngestFor(
   account: string,
   sinceDays = 90
 ): Promise<IngestReport> {
+  return runIngest("mail", account, sinceDays);
+}
+
+/**
+ * Read one account, for one of the three places the talk happens.
+ *
+ * Split the same way as mail and for the same reason: a whole domain in one
+ * request outruns the function timeout. Chat and Drive are slower per account
+ * than Gmail is, so this matters more, not less.
+ */
+export async function runIngest(
+  kind: IngestReport["kind"],
+  account: string,
+  sinceDays = 90
+): Promise<IngestReport> {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) {
     return {
-      account, matching: 0, found: 0, attached: 0, byDomain: 0, byThread: 0, byName: 0,
+      account, kind, matching: 0, found: 0, attached: 0,
+      byDomain: 0, byThread: 0, byName: 0,
       hitCap: false, problem: "Not permitted.",
     };
   }
+
+  if (kind === "chat") return ingestChatFor(account, sinceDays);
+  if (kind === "meetings") return ingestTranscriptsFor(account, sinceDays);
   return ingestBillingMailFor(account, sinceDays);
 }
