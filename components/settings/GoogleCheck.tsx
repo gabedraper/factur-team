@@ -147,8 +147,21 @@ export function GoogleCheck() {
             <span className="font-mono text-xs">{result.serviceAccount}</span>
           </p>
           <p className="text-sm">
-            {result.accounts.filter((a) => a.ok).length} of {result.accounts.length} accounts
-            reachable
+            {([
+              ["Mail", (a: AccountCheck) => a.scopes.mail],
+              ["Chat", (a: AccountCheck) => a.scopes.chat],
+              ["Drive", (a: AccountCheck) => a.scopes.drive],
+            ] as const).map(([label, ok], i) => {
+              const n = result.accounts.filter(ok).length;
+              return (
+                <span key={label}>
+                  {i > 0 && <span className="text-muted-foreground"> · </span>}
+                  <span className={n === 0 ? "text-red-600 dark:text-red-400" : ""}>
+                    {label} {n} of {result.accounts.length}
+                  </span>
+                </span>
+              );
+            })}
           </p>
 
           <div className="overflow-x-auto rounded-md border bg-card">

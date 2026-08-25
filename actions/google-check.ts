@@ -95,13 +95,31 @@ export async function checkGoogleAccess(): Promise<{
       )
     );
 
-    const failure = mail ?? chat ?? drive;
+    /*
+     * Say which read failed, not just that one did.
+     *
+     * Naming them matters because the three fail independently: two working
+     * and one missing is a scope that was never granted, while all three
+     * failing the same way is the delegation itself. A single blanket message
+     * sent you to the wrong place.
+     */
+    const failed = ([
+      ["Mail", mail], ["Chat", chat], ["Drive", drive],
+    ] as [string, string | null][])
+      .filter((f) => f[1] !== null)
+      .map(([label, m]) => [label, m as string] as const);
+    const allSameWay = failed.length === 3 && new Set(failed.map((f) => f[1])).size === 1;
+
     results.push({
       email: a.email,
       name: a.full_name,
       why: a.why,
-      ok: failure === null,
-      problem: failure ? explain(failure) : null,
+      ok: failed.length === 0,
+      problem: allSameWay
+        ? explain(failed[0][1])
+        : failed.length
+          ? failed.map(([label, m]) => `${label} — ${explain(m)}`).join(" ")
+          : null,
       scopes: { mail: !mail, chat: !chat, drive: !drive },
     });
   }
