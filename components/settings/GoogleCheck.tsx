@@ -125,7 +125,7 @@ export function GoogleCheck() {
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byDomain}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byThread}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byName}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                    <td className="max-w-xs px-3 py-2 text-xs text-muted-foreground">
                       {r.problem
                         ? <span className="text-red-600 dark:text-red-400">{r.problem}</span>
                         : r.hitCap

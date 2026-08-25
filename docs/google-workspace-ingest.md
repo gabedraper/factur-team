@@ -80,10 +80,10 @@ Google Admin → Security → Access and data control → **API controls** →
 Domain-wide delegation → **Add new**
 
 - Client ID: the number from step 5
-- OAuth scopes: paste all three, comma separated, exactly as written:
+- OAuth scopes: paste all four, comma separated, exactly as written:
 
 ```
-https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/drive.readonly
+https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/drive.readonly
 ```
 
 A typo here fails in an unhelpful way — Google reports "unauthorized_client"

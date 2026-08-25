@@ -20,6 +20,15 @@ export type AccountCheck = {
 
 /** Google's failures here are terse; these are what they actually mean. */
 function explain(message: string): string {
+  if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(message)) {
+    return "Google issued a token but won't allow this read — the scope is missing from the delegation. Re-paste all four scopes in the Admin console.";
+  }
+  if (/PERMISSION_DENIED|\b403\b/i.test(message)) {
+    return "Google refused the read. Usually the API is switched off for the domain, or the scope is missing from the delegation.";
+  }
+  if (/\b404\b/i.test(message)) {
+    return "Google has nothing here for this person.";
+  }
   if (/unauthorized_client/i.test(message)) {
     return "Delegation not accepted — check the scopes and that the numeric Client ID was used, not the service account's email.";
   }
@@ -153,7 +162,13 @@ export async function runIngest(
     };
   }
 
-  if (kind === "chat") return ingestChatFor(account, sinceDays);
-  if (kind === "meetings") return ingestTranscriptsFor(account, sinceDays);
-  return ingestBillingMailFor(account, sinceDays);
+  const report =
+    kind === "chat"
+      ? await ingestChatFor(account, sinceDays)
+      : kind === "meetings"
+        ? await ingestTranscriptsFor(account, sinceDays)
+        : await ingestBillingMailFor(account, sinceDays);
+
+  // Google's own wording is a wall of JSON in a table cell.
+  return report.problem ? { ...report, problem: explain(report.problem) } : report;
 }

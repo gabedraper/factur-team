@@ -12,7 +12,18 @@ import { JWT } from "google-auth-library";
  */
 const SCOPES = {
   gmail: ["https://www.googleapis.com/auth/gmail.readonly"],
-  chat: ["https://www.googleapis.com/auth/chat.messages.readonly"],
+  /*
+   * Two scopes, not one. Listing the spaces a person is in is governed by
+   * `chat.spaces.readonly`; `chat.messages.readonly` only covers reading
+   * inside a space you already hold. With just the second, Google still hands
+   * over a token and then refuses the first call with "insufficient
+   * authentication scopes", which reads as a broken connection rather than a
+   * missing grant.
+   */
+  chat: [
+    "https://www.googleapis.com/auth/chat.spaces.readonly",
+    "https://www.googleapis.com/auth/chat.messages.readonly",
+  ],
   drive: ["https://www.googleapis.com/auth/drive.readonly"],
 } as const;
 
