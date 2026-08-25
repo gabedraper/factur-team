@@ -7,14 +7,19 @@ import { tokenFor } from "@/lib/google/auth";
 export type ConversationEntry = {
   /** Set for messages, which happened at a moment. */
   occurred_at: string | null;
-  /** Set for invoices and payments, which QuickBooks records against a day. */
+  /** Set for invoices, payments and gaps, which belong to a day or a month. */
   on_date: string | null;
-  kind: "message" | "event";
+  kind: "message" | "invoice" | "payment" | "gap";
   direction: "inbound" | "outbound" | "internal" | null;
   side: "us" | "client" | "internal";
+  /** Which system it came from, so the line can show what kind of contact it was. */
+  source: "gmail" | "google_chat" | "meet_transcript" | null;
   author: string | null;
-  title: string;
+  title: string | null;
   preview: string | null;
+  invoice_no: string | null;
+  service_month: string | null;
+  service: string | null;
   amount: number | null;
   outstanding: number | null;
   matched_by: "domain" | "thread" | "name" | null;

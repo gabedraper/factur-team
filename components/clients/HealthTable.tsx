@@ -78,6 +78,7 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
     am: (c) => c.accountManager,
+    lead: (c) => c.teamLead,
     overall: (c) => c.overall,
     lead_flow: (c) => at(c, "lead_flow"),
     activity: (c) => at(c, "activity"),
@@ -135,6 +136,7 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("am")}>Account manager</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("overall")}>Health</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("lead_flow")}>Leads</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("activity")}>Activity</SortHeader>
@@ -157,6 +159,7 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                 >
                   <td className="px-3 py-2 font-medium">{c.name}</td>
                   <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? "—"}</td>
                   <td className="px-3 py-2 text-right"><Score value={c.overall} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "activity")} /></td>
@@ -171,7 +174,7 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
 
                 {open === c.clientId && (
                   <tr key={`${c.clientId}-detail`} className="border-b bg-muted/30 last:border-0">
-                    <td colSpan={10} className="px-3 py-3">
+                    <td colSpan={11} className="px-3 py-3">
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         {c.inputs.map((i) => (
                           <div key={i.key} className="rounded-md border bg-card p-3">
@@ -180,17 +183,23 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             </div>
                             <div className="mt-1 text-lg"><Score value={i.score} /></div>
                             <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
+                            {i.key === "receivables" && (
+                              <Link
+                                href={`/clients/${c.clientId}`}
+                                className="mt-2 inline-block text-xs underline"
+                              >
+                                Payment History
+                              </Link>
+                            )}
                           </div>
                         ))}
                       </div>
-                      <div className="mt-3 flex gap-4">
-                        <Link href={`/clients/${c.clientId}`} className="text-sm underline">
-                          Money conversation
-                        </Link>
-                        <Link href={`/settings/clients/${c.clientId}`} className="text-sm underline">
-                          Client record
-                        </Link>
-                      </div>
+                      <Link
+                        href={`/settings/clients/${c.clientId}`}
+                        className="mt-3 inline-block text-sm underline"
+                      >
+                        Client record
+                      </Link>
                     </td>
                   </tr>
                 )}

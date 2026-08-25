@@ -24,6 +24,7 @@ export type ClientHealth = {
   name: string;
   status: string | null;
   accountManager: string | null;
+  teamLead: string | null;
   manualHealth: string | null;
   overall: number | null;
   inputsMeasured: number;

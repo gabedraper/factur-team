@@ -5,7 +5,7 @@ export * from "./health-score";
 
 type Row = {
   client_id: string; client_name: string; status: string | null;
-  account_manager: string | null; manual_health: string | null;
+  account_manager: string | null; team_lead: string | null; manual_health: string | null;
   leads_30d: number; leads_prior_30d: number; lead_flow_score: number | null;
   activities_30d: number; activities_prior_30d: number; activity_score: number | null;
   nps_latest: number | null; nps_previous: number | null; nps_on: string | null;
@@ -44,6 +44,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
       name: r.client_name,
       status: r.status,
       accountManager: r.account_manager,
+      teamLead: r.team_lead,
       manualHealth: r.manual_health,
       overall: r.overall_score,
       inputsMeasured: r.inputs_measured,
