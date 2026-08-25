@@ -64,22 +64,39 @@ export async function getMessageBody(externalId: string): Promise<{
   const db = createServiceClient();
   const { data } = await db
     .from("comm_messages")
-    .select("participants,author_email")
+    .select("ingested_from,participants,author_email")
     .eq("source", "gmail")
     .eq("gmail_id", externalId)
     .maybeSingle();
 
   if (!data) return { body: null, problem: "That message isn't in the trail." };
 
-  // Whose mailbox to read it from: someone on it whom the ingest already reads.
-  const { data: accounts } = await db.rpc("get_ingest_accounts");
-  const readable = new Set(
-    ((accounts ?? []) as { email: string }[]).map((a) => a.email.toLowerCase())
-  );
-  const row = data as { participants: string[]; author_email: string | null };
-  const actAs = [...(row.participants ?? []), row.author_email ?? ""]
-    .map((p) => p.toLowerCase())
-    .find((p) => readable.has(p));
+  const row = data as {
+    ingested_from: string | null;
+    participants: string[];
+    author_email: string | null;
+  };
+
+  /*
+   * Read it from the mailbox it was collected from.
+   *
+   * A Gmail id only resolves in its own mailbox. Picking any participant meant
+   * asking Brenolene for an id that belonged to Dylan's copy, which is a 404 --
+   * and the screen showed "Gmail 404" with no way to tell that from the message
+   * having been deleted.
+   */
+  let actAs = row.ingested_from;
+
+  if (!actAs) {
+    // Collected before the source mailbox was recorded; fall back to guessing.
+    const { data: accounts } = await db.rpc("get_ingest_accounts");
+    const readable = new Set(
+      ((accounts ?? []) as { email: string }[]).map((a) => a.email.toLowerCase())
+    );
+    actAs = [...(row.participants ?? []), row.author_email ?? ""]
+      .map((p) => p.toLowerCase())
+      .find((p) => readable.has(p)) ?? null;
+  }
 
   if (!actAs) {
     return { body: null, problem: "Nobody whose mail we read is on this message." };
@@ -91,7 +108,15 @@ export async function getMessageBody(externalId: string): Promise<{
       `https://gmail.googleapis.com/gmail/v1/users/me/messages/${externalId}?format=full`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    if (!res.ok) return { body: null, problem: `Gmail ${res.status}` };
+    if (!res.ok) {
+      return {
+        body: null,
+        problem:
+          res.status === 404
+            ? "This message is no longer in that mailbox — it may have been deleted."
+            : `Gmail returned ${res.status}.`,
+      };
+    }
 
     const msg = (await res.json()) as {
       payload?: { mimeType?: string; body?: { data?: string }; parts?: unknown[] };

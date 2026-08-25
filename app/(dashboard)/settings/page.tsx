@@ -131,6 +131,16 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            <Link href="/settings/quickbooks"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">QuickBooks customers</span>
+                <span className="block text-xs text-muted-foreground">
+                  Tie customers who owe money to the right client, where the names differ.
+                </span>
+              </span>
+            </Link>
             <Link href="/settings/google"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

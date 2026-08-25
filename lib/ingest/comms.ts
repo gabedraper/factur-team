@@ -144,6 +144,10 @@ export async function ingestBillingMailFor(
             // arriving in four mailboxes is stored once.
             external_id: m.rfcId ?? m.id,
             gmail_id: m.id,
+            // Which mailbox this copy came from. A Gmail id only resolves in
+            // the mailbox it belongs to, so reading the body later has to ask
+            // the same person.
+            ingested_from: account,
             thread_id: m.threadId,
             client_id: clientId,
             matched_by: matchedBy,
@@ -155,7 +159,13 @@ export async function ingestBillingMailFor(
             subject: m.subject,
             extract: m.snippet,
             topics: ["billing"],
-            url: `https://mail.google.com/mail/u/0/#all/${m.threadId}`,
+            // Searched by the sender's Message-ID rather than linked by thread
+            // id, which is per-mailbox and 404s for anyone else.
+            url: m.rfcId
+              ? `https://mail.google.com/mail/u/0/#search/rfc822msgid%3A${encodeURIComponent(
+                  m.rfcId.replace(/[<>]/g, "")
+                )}`
+              : null,
           };
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
