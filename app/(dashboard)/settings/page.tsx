@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
-  Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal } from "lucide-react";
+  Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
+  MailWarning } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -15,6 +16,7 @@ export default async function SettingsPage() {
   const perms = await myPermissions();
   const canManage = perms.has("org.manage");
   const canEditWeights = perms.has("scoreboard.weights.edit");
+  const canRunCollections = perms.has("finance.collections") || canManage;
   // Preview is offered on what you really hold, not on what you are previewing
   // as -- otherwise stepping into a learner's shoes would strand you there.
   const canPreview = (await myRealPermissions()).has("org.manage");
@@ -151,6 +153,18 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            {canRunCollections && (
+              <Link href="/settings/collections"
+                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>
+                  <span className="block text-sm font-medium">Chase sequence</span>
+                  <span className="block text-xs text-muted-foreground">
+                    The collections emails, when each goes out, and whether they draft or send.
+                  </span>
+                </span>
+              </Link>
+            )}
             {canEditWeights && (
               <Link href="/admin/weights"
                     className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
