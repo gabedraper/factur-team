@@ -212,11 +212,51 @@ sending as the owner actually did what it was chosen to do.
 4. ~~Send permission, verified per sender before any client is involved.~~
    **Done** — `/settings/nps`, which asks Google for a compose token as each
    team lead. All four cleared.
-5. Campaign builder, capped to internal recipients until a real campaign is approved.
+5. ~~Campaign builder.~~ **Done**, as a sequence rather than a one-shot send —
+   see below.
 
-Tracking moved ahead of sending so the first real campaign lands in a view that
-already works. Only step 5 remains. It shouldn't run for real until the 6 Active
-clients with no account manager have one — `/settings/nps` lists them.
+All five are built. What has not happened is a real send: no client has been
+emailed by this app, because every step ships switched off.
+
+## The sequence
+
+Built like collections, because it is the same job: a ladder of steps
+(`nps_steps`), a queue that says who is due which one (`get_nps_queue`), and a
+log of what went out (`nps_sequence_sent`). Three differences are the design:
+
+- **The episode is a send, not a client.** `collections_client_state` exists
+  because arrears have no natural start. An invitation does — the `nps_sends`
+  row — so there is no state table to keep true. A reply ends the ladder, which
+  `responded_at` already records.
+- **There is no single sender.** Resolved per row as the client's team lead, and
+  frozen onto the send once the invitation goes, so a lead changing teams
+  mid-ladder does not make the reminder arrive from a stranger. A client with no
+  lead is left out of the queue rather than going out under someone else's name.
+- **Step one is the invitation**, at day zero. That is why the campaign builder
+  and the sequence are one thing rather than two.
+
+Defaults are day 0, day 4, day 10 — short, because a reminder is only useful
+while the quarter it asks about is the quarter they are living in.
+
+`/clients/nps/send` is the queue, `/settings/nps` edits the ladder. New
+permission `nps.send`, given to App Administrator and Team Lead so a lead can
+run their own clients.
+
+`lib/google/compose.ts` gained an optional HTML alternative — the survey is
+eleven numbered links, and a row of buttons is the difference between one click
+and a wall of URLs. Additive: passing no html builds the same single-part
+message as before, so collections mail is unchanged.
+
+## Known gaps
+
+- **No batch send.** 151 invitations come due at once and the queue sends one at
+  a time. Fine for a pilot, painful for a full quarter.
+- **`{{contact}}` is almost always "there".** Salesforce gives the app contact
+  *addresses* but no first names; the WordPress form had them because the
+  recipient typed one. Worth fixing before a real campaign — a survey opening
+  "Hi there" from a named person reads as a mailshot.
+- **Nothing has been sent through Gmail yet.** The scope is verified and the
+  message builder is tested, but no real message has left a mailbox.
 
 ## What the live form taught us
 
