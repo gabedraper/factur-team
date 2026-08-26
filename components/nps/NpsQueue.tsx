@@ -48,8 +48,10 @@ export function NpsQueue({
     startTransition(async () => {
       const res = await createNpsCampaign(name, period);
       if (!res.success) { setError(res.error ?? "Couldn't build that."); return; }
+      const anonymous = (res.invitations ?? 0) - (res.named ?? 0);
       setNote(
         `${res.invitations} invitations created` +
+        (anonymous ? `, ${anonymous} with no first name` : "") +
         (res.skipped ? `, ${res.skipped} clients skipped` : "") +
         ". Nothing has been emailed."
       );

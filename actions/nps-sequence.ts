@@ -117,7 +117,7 @@ export async function createNpsCampaign(name: string, period: string) {
   if (error) return { success: false, error: error.message };
 
   const row = (data ?? [])[0] as
-    | { campaign_id: string; invitations: number; skipped: number }
+    | { campaign_id: string; invitations: number; named: number; skipped: number }
     | undefined;
 
   revalidatePath("/clients/nps");
@@ -125,6 +125,10 @@ export async function createNpsCampaign(name: string, period: string) {
     success: true,
     campaignId: row?.campaign_id,
     invitations: row?.invitations ?? 0,
+    // Reported rather than assumed: a survey from a named person that opens
+    // "Hi there" reads as a mailshot, so a shortfall here is worth seeing
+    // before the first one goes out, not after.
+    named: row?.named ?? 0,
     skipped: row?.skipped ?? 0,
   };
 }

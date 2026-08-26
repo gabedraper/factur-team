@@ -251,10 +251,20 @@ message as before, so collections mail is unchanged.
 
 - **No batch send.** 151 invitations come due at once and the queue sends one at
   a time. Fine for a pilot, painful for a full quarter.
-- **`{{contact}}` is almost always "there".** Salesforce gives the app contact
-  *addresses* but no first names; the WordPress form had them because the
-  recipient typed one. Worth fixing before a real campaign — a survey opening
-  "Hi there" from a named person reads as a mailshot.
+- ~~`{{contact}}` is almost always "there".~~ **Fixed.**
+  `public.client_contact_names` maps address to first name, seeded from
+  Salesforce Contact for all 183 client contacts — 151 of 151 campaign
+  recipients now have one. The name is stamped onto the invitation at build
+  time, and `create_nps_campaign` reports how many got one so a shortfall shows
+  before the emails go rather than after. The daily task tops it up for new
+  clients; a row marked `source = 'manual'` is never overwritten by a sync.
+
+  One caveat: Salesforce is sometimes wrong about who owns an address —
+  `bcampbell@buddesheetmetal.com` resolves to Candice Budde, and
+  `bcourchaine@cim-techcorp.com` to Stephen Teed. Those are the CRM's answer,
+  not a matching bug. The queue shows the finished wording before anything is
+  sent, and a correction should be saved with `source = 'manual'` so the next
+  sync leaves it alone.
 - **Nothing has been sent through Gmail yet.** The scope is verified and the
   message builder is tested, but no real message has left a mailbox.
 
