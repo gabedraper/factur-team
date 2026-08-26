@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { placeChase, pauseClient, type Chase, type Settings } from "@/actions/collections";
-import { PauseCircle, PlayCircle, Send, FileText } from "lucide-react";
+import { placeChase, pauseClient, draftToMe, type Chase, type Settings } from "@/actions/collections";
+import { PauseCircle, PlayCircle, Send, FileText, FlaskConical } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -54,6 +54,19 @@ export function Queue({ rows, settings }: { rows: Chase[]; settings: Settings })
       } else {
         setNote({ kind: "bad", text: res.error ?? "It did not go." });
       }
+    });
+  }
+
+  function test(r: Chase) {
+    const { subject, body } = wording(r);
+    setNote(null);
+    startTransition(async () => {
+      const res = await draftToMe(r.client_id, r.step_id, subject, body);
+      setNote(
+        res.success
+          ? { kind: "ok", text: `Test draft waiting in ${res.to}. ${r.client_name} is still due.` }
+          : { kind: "bad", text: res.error ?? "It did not go." }
+      );
     });
   }
 
@@ -146,6 +159,13 @@ export function Queue({ rows, settings }: { rows: Chase[]; settings: Settings })
                 >
                   {paused ? <PlayCircle className="h-3.5 w-3.5" /> : <PauseCircle className="h-3.5 w-3.5" />}
                   {paused ? "Resume" : "Pause"}
+                </button>
+                <button
+                  onClick={() => test(r)}
+                  disabled={pending}
+                  className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                >
+                  <FlaskConical className="h-3.5 w-3.5" /> Test to me
                 </button>
                 <button
                   onClick={() => place(r)}

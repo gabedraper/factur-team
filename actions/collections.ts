@@ -201,6 +201,49 @@ export async function pauseClient(clientId: string, until: string | null, reason
 }
 
 /**
+ * The same email, drafted to whoever is asking rather than to the customer.
+ *
+ * This exists so the first call Google ever gets on the compose scope is one
+ * that cannot reach a client. It proves the grant, the signature and the
+ * wording in one go. Nothing is written to the log and no step is used up --
+ * the chase stays due afterwards, because it has not happened.
+ */
+export async function draftToMe(
+  clientId: string,
+  stepId: string,
+  subject: string,
+  body: string
+): Promise<{ success: boolean; error?: string; to?: string }> {
+  if (!(await mayRun())) return { success: false, error: "Not permitted." };
+
+  const me = await whoAmI();
+  if (!me) return { success: false, error: "Not signed in." };
+
+  const queue = await getCollectionsQueue();
+  const row = queue.find((q) => q.client_id === clientId && q.step_id === stepId);
+  if (!row) return { success: false, error: "That chase is no longer due." };
+
+  const settings = await getCollectionsSettings();
+  const sender = await senderName(settings.send_as);
+
+  try {
+    await draftAs({
+      from: settings.send_as,
+      fromName: sender,
+      to: me,
+      // Marked in the subject, so a test can never be mistaken for the real one
+      // sitting beside it in her drafts.
+      subject: `[TEST — ${row.client_name}] ${subject.trim()}`,
+      body,
+    });
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Gmail refused it." };
+  }
+
+  return { success: true, to: me };
+}
+
+/**
  * Put one chase in front of the customer.
  *
  * The wording can be edited before it goes -- that is the whole point of a
