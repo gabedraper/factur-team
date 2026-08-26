@@ -158,7 +158,7 @@ export default async function SettingsPage() {
                     className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
                 <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>
-                  <span className="block text-sm font-medium">Chase sequence</span>
+                  <span className="block text-sm font-medium">Billing / Collections Sequence</span>
                   <span className="block text-xs text-muted-foreground">
                     The collections emails, when each goes out, and whether they draft or send.
                   </span>

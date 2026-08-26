@@ -96,13 +96,18 @@ export function Sequence({ steps, settings }: { steps: Step[]; settings: Setting
         <span className="text-xs text-muted-foreground">{settings.send_as}</span>
       </div>
 
-      <div className="flex flex-wrap gap-1">
-        {PLACEHOLDERS.map((p) => (
-          <code key={p} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
-            {`{{${p}}}`}
-          </code>
-        ))}
-      </div>
+      <fieldset className="rounded-lg border px-3 pb-3 pt-1">
+        <legend className="px-1 text-xs uppercase tracking-wide text-muted-foreground">
+          Available QB Fields
+        </legend>
+        <div className="flex flex-wrap gap-1">
+          {PLACEHOLDERS.map((p) => (
+            <code key={p} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
+              {`{{${p}}}`}
+            </code>
+          ))}
+        </div>
+      </fieldset>
 
       {rows.map((row, i) => (
         <div key={row.id ?? `new-${i}`} className="space-y-2 rounded-lg border bg-card p-3">

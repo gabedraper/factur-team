@@ -22,7 +22,7 @@ export default async function CollectionsSequencePage() {
         >
           <ChevronLeft className="h-4 w-4" /> Collections
         </Link>
-        <h1 className="mt-1 text-xl font-semibold">Chase sequence</h1>
+        <h1 className="mt-1 text-xl font-semibold">Billing / Collections Sequence</h1>
       </div>
       <Sequence steps={steps} settings={settings} />
     </div>

@@ -28,7 +28,7 @@ export default async function CollectionsPage() {
             href="/settings/collections"
             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
           >
-            <Settings2 className="h-4 w-4" /> Sequence
+            <Settings2 className="h-4 w-4" /> Billing / Collections Sequence
           </Link>
         </div>
       </div>
