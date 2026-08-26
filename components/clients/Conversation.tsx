@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
-import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle } from "lucide-react";
+import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -37,6 +37,7 @@ function Icon({ entry }: { entry: ConversationEntry }) {
   if (entry.kind === "invoice") return <FileText className={cls} />;
   if (entry.kind === "payment") return <CircleDollarSign className={cls} />;
   if (entry.kind === "gap") return <AlertTriangle className={cls} />;
+  if (entry.kind === "collections") return <MailWarning className={cls} />;
   if (entry.source === "google_chat") return <MessageSquare className={cls} />;
   if (entry.source === "meet_transcript") return <Video className={cls} />;
   // A logged call rather than an email; Salesforce records those as activities.
@@ -109,6 +110,39 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
                   {e.service_month ? monthName(e.service_month) : "this month"}
                   {e.service_month && <> {e.service_month.slice(0, 4)}</>}
                 </span>
+              </div>
+            </div>
+          );
+        }
+
+        /*
+         * A chase we placed, shown from our own record. It gives way to the
+         * real email as soon as the ingest collects the sent copy, so a drafted
+         * one that was never sent keeps saying so.
+         */
+        if (e.kind === "collections") {
+          const drafted = e.service === "semi";
+          return (
+            <div key={key} className="flex justify-end">
+              <div className="max-w-[80%] rounded-lg border border-dashed bg-primary/5 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <Icon entry={e} />
+                  <span className="font-medium text-foreground">
+                    {drafted ? "Chase drafted" : "Chase sent"}
+                  </span>
+                  <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
+                  {e.bill_email && <span>to {e.bill_email}</span>}
+                </div>
+                <div className="mt-0.5 text-sm font-medium">{e.title}</div>
+                {e.preview && (
+                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.preview}</div>
+                )}
+                {e.url && (
+                  <a href={e.url} target="_blank" rel="noopener noreferrer"
+                     className="mt-1 inline-block text-xs underline">
+                    Open in Gmail
+                  </a>
+                )}
               </div>
             </div>
           );

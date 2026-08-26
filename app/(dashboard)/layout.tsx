@@ -25,6 +25,7 @@ import {
   Zap,
   CalendarClock,
   HeartPulse,
+  MailWarning,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { BugReportWidget } from "@/components/bug-report-widget";
@@ -70,13 +71,15 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
   }
   if (scoreboard.length) groups.push({ label: "Scoreboard", items: scoreboard });
 
-  if (perms.has("clients.health")) {
-    groups.push({
-      label: "Clients",
-      items: [
-        { href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> },
-      ],
-    });
+  if (perms.has("clients.health") || perms.has("finance.collections")) {
+    const clients: NavItem[] = [];
+    if (perms.has("clients.health")) {
+      clients.push({ href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> });
+    }
+    if (perms.has("finance.collections") || perms.has("org.manage")) {
+      clients.push({ href: "/collections", label: "Collections", icon: <MailWarning className="h-4 w-4" /> });
+    }
+    groups.push({ label: "Clients", items: clients });
   }
 
   if (perms.has("timelines.view")) {

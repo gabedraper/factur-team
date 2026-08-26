@@ -26,6 +26,17 @@ const SCOPES = {
   ],
   drive: ["https://www.googleapis.com/auth/drive.readonly"],
   directory: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
+  /*
+   * The one scope here that is not readonly, and the only one that can put
+   * something in front of a customer. `gmail.compose` covers both halves of
+   * collections -- leaving a draft in her mailbox, and sending it -- so the
+   * delegation needs widening once rather than twice.
+   *
+   * It is granted per address in Google Admin, not here. Until an admin adds
+   * it, every call on this scope comes back 403 and the app says so plainly
+   * rather than looking broken.
+   */
+  compose: ["https://www.googleapis.com/auth/gmail.compose"],
 } as const;
 
 export type GoogleService = keyof typeof SCOPES;

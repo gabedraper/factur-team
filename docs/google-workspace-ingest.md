@@ -80,14 +80,36 @@ Google Admin → Security → Access and data control → **API controls** →
 Domain-wide delegation → **Add new**
 
 - Client ID: the number from step 5
-- OAuth scopes: paste all five, comma separated, exactly as written:
+- OAuth scopes: paste all six, comma separated, exactly as written:
 
 ```
-https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/admin.directory.user.readonly
+https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/gmail.compose,https://www.googleapis.com/auth/chat.spaces.readonly,https://www.googleapis.com/auth/chat.messages.readonly,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/admin.directory.user.readonly
 ```
 
 A typo here fails in an unhelpful way — Google reports "unauthorized_client"
 rather than naming the bad scope — so it is worth pasting rather than typing.
+
+### The one scope that is not readonly
+
+`gmail.compose` is the exception to everything said above, and it is there for
+one feature: collections. It lets the app put a chase email into Brenolene's
+mailbox, either as a draft for her to read and send, or sent outright when
+collections is switched to full auto. It covers both, which is why there is one
+new scope here rather than two.
+
+It is worth being deliberate about. Every other scope in this list can only
+read; this one can put a message in front of a customer under a member of
+staff's name. Three things hold it in:
+
+- The app only ever composes as the address in `collections_settings.send_as`.
+- The recipient is never taken from the browser. It is the billing address on
+  that client's last QuickBooks invoice, decided on the server.
+- Nothing is due to anybody until a step in the sequence is switched on, and
+  every step ships switched off.
+
+If you would rather not grant it at all, everything else in collections still
+works — the queue, the wording, the schedule. The Draft button is the only part
+that fails, and it says exactly this when it does.
 
 ## 7. Put the key into Vercel
 

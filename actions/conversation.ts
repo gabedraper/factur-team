@@ -9,7 +9,7 @@ export type ConversationEntry = {
   occurred_at: string | null;
   /** Set for invoices, payments and gaps, which belong to a day or a month. */
   on_date: string | null;
-  kind: "message" | "invoice" | "payment" | "gap";
+  kind: "message" | "invoice" | "payment" | "gap" | "collections";
   direction: "inbound" | "outbound" | "internal" | null;
   side: "us" | "client" | "internal";
   /** Which system it came from, so the line can show what kind of contact it was. */
@@ -19,6 +19,7 @@ export type ConversationEntry = {
   preview: string | null;
   invoice_no: string | null;
   service_month: string | null;
+  /** On an invoice, what was billed. On a chase, whether it was drafted or sent. */
   service: string | null;
   line_description: string | null;
   unit_price: number | null;
