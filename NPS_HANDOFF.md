@@ -196,13 +196,51 @@ sending as the owner actually did what it was chosen to do.
 
 ## Order to build it in
 
-1. Migration + `SECURITY DEFINER` response function.
-2. Public `/nps/[token]` page — testable end to end by inserting one send row by hand.
-3. `gmail.send` scope + `actions/google-check.ts` extension, verified against
+1. ~~Migration + `SECURITY DEFINER` response function.~~ **Done** (`20260826174810`).
+2. ~~Public `/nps/[token]` page.~~ **Done.** Supports `?score=N` from the email.
+3. ~~Campaign tracking view.~~ **Done** — `/clients/nps`, in the sidebar under Clients.
+4. `gmail.send` scope + `actions/google-check.ts` extension, verified against
    Gabe's own address before any client is involved.
-4. Campaign builder, capped to internal recipients until a real campaign is approved.
-5. Campaign tracking view.
+5. Campaign builder, capped to internal recipients until a real campaign is approved.
 
-Steps 1, 2 and 5 need nothing from anyone. Step 3 needs the Workspace admin.
-Step 4 shouldn't run for real until the 50 Active clients without a proper owner
-have one.
+Tracking moved ahead of sending so the first real campaign lands in a view that
+already works. Steps 4 and 5 are what remain; step 4 needs the Workspace admin,
+and step 5 shouldn't run for real until the 50 Active clients without a proper
+owner have one.
+
+## What the live form taught us
+
+Reading a real export of the WordPress form (see "Imported history" below)
+changed two things about the design:
+
+- **It asks a second question** — would you like a member of your Factur team to
+  follow up? Now on `client_nps.follow_up_requested`, and asked only of scores
+  0–8, matching the live form, whose high-score landing page omits it.
+- **The eleven numbers are buttons in the email**, each linking with its own
+  `?score=`. Supported, but as a prefill the browser submits rather than a write
+  during the GET: Outlook and Gmail follow every link in a message to check it,
+  all eleven, and the last one visited would otherwise win.
+
+Also worth confirming before step 5: every one of the fifteen imported responses
+went out as `darryl.mechell@facturmfg.com`. The current process has **one**
+sender. Sending as each client's own owner is a change to how this works today,
+not a continuation of it.
+
+## Imported history
+
+The fifteen responses the WordPress form collected 18–24 August 2026 are loaded
+as a campaign named "Website form — August 2026" (`source = 'website-form'`).
+All fifteen matched a client through the Salesforce contact emails. Company NPS
+for the period: **+27** — 7 promoters, 5 passives, 3 detractors, average 7.8.
+One client asked for a follow-up: Bill at Gagne, Inc., who scored 0.
+
+New submissions are picked up by a scheduled task, `nps-sheet-import`, running
+weekday mornings from `~/.claude/scheduled-tasks/`. It is keyed on the form's
+submission id, so it is safe to re-run and imports nothing twice.
+
+**That task is temporary.** It is meant to stop once the app sends and receives
+its own surveys. It checks for that on every run — a campaign with
+`source = 'app'` and `status = 'sent'` — and says so in its report rather than
+disabling itself, because the WordPress form may still be live and collecting
+replies alongside the app. Turn it off only once the old form is switched off
+too.
