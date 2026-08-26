@@ -18,41 +18,18 @@ import {
   rangeForPeriodKey,
 } from "@/lib/scoreboard/hustle-period";
 import { companyAverageSplit } from "@/lib/scoreboard/leaderboard-average";
-import { SalesforceIcon } from "@/components/salesforce-icon";
-
-const BUCKETS = [
-  "Calls",
-  "Manual Emails",
-  "Automated Emails",
-  "Client Meetings",
-  "Prospect Meetings",
-] as const;
-type Bucket = (typeof BUCKETS)[number];
-
-const BUCKET_FOR_SOURCE: Record<string, Bucket> = {
-  "Manual Call": "Calls",
-  "Automated Call (Power Dialer)": "Calls",
-  "Automated Call (Parallel Dialer)": "Calls",
-  "Manual SMS": "Calls",
-  "Sequence Email (Automated Send)": "Automated Emails",
-  "Manual Email": "Manual Emails",
-  "Client Meeting (Check-In)": "Client Meetings",
-  "Prospect Meeting": "Prospect Meetings",
-};
-
-type ActivityRecord = {
-  activity_date: string;
-  category: string;
-  subject: string | null;
-  sf_link: string | null;
-};
+import {
+  BUCKETS,
+  BUCKET_FOR_SOURCE,
+  emptyCounts,
+  type Bucket,
+} from "@/lib/scoreboard/activity-buckets";
 
 type RepAgg = {
   rep_id: string;
   display_name: string;
   totalPoints: number;
   counts: Record<Bucket, number>;
-  records: ActivityRecord[];
   isManager?: boolean;
   team?: { display_name: string; totalPoints: number }[];
 };
@@ -71,20 +48,18 @@ export default async function HustlePointsPage(
 
   const supabase = await createClient();
   const viewerRepId = await getViewerRepId(supabase);
-  const [{ data, error }, { data: weights }, { data: detailJson }, { data: repsRows }] =
+  const [{ data, error }, { data: weights }, { data: repsRows }] =
     await Promise.all([
       supabase.rpc("get_hustle_leaderboard_by_source", { p_start: start, p_end: end }),
       supabase
         .from("effort_weights")
         .select("effort_source, points"),
-      supabase.rpc("get_rep_activity_detail", { p_start: start, p_end: end }),
       supabase
         .from("reps")
         .select("id, display_name, salesforce_owner_id, manager_salesforce_id, manager_rep_id")
         .eq("active", true),
     ]);
   const sortedWeights = sortByEffortCategory(weights ?? []);
-  const detail = (detailJson ?? []) as (ActivityRecord & { rep_id: string })[];
 
   const totals = new Map<string, RepAgg>();
 
@@ -93,25 +68,12 @@ export default async function HustlePointsPage(
       rep_id: row.rep_id,
       display_name: row.display_name,
       totalPoints: 0,
-      counts: {
-        Calls: 0,
-        "Manual Emails": 0,
-        "Automated Emails": 0,
-        "Client Meetings": 0,
-        "Prospect Meetings": 0,
-      },
-      records: [],
+      counts: emptyCounts(),
     };
     existing.totalPoints += Number(row.points);
     const bucket = BUCKET_FOR_SOURCE[row.effort_source];
     if (bucket) existing.counts[bucket] += row.activity_count;
     totals.set(row.rep_id, existing);
-  }
-
-  for (const row of detail) {
-    const rep = totals.get(row.rep_id);
-    if (!rep) continue;
-    rep.records.push(row);
   }
 
   const repsBySfId = new Map((repsRows ?? []).map((r) => [r.salesforce_owner_id, r]));
@@ -150,7 +112,6 @@ export default async function HustlePointsPage(
       display_name: manager.display_name,
       totalPoints: teamAggs.reduce((s, a) => s + (a?.totalPoints ?? 0), 0) / team.length,
       counts: avgCounts,
-      records: [],
       isManager: true,
       team: team.map((t) => ({
         display_name: t.display_name,
@@ -270,7 +231,8 @@ export default async function HustlePointsPage(
                   {Math.round(rep.totalPoints)}
                 </span>
 
-                {/* Left side, team-visible: source records, or team list for managers */}
+                {/* Left side: team roll-up for managers, nothing for a rep --
+                    their records live on the activities screen. */}
                 {maskRow ? (
                   <MaskedBlurb side="left" />
                 ) : rep.isManager ? (
@@ -283,42 +245,13 @@ export default async function HustlePointsPage(
                         detail: `${Math.round(t.totalPoints)} pts`,
                       }))}
                   />
-                ) : (
-                  <div className="pointer-events-none absolute right-full top-1/2 z-10 -translate-y-1/2 pr-3 group-hover:pointer-events-auto">
-                    <div className="relative max-h-96 w-[28rem] overflow-y-auto rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      <div className="absolute -right-1 top-8 h-2 w-2 -translate-y-1/2 rotate-45 border-r border-t border-slate-800 bg-slate-900" />
-                      <p className="sticky top-0 mb-2 bg-slate-900 pb-1 font-medium text-slate-100">
-                        {rep.display_name} — {rep.records.length} record
-                        {rep.records.length === 1 ? "" : "s"}
-                      </p>
-                      {rep.records.map((row, idx) => (
-                        <a
-                          key={idx}
-                          href={row.sf_link ?? undefined}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 border-t border-slate-800 py-1.5 first:border-t-0 hover:bg-slate-800"
-                        >
-                          <SalesforceIcon className="shrink-0" />
-                          <span className="shrink-0 text-slate-500">{row.activity_date}</span>
-                          <span className="shrink-0 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
-                            {row.category}
-                          </span>
-                          <span className="truncate text-slate-300">{row.subject ?? "(no subject)"}</span>
-                        </a>
-                      ))}
-                      {rep.records.length === 0 && (
-                        <p className="py-2 text-slate-500">No records in this period.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* Calculation breakdown -- right side */}
                 {maskRow ? (
                   <MaskedBlurb side="right" />
                 ) : (
-                  <div className="pointer-events-none absolute left-full top-1/2 z-10 -translate-y-1/2 pl-3">
+                  <div className="pointer-events-none absolute left-full top-1/2 z-10 -translate-y-1/2 pl-3 group-hover:pointer-events-auto">
                     <div className="relative w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                       <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-slate-800 bg-slate-900" />
                       <p className="mb-2 truncate font-medium text-slate-100">
@@ -334,6 +267,14 @@ export default async function HustlePointsPage(
                         <span>{rep.isManager ? "Team Avg Points" : "Hustle Points"}</span>
                         <span>{rep.totalPoints.toFixed(1)}</span>
                       </div>
+                      {!rep.isManager && (
+                        <Link
+                          href={`/scoreboard/hustle-points/${rep.rep_id}/activities?period=${periodKey}`}
+                          className="mt-2 block border-t border-slate-800 pt-2 text-slate-400 underline decoration-dotted hover:text-slate-100"
+                        >
+                          Activities
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )}
@@ -400,8 +341,10 @@ export default async function HustlePointsPage(
         />
         Points per category are set on the Weights page. Salesforce sync is a rolling
         7-day window (nightly); once synced, historical data is kept. Hovering a row
-        shows the underlying source records on the left and the points calculation on
-        the right, for the selected period.
+        shows the points calculation for the selected period, and links through to
+        that person&apos;s activities, grouped by client and type. On your own
+        activities you can correct a type the classifier got wrong, either for the
+        one record or for every activity of yours with that subject.
         <br /><br />
         Managers (from Salesforce Manager, or Manager (Text) as a fallback when Manager
         isn&apos;t set) show a &quot;Manager avg&quot; row instead of their own personal
