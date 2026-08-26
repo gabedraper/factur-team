@@ -11,6 +11,9 @@ export type BillingSummary = {
   qb_customer: string;
   payment_terms: string | null;
   open_balance: number;
+  /** What is actually behind, and what is held in credit against it. */
+  owed: number;
+  credits: number;
   bucket_current: number;
   bucket_1_30: number;
   bucket_31_60: number;

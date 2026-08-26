@@ -42,6 +42,8 @@ export function BillingSummary({ summary }: { summary: Summary }) {
   const overdue = (amount: number, tone: "warn" | "bad") =>
     amount > 0 ? tone : undefined;
 
+  const hasCredits = Number(summary.credits) > 0;
+
   const buckets: { label: string; amount: number; tone: "warn" | "bad" }[] = [
     { label: "1 – 30", amount: summary.bucket_1_30, tone: "warn" },
     { label: "31 – 60", amount: summary.bucket_31_60, tone: "warn" },
@@ -51,8 +53,21 @@ export function BillingSummary({ summary }: { summary: Summary }) {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div
+        className={`grid grid-cols-2 gap-2 ${
+          hasCredits ? "sm:grid-cols-3 lg:grid-cols-6" : "sm:grid-cols-4"
+        }`}
+      >
         <Tile label="Payment terms" value={summary.payment_terms ?? "—"} />
+        {/*
+          * Owed and credits appear only where there is a credit to explain.
+          * Everywhere else the open balance already is what they owe, and two
+          * more tiles saying so teaches nobody anything.
+          */}
+        {hasCredits && <Tile label="Owed" value={money.format(summary.owed)} />}
+        {hasCredits && (
+          <Tile label="Credits" value={`−${money.format(summary.credits)}`} />
+        )}
         <Tile label="Open balance" value={money.format(summary.open_balance)} />
         <Tile
           label="Avg days to pay"
