@@ -3,7 +3,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
-  DISPLAY_DAYS, METRICS_DAYS, DELIVERED_LEADS_OWNER,
+  DISPLAY_DAYS, METRICS_DAYS, DELIVERED_LEADS_OWNER, NURTURE_STAGE, NURTURE_STATUS,
   type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 import { parseUtc } from "./business-day";
@@ -59,7 +59,11 @@ export async function getLeads(filters: LeadFilters = {}) {
       )
       .order("createddate", { ascending: false })
       .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString())
-      .neq("ownerid", DELIVERED_LEADS_OWNER);
+      .neq("ownerid", DELIVERED_LEADS_OWNER)
+      .neq("stagename", NURTURE_STAGE)
+      // Spelt as an "or" because a plain "not equal" drops nulls too, and most
+      // of these leads have no prospecting status at all.
+      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`);
 
     if (owners !== null) query = query.in("ownerid", owners);
     if (filters.rep) query = query.eq("ownerid", filters.rep);

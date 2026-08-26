@@ -347,6 +347,20 @@ export function summarise(leads: Lead[]): RepSummary {
  */
 export const DELIVERED_LEADS_OWNER = "005VI00000LjYe9YAF"; // Service Delivery Operations
 
+/**
+ * Leads parked for the long term, in either pipeline's word for it.
+ *
+ * Nurture leads are meant to sit quiet for months, so a board asking who was
+ * touched this week has nothing to say about them. They were 6,786 of the
+ * 14,349 leads left after the delivered ones came out -- just under half of
+ * every figure on the page, describing patience as neglect.
+ *
+ * Two fields because the two pipelines record it in different places: client
+ * work moves the stage, prospecting moves the lead status.
+ */
+export const NURTURE_STAGE = "Pipeline: LT Follow Up";
+export const NURTURE_STATUS = "LTFU";
+
 /** How far back the board itself shows leads. */
 export const DISPLAY_DAYS = 7;
 

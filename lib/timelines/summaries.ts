@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, summariseByOwner, ALL_REPS, DELIVERED_LEADS_OWNER,
+  NURTURE_STAGE, NURTURE_STATUS,
   type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 
@@ -122,6 +123,10 @@ export async function rebuildSummaries(): Promise<{
       )
       .gte("createddate", `${METRICS_FROM}T00:00:00Z`)
       .neq("ownerid", DELIVERED_LEADS_OWNER)
+      .neq("stagename", NURTURE_STAGE)
+      // Spelt as an "or" because a plain "not equal" drops nulls too, and most
+      // of these leads have no prospecting status at all.
+      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`)
       .order("createddate", { ascending: false })
       .range(from, from + PAGE - 1)
   );

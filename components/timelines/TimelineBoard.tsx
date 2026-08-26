@@ -182,7 +182,6 @@ export function TimelineBoard({
     if (view === "week") {
       return [
         ["Leads", n, `${s.touches} rep touches`],
-        ["Touched every day", pct(s.touchedEveryDay, n), "no missed day in week one"],
         ["Untouched all week", pct(s.untouchedAllWeek, n), "zero rep touches in week one"],
         ["Median days touched", s.medianDaysTouched ?? "—", "of the first seven"],
         ["Median gap between touches", s.medianGap !== null ? `${s.medianGap}d` : "—", "across the whole lead"],
