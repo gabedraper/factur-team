@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { setClientOwner, setClientService } from "@/actions/org";
 import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
+import { effectiveTeamLeadId } from "@/lib/team-lead";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 
 type Service = { id: string; name: string };
@@ -38,6 +39,24 @@ export function ClientsScreen({
     );
   }, [rows, filter, onlyUnassigned, status]);
 
+  const membersById = useMemo(
+    () => new Map(members.map((m) => [m.id, m])),
+    [members]
+  );
+
+  /*
+   * The team lead, from the manager assignments -- not from "covered by".
+   * Read-only here: it is decided by who the account manager reports to in
+   * People, or by the override on the client's own page, and offering a third
+   * place to set it would just be a third answer to drift from the other two.
+   */
+  const leadName = (c: ClientRow) => {
+    const id = effectiveTeamLeadId(c, membersById);
+    if (!id) return null;
+    const m = membersById.get(id);
+    return m ? m.full_name ?? m.email : null;
+  };
+
   // "Covered by" sorts on the name shown in the cell, not the id behind it.
   const ownerName = (c: ClientRow) =>
     c.team_id ? pods.find((t) => t.id === c.team_id)?.name
@@ -49,6 +68,7 @@ export function ClientsScreen({
     status: (c) => c.status,
     service: (c) => services.find((s) => s.id === c.service_id)?.name,
     owner: ownerName,
+    lead: leadName,
   });
 
   const statuses = useMemo(
@@ -113,6 +133,7 @@ export function ClientsScreen({
               <SortHeader className="px-3 py-2" {...sortProps("status")}>Status</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("service")}>Service</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("owner")}>Covered by</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
             </tr>
           </thead>
           <tbody>
@@ -174,10 +195,13 @@ export function ClientsScreen({
                     </optgroup>
                   </select>
                 </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {leadName(c) ?? "—"}
+                </td>
               </tr>
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">No clients match.</td></tr>
+              <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No clients match.</td></tr>
             )}
           </tbody>
         </table>

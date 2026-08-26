@@ -181,7 +181,12 @@ export type ClientRow = {
   id: string; salesforce_client_id: string | null; name: string;
   status: string | null; service_id: string | null;
   team_id: string | null; member_id: string | null; active: boolean;
+  account_manager_id: string | null; team_lead_id: string | null;
 };
+
+// Re-exported so server code can keep reaching for it here; the definition
+// lives apart because client components need it too.
+export { effectiveTeamLeadId } from "./team-lead";
 
 /**
  * Pods with their people and, read-only, the clients pointing at them. Coverage
@@ -195,7 +200,7 @@ export async function listPodsAndClients() {
     db.from("org_teams").select("id,service_id,name,slug,kind,active,manager_member_id").order("name"),
     db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
     db.from("org_clients")
-      .select("id,salesforce_client_id,name,status,service_id,team_id,member_id,active")
+      .select("id,salesforce_client_id,name,status,service_id,team_id,member_id,active,account_manager_id,team_lead_id")
       .order("name"),
   ]);
 
