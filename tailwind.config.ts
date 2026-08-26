@@ -7,6 +7,13 @@ const config: Config = {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
+    /*
+     * lib too. Tailwind only generates a class it has literally seen, so a
+     * class name living in a shared constant here -- lib/field-class.ts -- was
+     * silently dropped from the stylesheet, and both sequence builders lost
+     * their tinted fields with no error anywhere to say why.
+     */
+    "./lib/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {
