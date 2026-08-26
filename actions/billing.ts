@@ -3,14 +3,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 
+/**
+ * The five ageing buckets are the ones the A/R Ageing Summary uses, each
+ * holding only its own slice, so they add up to the open balance.
+ */
 export type BillingSummary = {
   qb_customer: string;
   payment_terms: string | null;
   open_balance: number;
-  /** Cumulative: everything older than that many days, not the slice between two. */
-  past_30: number;
-  past_60: number;
-  past_90: number;
+  bucket_current: number;
+  bucket_1_30: number;
+  bucket_31_60: number;
+  bucket_61_90: number;
+  bucket_91_plus: number;
 };
 
 /**

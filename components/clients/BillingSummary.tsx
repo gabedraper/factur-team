@@ -5,7 +5,7 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 /**
- * One figure. Anything overdue is coloured, and it darkens with age, so the
+ * One figure. Anything overdue is coloured, and the oldest slice is red, so the
  * row can be read without reading the numbers.
  */
 function Tile({
@@ -34,29 +34,39 @@ function Tile({
   );
 }
 
+/**
+ * The ageing buckets in the report's own order and wording, so the row and the
+ * A/R Ageing Summary can be read side by side.
+ */
 export function BillingSummary({ summary }: { summary: Summary }) {
   const overdue = (amount: number, tone: "warn" | "bad") =>
     amount > 0 ? tone : undefined;
 
+  const buckets: { label: string; amount: number; tone: "warn" | "bad" }[] = [
+    { label: "1 – 30", amount: summary.bucket_1_30, tone: "warn" },
+    { label: "31 – 60", amount: summary.bucket_31_60, tone: "warn" },
+    { label: "61 – 90", amount: summary.bucket_61_90, tone: "warn" },
+    { label: "91 and over", amount: summary.bucket_91_plus, tone: "bad" },
+  ];
+
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-      <Tile label="Payment terms" value={summary.payment_terms ?? "—"} />
-      <Tile label="Open balance" value={money.format(summary.open_balance)} />
-      <Tile
-        label="Past 30"
-        value={money.format(summary.past_30)}
-        tone={overdue(summary.past_30, "warn")}
-      />
-      <Tile
-        label="Past 60"
-        value={money.format(summary.past_60)}
-        tone={overdue(summary.past_60, "warn")}
-      />
-      <Tile
-        label="Past 90"
-        value={money.format(summary.past_90)}
-        tone={overdue(summary.past_90, "bad")}
-      />
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Tile label="Payment terms" value={summary.payment_terms ?? "—"} />
+        <Tile label="Open balance" value={money.format(summary.open_balance)} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        <Tile label="Current" value={money.format(summary.bucket_current)} />
+        {buckets.map((b) => (
+          <Tile
+            key={b.label}
+            label={b.label}
+            value={money.format(b.amount)}
+            tone={overdue(b.amount, b.tone)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
