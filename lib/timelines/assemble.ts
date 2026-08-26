@@ -332,6 +332,21 @@ export function summarise(leads: Lead[]): RepSummary {
   };
 }
 
+/**
+ * Leads delivered to a client for the client to follow up.
+ *
+ * The Lead Generation service hands finished leads over, and the client works
+ * them from there -- so nobody at Factur is meant to touch one, and 24,432 of
+ * them sitting untouched is the service working rather than anyone failing.
+ * Counted as leads they made 62% of all leads look untouched and 51% never
+ * contacted, which is a description of the wrong thing.
+ *
+ * They are held by one Salesforce user rather than a person, and there is no
+ * field that separates them: "Lead Generated" is also a stage 823 leads owned
+ * by real reps have reached honestly.
+ */
+export const DELIVERED_LEADS_OWNER = "005VI00000LjYe9YAF"; // Service Delivery Operations
+
 /** How far back the board itself shows leads. */
 export const DISPLAY_DAYS = 7;
 

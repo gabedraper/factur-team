@@ -3,7 +3,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
-  DISPLAY_DAYS, METRICS_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
+  DISPLAY_DAYS, METRICS_DAYS, DELIVERED_LEADS_OWNER,
+  type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 import { parseUtc } from "./business-day";
 import { readSummaries, refreshSummariesIfStale } from "./summaries";
@@ -57,7 +58,8 @@ export async function getLeads(filters: LeadFilters = {}) {
           "referred_by_name__c"
       )
       .order("createddate", { ascending: false })
-      .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString());
+      .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString())
+      .neq("ownerid", DELIVERED_LEADS_OWNER);
 
     if (owners !== null) query = query.in("ownerid", owners);
     if (filters.rep) query = query.eq("ownerid", filters.rep);

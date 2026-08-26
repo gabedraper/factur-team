@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { prospectingOwnerIds } from "@/lib/org";
 import {
-  assembleLeads, summariseByOwner, ALL_REPS,
+  assembleLeads, summariseByOwner, ALL_REPS, DELIVERED_LEADS_OWNER,
   type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 
@@ -121,6 +121,7 @@ export async function rebuildSummaries(): Promise<{
         { count: from === 0 ? "exact" : undefined }
       )
       .gte("createddate", `${METRICS_FROM}T00:00:00Z`)
+      .neq("ownerid", DELIVERED_LEADS_OWNER)
       .order("createddate", { ascending: false })
       .range(from, from + PAGE - 1)
   );
