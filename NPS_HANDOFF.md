@@ -71,9 +71,15 @@ system address gets deleted. So each email goes out through the **Gmail API,
 sent as the client's owner** — it lands in that person's Sent folder, threads
 normally, and replies reach them with nothing to configure.
 
-**Who sends to whom:** `org_clients.member_id` -> `org_members.email`. Of the 158
-Active clients, 145 resolve to a named owner across ~20 people. All are
-`@facturmfg.com` Google Workspace accounts.
+**Who sends to whom:** the client's team lead, resolved exactly as
+`org_client_team` already resolves it -- the explicit `org_clients.team_lead_id`
+when set, and the account manager's manager otherwise. Do not re-derive it;
+there should be one definition of who leads a client.
+
+Four people cover the whole Active list: Darryl Mechell (54), Noah Rodman (51),
+Zorina Reyes (39) and Tony Haight (7). 151 of 157 Active clients resolve. All
+are `@facturmfg.com` Google Workspace accounts and all four passed the send
+check.
 
 **What has to change in `lib/google/auth.ts`:** add a fourth entry to `SCOPES`
 for `https://www.googleapis.com/auth/gmail.send`. Keep it a *separate* key from
@@ -105,21 +111,25 @@ workable. Build the send step behind one interface so the swap is one file.
 Note that this fallback needs the **root** `facturmfg.com` domain verified in
 Resend, not a subdomain, because the From must be a real person's address.
 
-## Two blockers, both human
+## Blockers
 
-1. **Workspace admin has to approve the send scope** on the existing service
-   account's domain-wide delegation. `docs/google-workspace-ingest.md` step 6
-   is the same procedure; it deliberately says "There is no scope here that can
-   send, delete or change anything", so that line needs updating along with the
-   scope list. Extend `actions/google-check.ts` to verify the send scope too, so
-   a refused delegation shows up as a clear message rather than a failed campaign.
-2. **The 37 clients owned by `facturcustomersuccess@facturmfg.com` need real
-   owners assigned** before the first campaign. That's a shared mailbox, not a
-   person, and it covers more Active clients than anyone else — sending from it
-   throws away the entire reason for sending as the owner. This is a data fix in
-   the client settings page, done by hand, and it is a prerequisite rather than
-   something the build session can solve. The remaining 13 unassigned Active
-   clients need owners too.
+Both of the original blockers are cleared.
+
+1. ~~Workspace admin has to approve the send scope.~~ **Done.** The collections
+   work added `gmail.compose` to `lib/google/auth.ts`, which covers sending as
+   well as drafting -- NPS needs no scope of its own and calls the `sendAs()`
+   already in `lib/google/compose.ts`. Verified against every sender through
+   Settings → NPS: all four cleared.
+
+2. ~~The 37 clients on the shared customer-success mailbox need real owners.~~
+   **Moot.** That was a consequence of sending as the owner. A mailbox has a
+   team lead like anyone else, and that lead is a person, so the shared mailbox
+   is never a sender.
+
+What remains is small: **6 Active clients have no account manager**, so no team
+lead resolves for them and there is nobody to send as. Assign them and the
+Active list is fully covered. There are no cases of an account manager without
+a manager set.
 
 Everything else below is buildable today.
 
@@ -199,14 +209,14 @@ sending as the owner actually did what it was chosen to do.
 1. ~~Migration + `SECURITY DEFINER` response function.~~ **Done** (`20260826174810`).
 2. ~~Public `/nps/[token]` page.~~ **Done.** Supports `?score=N` from the email.
 3. ~~Campaign tracking view.~~ **Done** — `/clients/nps`, in the sidebar under Clients.
-4. `gmail.send` scope + `actions/google-check.ts` extension, verified against
-   Gabe's own address before any client is involved.
+4. ~~Send permission, verified per sender before any client is involved.~~
+   **Done** — `/settings/nps`, which asks Google for a compose token as each
+   team lead. All four cleared.
 5. Campaign builder, capped to internal recipients until a real campaign is approved.
 
 Tracking moved ahead of sending so the first real campaign lands in a view that
-already works. Steps 4 and 5 are what remain; step 4 needs the Workspace admin,
-and step 5 shouldn't run for real until the 50 Active clients without a proper
-owner have one.
+already works. Only step 5 remains. It shouldn't run for real until the 6 Active
+clients with no account manager have one — `/settings/nps` lists them.
 
 ## What the live form taught us
 
@@ -221,10 +231,10 @@ changed two things about the design:
   during the GET: Outlook and Gmail follow every link in a message to check it,
   all eleven, and the last one visited would otherwise win.
 
-Also worth confirming before step 5: every one of the fifteen imported responses
-went out as `darryl.mechell@facturmfg.com`. The current process has **one**
-sender. Sending as each client's own owner is a change to how this works today,
-not a continuation of it.
+- **The sender is the team lead**, not the client's day-to-day owner. Every one
+  of the fifteen imported responses went out as `darryl.mechell@facturmfg.com`,
+  who leads 54 Active clients. Confirmed as the intended rule, and it replaces
+  the per-owner design this brief started with.
 
 ## Imported history
 

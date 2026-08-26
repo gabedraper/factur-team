@@ -15,7 +15,13 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
   );
 }
 
-function ClientList({ title, clients }: { title: string; clients: { id: string; name: string }[] }) {
+function ClientList({
+  title,
+  clients,
+}: {
+  title: string;
+  clients: { id: string; name: string; blocker: string | null }[];
+}) {
   if (clients.length === 0) return null;
   return (
     <div className="space-y-2">
@@ -30,6 +36,9 @@ function ClientList({ title, clients }: { title: string; clients: { id: string; 
             className="rounded-md border bg-card px-2 py-1 text-xs hover:bg-muted"
           >
             {c.name}
+            {c.blocker && (
+              <span className="ml-1.5 text-muted-foreground">{c.blocker}</span>
+            )}
           </Link>
         ))}
       </div>
@@ -79,7 +88,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Sender</th>
+                  <th className="px-3 py-2 font-medium">Team lead</th>
                   <th className="px-3 py-2 text-right font-medium">Clients</th>
                   <th className="px-3 py-2 font-medium">Can send as</th>
                 </tr>
@@ -128,13 +137,13 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
             warn={coverage.withContactEmail < coverage.activeClients}
           />
           <Stat
-            label="With an owner"
-            value={`${coverage.withOwner} / ${coverage.activeClients}`}
-            warn={coverage.withOwner < coverage.activeClients}
+            label="With a team lead"
+            value={`${coverage.withTeamLead} / ${coverage.activeClients}`}
+            warn={coverage.withTeamLead < coverage.activeClients}
           />
         </div>
 
-        <ClientList title="No owner" clients={coverage.noOwner} />
+        <ClientList title="Nobody to send as" clients={coverage.noTeamLead} />
         <ClientList title="No contact address" clients={coverage.noContactEmail} />
       </section>
     </div>

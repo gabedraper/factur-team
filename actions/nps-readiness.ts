@@ -24,9 +24,9 @@ export type SenderCheck = {
 export type Coverage = {
   activeClients: number;
   withContactEmail: number;
-  withOwner: number;
-  noOwner: { id: string; name: string }[];
-  noContactEmail: { id: string; name: string }[];
+  withTeamLead: number;
+  noTeamLead: { id: string; name: string; blocker: string | null }[];
+  noContactEmail: { id: string; name: string; blocker: string | null }[];
 };
 
 /** Google's failures here are terse; these are what they actually mean. */
@@ -43,6 +43,12 @@ function explain(message: string): string {
 
 /**
  * Can the app write mail as each person who would send a survey?
+ *
+ * A survey goes out from the client's **team lead**, not from whoever owns the
+ * client day to day -- resolved the way the rest of the app resolves it, as the
+ * explicit team_lead_id when one is set and the account manager's manager
+ * otherwise. Four people cover the whole Active list, which is also why the
+ * shared customer-success mailbox never becomes a sender.
  *
  * Deliberately separate from checkGoogleAccess: that one asks about the billing
  * ingest's own list of mailboxes, which is a different set of people. A pass
@@ -103,30 +109,36 @@ export async function checkNpsSenders(): Promise<{
   return { serviceAccount, problem: null, senders };
 }
 
-/** Who has nobody to ask, and who has nobody to ask on their behalf. */
+/**
+ * Who has nobody to ask, and who has nobody to ask on their behalf.
+ *
+ * The two gaps are named apart because they are fixed in different places: a
+ * client with no account manager is assigned on its own settings page, while an
+ * account manager with no manager is fixed against that person in People.
+ */
 export async function npsCoverage(): Promise<Coverage> {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) {
     return {
-      activeClients: 0, withContactEmail: 0, withOwner: 0,
-      noOwner: [], noContactEmail: [],
+      activeClients: 0, withContactEmail: 0, withTeamLead: 0,
+      noTeamLead: [], noContactEmail: [],
     };
   }
 
   const supabase = await createClient();
   const { data } = await supabase.rpc("nps_campaign_readiness");
   const rows = (data ?? []) as {
-    client_id: string; client_name: string;
-    has_contact_email: boolean; has_owner: boolean;
+    client_id: string; client_name: string; has_contact_email: boolean;
+    has_team_lead: boolean; team_lead: string | null; blocker: string | null;
   }[];
 
   return {
     activeClients: rows.length,
     withContactEmail: rows.filter((r) => r.has_contact_email).length,
-    withOwner: rows.filter((r) => r.has_owner).length,
-    noOwner: rows.filter((r) => !r.has_owner)
-      .map((r) => ({ id: r.client_id, name: r.client_name })),
+    withTeamLead: rows.filter((r) => r.has_team_lead).length,
+    noTeamLead: rows.filter((r) => !r.has_team_lead)
+      .map((r) => ({ id: r.client_id, name: r.client_name, blocker: r.blocker })),
     noContactEmail: rows.filter((r) => !r.has_contact_email)
-      .map((r) => ({ id: r.client_id, name: r.client_name })),
+      .map((r) => ({ id: r.client_id, name: r.client_name, blocker: r.blocker })),
   };
 }
