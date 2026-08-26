@@ -20,9 +20,15 @@ const BAND_CLASS: Record<string, string> = {
  * weighting, and without the weights a 40 looks arbitrary.
  */
 const AR_BLURB =
-  "100 less each dollar owed, weighted by how late it is: 1–30 counts 10%, " +
-  "31–60 counts 35%, 61–90 counts 65%, 91 and over counts in full. " +
-  "Owing nothing scores 100. No A/R record at all scores nothing rather than zero.";
+  "How current this client's balance is, scored 0 to 100.\n\n" +
+  "100 = nothing overdue. 0 = the whole balance is more than 90 days late.\n\n" +
+  "In between, each slice of the balance pulls the score down according to " +
+  "how old it is: money 1–30 days late pulls it down a little, 31–60 more, " +
+  "61–90 more again, and anything past 90 days pulls with full force.\n\n" +
+  "Example: a client with half their balance current and half more than 90 " +
+  "days late scores 50.\n\n" +
+  "A dash means QuickBooks has no receivables record for them — not that they " +
+  "owe nothing.";
 
 /** The manual traffic light in Salesforce, as a rough 0-100 to compare against. */
 const MANUAL_AS_SCORE: Record<string, number> = {
