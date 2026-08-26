@@ -179,7 +179,9 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                   <td className="px-3 py-2 text-right"><Score value={at(c, "activity")} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "nps")} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "engagement")} /></td>
-                  <td className="px-3 py-2 text-right"><Score value={at(c, "receivables")} /></td>
+                  <td className="px-3 py-2 text-right" title={AR_BLURB}>
+                    <Score value={at(c, "receivables")} />
+                  </td>
                   <td className="px-3 py-2 text-center text-muted-foreground tabular-nums">
                     {c.inputsMeasured} of 5
                   </td>
@@ -195,12 +197,12 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             <div className="text-xs uppercase tracking-wide text-muted-foreground">
                               {i.label}
                             </div>
-                            {i.key === "receivables" && (
-                              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                                {AR_BLURB}
-                              </p>
-                            )}
-                            <div className="mt-1 text-lg"><Score value={i.score} /></div>
+                            <div
+                              className="mt-1 text-lg"
+                              title={i.key === "receivables" ? AR_BLURB : undefined}
+                            >
+                              <Score value={i.score} />
+                            </div>
                             <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
                             {i.key === "receivables" && (
                               <Link
