@@ -5,6 +5,16 @@ import { saveStep, deleteStep, setMode, type Step, type Settings } from "@/actio
 import { PLACEHOLDERS } from "@/lib/collections/render";
 import { Plus, Trash2 } from "lucide-react";
 
+/*
+ * Every editable field on this screen, tinted so the parts you can type into
+ * are obvious against the cards they sit on. Held in one place because four
+ * inputs drifting apart is exactly how a screen starts looking untidy.
+ */
+const FIELD =
+  "rounded-md border border-sky-200 bg-sky-50 text-foreground " +
+  "placeholder:text-sky-900/40 focus:outline-none focus:ring-2 focus:ring-sky-400 " +
+  "dark:border-sky-900 dark:bg-sky-950/40 dark:placeholder:text-sky-100/30";
+
 type Draft = {
   id?: string;
   position: number;
@@ -118,7 +128,7 @@ export function Sequence({ steps, settings }: { steps: Step[]; settings: Setting
                 type="number"
                 value={row.position}
                 onChange={(e) => change(i, { position: Number(e.target.value) })}
-                className="w-14 rounded-md border bg-background px-2 py-1 tabular-nums"
+                className={`${FIELD} w-14 px-2 py-1 tabular-nums`}
               />
             </label>
             <label className="flex items-center gap-1">
@@ -127,7 +137,7 @@ export function Sequence({ steps, settings }: { steps: Step[]; settings: Setting
                 type="number"
                 value={row.days_past_due}
                 onChange={(e) => change(i, { days_past_due: Number(e.target.value) })}
-                className="w-16 rounded-md border bg-background px-2 py-1 tabular-nums"
+                className={`${FIELD} w-16 px-2 py-1 tabular-nums`}
               />
             </label>
             <label className="flex items-center gap-1.5">
@@ -160,14 +170,14 @@ export function Sequence({ steps, settings }: { steps: Step[]; settings: Setting
             value={row.subject}
             placeholder="Subject"
             onChange={(e) => change(i, { subject: e.target.value })}
-            className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+            className={`${FIELD} w-full px-2 py-1 text-sm`}
           />
           <textarea
             value={row.body}
             rows={12}
             placeholder="Body"
             onChange={(e) => change(i, { body: e.target.value })}
-            className="w-full rounded-md border bg-background px-2 py-1 font-mono text-xs leading-relaxed"
+            className={`${FIELD} w-full px-2 py-1 font-mono text-xs leading-relaxed`}
           />
         </div>
       ))}
