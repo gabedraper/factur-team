@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
-  checkGoogleAccess, listIngestAccounts, runIngest,
+  checkGoogleAccess, listIngestAccounts, recentIngestRuns, runIngest,
   type AccountCheck,
 } from "@/actions/google-check";
 import type { IngestReport } from "@/lib/ingest/comms";
@@ -16,7 +16,18 @@ const LANES: { kind: IngestReport["kind"]; label: string; doing: string }[] = [
 export function GoogleCheck() {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<Awaited<ReturnType<typeof checkGoogleAccess>> | null>(null);
-  const [reports, setReports] = useState<IngestReport[]>([]);
+  const [reports, setReports] = useState<(IngestReport & { ranAt?: string })[]>([]);
+  const [lane, setLane] = useState<IngestReport["kind"]>("mail");
+
+  // What the last sweep managed, so leaving the page loses nothing.
+  useEffect(() => {
+    recentIngestRuns().then((runs) => {
+      if (runs.length === 0) return;
+      const newest = runs.reduce((a, b) => (a.ranAt > b.ranAt ? a : b));
+      setLane(newest.kind);
+      setReports(runs.filter((r) => r.kind === newest.kind));
+    });
+  }, []);
   const [progress, setProgress] = useState<
     { kind: IngestReport["kind"]; done: number; total: number } | null
   >(null);
@@ -34,23 +45,45 @@ export function GoogleCheck() {
    * way each call is small, the count moves while it works, and one bad mailbox
    * does not lose the rest.
    */
+  /*
+   * One account at a time, from the browser.
+   *
+   * All twenty-three in a single request took five minutes and was killed by
+   * the function timeout, which the browser shows as the page failing to load.
+   * This way each call is small, the count moves while it works, and one bad
+   * account does not lose the rest.
+   *
+   * Accounts read in the last six hours are passed over, so a sweep cut short
+   * by closing the tab carries on from where it stopped rather than starting
+   * again. Once they are all recent, pressing the button reads them all again.
+   */
   async function pull(kind: IngestReport["kind"]) {
     setIngestProblem(null);
-    setReports([]);
+    setLane(kind);
 
-    const accounts = await listIngestAccounts();
+    const [accounts, runs] = await Promise.all([listIngestAccounts(), recentIngestRuns()]);
     if (accounts.length === 0) {
       setIngestProblem("No accounts to read.");
       return;
     }
 
-    setProgress({ kind, done: 0, total: accounts.length });
-    for (const [i, account] of accounts.entries()) {
+    const cutoff = new Date(Date.now() - 6 * 3600_000).toISOString();
+    const done = new Map(
+      runs.filter((r) => r.kind === kind && r.ranAt > cutoff).map((r) => [r.account, r])
+    );
+
+    const todo = accounts.filter((a) => !done.has(a));
+    const sweep = todo.length ? todo : accounts;
+
+    setReports(todo.length ? [...done.values()] : []);
+    setProgress({ kind, done: 0, total: sweep.length });
+    for (const [i, account] of sweep.entries()) {
       const report = await runIngest(kind, account, 90);
-      setReports((prev) => [...prev, report]);
-      setProgress({ kind, done: i + 1, total: accounts.length });
+      setReports((prev) => [...prev.filter((r) => r.account !== account), report]);
+      setProgress({ kind, done: i + 1, total: sweep.length });
     }
     setProgress(null);
+    setReports(await recentIngestRuns().then((r) => r.filter((x) => x.kind === kind)));
   }
 
   return (
@@ -89,17 +122,17 @@ export function GoogleCheck() {
         </p>
       )}
 
-      {reports.length > 0 && (
+      {reports.some((r) => r.kind === lane) && (
         <div className="space-y-2">
           <p className="text-sm">
-            {reports.reduce((n: number, r: IngestReport) => n + r.attached, 0)} messages attached
-            to a client, out of {reports.reduce((n: number, r: IngestReport) => n + r.found, 0)} read
-            — {reports.reduce((n: number, r: IngestReport) => n + r.matching, 0)} matched the search
-          </p>
-          <p className="max-w-prose text-xs text-muted-foreground">
-            By domain: the client was on the message. By thread: an internal
-            reply on a thread the client is on. By name: an internal message
-            naming the client in its subject — the least certain of the three.
+            {(() => {
+              const shown = reports.filter((r) => r.kind === lane);
+              const sum = (f: (r: IngestReport) => number) =>
+                shown.reduce((n, r) => n + f(r), 0);
+              return `${sum((r) => r.attached)} attached to a client, out of ${sum(
+                (r) => r.found
+              )} read — ${sum((r) => r.matching)} matched the search`;
+            })()}
           </p>
           <div className="overflow-x-auto rounded-md border bg-card">
             <table className="w-full text-sm">
@@ -116,7 +149,10 @@ export function GoogleCheck() {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((r: IngestReport) => (
+                {[...reports]
+                  .filter((r) => r.kind === lane)
+                  .sort((a, b) => a.account.localeCompare(b.account))
+                  .map((r) => (
                   <tr key={`${r.kind}-${r.account}`} className="border-b last:border-0">
                     <td className="px-3 py-2">{r.account}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.matching}</td>

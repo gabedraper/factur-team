@@ -188,5 +188,58 @@ export async function runIngest(
         : await ingestBillingMailFor(account, sinceDays);
 
   // Google's own wording is a wall of JSON in a table cell.
-  return report.problem ? { ...report, problem: explain(report.problem) } : report;
+  const result = report.problem ? { ...report, problem: explain(report.problem) } : report;
+
+  /*
+   * Written down as each account finishes.
+   *
+   * The sweep is driven from the browser, one account per call, so closing the
+   * tab ends it -- and until this was recorded, it ended silently: coming back
+   * showed an empty screen whether it had read three accounts or all
+   * twenty-three. Now the page can say where it got to, and pick up the rest.
+   */
+  await createServiceClient()
+    .from("ingest_runs")
+    .upsert(
+      {
+        kind, account,
+        ran_at: new Date().toISOString(),
+        matching: result.matching,
+        found: result.found,
+        attached: result.attached,
+        by_domain: result.byDomain,
+        by_thread: result.byThread,
+        by_name: result.byName,
+        hit_cap: result.hitCap,
+        problem: result.problem,
+      },
+      { onConflict: "kind,account" }
+    );
+
+  return result;
+}
+
+/** What the last sweep of each kind managed, so the page survives a reload. */
+export async function recentIngestRuns(): Promise<(IngestReport & { ranAt: string })[]> {
+  const perms = await myPermissions();
+  if (!perms.has("org.manage")) return [];
+
+  const { data } = await createServiceClient()
+    .from("ingest_runs")
+    .select("*")
+    .order("account");
+
+  return ((data ?? []) as Record<string, never>[]).map((r) => ({
+    account: r.account as unknown as string,
+    kind: r.kind as unknown as IngestReport["kind"],
+    matching: r.matching as unknown as number,
+    found: r.found as unknown as number,
+    attached: r.attached as unknown as number,
+    byDomain: r.by_domain as unknown as number,
+    byThread: r.by_thread as unknown as number,
+    byName: r.by_name as unknown as number,
+    hitCap: r.hit_cap as unknown as boolean,
+    problem: r.problem as unknown as string | null,
+    ranAt: r.ran_at as unknown as string,
+  }));
 }

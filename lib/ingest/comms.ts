@@ -210,17 +210,43 @@ export async function ingestBillingMailFor(
 /*
  * Words that make a line about getting paid.
  *
- * Mail is narrowed by its subject, which chat and meetings do not have -- a
- * chat message is one line and a transcript is an hour of talk. So they are
- * narrowed by what is said instead. Deliberately plain words: the internal
- * chatter this is for sounds like "did they ever pay the June one", not like
- * an accounts-receivable report.
+ * Mail is narrowed by its subject line, which neither chat nor a transcript
+ * has -- a chat message is one line and a transcript is an hour of talk. So
+ * they are narrowed by what is said instead, in plain words, because the
+ * internal chatter this is for sounds like "did they ever pay the June one".
+ *
+ * Deliberately missing: "check", "wire", "balance" and "statement". Every one
+ * of them is ordinary speech in this business -- the client calls are named
+ * "Check-In", the parts have wire in them, and a statement of work is not a
+ * statement of account. "check" alone matched all twelve meeting transcripts
+ * on their own titles. Where those words do belong they are kept in a phrase.
  */
-const MONEY_TALK =
-  /\b(invoic\w*|payment|paid|pay(ing|s)?|past due|overdue|owe[sd]?|owing|balance|remit\w*|receivable|collection|credit hold|statement|billing|billed|unpaid|outstanding|net ?(30|45|60)|wire|ach|check|cheque)\b/i;
+const MONEY_TALK = new RegExp(
+  [
+    "\\b(invoic\\w*|payment|payments|paid|pay|paying|pays|owes?|owed|owing",
+    "|remit\\w*|receivable|receivables|collections?|billing|billed|unpaid",
+    "|past[- ]due|overdue|credit hold|net ?(30|45|60))\\b",
+    "|\\b(outstanding|unpaid|overdue|open)\\s+(balance|amount|invoice|item)",
+    "|\\bbalance\\s+(due|owing|outstanding)\\b",
+    "|\\b(paid|pay|send|sent)\\s+(by|via|a|the)\\s+(check|cheque|wire|ach)\\b",
+  ].join(""),
+  "i"
+);
 
 function mentions(text: string): boolean {
   return MONEY_TALK.test(text);
+}
+
+/**
+ * Where the talking starts in a transcript.
+ *
+ * The document opens with its own title, then "Attendees" and a list of names,
+ * then "Transcript" and the speaker lines. Everything before that last word is
+ * about the meeting rather than in it.
+ */
+function bodyStart(text: string): number {
+  const at = text.search(/\bTranscript\b\s*\n/);
+  return at === -1 ? 0 : at;
 }
 
 /** Client lookups, built once and shared by the chat and meeting ingests. */
@@ -305,7 +331,9 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
           // Nobody outside the company is in these spaces.
           direction: "internal",
           author_email: null,
-          author_name: m.author,
+          // The Chat API leaves displayName empty on some messages and the
+          // fetch falls back to "users/1100…", which is not a name.
+          author_name: m.author && !/^users\/\d+$/.test(m.author) ? m.author : null,
           participants: [],
           subject: m.spaceLabel ?? "Chat",
           extract: m.text.slice(0, 160),
@@ -363,7 +391,14 @@ export async function ingestTranscriptsFor(
 
     const rows = transcripts
       .map((t) => {
-        const hit = MONEY_TALK.exec(t.text);
+        /*
+         * Google puts a title and an attendee list above the talk, and the
+         * title is where the client's name lives -- so searching the whole
+         * document finds the header every time and the extract is a header
+         * rather than the moment money came up. Only what was said is searched.
+         */
+        const spoken = t.text.slice(bodyStart(t.text));
+        const hit = MONEY_TALK.exec(spoken);
         if (!hit) return null;
 
         const outside = t.attendees.filter((a) => !OUR_DOMAINS.has(domainOf(a)));
@@ -382,7 +417,7 @@ export async function ingestTranscriptsFor(
 
         // The sentence where it came up, with a little either side of it.
         const at = hit.index ?? 0;
-        const extract = t.text
+        const extract = spoken
           .slice(Math.max(0, at - 60), at + 200)
           .replace(/\s+/g, " ")
           .trim();
