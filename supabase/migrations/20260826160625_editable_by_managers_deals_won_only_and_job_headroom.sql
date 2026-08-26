@@ -183,31 +183,25 @@ $fn$;
 -- 3. The hourly maintenance job had two minutes to finish and was taking about
 -- 113 seconds, so it failed roughly once a day. The cap is armed per top-level
 -- statement before the function starts, so raising it inside nightly_maintenance
--- would do nothing.
+-- would do nothing -- it has to be set on the job's own session, ahead of the
+-- call.
 --
--- The first attempt put "SET statement_timeout = '10min';" in front of the call
--- in the job's own command. Do not do that: pg_cron ran the SET, reported the
--- job succeeded in zero seconds, and never ran the maintenance -- a silent
--- no-op, which is worse than the timeout it replaced. (A one-off probe job with
--- two cheap statements did run both, so this is not simply "multi-statement is
--- unsupported"; it is not worth relying on either way.)
+-- Worth knowing when reading cron.job_run_details for this job: while a run is
+-- in flight its return_message shows the SET's tag and its end_time is not set
+-- yet, so a mid-run glance looks exactly like "the SET ran and the maintenance
+-- did not". It isn't. A completed run reports "1 row".
 --
--- So the timeout is set on the role the job runs as, and the job stays a single
--- statement. Verified with a throwaway cron job that recorded the timeout it
--- actually ran under.
---
--- This widens the cap for admin sessions connecting as postgres too. It does
--- not touch the application, which connects as authenticator and switches to
--- authenticated. It is headroom, not a fix: the job still grows with volume.
-alter role postgres in database postgres set statement_timeout = '10min';
-
+-- This buys headroom, it does not make the job cheaper. The work still grows
+-- with activity volume and still wants reducing.
 do $do$
 declare
   v_jobid bigint;
 begin
   select jobid into v_jobid from cron.job where command ilike '%nightly_maintenance%' limit 1;
   if v_jobid is not null then
-    perform cron.alter_job(v_jobid, command => 'SELECT public.nightly_maintenance();');
+    perform cron.alter_job(
+      v_jobid,
+      command => 'SET statement_timeout = ''10min''; SELECT public.nightly_maintenance();');
   end if;
 end $do$;
 
