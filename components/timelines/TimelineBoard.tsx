@@ -17,7 +17,7 @@ const VIEWS: Record<ViewKey, {
   windowDays: number | null; ticks: number[] | null;
 }> = {
   quick: {
-    label: "Quick response", blurb: `First 24 hours · goal: reply inside ${FIRST_RESPONSE_TARGET_H}h`,
+    label: "Lead Response", blurb: `First 24 hours · goal: reply inside ${FIRST_RESPONSE_TARGET_H}h`,
     goal: `first touch inside ${FIRST_RESPONSE_TARGET_H}h`,
     windowDays: 1, ticks: [0, 4, 8, 12, 16, 20, 24].map((h) => h / 24),
   },
@@ -205,7 +205,7 @@ export function TimelineBoard({
     <div className="tl">
       <div className="wrap">
         <header>
-          <h1>Lead Response</h1>
+          <h1>{v.label}</h1>
         </header>
 
         <div className="tiles">
