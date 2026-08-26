@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
-  MailWarning } from "lucide-react";
+  MailWarning, Gauge } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -150,6 +150,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Google Workspace</span>
                 <span className="block text-xs text-muted-foreground">
                   Check the connection used to read billing mail, chat and meeting transcripts.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/nps"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">NPS</span>
+                <span className="block text-xs text-muted-foreground">
+                  Check who a survey can be sent as, and which clients have nobody to ask.
                 </span>
               </span>
             </Link>
