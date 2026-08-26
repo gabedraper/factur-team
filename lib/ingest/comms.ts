@@ -318,9 +318,18 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
         .map((k) => [k.google_id, k])
     );
 
+    let nameProblem: string | null = null;
     const missing = senders.filter((id) => !nameById.has(id));
     if (missing.length) {
-      const { people } = await lookUpPeople(missing, account);
+      const { people, problem } = await lookUpPeople(missing, account);
+      /*
+       * A failed lookup costs names, not messages, so the sweep carries on --
+       * but it is reported. Silently resolving nothing looks identical to
+       * there being nobody to resolve, which cost a whole sweep to notice.
+       */
+      if (problem && people.length === 0) {
+        nameProblem = `Names not resolved — ${problem}`;
+      }
       if (people.length) {
         await db.from("google_people").upsert(
           people.map((p) => ({
@@ -405,7 +414,7 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
       found: messages.length,
       attached: rows.length,
       byDomain: counts.domain, byThread: 0, byName: counts.name,
-      hitCap: false, problem: null,
+      hitCap: false, problem: nameProblem,
     };
   } catch (e) {
     return empty(account, "chat", e instanceof Error ? e.message : "Unknown error");

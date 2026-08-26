@@ -91,7 +91,7 @@ export function GoogleCheck() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={run}
-          disabled={pending}
+          disabled={pending || progress !== null}
           className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
         >
           {pending ? "Working…" : "Check connection"}
