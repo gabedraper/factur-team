@@ -6,7 +6,8 @@ export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
   | "timelines.view" | "timelines.view.all" | "clients.health"
-  | "finance.collections";
+  | "finance.collections"
+  | "nps.send";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers
