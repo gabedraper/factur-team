@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { fetchBillingMail } from "@/lib/google/gmail";
 import { fetchChat } from "@/lib/google/chat";
 import { fetchTranscripts } from "@/lib/google/drive";
+import { lookUpPeople } from "@/lib/google/people";
 
 const OUR_DOMAINS = new Set(["facturmfg.com", "bethefactur.com"]);
 
@@ -296,6 +297,48 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
     const { byDomain, patterns } = await clientIndex(db);
     const { messages } = await fetchChat(account, sinceDays);
 
+    /*
+     * Who said it.
+     *
+     * Chat leaves the display name empty on many messages and gives only
+     * `users/<id>`. Ids already looked up are read from the table rather than
+     * asked about again -- the same twenty colleagues appear in every sweep.
+     */
+    const senders = [...new Set(messages.map((m) => m.author).filter(Boolean) as string[])]
+      .filter((a) => /^users\/\d+$/.test(a))
+      .map((a) => a.split("/")[1]);
+
+    const { data: known } = await db
+      .from("google_people")
+      .select("google_id,display_name,email")
+      .in("google_id", senders.length ? senders : ["none"]);
+
+    const nameById = new Map(
+      ((known ?? []) as { google_id: string; display_name: string | null; email: string | null }[])
+        .map((k) => [k.google_id, k])
+    );
+
+    const missing = senders.filter((id) => !nameById.has(id));
+    if (missing.length) {
+      const { people } = await lookUpPeople(missing, account);
+      if (people.length) {
+        await db.from("google_people").upsert(
+          people.map((p) => ({
+            google_id: p.googleId,
+            email: p.email,
+            display_name: p.name,
+            resolved_at: new Date().toISOString(),
+          })),
+          { onConflict: "google_id" }
+        );
+        for (const p of people) {
+          nameById.set(p.googleId, {
+            google_id: p.googleId, display_name: p.name, email: p.email,
+          });
+        }
+      }
+    }
+
     const counts = { domain: 0, name: 0 };
 
     const rows = messages
@@ -317,6 +360,12 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
         if (!clientId || !matchedBy) return null;
         counts[matchedBy]++;
 
+        // A raw id is never shown; either the directory knows them or nobody is
+        // named on the line.
+        const isId = m.author ? /^users\/\d+$/.test(m.author) : false;
+        const who = isId ? nameById.get(m.author!.split("/")[1]) : undefined;
+        const plainName = !isId ? m.author : null;
+
         return {
           source: "google_chat",
           // Chat ids are already domain-wide, so the same message reached from
@@ -330,10 +379,8 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
           occurred_at: m.createdAt.toISOString(),
           // Nobody outside the company is in these spaces.
           direction: "internal",
-          author_email: null,
-          // The Chat API leaves displayName empty on some messages and the
-          // fetch falls back to "users/1100…", which is not a name.
-          author_name: m.author && !/^users\/\d+$/.test(m.author) ? m.author : null,
+          author_email: who?.email ?? null,
+          author_name: who?.display_name ?? plainName,
           participants: [],
           subject: m.spaceLabel ?? "Chat",
           extract: m.text.slice(0, 160),

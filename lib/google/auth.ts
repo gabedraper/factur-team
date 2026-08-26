@@ -25,6 +25,7 @@ const SCOPES = {
     "https://www.googleapis.com/auth/chat.messages.readonly",
   ],
   drive: ["https://www.googleapis.com/auth/drive.readonly"],
+  directory: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
 } as const;
 
 export type GoogleService = keyof typeof SCOPES;

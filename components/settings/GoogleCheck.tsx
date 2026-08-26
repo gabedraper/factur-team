@@ -187,6 +187,7 @@ export function GoogleCheck() {
               ["Mail", (a: AccountCheck) => a.scopes.mail],
               ["Chat", (a: AccountCheck) => a.scopes.chat],
               ["Drive", (a: AccountCheck) => a.scopes.drive],
+              ["Directory", (a: AccountCheck) => a.scopes.directory],
             ] as const).map(([label, ok], i) => {
               const n = result.accounts.filter(ok).length;
               return (
@@ -235,6 +236,7 @@ export function GoogleCheck() {
                           ["Mail", a.scopes.mail],
                           ["Chat", a.scopes.chat],
                           ["Drive", a.scopes.drive],
+                          ["Directory", a.scopes.directory],
                         ] as const).map(([label, granted]) => (
                           <span
                             key={label}

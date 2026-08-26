@@ -15,7 +15,7 @@ export type AccountCheck = {
   ok: boolean;
   problem: string | null;
   /** Which of the three reads Google will allow for this person. */
-  scopes: { mail: boolean; chat: boolean; drive: boolean };
+  scopes: { mail: boolean; chat: boolean; drive: boolean; directory: boolean };
 };
 
 /** Google's failures here are terse; these are what they actually mean. */
@@ -86,8 +86,8 @@ export async function checkGoogleAccess(): Promise<{
    */
   const results: AccountCheck[] = [];
   for (const a of accounts) {
-    const [mail, chat, drive] = await Promise.all(
-      (["gmail", "chat", "drive"] as const).map((svc) =>
+    const [mail, chat, drive, directory] = await Promise.all(
+      (["gmail", "chat", "drive", "directory"] as const).map((svc) =>
         tokenFor(svc, a.email).then(
           () => null,
           (e: unknown) => (e instanceof Error ? e.message : "Unknown error")
@@ -104,11 +104,11 @@ export async function checkGoogleAccess(): Promise<{
      * sent you to the wrong place.
      */
     const failed = ([
-      ["Mail", mail], ["Chat", chat], ["Drive", drive],
+      ["Mail", mail], ["Chat", chat], ["Drive", drive], ["Directory", directory],
     ] as [string, string | null][])
       .filter((f) => f[1] !== null)
       .map(([label, m]) => [label, m as string] as const);
-    const allSameWay = failed.length === 3 && new Set(failed.map((f) => f[1])).size === 1;
+    const allSameWay = failed.length === 4 && new Set(failed.map((f) => f[1])).size === 1;
 
     results.push({
       email: a.email,
@@ -120,7 +120,7 @@ export async function checkGoogleAccess(): Promise<{
         : failed.length
           ? failed.map(([label, m]) => `${label} — ${explain(m)}`).join(" ")
           : null,
-      scopes: { mail: !mail, chat: !chat, drive: !drive },
+      scopes: { mail: !mail, chat: !chat, drive: !drive, directory: !directory },
     });
   }
 
