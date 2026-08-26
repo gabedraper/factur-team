@@ -259,6 +259,8 @@ message as before, so collections mail is unchanged.
   before the emails go rather than after. The daily task tops it up for new
   clients; a row marked `source = 'manual'` is never overwritten by a sync.
 
+  Now held on `client_contacts` (see below) rather than a names-only table.
+
   One caveat: Salesforce is sometimes wrong about who owns an address —
   `bcampbell@buddesheetmetal.com` resolves to Candice Budde, and
   `bcourchaine@cim-techcorp.com` to Stephen Teed. Those are the CRM's answer,
@@ -304,3 +306,37 @@ its own surveys. It checks for that on every run — a campaign with
 disabling itself, because the WordPress form may still be live and collecting
 replies alongside the app. Turn it off only once the old form is switched off
 too.
+
+## Contacts
+
+`client_contacts` is the one home for everyone we email at a client: one row per
+person per role — primary, decision_maker, billing — each marked with the system
+it came from. It replaced contact columns on `sf_clients_raw` and the
+short-lived `client_contact_names`.
+
+The live data is why a column pair on `org_clients` was never going to work:
+
+- **112 of 131** Active clients have a QuickBooks billing address that is a
+  *different person* from the Salesforce main contact. Accounts payable is not
+  who answers a survey; that is correct, not a data problem.
+- **18** clients have two billing addresses. A column cannot hold both, and
+  collections already mails them both.
+- **34** have a decision maker who is not the main contact.
+
+Ownership works like the team lead: a sync writes rows tagged `salesforce` or
+`quickbooks`, a person writes rows tagged `manual`, and
+`client_contact_current` prefers the manual one. Correcting a contact survives
+the next sync.
+
+That view also drops anyone inactive, opted out or bounced, so callers cannot
+forget to. NPS asks it for `primary`, falling back to `decision_maker`. Verified:
+opting out both contacts on a client takes them from 151 recipients to 150.
+
+Contacts are edited on the client's own settings page. Synced rows are shown but
+not editable — changing one there would be undone by the next sync, so a
+correction is a new `manual` row that outranks it.
+
+**Collections was deliberately left alone.** Its queue still reads QuickBooks
+directly for the billing address, which is more current than any copy: it takes
+the address off the most recent invoice. Re-pointing live billing email at this
+table is a change worth making on its own, not as a side effect.

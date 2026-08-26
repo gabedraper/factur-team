@@ -7,6 +7,8 @@ import {
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { NpsPanel } from "@/components/clients/NpsPanel";
 import { listNps } from "@/actions/nps";
+import { ContactsPanel } from "@/components/clients/ContactsPanel";
+import { listClientContacts } from "@/actions/client-contacts";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,10 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
   const detail = await getClientDetail((await params).clientId);
   if (!detail) notFound();
 
-  const [{ members }, { teams }, { services }, nps] = await Promise.all([
+  const [{ members }, { teams }, { services }, nps, contacts] = await Promise.all([
     listMembers(), listPodsAndClients(), listServicesAndTeams(),
     listNps((await params).clientId),
+    listClientContacts((await params).clientId),
   ]);
 
   const people = members
@@ -49,6 +52,19 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
         pods={pods}
         services={services}
       />
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Contacts
+        </h2>
+        <div className="rounded-md border bg-card p-3">
+          <ContactsPanel
+            clientId={detail.client.id as string}
+            contacts={contacts}
+            canEdit={perms.has("org.manage")}
+          />
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
