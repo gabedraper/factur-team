@@ -25,8 +25,8 @@ export type Coverage = {
   activeClients: number;
   withContactEmail: number;
   withTeamLead: number;
-  noTeamLead: { id: string; name: string; blocker: string | null }[];
-  noContactEmail: { id: string; name: string; blocker: string | null }[];
+  noTeamLead: { id: string; name: string; note: string | null }[];
+  noContactEmail: { id: string; name: string; note: string | null }[];
 };
 
 /** Google's failures here are terse; these are what they actually mean. */
@@ -137,8 +137,8 @@ export async function npsCoverage(): Promise<Coverage> {
     withContactEmail: rows.filter((r) => r.has_contact_email).length,
     withTeamLead: rows.filter((r) => r.has_team_lead).length,
     noTeamLead: rows.filter((r) => !r.has_team_lead)
-      .map((r) => ({ id: r.client_id, name: r.client_name, blocker: r.blocker })),
+      .map((r) => ({ id: r.client_id, name: r.client_name, note: r.blocker })),
     noContactEmail: rows.filter((r) => !r.has_contact_email)
-      .map((r) => ({ id: r.client_id, name: r.client_name, blocker: r.blocker })),
+      .map((r) => ({ id: r.client_id, name: r.client_name, note: r.team_lead })),
   };
 }

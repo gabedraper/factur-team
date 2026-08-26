@@ -20,7 +20,7 @@ function ClientList({
   clients,
 }: {
   title: string;
-  clients: { id: string; name: string; blocker: string | null }[];
+  clients: { id: string; name: string; note: string | null }[];
 }) {
   if (clients.length === 0) return null;
   return (
@@ -36,8 +36,8 @@ function ClientList({
             className="rounded-md border bg-card px-2 py-1 text-xs hover:bg-muted"
           >
             {c.name}
-            {c.blocker && (
-              <span className="ml-1.5 text-muted-foreground">{c.blocker}</span>
+            {c.note && (
+              <span className="ml-1.5 text-muted-foreground">{c.note}</span>
             )}
           </Link>
         ))}
@@ -144,7 +144,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
         </div>
 
         <ClientList title="Nobody to send as" clients={coverage.noTeamLead} />
-        <ClientList title="No contact address" clients={coverage.noContactEmail} />
+        <ClientList title="No contact address — team lead to chase" clients={coverage.noContactEmail} />
       </section>
     </div>
   );

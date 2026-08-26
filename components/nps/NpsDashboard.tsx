@@ -36,6 +36,7 @@ export function NpsDashboard({
 }) {
   const [campaign, setCampaign] = useState<string>("all");
   const [band, setBand] = useState<string>("all");
+  const [lead, setLead] = useState<string>("all");
   const [followUpsOnly, setFollowUpsOnly] = useState(false);
 
   const shown = useMemo(
@@ -44,10 +45,16 @@ export function NpsDashboard({
         (r) =>
           (campaign === "all" || r.campaignName === campaign) &&
           (band === "all" || r.band === band) &&
+          (lead === "all" || r.teamLead === lead) &&
           (!followUpsOnly || r.followUpRequested === true)
       ),
-    [responses, campaign, band, followUpsOnly]
+    [responses, campaign, band, lead, followUpsOnly]
   );
+
+  // Whoever a response would land on today, not whoever sent it -- leads change.
+  const leads = Array.from(
+    new Set(responses.map((r) => r.teamLead).filter((n): n is string => !!n))
+  ).sort();
 
   const promoters = responses.filter((r) => r.band === "promoter").length;
   const detractors = responses.filter((r) => r.band === "detractor").length;
@@ -119,6 +126,16 @@ export function NpsDashboard({
           <option value="passive">Passives</option>
           <option value="detractor">Detractors</option>
         </select>
+        <select
+          value={lead}
+          onChange={(e) => setLead(e.target.value)}
+          className="h-8 rounded-md border bg-field px-2 text-sm"
+        >
+          <option value="all">All team leads</option>
+          {leads.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <input
             type="checkbox"
@@ -148,6 +165,9 @@ export function NpsDashboard({
               </Link>
               {r.respondent && (
                 <span className="text-sm text-muted-foreground">{r.respondent}</span>
+              )}
+              {r.teamLead && (
+                <span className="text-sm text-muted-foreground">· {r.teamLead}</span>
               )}
               {r.followUpRequested && (
                 <span className="rounded-full border border-amber-400 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">

@@ -27,6 +27,8 @@ export type ResponseDetail = {
   respondent: string | null;
   respondentEmail: string | null;
   senderEmail: string | null;
+  teamLead: string | null;
+  teamLeadEmail: string | null;
   campaignName: string | null;
   band: "promoter" | "passive" | "detractor";
 };
@@ -43,6 +45,7 @@ type ResponseRow = {
   comment: string | null; follow_up_requested: boolean | null;
   collected_on: string; respondent: string | null;
   respondent_email: string | null; sender_email: string | null;
+  team_lead: string | null; team_lead_email: string | null;
   campaign_name: string | null; band: ResponseDetail["band"];
 };
 
@@ -95,6 +98,8 @@ export async function getNpsResponses(): Promise<ResponseDetail[]> {
     respondent: r.respondent,
     respondentEmail: r.respondent_email,
     senderEmail: r.sender_email,
+    teamLead: r.team_lead,
+    teamLeadEmail: r.team_lead_email,
     campaignName: r.campaign_name,
     band: r.band,
   }));
