@@ -16,6 +16,9 @@ export type BillingSummary = {
   bucket_31_60: number;
   bucket_61_90: number;
   bucket_91_plus: number;
+  /** Null where nothing they have been invoiced is settled yet. */
+  avg_days_to_pay: number | null;
+  invoices_paid: number;
 };
 
 /**

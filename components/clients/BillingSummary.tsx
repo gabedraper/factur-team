@@ -51,9 +51,18 @@ export function BillingSummary({ summary }: { summary: Summary }) {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Tile label="Payment terms" value={summary.payment_terms ?? "—"} />
         <Tile label="Open balance" value={money.format(summary.open_balance)} />
+        <Tile
+          label="Avg days to pay"
+          value={
+            summary.avg_days_to_pay === null
+              ? "—"
+              : String(Math.round(summary.avg_days_to_pay))
+          }
+        />
+        <Tile label="Invoices paid" value={String(summary.invoices_paid)} />
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
