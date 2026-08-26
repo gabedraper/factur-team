@@ -398,7 +398,7 @@ export async function requirePermission(key: Permission) {
  * to them. Honours preview, so previewing a person shows their training.
  */
 /** Whose roles the app is answering as: the previewed person, or the signed-in one. */
-async function currentMemberId(): Promise<string | null> {
+export async function currentMemberId(): Promise<string | null> {
   const previewing = await previewedMemberId();
   if (previewing) return previewing;
 

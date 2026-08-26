@@ -168,6 +168,14 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
             </tr>
           </thead>
           <tbody>
+            {/* An empty list is an answer, not a page still loading. */}
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
+                  No clients to show.
+                </td>
+              </tr>
+            )}
             {sorted.map((c) => (
               <>
                 <tr
