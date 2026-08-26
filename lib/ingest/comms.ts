@@ -327,7 +327,7 @@ export async function ingestChatFor(account: string, sinceDays = 90): Promise<In
        * but it is reported. Silently resolving nothing looks identical to
        * there being nobody to resolve, which cost a whole sweep to notice.
        */
-      if (problem && people.length === 0) {
+      if (problem && !people.some((x) => x.name)) {
         nameProblem = `Names not resolved — ${problem}`;
       }
       if (people.length) {
