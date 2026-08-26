@@ -126,22 +126,39 @@ export async function rebuildSummaries(): Promise<{
   );
 
   /*
-   * Activity is read by date rather than by lead id.
+   * Activity is read a hundred lead ids at a time, because whatid is the only
+   * column this table is indexed on.
    *
-   * Asking for it a hundred lead ids at a time meant nine hundred queries for a
-   * year of leads. Everything in the table already belongs to a lead we keep --
-   * the sync filters it to the same set -- so one straight read of the table is
-   * both fewer round trips and the same rows.
+   * Reading it straight through ordered by date looks tidier and times out: a
+   * quarter of a million rows get sorted afresh for every page, and the
+   * database gives up around the thirtieth. Asking by lead id is an index
+   * lookup, and the batches run together so the round trips still overlap.
    */
-  const tasks = await readAll<TaskRow>("summary activity", (from) =>
-    db
-      .from("sf_opp_tasks_raw")
-      .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name", {
-        count: from === 0 ? "exact" : undefined,
+  const slices: string[][] = [];
+  for (let i = 0; i < rows.length; i += 100) slices.push(rows.slice(i, i + 100).map((r) => r.id));
+
+  const tasks: TaskRow[] = [];
+  for (let i = 0; i < slices.length; i += WIDTH) {
+    const batch = await Promise.all(
+      slices.slice(i, i + WIDTH).map(async (slice) => {
+        const out: TaskRow[] = [];
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await db
+            .from("sf_opp_tasks_raw")
+            .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name")
+            .in("whatid", slice)
+            .order("createddate", { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) throw new Error(`summary activity query failed: ${error.message}`);
+          const page = (data ?? []) as unknown as TaskRow[];
+          out.push(...page);
+          if (page.length < PAGE) break;
+        }
+        return out;
       })
-      .order("createddate", { ascending: true })
-      .range(from, from + PAGE - 1)
-  );
+    );
+    for (const page of batch) tasks.push(...page);
+  }
 
   const pipelineFor = (row: LeadRow) =>
     row.ownerid && prospectors.has(row.ownerid) ? ("prospecting" as const) : ("client" as const);
