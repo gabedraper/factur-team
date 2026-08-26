@@ -11,6 +11,8 @@ export type QueueRow = {
   client_name: string;
   qb_customer: string;
   to_email: string | null;
+  /** The client's account manager and team lead, comma separated. */
+  cc_emails: string | null;
   contact_first_name: string | null;
   payment_terms: string | null;
   days_past_due: number;
@@ -231,6 +233,9 @@ export async function draftToMe(
       from: settings.send_as,
       fromName: sender,
       to: me,
+      // No copy on a test. The account manager finding out a client is late
+      // from a rehearsal would be worse than not being told at all.
+      cc: null,
       // Marked in the subject, so a test can never be mistaken for the real one
       // sitting beside it in her drafts.
       subject: `[TEST — ${row.client_name}] ${subject.trim()}`,
@@ -282,6 +287,7 @@ export async function placeChase(
     from: settings.send_as,
     fromName: sender,
     to: row.to_email,
+    cc: row.cc_emails,
     subject: subject.trim(),
     body,
   };
@@ -300,6 +306,7 @@ export async function placeChase(
     days_past_due: row.days_past_due,
     past_due_total: row.past_due_total,
     to_email: row.to_email,
+    cc_emails: row.cc_emails,
     subject: outgoing.subject,
     body,
     mode: settings.mode,

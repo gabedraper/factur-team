@@ -17,6 +17,8 @@ export type Outgoing = {
   fromName: string | null;
   /** Gmail accepts several, comma separated -- QuickBooks often holds two. */
   to: string;
+  /** The client's own account manager and team lead. Empty for none. */
+  cc?: string | null;
   subject: string;
   body: string;
 };
@@ -38,9 +40,13 @@ function mime(message: Outgoing, rfcMessageId: string): string {
     ? `${header(message.fromName)} <${message.from}>`
     : message.from;
 
+  const cc = message.cc?.trim();
+
   const lines = [
     `From: ${from}`,
     `To: ${message.to}`,
+    // Omitted rather than sent empty; a bare "Cc:" is a malformed header.
+    ...(cc ? [`Cc: ${cc}`] : []),
     `Subject: ${header(message.subject)}`,
     `Message-ID: ${rfcMessageId}`,
     "MIME-Version: 1.0",

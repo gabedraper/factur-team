@@ -186,8 +186,18 @@ export function Queue({ rows, settings }: { rows: Chase[]; settings: Settings })
 
             {isOpen && (
               <div className="space-y-2 border-t px-3 py-3">
-                <div className="text-xs text-muted-foreground">
-                  {r.to_email} · overdue since {onDay(r.overdue_since)}
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <div>To {r.to_email}</div>
+                  <div>
+                    {r.cc_emails ? (
+                      <>Cc {r.cc_emails}</>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        No account manager or team lead to copy
+                      </span>
+                    )}
+                  </div>
+                  <div>Overdue since {onDay(r.overdue_since)}</div>
                 </div>
                 <input
                   value={w.subject}
