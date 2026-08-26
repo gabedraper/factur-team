@@ -27,6 +27,8 @@ const AR_BLURB =
   "61–90 more again, and anything past 90 days pulls with full force.\n\n" +
   "Example: a client with half their balance current and half more than 90 " +
   "days late scores 50.\n\n" +
+  "Credits and unapplied payments count for nothing here rather than counting " +
+  "backwards, so the score is about what is owed, not the net balance.\n\n" +
   "A dash means QuickBooks has no receivables record for them — not that they " +
   "owe nothing.";
 

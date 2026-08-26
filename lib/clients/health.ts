@@ -12,7 +12,8 @@ type Row = {
   nps_score: number | null;
   quoted: number; no_quoted: number; dm_known: number | null;
   engagement_score: number | null;
-  ar_total: number | null; ar_overdue_60_plus: number | null;
+  ar_total: number | null; ar_owed: number | null; ar_credits: number | null;
+  ar_overdue_60_plus: number | null;
   receivables_score: number | null;
   inputs_measured: number; overall_score: number | null;
 };
@@ -27,6 +28,33 @@ function movement(now: number, before: number, noun: string): string {
   if (!now && !before) return `no ${noun}`;
   if (!before) return `${nf.format(now)} ${noun}, none the month before`;
   return `${nf.format(now)} vs ${nf.format(before)} ${noun} last month`;
+}
+
+/**
+ * What a client's receivables actually say, in a line.
+ *
+ * Owed and credits are reported apart rather than netted, because a client who
+ * owes $8,000 and holds a $5,500 credit is not a client who owes $2,500 -- one
+ * of those is a conversation about an unapplied payment and the other is not.
+ */
+function receivablesDetail(r: Row): string {
+  if (r.ar_total === null) return "not matched in QuickBooks";
+
+  const owed = Number(r.ar_owed ?? 0);
+  const credits = Number(r.ar_credits ?? 0);
+  const past60 = Number(r.ar_overdue_60_plus ?? 0);
+
+  if (owed <= 0) {
+    return credits > 0 ? `${money.format(credits)} in credit` : "nothing outstanding";
+  }
+
+  return [
+    `${money.format(owed)} owed`,
+    credits > 0 ? `${money.format(credits)} in credits` : null,
+    past60 > 0 ? `${money.format(past60)} past 60 days` : "none past 60 days",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export async function getClientHealth(): Promise<ClientHealth[]> {
@@ -87,15 +115,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "receivables",
           label: "Receivables",
           score: r.receivables_score,
-          detail:
-            r.ar_total === null
-              ? "not matched in QuickBooks"
-              : r.ar_total <= 0
-                ? "nothing outstanding"
-                : `${money.format(r.ar_total)} owed` +
-                  (r.ar_overdue_60_plus && r.ar_overdue_60_plus > 0
-                    ? ` · ${money.format(r.ar_overdue_60_plus)} past 60 days`
-                    : ", all recent"),
+          detail: receivablesDetail(r),
         },
       ],
     }));
