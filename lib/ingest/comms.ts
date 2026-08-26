@@ -234,6 +234,21 @@ const MONEY_TALK = new RegExp(
   "i"
 );
 
+/*
+ * The stricter test a meeting has to pass.
+ *
+ * A chat message is one line somebody wrote about one thing, so an ordinary
+ * word like "pay" in it usually means paying. An hour of talk contains
+ * everything: the first pass on transcripts matched "I'm not paying
+ * attention", a phishing mail read aloud, someone's mortgage, and the cost of
+ * a trade show -- four out of four.
+ *
+ * So a meeting has to contain a word that only ever means getting paid for
+ * work. Nobody says "receivable" or "past due" about their rent.
+ */
+const MONEY_TALK_STRICT =
+  /\b(invoice[sd]?|invoicing|past[- ]due|overdue|receivables?|remit\w*|credit hold|unpaid|net ?(30|45|60)|accounts? receivable)\b|\b(balance|amount)\s+(due|owing|outstanding)\b|\b(outstanding|unpaid|overdue)\s+(balance|amount|invoice)\b/i;
+
 function mentions(text: string): boolean {
   return MONEY_TALK.test(text);
 }
@@ -454,7 +469,7 @@ export async function ingestTranscriptsFor(
          * rather than the moment money came up. Only what was said is searched.
          */
         const spoken = t.text.slice(bodyStart(t.text));
-        const hit = MONEY_TALK.exec(spoken);
+        const hit = MONEY_TALK_STRICT.exec(spoken);
         if (!hit) return null;
 
         const outside = t.attendees.filter((a) => !OUR_DOMAINS.has(domainOf(a)));
