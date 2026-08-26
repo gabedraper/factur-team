@@ -25,6 +25,7 @@ import {
   Zap,
   CalendarClock,
   HeartPulse,
+  Gauge,
   MailWarning,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
@@ -75,6 +76,7 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
     const clients: NavItem[] = [];
     if (perms.has("clients.health")) {
       clients.push({ href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> });
+      clients.push({ href: "/clients/nps", label: "NPS", icon: <Gauge className="h-4 w-4" /> });
     }
     if (perms.has("finance.collections") || perms.has("org.manage")) {
       clients.push({ href: "/collections", label: "Collections", icon: <MailWarning className="h-4 w-4" /> });

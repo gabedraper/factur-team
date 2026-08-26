@@ -19,7 +19,8 @@ import { createClient } from "@/lib/supabase/server";
 export async function submitNpsResponse(
   token: string,
   score: number,
-  comment: string | null
+  comment: string | null,
+  followUp: boolean | null
 ): Promise<{ success: boolean; error?: string }> {
   if (!Number.isInteger(score) || score < 0 || score > 10) {
     return { success: false, error: "Please choose a number from 0 to 10." };
@@ -29,8 +30,11 @@ export async function submitNpsResponse(
   const { error } = await supabase.rpc("record_nps_response", {
     p_token: token,
     p_score: score,
-    // null means "leave the comment alone", "" means the client cleared it.
+    // For both of these, null means "leave it alone" -- the score is saved on
+    // click, so most calls here are touching one field and not the other.
+    // An empty comment means the client cleared the box.
     p_comment: comment,
+    p_follow_up: followUp,
   });
 
   if (error) {
