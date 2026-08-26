@@ -98,7 +98,7 @@ export function Sequence({ steps, settings }: { steps: Step[]; settings: Setting
 
       <fieldset className="rounded-lg border px-3 pb-3 pt-1">
         <legend className="px-1 text-xs uppercase tracking-wide text-muted-foreground">
-          Available QB Fields
+          Available Merge Fields
         </legend>
         <div className="flex flex-wrap gap-1">
           {PLACEHOLDERS.map((p) => (

@@ -12,6 +12,18 @@ const BAND_CLASS: Record<string, string> = {
   unknown: "text-muted-foreground",
 };
 
+/**
+ * How the A/R score is arrived at, said once where the number is.
+ *
+ * It is the one score on this page nobody can reconstruct by looking at it: the
+ * others are a count against last month, a survey answer, a ratio. This is a
+ * weighting, and without the weights a 40 looks arbitrary.
+ */
+const AR_BLURB =
+  "100 less each dollar owed, weighted by how late it is: 1–30 counts 10%, " +
+  "31–60 counts 35%, 61–90 counts 65%, 91 and over counts in full. " +
+  "Owing nothing scores 100. No A/R record at all scores nothing rather than zero.";
+
 /** The manual traffic light in Salesforce, as a rough 0-100 to compare against. */
 const MANUAL_AS_SCORE: Record<string, number> = {
   Green: 85, Blue: 85, Yellow: 55, Red: 20, Black: 10,
@@ -142,7 +154,9 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
               <SortHeader className="px-3 py-2" align="right" {...sortProps("activity")}>Activity</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("nps")}>NPS</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("engagement")}>Engagement</SortHeader>
-              <SortHeader className="px-3 py-2" align="right" {...sortProps("receivables")}>AR</SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("receivables")}>
+                <span title={AR_BLURB}>AR</span>
+              </SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("measured")}>Inputs</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("manual")}>In Salesforce</SortHeader>
             </tr>
@@ -181,6 +195,11 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             <div className="text-xs uppercase tracking-wide text-muted-foreground">
                               {i.label}
                             </div>
+                            {i.key === "receivables" && (
+                              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                                {AR_BLURB}
+                              </p>
+                            )}
                             <div className="mt-1 text-lg"><Score value={i.score} /></div>
                             <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
                             {i.key === "receivables" && (
