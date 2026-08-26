@@ -7,6 +7,10 @@ import { TimelineBoard, type ViewKey } from "@/components/timelines/TimelineBoar
 // from caching a render between loads.
 export const dynamic = "force-dynamic";
 
+// The tile rebuild runs after the response on whichever visit finds them stale,
+// and reads a year of leads and activity. It needs longer than a page render.
+export const maxDuration = 300;
+
 // The three views are routes rather than in-page state, so each is a nav link
 // and a shareable URL.
 const VIEW_BY_SLUG: Record<string, ViewKey> = {

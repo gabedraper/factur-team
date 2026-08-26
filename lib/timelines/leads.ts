@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
@@ -5,6 +6,7 @@ import {
   DISPLAY_DAYS, METRICS_DAYS, type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 import { parseUtc } from "./business-day";
+import { readSummaries, refreshSummariesIfStale } from "./summaries";
 
 export type { Lead, TimelineEvent, StageSpan, Pipeline, RepSummary } from "./assemble";
 export { ALL_REPS, DISPLAY_DAYS, METRICS_DAYS };
@@ -115,15 +117,33 @@ export async function getLeads(filters: LeadFilters = {}) {
 
   const assembled = assembleLeads(rows, tasks, pipelineFor);
 
-  // The tiles read the whole set; only the recent arrivals travel to the
-  // browser, newest first -- which is the order the query already returned.
+  // Only the recent arrivals travel to the browser, newest first -- which is
+  // the order the query already returned.
   const since = Date.now() - DISPLAY_DAYS * 86400000;
   const recent = assembled.leads.filter((l) => parseUtc(l.created).getTime() >= since);
+
+  /*
+   * The tiles come from the stored rebuild, which covers the year rather than
+   * the thirty days read here, and does not move when the board is filtered --
+   * which is what they were always meant to do.
+   *
+   * Before the first rebuild there is nothing stored, so they fall back to the
+   * window in hand. That is a smaller number rather than a wrong one, and it
+   * beats a page of dashes on the day this ships.
+   */
+  const stored = await readSummaries();
+  const summaries = stored.generatedAt
+    ? stored.summaries
+    : summariseByOwner(assembled.leads);
+
+  // Kept fresh by whoever opens the page, after their response has gone.
+  after(() => refreshSummariesIfStale());
 
   return {
     ...assembled,
     leads: recent,
-    summaries: summariseByOwner(assembled.leads),
+    summaries,
+    summariesFrom: stored.generatedAt,
     held: assembled.leads.length,
     scope: emptyScope,
   };
