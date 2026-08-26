@@ -1,76 +1,84 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteNpsStep, saveNpsStep, setNpsMode, type Settings, type Step } from "@/actions/nps-sequence";
+import { Plus, Trash2 } from "lucide-react";
+import {
+  saveNpsStep, deleteNpsStep, setNpsMode, type Step, type Settings,
+} from "@/actions/nps-sequence";
 import { PLACEHOLDERS } from "@/lib/nps/render";
+import { FIELD } from "@/lib/field-class";
 
-const BLANK = { position: 1, days_after_send: 0, subject: "", body: "", active: false };
+type Draft = {
+  id?: string;
+  position: number;
+  days_after_send: number;
+  subject: string;
+  body: string;
+  active: boolean;
+};
 
 /**
- * The ladder: what each email says and how long after the invitation it goes.
+ * The ladder, and the switch that decides whether a due email becomes a draft
+ * in the team lead's mailbox or goes straight out.
  *
- * Step one sits at day zero and is the invitation itself, which is why the
- * days on it cannot be anything else -- there is nothing to count from until
- * it has been sent.
+ * Deliberately the same screen as the collections sequence -- same inline
+ * cards, same merge-field list, same mode toggle -- because it is the same job
+ * and anyone who has used one should not have to learn the other.
+ *
+ * A step off is a step that never fires. That is how they all start.
  */
-export function NpsSequence({
-  steps,
-  settings,
-}: {
-  steps: Step[];
-  settings: Settings;
-}) {
-  const [rows, setRows] = useState(steps);
-  const [mode, setMode] = useState(settings.mode);
-  const [editing, setEditing] = useState<(Partial<Step> & typeof BLANK) | null>(null);
+export function NpsSequence({ steps, settings }: { steps: Step[]; settings: Settings }) {
+  const [rows, setRows] = useState<Draft[]>(steps);
+  const [mode, setModeLocal] = useState(settings.mode);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
-  function save() {
-    if (!editing) return;
+  function change(i: number, patch: Partial<Draft>) {
+    setRows((r) => r.map((row, n) => (n === i ? { ...row, ...patch } : row)));
+  }
+
+  function save(i: number) {
     setError("");
     startTransition(async () => {
-      const res = await saveNpsStep({
-        id: editing.id,
-        position: editing.position,
-        days_after_send: editing.days_after_send,
-        subject: editing.subject,
-        body: editing.body,
-        active: editing.active,
-      });
-      if (!res.success) { setError(res.error ?? "Couldn't save that."); return; }
-      setEditing(null);
-      location.reload();
+      const res = await saveNpsStep(rows[i]);
+      if (!res.success) setError(res.error ?? "Couldn't save that step.");
     });
   }
 
-  function toggle(step: Step) {
-    setError("");
-    setRows((rs) => rs.map((r) => (r.id === step.id ? { ...r, active: !r.active } : r)));
+  function remove(i: number) {
+    const row = rows[i];
+    setRows((r) => r.filter((_, n) => n !== i));
+    if (!row.id) return;
     startTransition(async () => {
-      const res = await saveNpsStep({ ...step, active: !step.active });
-      if (!res.success) {
-        setRows((rs) => rs.map((r) => (r.id === step.id ? { ...r, active: step.active } : r)));
-        setError(res.error ?? "Couldn't save that.");
-      }
+      const res = await deleteNpsStep(row.id as string);
+      if (!res.success) setError(res.error ?? "Couldn't delete that step.");
     });
   }
 
-  function remove(step: Step) {
-    setError("");
-    setRows((rs) => rs.filter((r) => r.id !== step.id));
-    startTransition(async () => {
-      const res = await deleteNpsStep(step.id);
-      if (!res.success) { setError(res.error ?? "Couldn't remove that."); location.reload(); }
-    });
+  function add() {
+    setRows((r) => [
+      ...r,
+      {
+        position: r.length + 1,
+        // A week on from the last one. Shorter than the collections ladder on
+        // purpose: a survey reminder is only useful while the quarter it asks
+        // about is still the quarter they are living in.
+        days_after_send: (r[r.length - 1]?.days_after_send ?? 0) + 7,
+        subject: "",
+        body: "",
+        active: false,
+      },
+    ]);
   }
 
-  function changeMode(next: "semi" | "full") {
-    const previous = mode;
-    setMode(next);
+  function switchMode(next: "semi" | "full") {
+    setModeLocal(next);
     startTransition(async () => {
       const res = await setNpsMode(next);
-      if (!res.success) { setMode(previous); setError(res.error ?? "Couldn't change that."); }
+      if (!res.success) {
+        setError(res.error ?? "Couldn't change the mode.");
+        setModeLocal(mode);
+      }
     });
   }
 
@@ -82,119 +90,109 @@ export function NpsSequence({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={mode}
-          onChange={(e) => changeMode(e.target.value as "semi" | "full")}
-          className="h-8 rounded-md border bg-field px-2 text-sm"
-        >
-          <option value="semi">Draft into the team lead&rsquo;s mailbox</option>
-          <option value="full">Send straight out</option>
-        </select>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {PLACEHOLDERS.map((p) => `{{${p}}}`).join("  ")}
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        {rows.map((s) => (
-          <div key={s.id} className="rounded-md border bg-card px-4 py-3">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="rounded-md border px-1.5 py-0.5 text-xs tabular-nums">
-                Step {s.position}
-              </span>
-              <span className="text-sm tabular-nums text-muted-foreground">
-                {s.days_after_send === 0 ? "on send" : `day ${s.days_after_send}`}
-              </span>
-              <span className="font-medium">{s.subject}</span>
-              <div className="ml-auto flex items-center gap-2">
-                <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <input type="checkbox" checked={s.active} onChange={() => toggle(s)} />
-                  Active
-                </label>
-                <button
-                  onClick={() => setEditing({ ...BLANK, ...s })}
-                  className="h-8 rounded-md border px-3 text-sm"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => remove(s)}
-                  disabled={pending}
-                  className="text-xs text-muted-foreground underline hover:text-destructive"
-                >
-                  remove
-                </button>
-              </div>
-            </div>
-            <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{s.body}</p>
-          </div>
+      <div className="flex items-center gap-2">
+        {(["semi", "full"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => switchMode(m)}
+            disabled={pending}
+            className={`rounded-md border px-3 py-1.5 text-sm ${
+              mode === m ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+            }`}
+          >
+            {m === "semi" ? "Semi-auto" : "Full auto"}
+          </button>
         ))}
+        {/*
+          Collections names the one mailbox it sends from here. A survey has no
+          single sender -- it goes out as each client's own team lead -- so this
+          says who, rather than naming an address that does not exist.
+        */}
+        <span className="text-xs text-muted-foreground">the client&rsquo;s team lead</span>
       </div>
 
-      {editing ? (
-        <div className="space-y-2 rounded-md border bg-card p-4">
-          <div className="flex flex-wrap gap-2">
-            <label className="text-xs text-muted-foreground">
-              Position
-              <input
-                type="number"
-                min={1}
-                value={editing.position}
-                onChange={(e) => setEditing({ ...editing, position: Number(e.target.value) })}
-                className="mt-1 block h-8 w-20 rounded-md border bg-field px-2 text-sm"
-              />
-            </label>
-            <label className="text-xs text-muted-foreground">
-              Days after send
-              <input
-                type="number"
-                min={0}
-                value={editing.days_after_send}
-                onChange={(e) =>
-                  setEditing({ ...editing, days_after_send: Number(e.target.value) })
-                }
-                className="mt-1 block h-8 w-28 rounded-md border bg-field px-2 text-sm"
-              />
-            </label>
-            <label className="flex-1 text-xs text-muted-foreground">
-              Subject
-              <input
-                value={editing.subject}
-                onChange={(e) => setEditing({ ...editing, subject: e.target.value })}
-                className="mt-1 block h-8 w-full rounded-md border bg-field px-2 text-sm"
-              />
-            </label>
-          </div>
-          <textarea
-            value={editing.body}
-            onChange={(e) => setEditing({ ...editing, body: e.target.value })}
-            rows={10}
-            className="block w-full rounded-md border bg-field px-3 py-2 font-mono text-xs"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={save}
-              disabled={pending}
-              className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
-            >
-              Save
-            </button>
-            <button onClick={() => setEditing(null)} className="h-8 rounded-md border px-3 text-sm">
-              Cancel
-            </button>
-          </div>
+      <fieldset className="rounded-lg border px-3 pb-3 pt-1">
+        <legend className="px-1 text-xs uppercase tracking-wide text-muted-foreground">
+          Available Merge Fields
+        </legend>
+        <div className="flex flex-wrap gap-1">
+          {PLACEHOLDERS.map((p) => (
+            <code key={p} className="rounded bg-muted px-1.5 py-0.5 text-[11px]">
+              {`{{${p}}}`}
+            </code>
+          ))}
         </div>
-      ) : (
-        <button
-          onClick={() =>
-            setEditing({ ...BLANK, position: Math.max(0, ...rows.map((r) => r.position)) + 1 })
-          }
-          className="h-8 rounded-md border px-3 text-sm"
-        >
-          Add a step
-        </button>
-      )}
+      </fieldset>
+
+      {rows.map((row, i) => (
+        <div key={row.id ?? `new-${i}`} className="space-y-2 rounded-lg border bg-card p-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-1">
+              Step
+              <input
+                type="number"
+                value={row.position}
+                onChange={(e) => change(i, { position: Number(e.target.value) })}
+                className={`${FIELD} w-14 px-2 py-1 tabular-nums`}
+              />
+            </label>
+            <label className="flex items-center gap-1">
+              Day
+              <input
+                type="number"
+                value={row.days_after_send}
+                onChange={(e) => change(i, { days_after_send: Number(e.target.value) })}
+                className={`${FIELD} w-16 px-2 py-1 tabular-nums`}
+              />
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={row.active}
+                onChange={(e) => change(i, { active: e.target.checked })}
+              />
+              Active
+            </label>
+            <span className="ml-auto flex gap-2">
+              <button
+                onClick={() => save(i)}
+                disabled={pending}
+                className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => remove(i)}
+                disabled={pending}
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </span>
+          </div>
+
+          <input
+            value={row.subject}
+            placeholder="Subject"
+            onChange={(e) => change(i, { subject: e.target.value })}
+            className={`${FIELD} w-full px-2 py-1 text-sm`}
+          />
+          <textarea
+            value={row.body}
+            rows={12}
+            placeholder="Body"
+            onChange={(e) => change(i, { body: e.target.value })}
+            className={`${FIELD} w-full px-2 py-1 font-mono text-xs leading-relaxed`}
+          />
+        </div>
+      ))}
+
+      <button
+        onClick={add}
+        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+      >
+        <Plus className="h-4 w-4" /> Add step
+      </button>
     </div>
   );
 }

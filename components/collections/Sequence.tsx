@@ -4,16 +4,8 @@ import { useState, useTransition } from "react";
 import { saveStep, deleteStep, setMode, type Step, type Settings } from "@/actions/collections";
 import { PLACEHOLDERS } from "@/lib/collections/render";
 import { Plus, Trash2 } from "lucide-react";
+import { FIELD } from "@/lib/field-class";
 
-/*
- * Every editable field on this screen, tinted so the parts you can type into
- * are obvious against the cards they sit on. Held in one place because four
- * inputs drifting apart is exactly how a screen starts looking untidy.
- */
-const FIELD =
-  "rounded-md border border-sky-200 bg-sky-50 text-foreground " +
-  "placeholder:text-sky-900/40 focus:outline-none focus:ring-2 focus:ring-sky-400 " +
-  "dark:border-sky-900 dark:bg-sky-950/40 dark:placeholder:text-sky-100/30";
 
 type Draft = {
   id?: string;
