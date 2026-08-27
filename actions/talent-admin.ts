@@ -332,3 +332,72 @@ export async function setIntegrationStatus(
   revalidatePath("/settings/talent");
   revalidatePath("/talent");
 }
+
+/**
+ * Email templates in bulk, pasted rather than typed.
+ *
+ * This exists because of a hole in Loxo's API: it exposes form templates and
+ * scorecard templates, but the email and SMS templates under Settings have no
+ * endpoint at all. They cannot be migrated, and for somebody who sends from
+ * them every day that is the most disruptive part of a move. So the next best
+ * thing is to make re-entering them take twenty minutes instead of an
+ * afternoon.
+ *
+ * The format is deliberately loose, because it is going to be assembled by
+ * copying and pasting out of another product:
+ *
+ *   Name of the template
+ *   Subject: whatever the subject line is
+ *   The body, over
+ *   as many lines as it takes.
+ *   ---
+ *   The next one
+ *   ...
+ */
+export async function bulkCreateEmailTemplates(text: string, audience = "candidate") {
+  const { supabase, me } = await ctx();
+
+  const blocks = text.split(/^\s*---+\s*$/m).map((b) => b.trim()).filter(Boolean);
+  const parsed: { name: string; subject: string; body: string }[] = [];
+
+  for (const block of blocks) {
+    const lines = block.split("\n");
+    const name = lines.shift()?.trim();
+    if (!name) continue;
+
+    let subject = "";
+    if (/^subject\s*:/i.test(lines[0] ?? "")) {
+      subject = lines.shift()!.replace(/^subject\s*:/i, "").trim();
+    }
+    parsed.push({ name, subject, body: lines.join("\n").trim() });
+  }
+
+  if (!parsed.length) throw new Error("Nothing to import — separate each template with a line of ---");
+
+  // Loxo writes merge fields as {{first_name}} too, so most pasted bodies work
+  // untouched. The few spellings that differ are normalised here rather than
+  // leaving somebody to find them one bounced email at a time.
+  const normalise = (s: string) =>
+    s
+      .replace(/\{\{\s*candidate[._]?first[._]?name\s*\}\}/gi, "{{first_name}}")
+      .replace(/\{\{\s*first[._]?name\s*\}\}/gi, "{{first_name}}")
+      .replace(/\{\{\s*full[._]?name\s*\}\}/gi, "{{name}}")
+      .replace(/\{\{\s*current[._]?company\s*\}\}/gi, "{{company}}")
+      .replace(/\{\{\s*current[._]?title\s*\}\}/gi, "{{title}}");
+
+  let added = 0;
+  for (const t of parsed) {
+    const { error } = await supabase.from("tal_email_templates").insert({
+      name: t.name,
+      audience,
+      subject: normalise(t.subject),
+      body: normalise(t.body),
+      merge_fields: ["{{first_name}}", "{{name}}", "{{title}}", "{{company}}"],
+      created_by: me,
+    });
+    if (!error) added++;
+  }
+
+  revalidatePath("/settings/talent");
+  return { added, found: parsed.length };
+}

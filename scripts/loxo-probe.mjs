@@ -81,13 +81,31 @@ async function probe(label, path, { showKeys = true } = {}) {
 async function main() {
   console.log(`\nLoxo probe — ${BASE}\n`);
 
-  console.log("Reference data");
-  await probe("users", "/users");
+  /*
+   * The configuration half, and the more important one. Records can be
+   * re-imported; a pipeline somebody tuned over two years cannot be
+   * reconstructed from anything but this.
+   */
+  console.log("Configuration");
+  const workflows = await probe("workflows", "/workflows");
+  const firstWorkflow = workflows?.rows?.[0];
+  if (firstWorkflow?.id) {
+    const stages = await probe("  workflow_stages", `/workflow_stages?workflow_id=${firstWorkflow.id}`);
+    const names = (stages?.rows ?? []).map((s) => s.name ?? s.title).filter(Boolean);
+    if (names.length) console.log(`      stages: ${names.join(" -> ")}`);
+  }
   await probe("activity_types", "/activity_types");
+  await probe("dynamic_fields", "/dynamic_fields");
+  await probe("scorecard_templates", "/scorecard_templates");
+  await probe("form_templates", "/form_templates");
+  await probe("person_lists", "/person_lists");
+  await probe("deal_workflows", "/deal_workflows");
+
+  console.log("\nReference data");
+  await probe("users", "/users");
   await probe("person_types", "/person_types");
   await probe("source_types", "/source_types");
-  await probe("dynamic_fields", "/dynamic_fields/person");
-  await probe("deal_workflows", "/deal_workflows");
+  await probe("job_statuses", "/job_statuses");
 
   console.log("\nRecords");
   const companies = await probe("companies", "/companies?per_page=1");
@@ -95,8 +113,12 @@ async function main() {
   const jobs = await probe("jobs", "/jobs?per_page=1&page=1");
   const events = await probe("person_events", "/person_events?per_page=1");
   const deals = await probe("deals", "/deals?per_page=1");
-  await probe("schedule_items", "/schedule_items?per_page=1");
+  await probe("candidates", "/candidates?per_page=1");
   await probe("placements", "/placements?per_page=1");
+  await probe("scorecards", "/scorecards?per_page=1");
+  await probe("campaigns", "/campaigns?per_page=1");
+  await probe("schedule_items", "/schedule_items?per_page=1");
+  await probe("sms", "/sms?per_page=1");
 
   /*
    * The per-person sub-resources are separate calls in Loxo, which is the
@@ -132,6 +154,17 @@ async function main() {
   console.log(`  jobs           ${n(jobs)}`);
   console.log(`  activities     ${n(events)}`);
   console.log(`  deals          ${n(deals)}`);
+  /*
+   * Named rather than left to be discovered halfway through a migration.
+   * Loxo's API has no email or SMS template endpoint -- form templates and
+   * scorecard templates are exposed, these are not.
+   */
+  console.log("\nCannot be migrated");
+  console.log("  email + SMS templates   no API endpoint exists");
+  console.log("    Count them in Loxo (Settings -> Templates). They go in by hand at");
+  console.log("    /settings/talent -> Templates -> Paste several. Ask Loxo support for");
+  console.log("    an export first — it costs one email and might save the typing.");
+
   console.log("\nNothing was written. Send this output back and the mapping gets finished against it.\n");
 }
 

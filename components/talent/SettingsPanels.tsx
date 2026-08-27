@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plug, Plus, Trash2 } from "lucide-react";
 import {
-  deleteStage, deleteTemplate, saveActivityType, saveEmailTemplate,
-  saveNoteTemplate, saveSettings, saveStage, saveWorkflow, setIntegrationStatus,
+  bulkCreateEmailTemplates, deleteStage, deleteTemplate, saveActivityType,
+  saveEmailTemplate, saveNoteTemplate, saveSettings, saveStage, saveWorkflow,
+  setIntegrationStatus,
 } from "@/actions/talent-admin";
 import { saveMailAccounts, syncMailNow } from "@/actions/talent-mail";
 import { Button } from "@/components/ui/button";
@@ -273,6 +274,9 @@ export function TemplateSettings({
   const router = useRouter();
   const [noteName, setNoteName] = useState("");
   const [emailName, setEmailName] = useState("");
+  const [pasting, setPasting] = useState(false);
+  const [paste, setPaste] = useState("");
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
   const [, start] = useTransition();
 
   return (
@@ -338,6 +342,39 @@ export function TemplateSettings({
               setEmailName(""); router.refresh();
             })}
           >Add</Button>
+        </div>
+
+        <div className="space-y-2 border-t px-4 py-3">
+          {!pasting ? (
+            <Button size="sm" variant="outline" onClick={() => setPasting(true)}>
+              Paste several
+            </Button>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Name on the first line, <code>Subject:</code> on the second, body under it.
+                Separate each with <code>---</code>.
+              </p>
+              <textarea
+                className={`${input} min-h-48 font-mono text-xs`}
+                value={paste}
+                placeholder={"Interview invite\nSubject: Next step at {{company}}\nHi {{first_name}},\n\n...\n---\nRejection\nSubject: Update on your application\n..."}
+                onChange={(e) => setPaste(e.target.value)}
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" disabled={!paste.trim()}
+                  onClick={() => start(async () => {
+                    const res = await bulkCreateEmailTemplates(paste);
+                    setPasteNote(`${res.added} of ${res.found} added`);
+                    setPaste("");
+                    router.refresh();
+                  })}
+                >Import</Button>
+                <Button size="sm" variant="ghost" onClick={() => setPasting(false)}>Cancel</Button>
+                {pasteNote && <span className="text-sm text-muted-foreground">{pasteNote}</span>}
+              </div>
+            </>
+          )}
         </div>
       </Panel>
     </div>
