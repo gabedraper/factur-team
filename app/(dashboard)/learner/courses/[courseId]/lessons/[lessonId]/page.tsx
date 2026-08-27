@@ -311,7 +311,7 @@ export default function LessonViewerPage() {
 
         {lesson.type === "text" && content?.body && (
           <Card>
-            <CardContent className="prose prose-sm max-w-none pt-6">
+            <CardContent className="prose prose-sm dark:prose-invert max-w-none pt-6">
               <div
                 dangerouslySetInnerHTML={{ __html: content.body }}
               />

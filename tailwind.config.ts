@@ -83,7 +83,10 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  // Without this, every `prose` class in the app is inert and Tailwind's own
+  // reset leaves bullets and indentation stripped off lists -- the toolbar
+  // buttons work, the lists just come out looking like plain paragraphs.
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 };
 
 export default config;
