@@ -8,9 +8,13 @@ import { ROUTES } from "@/lib/routes.generated";
  * Every page, what it gets used for and what it costs.
  *
  * Built from the route list outward rather than from the recorded views, for
- * the same reason the staff list drives the usage reports: a page nobody has
- * opened has no rows to find, and reading the views alone would quietly answer
- * a question nobody asked -- "which pages are used" instead of "which are not".
+ * the same reason the staff reports are built from the staff list: a page
+ * nobody has opened has no rows to find, and reading the views alone would
+ * quietly answer "which pages are used" instead of "which are not".
+ *
+ * The counting happens in the database. It used to happen here, over every row
+ * fetched with a ceiling on them, which would have started silently reporting
+ * on part of the period about a month in.
  */
 
 export type PageUsage = {
@@ -35,24 +39,15 @@ export type PageUsageReport = {
   problem: string | null;
 };
 
-type Row = {
+type Stat = {
   path: string;
-  kind: "load" | "route";
-  duration_ms: number;
-  member_id: string | null;
-  occurred_at: string;
+  views: number;
+  people: number;
+  route_ms: number | null;
+  load_ms: number | null;
+  p95_ms: number | null;
+  last_seen: string | null;
 };
-
-function quantile(sorted: number[], q: number): number | null {
-  if (!sorted.length) return null;
-  const at = Math.min(sorted.length - 1, Math.floor(sorted.length * q));
-  return sorted[at];
-}
-
-function mean(values: number[]): number | null {
-  if (!values.length) return null;
-  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-}
 
 export async function pageUsage(days = 30): Promise<PageUsageReport> {
   const perms = await myPermissions();
@@ -60,53 +55,30 @@ export async function pageUsage(days = 30): Promise<PageUsageReport> {
     return { pages: [], days, totalViews: 0, problem: "Not permitted." };
   }
 
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
-
-  /*
-   * Aggregated here rather than in SQL on purpose: a percentile needs every
-   * duration, and pulling them is cheap while this table is small. If it
-   * outgrows that, this is the thing to move into a view -- not the page.
-   */
-  const { data, error } = await createServiceClient()
-    .from("page_views")
-    .select("path, kind, duration_ms, member_id, occurred_at")
-    .gte("occurred_at", since)
-    .limit(100_000);
+  const { data, error } = await createServiceClient().rpc("page_usage_stats", {
+    p_days: days,
+  });
 
   if (error) {
     return { pages: [], days, totalViews: 0, problem: error.message };
   }
 
-  const rows = (data ?? []) as Row[];
-  const byPath = new Map<
-    string,
-    { route: number[]; load: number[]; people: Set<string>; last: string }
-  >();
-
-  for (const r of rows) {
-    const seen = byPath.get(r.path) ?? {
-      route: [], load: [], people: new Set<string>(), last: r.occurred_at,
-    };
-    (r.kind === "load" ? seen.load : seen.route).push(r.duration_ms);
-    if (r.member_id) seen.people.add(r.member_id);
-    if (r.occurred_at > seen.last) seen.last = r.occurred_at;
-    byPath.set(r.path, seen);
-  }
+  const stats = (data ?? []) as Stat[];
+  const byPath = new Map(stats.map((s) => [s.path, s]));
 
   const known = new Set<string>(ROUTES);
   const paths = new Set<string>([...ROUTES, ...byPath.keys()]);
 
   const pages: PageUsage[] = [...paths].map((path) => {
-    const seen = byPath.get(path);
-    const all = seen ? [...seen.route, ...seen.load].sort((a, b) => a - b) : [];
+    const s = byPath.get(path);
     return {
       path,
-      views: all.length,
-      people: seen?.people.size ?? 0,
-      routeMs: mean(seen?.route ?? []),
-      loadMs: mean(seen?.load ?? []),
-      p95Ms: quantile(all, 0.95),
-      lastSeen: seen?.last ?? null,
+      views: Number(s?.views ?? 0),
+      people: Number(s?.people ?? 0),
+      routeMs: s?.route_ms ?? null,
+      loadMs: s?.load_ms ?? null,
+      p95Ms: s?.p95_ms ?? null,
+      lastSeen: s?.last_seen ?? null,
       known: known.has(path),
     };
   });
@@ -123,5 +95,10 @@ export async function pageUsage(days = 30): Promise<PageUsageReport> {
     return (b.p95Ms ?? 0) - (a.p95Ms ?? 0);
   });
 
-  return { pages, days, totalViews: rows.length, problem: null };
+  return {
+    pages,
+    days,
+    totalViews: pages.reduce((n, p) => n + p.views, 0),
+    problem: null,
+  };
 }
