@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { CampaignSummary, ResponseDetail } from "@/lib/nps/reporting";
+import type { CampaignSummary, LeadSummary, ResponseDetail } from "@/lib/nps/reporting";
 
 const BAND_LABEL: Record<ResponseDetail["band"], string> = {
   promoter: "Promoter",
@@ -25,12 +25,19 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Promoters minus detractors over everyone who answered, or nothing yet. */
+function npsFrom(promoters: number, detractors: number, responded: number) {
+  return responded === 0 ? null : Math.round((100 * (promoters - detractors)) / responded);
+}
+
 export function NpsDashboard({
   campaigns,
+  leads,
   responses,
   overall,
 }: {
   campaigns: CampaignSummary[];
+  leads: LeadSummary[];
   responses: ResponseDetail[];
   overall: number | null;
 }) {
@@ -52,13 +59,37 @@ export function NpsDashboard({
   );
 
   // Whoever a response would land on today, not whoever sent it -- leads change.
-  const leads = Array.from(
+  const leadNames = Array.from(
     new Set(responses.map((r) => r.teamLead).filter((n): n is string => !!n))
   ).sort();
 
   const promoters = responses.filter((r) => r.band === "promoter").length;
   const detractors = responses.filter((r) => r.band === "detractor").length;
   const followUps = responses.filter((r) => r.followUpRequested === true).length;
+
+  /*
+   * One row per lead for whatever campaign is selected, adding the campaigns up
+   * when none is. Counts are summed and the NPS recomputed from them --
+   * averaging each campaign's NPS would weight a campaign of three the same as
+   * one of a hundred.
+   */
+  const byLead = useMemo(() => {
+    const totals = new Map<string, LeadSummary>();
+    for (const row of leads) {
+      if (campaign !== "all" && row.campaignName !== campaign) continue;
+      const running = totals.get(row.teamLead);
+      totals.set(row.teamLead, {
+        ...row,
+        sent: (running?.sent ?? 0) + row.sent,
+        responded: (running?.responded ?? 0) + row.responded,
+        promoters: (running?.promoters ?? 0) + row.promoters,
+        passives: (running?.passives ?? 0) + row.passives,
+        detractors: (running?.detractors ?? 0) + row.detractors,
+        followUps: (running?.followUps ?? 0) + row.followUps,
+      });
+    }
+    return [...totals.values()].sort((a, b) => b.sent - a.sent);
+  }, [leads, campaign]);
 
   return (
     <div className="space-y-6">
@@ -69,6 +100,61 @@ export function NpsDashboard({
         <Stat label="Detractors" value={String(detractors)} />
         <Stat label="Follow-ups" value={String(followUps)} />
       </div>
+
+      {byLead.length > 0 && (
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Team lead</th>
+                <th className="px-3 py-2 text-right font-medium">Sent</th>
+                <th className="px-3 py-2 text-right font-medium">Responded</th>
+                <th className="px-3 py-2 text-right font-medium">Rate</th>
+                <th className="px-3 py-2 text-right font-medium">Promoters</th>
+                <th className="px-3 py-2 text-right font-medium">Passives</th>
+                <th className="px-3 py-2 text-right font-medium">Detractors</th>
+                <th className="px-3 py-2 text-right font-medium">NPS</th>
+                <th className="px-3 py-2 text-right font-medium">Follow-ups</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byLead.map((l) => {
+                const score = npsFrom(l.promoters, l.detractors, l.responded);
+                return (
+                  <tr key={l.teamLead} className="border-b last:border-0">
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => setLead(lead === l.teamLead ? "all" : l.teamLead)}
+                        className={`hover:underline ${lead === l.teamLead ? "font-semibold" : ""}`}
+                      >
+                        {l.teamLead}
+                      </button>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{l.sent}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{l.responded}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {l.sent === 0 ? "—" : `${Math.round((100 * l.responded) / l.sent)}%`}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {l.promoters || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {l.passives || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-red-600 dark:text-red-400">
+                      {l.detractors || "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                      {score === null ? "—" : score}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{l.followUps || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {campaigns.length > 0 && (
         <div className="overflow-x-auto rounded-md border bg-card">
@@ -132,7 +218,7 @@ export function NpsDashboard({
           className="h-8 rounded-md border bg-field px-2 text-sm"
         >
           <option value="all">All team leads</option>
-          {leads.map((n) => (
+          {leadNames.map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </select>

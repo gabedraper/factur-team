@@ -33,6 +33,26 @@ export type ResponseDetail = {
   band: "promoter" | "passive" | "detractor";
 };
 
+export type LeadSummary = {
+  campaignId: string;
+  campaignName: string;
+  teamLead: string;
+  teamLeadEmail: string | null;
+  sent: number;
+  responded: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  followUps: number;
+};
+
+type LeadRow = {
+  campaign_id: string; campaign_name: string;
+  team_lead: string | null; team_lead_email: string | null;
+  sent: number; responded: number; promoters: number; passives: number;
+  detractors: number; follow_ups: number;
+};
+
 type CampaignRow = {
   id: string; name: string; period: string; status: string; source: string;
   sent: number; responded: number; promoters: number; passives: number;
@@ -103,6 +123,40 @@ export async function getNpsResponses(): Promise<ResponseDetail[]> {
     campaignName: r.campaign_name,
     band: r.band,
   }));
+}
+
+/**
+ * Every campaign split by team lead.
+ *
+ * Rows are per campaign *and* per lead so the page can honour its campaign
+ * filter and still add up correctly across all of them. Counts rather than a
+ * ready-made NPS, because an NPS is a ratio and ratios do not add -- it has to
+ * be recomputed at whatever level it is shown.
+ */
+export async function getNpsLeads(): Promise<LeadSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("nps_lead_summary")
+    .select("*")
+    .order("sent", { ascending: false });
+  if (error) throw new Error(`NPS lead summary failed: ${error.message}`);
+
+  return ((data ?? []) as LeadRow[])
+    // A send whose client has no lead cannot be attributed to anyone, and a
+    // row labelled "null" in a per-person table is worse than no row.
+    .filter((r) => r.team_lead)
+    .map((r) => ({
+      campaignId: r.campaign_id,
+      campaignName: r.campaign_name,
+      teamLead: r.team_lead as string,
+      teamLeadEmail: r.team_lead_email,
+      sent: r.sent,
+      responded: r.responded,
+      promoters: r.promoters,
+      passives: r.passives,
+      detractors: r.detractors,
+      followUps: r.follow_ups,
+    }));
 }
 
 /** Promoters minus detractors, as a percentage of everyone who answered. */
