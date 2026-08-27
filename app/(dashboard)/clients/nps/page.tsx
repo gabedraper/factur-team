@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { getNpsCampaigns, getNpsLeads, getNpsResponses, npsOf } from "@/lib/nps/reporting";
+import { getNpsByPerson, getNpsCampaigns, getNpsLeads, getNpsResponses, npsOf } from "@/lib/nps/reporting";
 import { NpsDashboard } from "@/components/nps/NpsDashboard";
 import { myPermissions } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
 export default async function NpsPage() {
-  const [campaigns, leads, responses, perms] = await Promise.all([
+  const [campaigns, leads, people, responses, perms] = await Promise.all([
     getNpsCampaigns(),
     getNpsLeads(),
+    getNpsByPerson(),
     getNpsResponses(),
     myPermissions(),
   ]);
@@ -30,6 +31,7 @@ export default async function NpsPage() {
       <NpsDashboard
         campaigns={campaigns}
         leads={leads}
+        people={people}
         responses={responses}
         overall={npsOf(responses)}
       />

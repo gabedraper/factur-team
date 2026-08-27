@@ -159,6 +159,53 @@ export async function getNpsLeads(): Promise<LeadSummary[]> {
     }));
 }
 
+export type PersonSummary = {
+  field: string;
+  memberName: string;
+  campaignName: string;
+  sent: number;
+  responded: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  followUps: number;
+};
+
+/**
+ * NPS attributed to whoever was on the account when the survey went out.
+ *
+ * Reads nps_send_team, which is frozen at campaign build, so this does not move
+ * when a client changes hands. That is the difference from getNpsLeads, which
+ * resolves the lead live -- one answers "who did this work", the other "whose
+ * problem is it now", and the two legitimately disagree.
+ */
+export async function getNpsByPerson(): Promise<PersonSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("nps_by_person")
+    .select("field,member_name,campaign_name,sent,responded,promoters,passives,detractors,follow_ups")
+    .order("sent", { ascending: false });
+  if (error) throw new Error(`NPS by person failed: ${error.message}`);
+
+  return ((data ?? []) as {
+    field: string; member_name: string | null; campaign_name: string;
+    sent: number; responded: number; promoters: number; passives: number;
+    detractors: number; follow_ups: number;
+  }[])
+    .filter((r) => r.member_name)
+    .map((r) => ({
+      field: r.field,
+      memberName: r.member_name as string,
+      campaignName: r.campaign_name,
+      sent: r.sent,
+      responded: r.responded,
+      promoters: r.promoters,
+      passives: r.passives,
+      detractors: r.detractors,
+      followUps: r.follow_ups,
+    }));
+}
+
 /** Promoters minus detractors, as a percentage of everyone who answered. */
 export function npsOf(responses: ResponseDetail[]): number | null {
   if (responses.length === 0) return null;

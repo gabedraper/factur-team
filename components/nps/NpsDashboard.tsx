@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { CampaignSummary, LeadSummary, ResponseDetail } from "@/lib/nps/reporting";
+import type { CampaignSummary, LeadSummary, PersonSummary, ResponseDetail } from "@/lib/nps/reporting";
 
 const BAND_LABEL: Record<ResponseDetail["band"], string> = {
   promoter: "Promoter",
@@ -30,14 +30,25 @@ function npsFrom(promoters: number, detractors: number, responded: number) {
   return responded === 0 ? null : Math.round((100 * (promoters - detractors)) / responded);
 }
 
+const PERSON_ROLE_LABEL: Record<string, string> = {
+  resolved_team_lead: "Team lead",
+  account_manager: "Account manager",
+  sdr: "SDR",
+  marketing_strategist: "Marketing strategist",
+  data_analyst: "Data analyst",
+  data_engineer: "Data engineer",
+};
+
 export function NpsDashboard({
   campaigns,
   leads,
+  people,
   responses,
   overall,
 }: {
   campaigns: CampaignSummary[];
   leads: LeadSummary[];
+  people: PersonSummary[];
   responses: ResponseDetail[];
   overall: number | null;
 }) {
@@ -45,6 +56,7 @@ export function NpsDashboard({
   const [band, setBand] = useState<string>("all");
   const [lead, setLead] = useState<string>("all");
   const [followUpsOnly, setFollowUpsOnly] = useState(false);
+  const [personRole, setPersonRole] = useState("account_manager");
 
   const shown = useMemo(
     () =>
@@ -62,6 +74,34 @@ export function NpsDashboard({
   const leadNames = Array.from(
     new Set(responses.map((r) => r.teamLead).filter((n): n is string => !!n))
   ).sort();
+
+  /*
+   * Frozen attribution, so these totals do not move when a client changes
+   * hands. Summed across campaigns for the one selected, NPS recomputed from
+   * the counts rather than averaged.
+   */
+  const byPerson = useMemo(() => {
+    const totals = new Map<string, PersonSummary>();
+    for (const row of people) {
+      if (row.field !== personRole) continue;
+      if (campaign !== "all" && row.campaignName !== campaign) continue;
+      const running = totals.get(row.memberName);
+      totals.set(row.memberName, {
+        ...row,
+        sent: (running?.sent ?? 0) + row.sent,
+        responded: (running?.responded ?? 0) + row.responded,
+        promoters: (running?.promoters ?? 0) + row.promoters,
+        passives: (running?.passives ?? 0) + row.passives,
+        detractors: (running?.detractors ?? 0) + row.detractors,
+        followUps: (running?.followUps ?? 0) + row.followUps,
+      });
+    }
+    return [...totals.values()].sort((a, b) => b.sent - a.sent);
+  }, [people, personRole, campaign]);
+
+  const personRoles = Array.from(new Set(people.map((p) => p.field)))
+    .filter((f) => f in PERSON_ROLE_LABEL)
+    .sort((a, b) => (PERSON_ROLE_LABEL[a] ?? a).localeCompare(PERSON_ROLE_LABEL[b] ?? b));
 
   const promoters = responses.filter((r) => r.band === "promoter").length;
   const detractors = responses.filter((r) => r.band === "detractor").length;
@@ -153,6 +193,59 @@ export function NpsDashboard({
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {byPerson.length > 0 && (
+        <div className="space-y-2">
+          <select
+            value={personRole}
+            onChange={(e) => setPersonRole(e.target.value)}
+            className="h-8 rounded-md border bg-field px-2 text-sm"
+          >
+            {personRoles.map((f) => (
+              <option key={f} value={f}>{PERSON_ROLE_LABEL[f]}</option>
+            ))}
+          </select>
+          <div className="overflow-x-auto rounded-md border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">{PERSON_ROLE_LABEL[personRole]}</th>
+                  <th className="px-3 py-2 text-right font-medium">Sent</th>
+                  <th className="px-3 py-2 text-right font-medium">Responded</th>
+                  <th className="px-3 py-2 text-right font-medium">Rate</th>
+                  <th className="px-3 py-2 text-right font-medium">Promoters</th>
+                  <th className="px-3 py-2 text-right font-medium">Detractors</th>
+                  <th className="px-3 py-2 text-right font-medium">NPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byPerson.map((p) => {
+                  const score = npsFrom(p.promoters, p.detractors, p.responded);
+                  return (
+                    <tr key={p.memberName} className="border-b last:border-0">
+                      <td className="px-3 py-2">{p.memberName}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{p.sent}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{p.responded}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {p.sent === 0 ? "—" : `${Math.round((100 * p.responded) / p.sent)}%`}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {p.promoters || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-red-600 dark:text-red-400">
+                        {p.detractors || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                        {score === null ? "—" : score}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
