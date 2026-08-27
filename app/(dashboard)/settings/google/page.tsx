@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { GoogleCheck } from "@/components/settings/GoogleCheck";
 import { ChatAdoption } from "@/components/settings/ChatAdoption";
+import { WorkspaceUsage } from "@/components/settings/WorkspaceUsage";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function GoogleSettingsPage() {
         <h1 className="mt-1 text-xl font-semibold">Google Workspace</h1>
       </div>
       <GoogleCheck />
+      <WorkspaceUsage />
       <ChatAdoption />
     </div>
   );
