@@ -26,6 +26,8 @@ export default async function CampaignPage({
     tal_jobs: { id: string; title: string } | null;
   };
   const steps = data.steps as never[];
+  const sends = data.sends as { status: string }[];
+  const queued = sends.filter((s) => s.status === "queued" || s.status === "drafted").length;
   const members = data.members as (Record<string, unknown> & {
     id: string; status: string; current_position: number; enrolled_at: string;
     tal_people: { id: string; name: string; primary_email: string | null; do_not_contact: boolean } | null;
@@ -49,11 +51,12 @@ export default async function CampaignPage({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-5">
         <Stat label="Enrolled" value={members.length} />
         <Stat label="Active" value={members.filter((m) => m.status === "active").length} />
         <Stat label="Replied" value={replied} />
         <Stat label="Steps" value={steps.length} />
+        <Stat label="Queued" value={queued} tint={queued ? "text-amber-600 dark:text-amber-400" : undefined} />
       </div>
 
       {!canSend && (
@@ -67,6 +70,7 @@ export default async function CampaignPage({
         steps={steps}
         canEdit={access.recruit}
         emailConnected={canSend}
+        queued={queued}
       />
 
       <Panel title="Enrolled">

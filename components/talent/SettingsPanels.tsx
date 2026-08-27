@@ -7,6 +7,7 @@ import {
   deleteStage, deleteTemplate, saveActivityType, saveEmailTemplate,
   saveNoteTemplate, saveSettings, saveStage, saveWorkflow, setIntegrationStatus,
 } from "@/actions/talent-admin";
+import { saveMailAccounts, syncMailNow } from "@/actions/talent-mail";
 import { Button } from "@/components/ui/button";
 import { Chip, Empty, Panel } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
@@ -380,5 +381,164 @@ export function ActivityTypeSettings({ types }: { types: ActType[] }) {
         ))}
       </ul>
     </Panel>
+  );
+}
+
+type MailConfig = {
+  mail_accounts: string[];
+  mail_sync_days: number;
+  mail_last_sync_at: string | null;
+  mail_last_sync_note: string | null;
+};
+
+/**
+ * Which mailboxes the candidate timelines are built from.
+ *
+ * Empty by default and it stays empty until somebody types an address in.
+ * Google's domain-wide delegation will hand this app a token for anyone in the
+ * domain, so this list is the only thing standing between "reads the
+ * recruiters' mail" and "reads everyone's mail" -- which is why it is a
+ * deliberate list rather than "everyone with the recruit permission".
+ */
+export function MailSettings({
+  config, gmailConnected,
+}: {
+  config: MailConfig;
+  gmailConnected: boolean;
+}) {
+  const router = useRouter();
+  const [accounts, setAccounts] = useState(config.mail_accounts.join("\n"));
+  const [days, setDays] = useState(config.mail_sync_days);
+  const [reports, setReports] = useState<
+    { account: string; matching: number; attached: number; alreadyHad: number; problem: string | null }[]
+  >([]);
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const list = accounts.split(/[\n,;]/).map((a) => a.trim()).filter(Boolean);
+
+  return (
+    <div className="space-y-4">
+      {!gmailConnected && (
+        <div className="rounded-lg border border-dashed bg-muted/30 p-4">
+          <p className="text-sm text-muted-foreground">
+            Mark Gmail connected under Integrations before syncing.
+          </p>
+        </div>
+      )}
+
+      <Panel title="Mailboxes read">
+        <div className="space-y-3 px-4 py-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+              One Factur address per line
+            </span>
+            <textarea
+              className={`${input} min-h-28 font-mono`}
+              value={accounts}
+              placeholder="recruiter@facturmfg.com"
+              onChange={(e) => setAccounts(e.target.value)}
+            />
+          </label>
+
+          <label className="block max-w-40">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Days back</span>
+            <input
+              className={input}
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+            />
+          </label>
+
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              disabled={pending}
+              onClick={() => start(async () => {
+                setError(null);
+                try {
+                  await saveMailAccounts(list, days);
+                  setNote("Saved");
+                  router.refresh();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not save that");
+                }
+              })}
+            >
+              Save
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending || !list.length || !gmailConnected}
+              onClick={() => start(async () => {
+                setError(null);
+                setReports([]);
+                try {
+                  const res = await syncMailNow();
+                  setReports(res.reports);
+                  setNote(
+                    res.repliesStopped
+                      ? `${res.repliesStopped} campaign${res.repliesStopped === 1 ? "" : "s"} stopped on a reply`
+                      : "Sync finished"
+                  );
+                  router.refresh();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Sync failed");
+                }
+              })}
+            >
+              {pending ? "Syncing…" : "Sync now"}
+            </Button>
+
+            {note && <span className="text-sm text-muted-foreground">{note}</span>}
+          </div>
+
+          {config.mail_last_sync_at && (
+            <p className="text-xs text-muted-foreground">
+              Last run {new Date(config.mail_last_sync_at).toLocaleString("en-US")}
+              {config.mail_last_sync_note ? ` · ${config.mail_last_sync_note}` : ""}
+            </p>
+          )}
+        </div>
+      </Panel>
+
+      {reports.length > 0 && (
+        <Panel title="Last run">
+          <table className="w-full text-sm">
+            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium">Mailbox</th>
+                <th className="px-4 py-2 text-right font-medium">Matched search</th>
+                <th className="px-4 py-2 text-right font-medium">Attached</th>
+                <th className="px-4 py-2 text-right font-medium">Already had</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {reports.map((r) => (
+                <tr key={r.account}>
+                  <td className="px-4 py-2">
+                    {r.account}
+                    {r.problem && (
+                      <p className="text-xs text-red-600 dark:text-red-400">{r.problem}</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{r.matching}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{r.attached}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{r.alreadyHad}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+      )}
+    </div>
   );
 }

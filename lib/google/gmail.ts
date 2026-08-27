@@ -59,20 +59,27 @@ async function call<T>(url: string, token: string): Promise<T> {
 }
 
 /**
- * Billing-looking messages from one person's mailbox.
+ * Messages matching a search, from one person's mailbox.
  *
  * `cap` exists because a mailbox can hold thousands of matches and this runs
  * inside a request. It is a deliberate ceiling rather than an accident, and the
  * caller reports when it is hit -- silently truncating would read as "nothing
  * more to find".
+ *
+ * The search is a parameter because there is now more than one caller: billing
+ * wants subject-matched invoice chasing, talent wants everything recent so it
+ * can match participants against the candidate database itself. Both want the
+ * same paging, batching and header handling, and neither should own a second
+ * copy of it.
  */
-export async function fetchBillingMail(
+export async function fetchMail(
   actAs: string,
+  query: string,
   sinceDays: number,
   cap = 600
 ): Promise<{ messages: GmailMessage[]; matching: number; hitCap: boolean }> {
   const token = await tokenFor("gmail", actAs);
-  const q = encodeURIComponent(`${BILLING_QUERY} newer_than:${sinceDays}d`);
+  const q = encodeURIComponent(`${query} newer_than:${sinceDays}d`);
 
   /*
    * Listing ids is cheap -- a hundred per request -- so the whole matching set
@@ -144,3 +151,28 @@ export async function fetchBillingMail(
 
   return { messages, matching, hitCap };
 }
+
+/**
+ * Billing-looking messages, which is what this file was originally only for.
+ * Kept as its own name so collections and the billing ingest read the same as
+ * they always did.
+ */
+export async function fetchBillingMail(
+  actAs: string,
+  sinceDays: number,
+  cap = 600
+): Promise<{ messages: GmailMessage[]; matching: number; hitCap: boolean }> {
+  return fetchMail(actAs, BILLING_QUERY, sinceDays, cap);
+}
+
+/*
+ * Everything a recruiter exchanged with the outside world.
+ *
+ * Deliberately broad where the billing query is deliberately narrow. Billing
+ * has to be precise because a trail with sales email in it cannot be trusted
+ * about money; talent has the opposite problem -- it does not know in advance
+ * which address matters, so it takes the lot and matches participants against
+ * the candidate database afterwards. Nothing is stored unless a message has a
+ * person in it.
+ */
+export const TALENT_QUERY = "-in:chats -in:drafts -category:promotions -category:social";

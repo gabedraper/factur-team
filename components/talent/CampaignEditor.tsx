@@ -7,6 +7,7 @@ import {
   deleteCampaignStep, enrolInCampaign, prepareCampaignSends,
   saveCampaignStep, setCampaignStatus,
 } from "@/actions/talent-engage";
+import { placeAllCampaignSends } from "@/actions/talent-mail";
 import { PersonPicker, type PickedPerson } from "@/components/talent/PersonPicker";
 import { Button } from "@/components/ui/button";
 import { Chip, Empty, Panel } from "@/components/talent/bits";
@@ -27,7 +28,7 @@ type Step = {
  * inserting a step in the middle does not silently move every later one.
  */
 export function CampaignEditor({
-  campaignId, status, mode, steps, canEdit, emailConnected,
+  campaignId, status, mode, steps, canEdit, emailConnected, queued,
 }: {
   campaignId: string;
   status: string;
@@ -35,6 +36,8 @@ export function CampaignEditor({
   steps: Step[];
   canEdit: boolean;
   emailConnected: boolean;
+  /** Messages prepared and not yet placed in a mailbox. */
+  queued: number;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Record<string, Partial<Step>>>({});
@@ -201,13 +204,33 @@ export function CampaignEditor({
             {status === "active" ? "Pause" : "Activate"}
           </Button>
 
+          {emailConnected && queued > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => start(async () => {
+                const res = await placeAllCampaignSends(campaignId);
+                setNote(
+                  `${res.placed} ${mode === "full" ? "sent" : "drafted in your Gmail"}` +
+                  (res.failed.length ? ` · ${res.failed.length} failed: ${res.failed[0]}` : "")
+                );
+                router.refresh();
+              })}
+            >
+              {mode === "full" ? `Send ${queued}` : `Draft ${queued} in my Gmail`}
+            </Button>
+          )}
+
           {!emailConnected && (
             <span className="text-sm text-muted-foreground">
               Sending needs a mailbox connected · drafts only
             </span>
           )}
           {emailConnected && mode === "semi" && (
-            <span className="text-sm text-muted-foreground">Semi-automatic · drafts for review</span>
+            <span className="text-sm text-muted-foreground">
+              Semi-automatic · each message lands in your Drafts
+            </span>
           )}
         </div>
       )}

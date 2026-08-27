@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Ban, Linkedin } from "lucide-react";
 import { requireTalent } from "@/lib/talent/access";
-import { getPerson, listActivityTypes, listMembers, listNoteTemplates } from "@/lib/talent/queries";
+import {
+  getPerson, integrationStatus, listActivityTypes, listEmailTemplates,
+  listMembers, listNoteTemplates,
+} from "@/lib/talent/queries";
 import { PersonEditor } from "@/components/talent/PersonEditor";
 import { Documents } from "@/components/talent/Documents";
 import { AddToJob } from "@/components/talent/AddToJob";
+import { EmailPerson } from "@/components/talent/EmailPerson";
 import { ActivityFeed } from "@/components/talent/ActivityFeed";
 import { LogActivity } from "@/components/talent/LogActivity";
 import { Avatar, Chip, Empty, Panel, Stat, Tabs } from "@/components/talent/bits";
@@ -44,8 +48,9 @@ export default async function PersonPage({
   if (!data) notFound();
   const { person, history, education, documents, pipelines, activities, tasks, tags, scorecards } = data;
 
-  const [members, types, templates] = await Promise.all([
+  const [members, types, templates, emailTemplates, gmail] = await Promise.all([
     listMembers(), listActivityTypes(), listNoteTemplates("person"),
+    listEmailTemplates("candidate"), integrationStatus("gmail"),
   ]);
   const authors = new Map(members.map((m) => [m.id, m.full_name ?? m.email]));
 
@@ -110,6 +115,21 @@ export default async function PersonPage({
         </div>
 
         <div className="ml-auto flex flex-wrap items-start gap-2">
+          {access.recruit && (
+            <EmailPerson
+              personId={person.id}
+              personName={person.first_name ?? person.name}
+              to={person.primary_email}
+              templates={emailTemplates}
+              blocked={
+                gmail.status !== "connected" ? "Gmail not connected"
+                  : person.do_not_contact ? "Do not contact"
+                  : person.unsubscribed_at ? "Unsubscribed"
+                  : !person.primary_email ? "No email address"
+                  : null
+              }
+            />
+          )}
           {access.recruit && <AddToJob personId={person.id} />}
         </div>
       </div>

@@ -404,18 +404,24 @@ export async function listCampaigns() {
 
 export async function getCampaign(campaignId: string) {
   const supabase = await db();
-  const [{ data: campaign }, { data: steps }, { data: members }] = await Promise.all([
+  const [{ data: campaign }, { data: steps }, { data: members }, { data: sends }] = await Promise.all([
     supabase.from("tal_campaigns").select("*, tal_jobs(id,title)").eq("id", campaignId).maybeSingle(),
     supabase.from("tal_campaign_steps").select("*").eq("campaign_id", campaignId).order("position"),
     supabase.from("tal_campaign_members")
       .select("*, tal_people(id,name,title,primary_email,do_not_contact)")
       .eq("campaign_id", campaignId).order("enrolled_at", { ascending: false }).limit(500),
+    // The prepared queue, which is what the send button acts on.
+    supabase.from("tal_campaign_sends")
+      .select("id,status,to_address,subject,sent_at,tal_campaign_members!inner(campaign_id)")
+      .eq("tal_campaign_members.campaign_id", campaignId)
+      .order("created_at", { ascending: false }).limit(500),
   ]);
   if (!campaign) return null;
   return {
     campaign: campaign as Record<string, unknown>,
     steps: rows<Record<string, unknown>>(steps),
     members: rows<Record<string, unknown>>(members),
+    sends: rows<Record<string, unknown>>(sends),
   };
 }
 

@@ -234,6 +234,7 @@ export type Person = {
   source: string;
   source_detail: string | null;
   do_not_contact: boolean;
+  unsubscribed_at: string | null;
   owner_member_id: Id | null;
   created_at: string;
   updated_at: string;
