@@ -1,4 +1,5 @@
 import type { BillingSummary as Summary } from "@/actions/billing";
+import { AGEING_TONE } from "@/lib/ageing-colours";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -13,14 +14,10 @@ function Tile({
 }: {
   label: string;
   value: string;
-  tone?: "warn" | "bad";
+  /** A colour class, applied only where there is money in the bucket. */
+  tone?: string;
 }) {
-  const colour =
-    tone === "bad"
-      ? "text-red-600 dark:text-red-400"
-      : tone === "warn"
-        ? "text-amber-600 dark:text-amber-400"
-        : "";
+  const colour = tone ?? "";
 
   return (
     <div className="rounded-lg border bg-card px-3 py-2">
@@ -39,16 +36,15 @@ function Tile({
  * A/R Ageing Summary can be read side by side.
  */
 export function BillingSummary({ summary }: { summary: Summary }) {
-  const overdue = (amount: number, tone: "warn" | "bad") =>
-    amount > 0 ? tone : undefined;
+  const overdue = (amount: number, tone: string) => (amount > 0 ? tone : undefined);
 
   const hasCredits = Number(summary.credits) > 0;
 
-  const buckets: { label: string; amount: number; tone: "warn" | "bad" }[] = [
-    { label: "1 – 30", amount: summary.bucket_1_30, tone: "warn" },
-    { label: "31 – 60", amount: summary.bucket_31_60, tone: "warn" },
-    { label: "61 – 90", amount: summary.bucket_61_90, tone: "warn" },
-    { label: "91 and over", amount: summary.bucket_91_plus, tone: "bad" },
+  const buckets: { label: string; amount: number; tone: string }[] = [
+    { label: "1 – 30", amount: summary.bucket_1_30, tone: AGEING_TONE.b1_30 },
+    { label: "31 – 60", amount: summary.bucket_31_60, tone: AGEING_TONE.b31_60 },
+    { label: "61 – 90", amount: summary.bucket_61_90, tone: AGEING_TONE.b61_90 },
+    { label: "91 and over", amount: summary.bucket_91_plus, tone: AGEING_TONE.b91_plus },
   ];
 
   return (

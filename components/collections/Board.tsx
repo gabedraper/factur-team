@@ -8,6 +8,7 @@ import {
   type BoardChase, type Settings, type Visibility,
 } from "@/actions/collections";
 import { FIELD } from "@/lib/field-class";
+import { AGEING_TONE } from "@/lib/ageing-colours";
 import { PauseCircle, PlayCircle, Send, FileText, FlaskConical } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
@@ -213,10 +214,10 @@ export function Board({
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <Bucket label="1 – 30" amount={r.bucket_1_30} tone="text-amber-600 dark:text-amber-400" />
-                <Bucket label="31 – 60" amount={r.bucket_31_60} tone="text-amber-600 dark:text-amber-400" />
-                <Bucket label="61 – 90" amount={r.bucket_61_90} tone="text-amber-600 dark:text-amber-400" />
-                <Bucket label="91+" amount={r.bucket_91_plus} tone="text-red-600 dark:text-red-400" />
+                <Bucket label="1 – 30" amount={r.bucket_1_30} tone={AGEING_TONE.b1_30} />
+                <Bucket label="31 – 60" amount={r.bucket_31_60} tone={AGEING_TONE.b31_60} />
+                <Bucket label="61 – 90" amount={r.bucket_61_90} tone={AGEING_TONE.b61_90} />
+                <Bucket label="91+" amount={r.bucket_91_plus} tone={AGEING_TONE.b91_plus} />
                 <Bucket label="Past due" amount={Number(r.past_due_total ?? 0)} tone="font-semibold" />
               </div>
 
