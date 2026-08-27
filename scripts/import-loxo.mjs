@@ -315,16 +315,23 @@ async function existingMap(table) {
 // Stage 1 — configuration. Everything that would otherwise be rebuilt by hand.
 // ---------------------------------------------------------------------------
 
+/*
+ * Order is the whole thing here. Hannah has stages called "Interviewed But
+ * Rejecting" and "Interviewed but Rejected", and testing for "interview"
+ * before "reject" files both of them as interviews -- which inflates every
+ * interview number in the reports and leaves two dead-end stages looking live.
+ * The outcome words are therefore tested first, and the activity words after.
+ */
 const STAGE_HINTS = [
-  [/(source|identif|research)/i, "sourced"],
-  [/(contact|outreach|reach)/i, "contacted"],
-  [/(respond|repl|engag|interest)/i, "responded"],
-  [/(screen|qualif|prescreen|phone)/i, "screening"],
-  [/(submit|present|shortlist|client.review)/i, "submitted"],
-  [/(interview|onsite|meeting)/i, "interview"],
+  [/(reject|decline|passed on|withdraw|not.?interest|lost|unqualified)/i, "rejected"],
+  [/(placed|hired|start(ed)?$|accepted)/i, "placed"],
   [/(offer|negotiat)/i, "offer"],
-  [/(placed|hired|start|accept)/i, "placed"],
-  [/(reject|decline|pass|withdraw|not.?interest|lost)/i, "rejected"],
+  [/(submit|present|shortlist|client.review)/i, "submitted"],
+  [/(interview|onsite)/i, "interview"],
+  [/(screen|qualif|prescreen|phone)/i, "screening"],
+  [/(respond|repl|engag|interest)/i, "responded"],
+  [/(contact|outreach|reach)/i, "contacted"],
+  [/(source|identif|research)/i, "sourced"],
 ];
 const stageKind = (name) => STAGE_HINTS.find(([re]) => re.test(name))?.[1] ?? "other";
 const COLOURS = ["slate", "sky", "cyan", "indigo", "violet", "amber", "orange", "emerald", "rose"];
@@ -375,17 +382,22 @@ async function importConfig() {
       const { data: had } = await db.from("tal_workflow_stages")
         .select("id").eq("workflow_id", workflowId).ilike("name", stageName).maybeSingle();
 
+      const kind = stageKind(stageName);
+      const shape = {
+        workflow_id: workflowId, name: stageName, kind,
+        position: Number(pick(s, "position", "order", "sort_order") ?? pos),
+        color: COLOURS[Math.min(pos, COLOURS.length - 1)],
+        is_terminal: kind === "placed" || kind === "rejected",
+      };
+
+      // Updated rather than skipped: a re-run is how a mis-classified stage
+      // gets corrected, and skipping would make the fix unreachable.
       let stageId = had?.id;
-      if (!stageId) {
-        const kind = stageKind(stageName);
+      if (stageId) {
+        await db.from("tal_workflow_stages").update(shape).eq("id", stageId);
+      } else {
         const { data, error } = await db.from("tal_workflow_stages")
-          .insert({
-            workflow_id: workflowId, name: stageName, kind,
-            position: Number(pick(s, "position", "order", "sort_order") ?? pos),
-            color: COLOURS[Math.min(pos, COLOURS.length - 1)],
-            is_terminal: kind === "placed" || kind === "rejected",
-          })
-          .select("id").single();
+          .insert(shape).select("id").single();
         if (error) throw new Error(`stage ${stageName}: ${error.message}`);
         stageId = data.id;
       }
@@ -686,9 +698,19 @@ async function importJobs() {
         /fill|placed|closed.won/.test(status) ? "filled" :
         /closed|cancel|lost/.test(status) ? "closed" : "draft",
       job_kind: "contingency",
-      // description is HTML and can run to tens of kilobytes; description_text
-      // is Loxo's own plain rendering and is what the screens want.
-      description: pick(j, "description_text", "description"),
+      /*
+       * description is HTML and runs to tens of kilobytes -- one of these is
+       * 69KB, which times out the insert once the generated tsvector and its
+       * GIN index are built over it. description_text is Loxo's own plain
+       * rendering; where that is missing the markup is stripped and the result
+       * capped, because past about twenty thousand characters it is boilerplate
+       * rather than a job description.
+       */
+      description: (() => {
+        const text = pick(j, "description_text")
+          ?? String(pick(j, "description") ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        return text ? text.slice(0, 20000) : null;
+      })(),
       requirements: pick(j, "requirements", "qualifications"),
       internal_notes: pick(j, "internal_notes", "notes"),
       city: pick(j, "city"),
