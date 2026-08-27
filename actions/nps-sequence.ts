@@ -70,23 +70,10 @@ function siteUrl(): string {
 
 export async function getNpsSettings(): Promise<Settings> {
   const { data } = await createServiceClient()
-    .from("nps_settings")
-    .select("mode")
-    .eq("id", true)
-    .maybeSingle();
-  return (data as Settings | null) ?? { mode: "semi" };
+    .from("sequences").select("mode").eq("slug", "nps").maybeSingle();
+  return { mode: (data as { mode: "semi" | "full" } | null)?.mode ?? "semi" };
 }
 
-export async function setNpsMode(mode: "semi" | "full") {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  const { error } = await createServiceClient()
-    .from("nps_settings")
-    .update({ mode, updated_at: new Date().toISOString(), updated_by: await whoAmI() })
-    .eq("id", true);
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/nps");
-  return { success: true };
-}
 
 function figuresFor(row: QueueRow): Figures {
   return {
@@ -148,58 +135,29 @@ export async function getNpsQueue(): Promise<Invitation[]> {
   }));
 }
 
+/** The ladder, in the shape the send screen already expects. */
 export async function getNpsSteps(): Promise<Step[]> {
-  const { data } = await createServiceClient()
-    .from("nps_steps")
-    .select("id,position,days_after_send,subject,body,active")
-    .order("position");
-  return (data ?? []) as Step[];
-}
-
-export async function saveNpsStep(step: {
-  id?: string;
-  position: number;
-  days_after_send: number;
-  subject: string;
-  body: string;
-  active: boolean;
-}) {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  if (!step.subject.trim() || !step.body.trim()) {
-    return { success: false, error: "A step needs a subject and a body." };
-  }
-  if (!Number.isInteger(step.days_after_send) || step.days_after_send < 0) {
-    return { success: false, error: "Days must be a whole number, zero or more." };
-  }
-
   const db = createServiceClient();
-  const row = {
-    position: step.position,
-    days_after_send: step.days_after_send,
-    subject: step.subject.trim(),
-    body: step.body,
-    active: step.active,
-    updated_at: new Date().toISOString(),
-    updated_by: await whoAmI(),
-  };
+  const { data: seq } = await db
+    .from("sequences").select("id").eq("slug", "nps").maybeSingle();
+  if (!seq) return [];
 
-  const { error } = step.id
-    ? await db.from("nps_steps").update(row).eq("id", step.id)
-    : await db.from("nps_steps").insert(row);
+  const { data } = await db
+    .from("sequence_steps")
+    .select("id,position,offset_days,config,active")
+    .eq("sequence_id", (seq as { id: string }).id)
+    .order("position");
 
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/nps");
-  revalidatePath("/clients/nps");
-  return { success: true };
+  return ((data ?? []) as unknown as {
+    id: string; position: number; offset_days: number;
+    config: { subject?: string; body?: string }; active: boolean;
+  }[]).map((r) => ({
+    id: r.id, position: r.position, days_after_send: r.offset_days,
+    subject: r.config.subject ?? "", body: r.config.body ?? "", active: r.active,
+  }));
 }
 
-export async function deleteNpsStep(id: string) {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  const { error } = await createServiceClient().from("nps_steps").delete().eq("id", id);
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/nps");
-  return { success: true };
-}
+
 
 /**
  * The whole email, to your own inbox, before any client sees it.

@@ -58,12 +58,21 @@ async function whoAmI(): Promise<string | null> {
   return user?.email ?? null;
 }
 
+/*
+ * Mode comes from the sequence now, since every process has one and it means
+ * the same thing in all of them. The mailbox stays here, because only
+ * collections has a single one to name.
+ */
 export async function getCollectionsSettings(): Promise<Settings> {
-  const { data } = await createServiceClient()
-    .from("collections_settings")
-    .select("mode,send_as")
-    .maybeSingle();
-  return (data as Settings | null) ?? { mode: "semi", send_as: "" };
+  const db = createServiceClient();
+  const [{ data: seq }, { data: settings }] = await Promise.all([
+    db.from("sequences").select("mode").eq("slug", "collections").maybeSingle(),
+    db.from("collections_settings").select("send_as").maybeSingle(),
+  ]);
+  return {
+    mode: (seq as { mode: "semi" | "full" } | null)?.mode ?? "semi",
+    send_as: (settings as { send_as: string } | null)?.send_as ?? "",
+  };
 }
 
 /** The name the emails are signed with, taken from the org rather than typed. */
@@ -198,70 +207,9 @@ export async function getCollectionsBoard(
   }));
 }
 
-export async function getSteps(): Promise<Step[]> {
-  if (!(await mayRun())) return [];
-  const { data } = await createServiceClient()
-    .from("collections_steps")
-    .select("id,position,days_past_due,subject,body,active")
-    .order("position");
-  return (data ?? []) as Step[];
-}
 
-export async function saveStep(step: {
-  id?: string;
-  position: number;
-  days_past_due: number;
-  subject: string;
-  body: string;
-  active: boolean;
-}) {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  if (!step.subject.trim() || !step.body.trim()) {
-    return { success: false, error: "A step needs a subject and a body." };
-  }
 
-  const row = {
-    position: step.position,
-    days_past_due: step.days_past_due,
-    subject: step.subject.trim(),
-    body: step.body,
-    active: step.active,
-    updated_at: new Date().toISOString(),
-    updated_by: await whoAmI(),
-  };
 
-  const db = createServiceClient();
-  const { error } = step.id
-    ? await db.from("collections_steps").update(row).eq("id", step.id)
-    : await db.from("collections_steps").insert(row);
-
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/collections");
-  revalidatePath("/collections");
-  return { success: true };
-}
-
-export async function deleteStep(id: string) {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  const { error } = await createServiceClient()
-    .from("collections_steps").delete().eq("id", id);
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/collections");
-  revalidatePath("/collections");
-  return { success: true };
-}
-
-export async function setMode(mode: "semi" | "full") {
-  if (!(await mayRun())) return { success: false, error: "Not permitted." };
-  const { error } = await createServiceClient()
-    .from("collections_settings")
-    .update({ mode, updated_at: new Date().toISOString(), updated_by: await whoAmI() })
-    .eq("id", true);
-  if (error) return { success: false, error: error.message };
-  revalidatePath("/settings/collections");
-  revalidatePath("/collections");
-  return { success: true };
-}
 
 /** Stop chasing one client, with the reason kept beside it. */
 export async function pauseClient(clientId: string, until: string | null, reason: string) {
