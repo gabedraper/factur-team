@@ -47,6 +47,7 @@ import { MaintenanceAlert } from "@/components/maintenance-alert";
 import { OnlineUsers } from "@/components/online-users";
 import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "@/lib/org";
 import { getCollectionsVisibility } from "@/actions/collections";
+import { PageTiming } from "@/components/PageTiming";
 
 function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   const groups: NavGroup[] = [];
@@ -180,6 +181,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-background">
+      <PageTiming />
       <AppSidebar
         groups={navGroups}
         brand={

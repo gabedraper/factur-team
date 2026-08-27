@@ -6,7 +6,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "node scripts/routes.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.1",

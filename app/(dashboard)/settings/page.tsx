@@ -158,6 +158,16 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            <Link href="/settings/performance"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Performance</span>
+                <span className="block text-xs text-muted-foreground">
+                  Which pages are used, and how long each one takes.
+                </span>
+              </span>
+            </Link>
             <Link href="/settings/google"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
