@@ -17,6 +17,8 @@ export default async function SettingsPage() {
   const canManage = perms.has("org.manage");
   const canEditWeights = perms.has("scoreboard.weights.edit");
   const canRunCollections = perms.has("finance.collections") || canManage;
+  // Sequences covers every process now, so anyone who runs one can open it.
+  const canEditSequences = canRunCollections || perms.has("nps.send");
   // Preview is offered on what you really hold, not on what you are previewing
   // as -- otherwise stepping into a learner's shoes would strand you there.
   const canPreview = (await myRealPermissions()).has("org.manage");
@@ -163,7 +165,7 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
-            {canRunCollections && (
+            {canEditSequences && (
               <Link href="/settings/sequences"
                     className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
                 <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
