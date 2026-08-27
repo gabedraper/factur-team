@@ -37,33 +37,6 @@ const SCOPES = {
    * rather than looking broken.
    */
   compose: ["https://www.googleapis.com/auth/gmail.compose"],
-  /*
-   * Who is actually using Chat, which the ingest cannot answer.
-   *
-   * The ingest only keeps messages it could tie to a client, so somebody who
-   * chats all day internally looks identical to somebody who has never opened
-   * it -- both come back as nothing. The domain's own audit log counts every
-   * message regardless of who it was with.
-   *
-   * The one scope here that cannot act as an ordinary member of staff: Google
-   * answers the Reports API only for an account holding admin rights, so this
-   * is used with GOOGLE_ADMIN_SUBJECT rather than whoever is being read.
-   */
-  reports: ["https://www.googleapis.com/auth/admin.reports.audit.readonly"],
-  /*
-   * The same Reports API, a different half of it, and Google grants the two
-   * separately.
-   *
-   * `audit` above answers "what happened" -- a log of events, one row per
-   * message. This one answers "what has this person used", which is the only
-   * way to get Gmail: Gmail writes no audit events, so the activity log cannot
-   * see it at all. It is also the only place Drive and Docs sit beside Chat in
-   * the same shape, which is what makes one table across four products
-   * possible.
-   *
-   * Also acts as GOOGLE_ADMIN_SUBJECT, for the same reason.
-   */
-  usage: ["https://www.googleapis.com/auth/admin.reports.usage.readonly"],
 } as const;
 
 export type GoogleService = keyof typeof SCOPES;
