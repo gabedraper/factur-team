@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { createServiceClient } from "@/lib/supabase/server";
+import { NewSequence } from "@/components/sequences/NewSequence";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,10 @@ export default async function SequencesPage() {
 
   return (
     <div className="p-6 space-y-4 max-w-3xl">
-      <h1 className="text-xl font-semibold">Sequences</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-semibold">Sequences</h1>
+        {perms.has("org.manage") && <div className="ml-auto"><NewSequence /></div>}
+      </div>
 
       <div className="overflow-hidden rounded-md border bg-card">
         {rows.map((s) => (

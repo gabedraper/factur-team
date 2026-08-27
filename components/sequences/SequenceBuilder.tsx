@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Send } from "lucide-react";
 import {
-  saveSequenceStep, deleteSequenceStep, setSequenceMode,
+  saveSequenceStep, deleteSequenceStep, setSequenceMode, setSequenceEndings, testStep,
   type SequenceStep, type Sequence,
 } from "@/actions/sequences";
+import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
 
 type Draft = {
@@ -41,15 +42,25 @@ export function SequenceBuilder({
 }) {
   const [rows, setRows] = useState<Draft[]>(steps as Draft[]);
   const [mode, setMode] = useState(sequence.mode);
+  const [ends, setEnds] = useState<Ending[]>(sequence.ends_on);
+  const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
-  function run(fn: () => Promise<{ success: boolean; error?: string }>) {
+  function run(fn: () => Promise<{ success: boolean; error?: string }>, ok = "") {
     setError("");
+    setNote("");
     startTransition(async () => {
       const res = await fn();
       if (!res.success) setError(res.error ?? "Something went wrong");
+      else if (ok) setNote(ok);
     });
+  }
+
+  function toggleEnding(key: Ending, on: boolean) {
+    const next = on ? [...ends, key] : ends.filter((e) => e !== key);
+    setEnds(next);
+    run(() => setSequenceEndings(sequence.slug, next));
   }
 
   function change(i: number, patch: Partial<Draft>) {
@@ -78,6 +89,11 @@ export function SequenceBuilder({
 
   return (
     <div className="space-y-3">
+      {note && (
+        <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+          {note}
+        </p>
+      )}
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
@@ -102,6 +118,23 @@ export function SequenceBuilder({
           </button>
         ))}
         <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
+      </div>
+
+      <div className="rounded-md border bg-card p-3">
+        <p className="mb-2 text-sm">What stops it</p>
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {ENDINGS.filter((e) => !e.only || e.only === sequence.slug).map((e) => (
+            <label key={e.key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={ends.includes(e.key)}
+                disabled={pending || e.key === "manual"}
+                onChange={(ev) => toggleEnding(e.key, ev.target.checked)}
+              />
+              <span className={e.key === "manual" ? "text-muted-foreground" : ""}>{e.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {rows.map((row, i) => (
@@ -134,6 +167,19 @@ export function SequenceBuilder({
                 onClick={() => run(() => saveSequenceStep(sequence.slug, row))}
               >
                 Save
+              </button>
+              <button
+                disabled={pending || !row.id}
+                title="Draft this step to yourself"
+                className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-sm disabled:opacity-40"
+                onClick={() =>
+                  run(
+                    () => testStep(sequence.slug, row.id!),
+                    "Drafted to your mailbox."
+                  )
+                }
+              >
+                <Send className="h-4 w-4" /> Test
               </button>
               <button
                 disabled={pending || !row.id}

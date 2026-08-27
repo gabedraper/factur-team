@@ -18,18 +18,15 @@ export const dynamic = "force-dynamic";
  * which is why its default gap is a week rather than a fortnight.
  */
 const PROCESS: Record<string, {
-  fields: readonly string[]; back: string; backLabel: string;
-  senderNote: string; defaultGap: number;
+  fields: readonly string[]; senderNote: string; defaultGap: number;
 }> = {
   collections: {
     fields: COLLECTIONS_FIELDS,
-    back: "/collections", backLabel: "Collections",
     senderNote: "Sent from the collections mailbox.",
     defaultGap: 14,
   },
   nps: {
     fields: NPS_FIELDS,
-    back: "/clients/nps", backLabel: "NPS",
     senderNote: "Sent by each client’s own team lead.",
     defaultGap: 7,
   },
@@ -47,19 +44,16 @@ export default async function SequencePage({
   const { sequence, steps } = await getSequence(slug);
   if (!sequence) notFound();
 
-  const process = PROCESS[slug] ?? {
-    fields: [], back: "/settings/sequences", backLabel: "Sequences",
-    senderNote: "", defaultGap: 7,
-  };
+  const process = PROCESS[slug] ?? { fields: [], senderNote: "", defaultGap: 7 };
 
   return (
     <div className="p-6 space-y-4 max-w-4xl">
       <div>
         <Link
-          href={process.back}
+          href="/settings/sequences"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ChevronLeft className="h-4 w-4" /> {process.backLabel}
+          <ChevronLeft className="h-4 w-4" /> Sequences
         </Link>
         <h1 className="mt-1 text-xl font-semibold">{sequence.name}</h1>
       </div>
