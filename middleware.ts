@@ -44,7 +44,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard", "/timelines", "/settings"];
+  // "/careers" and "/portal" are deliberately absent: they are the public
+  // careers page and the hiring-manager share links, and adding them here would
+  // ask a candidate to sign in to apply.
+  const protectedPrefixes = ["/admin", "/instructor", "/learner", "/manager", "/leaderboard", "/scoreboard", "/timelines", "/settings", "/talent"];
   const isProtected = protectedPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
   );

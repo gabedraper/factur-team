@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge } from "lucide-react";
+  MailWarning, Gauge, Contact } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -22,6 +22,7 @@ export default async function SettingsPage() {
   // Preview is offered on what you really hold, not on what you are previewing
   // as -- otherwise stepping into a learner's shoes would strand you there.
   const canPreview = (await myRealPermissions()).has("org.manage");
+  const canAdminTalent = perms.has("talent.admin") || canManage;
 
   const jar = await cookies();
   const previewRole = jar.get("preview_role")?.value ?? null;
@@ -125,6 +126,18 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
+            {canAdminTalent && (
+              <Link href="/settings/talent"
+                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                <Contact className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>
+                  <span className="block text-sm font-medium">Talent</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Pipelines and stages, templates, the careers page, and what is connected.
+                  </span>
+                </span>
+              </Link>
+            )}
             <Link href="/settings/salesforce"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

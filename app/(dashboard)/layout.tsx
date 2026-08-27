@@ -27,6 +27,17 @@ import {
   HeartPulse,
   Gauge,
   MailWarning,
+  Home,
+  Briefcase,
+  Contact,
+  Building2,
+  KanbanSquare,
+  Radar,
+  Send,
+  CalendarDays,
+  BadgeCheck,
+  LineChart,
+  Coins,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { BugReportWidget } from "@/components/bug-report-widget";
@@ -84,6 +95,30 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       clients.push({ href: "/collections", label: "Collections", icon: <MailWarning className="h-4 w-4" /> });
     }
     groups.push({ label: "Clients", items: clients });
+  }
+
+  /*
+   * Talent is a section rather than a page -- it is an applicant tracker and a
+   * recruiting CRM, and neither fits behind one link. The order follows the way
+   * the work runs: what is on today, the searches, the database behind them,
+   * then outreach, then what came of it.
+   */
+  const talent: NavItem[] = [];
+  if (perms.has("talent.view") || perms.has("talent.recruit") || perms.has("talent.admin")) {
+    talent.push(
+      { href: "/talent", label: "Today", icon: <Home className="h-4 w-4" /> },
+      { href: "/talent/jobs", label: "Jobs", icon: <Briefcase className="h-4 w-4" /> },
+      { href: "/talent/people", label: "People", icon: <Contact className="h-4 w-4" /> },
+      { href: "/talent/companies", label: "Companies", icon: <Building2 className="h-4 w-4" /> },
+      { href: "/talent/pipeline", label: "Pipeline", icon: <KanbanSquare className="h-4 w-4" /> },
+      { href: "/talent/sourcing", label: "Sourcing", icon: <Radar className="h-4 w-4" /> },
+      { href: "/talent/campaigns", label: "Campaigns", icon: <Send className="h-4 w-4" /> },
+      { href: "/talent/schedule", label: "Schedule", icon: <CalendarDays className="h-4 w-4" /> },
+      { href: "/talent/deals", label: "Deals", icon: <Coins className="h-4 w-4" /> },
+      { href: "/talent/placements", label: "Placements", icon: <BadgeCheck className="h-4 w-4" /> },
+      { href: "/talent/reports", label: "Reports", icon: <LineChart className="h-4 w-4" /> },
+    );
+    groups.push({ label: "Talent", items: talent });
   }
 
   if (perms.has("timelines.view")) {

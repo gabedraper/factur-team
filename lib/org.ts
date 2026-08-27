@@ -7,7 +7,8 @@ export type Permission =
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
   | "timelines.view" | "timelines.view.all" | "clients.health"
   | "finance.collections"
-  | "nps.send";
+  | "nps.send"
+  | "talent.view" | "talent.recruit" | "talent.admin";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers
