@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus, Trash2, Send } from "lucide-react";
 import {
   saveSequenceStep, deleteSequenceStep, setSequenceMode, setSequenceEndings, testStep,
-  type SequenceStep, type Sequence,
+  saveStepVariant, type SequenceStep, type Sequence, type Writer,
 } from "@/actions/sequences";
 import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
@@ -29,10 +29,14 @@ type Draft = {
  * why nothing has ever gone out of either ladder.
  */
 export function SequenceBuilder({
-  sequence, steps, placeholders, senderNote, defaultGap,
+  sequence, steps, placeholders, senderNote, defaultGap, writers, writerId,
 }: {
   sequence: Sequence;
   steps: SequenceStep[];
+  /** People who send this sequence and may word it themselves. */
+  writers: Writer[];
+  /** Whose wording is on screen. Null is the shared version. */
+  writerId: string | null;
   /** Merge fields this process offers, as {{name}} without the braces. */
   placeholders: string[];
   /** Who the mail comes from, said once where the mode is chosen. */
@@ -40,7 +44,18 @@ export function SequenceBuilder({
   /** Days to suggest for a new step, on top of the last one. */
   defaultGap: number;
 }) {
-  const [rows, setRows] = useState<Draft[]>(steps as Draft[]);
+  /*
+   * What is in the boxes: this person's own wording where they have written
+   * any, and the shared version where they have not. Saving writes back to
+   * whichever of the two is being edited.
+   */
+  const [rows, setRows] = useState<Draft[]>(
+    steps.map((st) => ({
+      ...st,
+      config: writerId ? { ...st.config, ...(st.variant ?? {}) } : st.config,
+    })) as Draft[]
+  );
+  const own = new Set(steps.filter((st) => st.variant).map((st) => st.id));
   const [mode, setMode] = useState(sequence.mode);
   const [ends, setEnds] = useState<Ending[]>(sequence.ends_on);
   const [note, setNote] = useState("");
@@ -120,6 +135,30 @@ export function SequenceBuilder({
         <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
       </div>
 
+      {writers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
+          <span className="text-sm">Wording for</span>
+          <select
+            className={`h-8 rounded-md border px-2 text-sm ${FIELD}`}
+            value={writerId ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              window.location.search = v ? `?writer=${v}` : "";
+            }}
+          >
+            <option value="">Everyone (the shared version)</option>
+            {writers.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+          {writerId && (
+            <span className="text-xs text-muted-foreground">
+              Blank falls back to the shared version.
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="rounded-md border bg-card p-3">
         <p className="mb-2 text-sm">What stops it</p>
         <div className="grid gap-1.5 sm:grid-cols-2">
@@ -152,6 +191,11 @@ export function SequenceBuilder({
               />
               days
             </label>
+            {writerId && row.id && (
+              <span className="text-xs text-muted-foreground">
+                {own.has(row.id) ? "their own wording" : "the shared wording"}
+              </span>
+            )}
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input
                 type="checkbox"
@@ -164,7 +208,13 @@ export function SequenceBuilder({
               <button
                 disabled={pending}
                 className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
-                onClick={() => run(() => saveSequenceStep(sequence.slug, row))}
+                onClick={() =>
+                  run(() =>
+                    writerId && row.id
+                      ? saveStepVariant(sequence.slug, row.id, writerId, row.config)
+                      : saveSequenceStep(sequence.slug, row)
+                  )
+                }
               >
                 Save
               </button>

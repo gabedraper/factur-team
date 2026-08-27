@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
-import { getSequence } from "@/actions/sequences";
+import { getSequence, whoAmI } from "@/actions/sequences";
 import { SequenceBuilder } from "@/components/sequences/SequenceBuilder";
 import { PLACEHOLDERS as COLLECTIONS_FIELDS } from "@/lib/collections/render";
 import { PLACEHOLDERS as NPS_FIELDS } from "@/lib/nps/render";
@@ -33,15 +33,26 @@ const PROCESS: Record<string, {
 };
 
 export default async function SequencePage({
-  params,
-}: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+  params, searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ writer?: string }>;
+}) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
 
   const perms = await myPermissions();
   const need = slug === "nps" ? "nps.send" : "finance.collections";
   if (!perms.has("org.manage") && !perms.has(need as never)) redirect("/settings");
 
-  const { sequence, steps } = await getSequence(slug);
+  /*
+   * Whose wording to open on. A team lead lands on their own, because that is
+   * the one they came to write; anyone else lands on the shared version.
+   */
+  const me = await whoAmI();
+  const { writers } = await getSequence(slug);
+  const asked = query.writer ?? (writers.some((w) => w.id === me) ? me : null);
+
+  const { sequence, steps } = await getSequence(slug, asked);
   if (!sequence) notFound();
 
   const process = PROCESS[slug] ?? { fields: [], senderNote: "", defaultGap: 7 };
@@ -60,6 +71,8 @@ export default async function SequencePage({
       <SequenceBuilder
         sequence={sequence}
         steps={steps}
+        writers={writers}
+        writerId={asked ?? null}
         placeholders={[...process.fields]}
         senderNote={process.senderNote}
         defaultGap={process.defaultGap}

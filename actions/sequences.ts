@@ -39,7 +39,11 @@ export type SequenceStep = {
   channel: Channel;
   config: Record<string, string>;
   active: boolean;
+  /** This person's own wording, where they have written any. */
+  variant?: Record<string, string> | null;
 };
+
+export type Writer = { id: string; name: string };
 
 
 /** Each sequence says who may edit it, since finance and NPS are different jobs. */
@@ -53,15 +57,23 @@ async function mayEdit(slug: string): Promise<boolean> {
   return perms.has("org.manage") || perms.has(EDIT_PERMISSION[slug] ?? "org.manage");
 }
 
+/*
+ * The ladder, optionally as one person writes it.
+ *
+ * `writerId` picks whose wording to show. Null is the shared version everyone
+ * falls back to. Passing a person shows theirs, with the shared one behind it
+ * wherever they have not written their own.
+ */
 export async function getSequence(
-  slug: string
-): Promise<{ sequence: Sequence | null; steps: SequenceStep[] }> {
+  slug: string,
+  writerId?: string | null
+): Promise<{ sequence: Sequence | null; steps: SequenceStep[]; writers: Writer[] }> {
   const db = createServiceClient();
 
   const { data: seq } = await db
     .from("sequences").select("id,slug,name,description,mode,ends_on")
     .eq("slug", slug).maybeSingle();
-  if (!seq) return { sequence: null, steps: [] };
+  if (!seq) return { sequence: null, steps: [], writers: [] };
 
   const sequence = seq as unknown as Sequence;
   const { data: steps } = await db
@@ -70,7 +82,84 @@ export async function getSequence(
     .eq("sequence_id", sequence.id)
     .order("position");
 
-  return { sequence, steps: (steps ?? []) as unknown as SequenceStep[] };
+  const rows = (steps ?? []) as unknown as SequenceStep[];
+
+  /*
+   * Who can have a version of their own: the people this sequence actually
+   * sends as. Collections goes out of one mailbox, so nobody does.
+   */
+  const writers: Writer[] = [];
+  if (slug === "nps") {
+    const { data: leads } = await db
+      .from("org_members")
+      .select("id,full_name,email")
+      .eq("active", true)
+      .order("full_name");
+    const { data: used } = await db
+      .from("sequence_runs").select("send_as").eq("sequence_id", sequence.id);
+
+    const senders = new Set(
+      ((used ?? []) as { send_as: string | null }[])
+        .map((r) => r.send_as?.toLowerCase()).filter(Boolean) as string[]
+    );
+    for (const m of (leads ?? []) as { id: string; full_name: string | null; email: string }[]) {
+      if (senders.has(m.email.toLowerCase())) {
+        writers.push({ id: m.id, name: m.full_name ?? m.email });
+      }
+    }
+  }
+
+  if (writerId) {
+    const { data: variants } = await db
+      .from("sequence_step_variants")
+      .select("step_id,config")
+      .eq("member_id", writerId);
+
+    const byStep = new Map(
+      ((variants ?? []) as { step_id: string; config: Record<string, string> }[])
+        .map((v) => [v.step_id, v.config])
+    );
+    for (const r of rows) r.variant = byStep.get(r.id) ?? null;
+  }
+
+  return { sequence, steps: rows, writers };
+}
+
+/** Save one person's own wording for a step, or clear it back to the shared one. */
+export async function saveStepVariant(
+  slug: string,
+  stepId: string,
+  memberId: string,
+  config: Record<string, string> | null
+) {
+  if (!(await mayEdit(slug))) return { success: false, error: "Not permitted." };
+
+  const db = createServiceClient();
+  const { data: { user } } = await (await createClient()).auth.getUser();
+
+  const { error } = config
+    ? await db.from("sequence_step_variants").upsert(
+        {
+          step_id: stepId, member_id: memberId, config,
+          updated_at: new Date().toISOString(), updated_by: user?.email ?? null,
+        },
+        { onConflict: "step_id,member_id" }
+      )
+    : await db.from("sequence_step_variants")
+        .delete().eq("step_id", stepId).eq("member_id", memberId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/settings/sequences/${slug}`);
+  return { success: true };
+}
+
+/** The signed-in person, when they are one of the writers. */
+export async function whoAmI(): Promise<string | null> {
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  if (!user?.email) return null;
+  const { data } = await createServiceClient()
+    .from("org_members").select("id").ilike("email", user.email).maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
 }
 
 export async function saveSequenceStep(
