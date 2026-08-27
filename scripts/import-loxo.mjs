@@ -33,16 +33,16 @@
  * its original name in `external_stage` and is listed at the end.
  *
  * ---------------------------------------------------------------------------
- * The one thing that cannot come across: EMAIL TEMPLATES.
+ * What cannot come across: ANY EMAIL WORDING.
  *
- * Loxo's API has no email or SMS template endpoint. It exposes form templates
- * and scorecard templates, and it exposes campaigns (whose message bodies do
- * come across, below) -- but the standalone templates under Settings are not
- * reachable programmatically. There is no way around this from the outside.
+ * Loxo's API has no email or SMS template endpoint, and -- checked against the
+ * live account rather than assumed -- /campaigns and /campaigns/{id} return
+ * only metadata: name, job, stage, recipient and stage counts. No subject, no
+ * body. So neither the saved templates nor the campaign copy is reachable.
  *
- * They have to be copied over by hand. /settings/talent has a bulk paste box to
- * make that twenty minutes rather than an afternoon, and it is worth asking
- * Loxo support for an export before doing it manually.
+ * Every one of them has to be copied by hand. /settings/talent -> Templates has
+ * a bulk paste box to make that as quick as it can be, and it is worth asking
+ * Loxo support for an export first.
  * ---------------------------------------------------------------------------
  */
 
@@ -155,16 +155,40 @@ function listOf(body) {
  * collections, page numbers on the small ones -- so this follows whichever the
  * response actually offers rather than being told which to expect.
  */
+/*
+ * Endpoints that reject `per_page` outright with a 422. Loxo is not uniform
+ * about this and there is no way to tell from the response shape, so the two
+ * that do it are named.
+ */
+const NO_PAGING = [/^\/deals/, /^\/placements/, /^\/workflows/, /^\/activity_types/,
+                   /^\/dynamic_fields/, /^\/person_lists/, /^\/users/, /^\/workflow_stages/];
+
 async function* walk(path, perPage = 100) {
   let scrollId = null;
   let page = 1;
   let seen = 0;
 
+  if (NO_PAGING.some((re) => re.test(path))) {
+    for (const row of listOf(await optional(path))) {
+      yield row;
+      if (LIMIT && ++seen >= LIMIT) return;
+    }
+    return;
+  }
+
+  /*
+   * The first request asks for neither a page nor a scroll id, because Loxo
+   * rejects `page` outright on the scroll endpoints -- and there is no way to
+   * know which is which until it answers. What comes back decides: a scroll_id
+   * means follow the scroll, a full page without one means count pages.
+   */
   for (;;) {
     const sep = path.includes("?") ? "&" : "?";
     const q = scrollId
       ? `${sep}per_page=${perPage}&scroll_id=${encodeURIComponent(scrollId)}`
-      : `${sep}per_page=${perPage}&page=${page}`;
+      : page > 1
+        ? `${sep}per_page=${perPage}&page=${page}`
+        : `${sep}per_page=${perPage}`;
 
     let body;
     try {
@@ -310,7 +334,13 @@ async function importConfig() {
 
   // --- Pipelines. The thing a recruiter would most hate to rebuild. --------
   const workflows = listOf(await optional("/workflows"));
-  for (const [i, w] of workflows.entries()) {
+  /*
+   * Loxo marks the candidate pipeline with `candidate: true` -- there is also
+   * a deal workflow and a pitch pipeline on the same endpoint, and importing
+   * those as job pipelines would put three unrelated boards in the picker.
+   */
+  const candidateWorkflows = workflows.filter((w) => w.candidate !== false);
+  for (const [i, w] of candidateWorkflows.entries()) {
     const name = pick(w, "name", "title") ?? `Workflow ${w.id}`;
     const slug = `loxo-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`.slice(0, 60);
 
@@ -331,7 +361,7 @@ async function importConfig() {
       }
     }
     workflowIdByLoxoId.set(String(w.id), workflowId);
-    if (i === 0) defaultWorkflowId = workflowId;
+    if (w.candidate === true || i === 0) defaultWorkflowId = workflowId;
     report.workflows++;
 
     // Stages come from Loxo in their real order, so the board looks the same.
@@ -429,7 +459,7 @@ async function importConfig() {
 
   // --- Form templates become note templates: same job, our shape. ---------
   for (const t of listOf(await optional("/form_templates"))) {
-    const name = pick(t, "name", "title");
+    const name = pick(t, "title", "name");
     if (!name || DRY) { report.noteTemplates++; continue; }
     const full = await optional(`/form_templates/${t.id}`);
     const questions = listOf(pick(full ?? t, "questions", "form_questions", "fields"));
@@ -454,8 +484,10 @@ async function importConfig() {
   console.log(`  ${report.lists} lists`);
 
   report.notes.push(
-    "Email and SMS templates have no Loxo API endpoint and could not be migrated. " +
-    "Copy them in at /settings/talent -> Templates (there is a bulk paste box)."
+    "Email and SMS templates have no Loxo API endpoint, and campaign subject lines " +
+    "and bodies are not exposed either — checked against the live account, not assumed. " +
+    "All of that wording has to be copied by hand: /settings/talent -> Templates has a " +
+    "bulk paste box. Ask Loxo support for an export first."
   );
 }
 
@@ -509,17 +541,21 @@ async function importPeople() {
       external_id: String(p.id),
       first_name: first,
       last_name: last,
-      title: pick(p, "title", "current_title", "job_title"),
+      title: pick(p, "current_title", "title", "job_title"),
       company_id: companyId ? companies.get(String(companyId)) ?? null : null,
-      company_name: nameOf(pick(p, "company", "current_company", "employer")),
+      company_name: nameOf(pick(p, "current_company", "company", "employer")),
       emails: contacts(emails, ["value", "email", "address"], ["email_type", "type"]),
       phones: contacts(phones, ["value", "phone", "number"], ["phone_type", "type"]),
       linkedin_url: pick(p, "linkedin_url", "linkedin"),
       personal_website: pick(p, "website", "blog_url"),
-      city: pick(p, "city", "location.city", "address.city"),
-      state: pick(p, "state", "location.state", "address.state"),
-      country: pick(p, "country", "location.country"),
-      person_types: [String(nameOf(pick(p, "person_type")) ?? "candidate").toLowerCase()],
+      city: pick(p, "city", "location.city"),
+      state: pick(p, "state", "location.state"),
+      country: pick(p, "country"),
+      // Loxo returns person_types as an array of {id,name}; ours is text[].
+      person_types: (listOf(p.person_types).map((t) => nameOf(t)).filter(Boolean)
+        .map((t) => String(t).toLowerCase())).length
+        ? listOf(p.person_types).map((t) => String(nameOf(t) ?? "").toLowerCase()).filter(Boolean)
+        : ["candidate"],
       skills: listOf(pick(p, "skillsets", "skills")).map((s) => nameOf(s) ?? s).filter(Boolean),
       /*
        * Loxo calls this `description` and its users call it the intake note.
@@ -527,38 +563,46 @@ async function importPeople() {
        * one a recruiter would most notice missing.
        */
       summary: pick(p, "description", "blurb", "summary", "notes"),
-      current_salary: pick(p, "current_compensation", "salary"),
-      salary_expectation: pick(p, "compensation", "desired_compensation"),
+      // Loxo sends money as strings.
+      current_salary: Number(pick(p, "current_compensation", "salary")) || null,
+      salary_expectation: Number(pick(p, "compensation", "desired_compensation")) || null,
+      compensation_notes: pick(p, "compensation_notes"),
       source: "import",
       source_detail: `Loxo — ${nameOf(pick(p, "source_type")) ?? "migrated"}`,
       do_not_contact: !!pick(p, "do_not_contact", "blocked", "opted_out"),
       created_at: isoStamp(pick(p, "created_at")) ?? undefined,
     });
 
-    for (const [path, table, map] of [
-      ["person_job_profiles", "tal_person_jobs", (j, i) => ({
+    /*
+     * Loxo dates these by month and year rather than a date, so a role that ran
+     * "2019 - 2022" has no day in it. Rebuilt as the first of the month, which
+     * is the only honest reading -- inventing a day would look like precision
+     * that was never there.
+     */
+    const ym = (month, year) =>
+      year ? `${year}-${String(month || 1).padStart(2, "0")}-01` : null;
+
+    for (const [scoped, table, map] of [
+      ["job_profiles", "tal_person_jobs", (j, i) => ({
         person_id: personId,
         company_name: nameOf(pick(j, "company", "company_name")),
         title: pick(j, "title", "position"),
         description: pick(j, "description", "summary"),
-        started_on: isoDate(pick(j, "start_date", "started_at")),
-        ended_on: isoDate(pick(j, "end_date", "ended_at")),
-        is_current: !!pick(j, "current", "is_current"),
+        started_on: ym(j.month, j.year),
+        ended_on: ym(j.end_month, j.end_year),
+        is_current: !j.end_year,
         position: i,
       })],
-      ["person_education_profiles", "tal_person_educations", (e, i) => ({
+      ["education_profiles", "tal_person_educations", (e, i) => ({
         person_id: personId,
         school: nameOf(pick(e, "school", "institution")),
-        degree: nameOf(pick(e, "degree")),
-        field_of_study: pick(e, "field_of_study", "major"),
-        started_on: isoDate(pick(e, "start_date")),
-        ended_on: isoDate(pick(e, "end_date")),
+        degree: nameOf(pick(e, "degree")) ?? nameOf(pick(e, "education_type")),
+        field_of_study: pick(e, "field_of_study", "major", "description"),
+        started_on: ym(e.month, e.year),
+        ended_on: ym(e.end_month, e.end_year),
         position: i,
       })],
     ]) {
-      // Loxo nests these under the person; the endpoint names above are the
-      // top-level ones, so ask the person-scoped route.
-      const scoped = path.replace("person_", "");
       const rows = listOf(await optional(`/people/${p.id}/${scoped}`));
       if (!rows.length || DRY) continue;
       // Replaced wholesale: no stable id to upsert against, and a re-run must
@@ -584,7 +628,12 @@ async function importResumes(loxoPersonId, personId) {
     if (!url || DRY) continue;
 
     try {
-      const file = await fetch(url, { headers: { authorization: `Bearer ${API_KEY}` } });
+      /*
+       * No Authorization header. download_url is a short-lived presigned S3
+       * link and S3 rejects a request that carries both its own signature and
+       * a bearer token.
+       */
+      const file = await fetch(url);
       if (!file.ok) throw new Error(`download ${file.status}`);
       const bytes = new Uint8Array(await file.arrayBuffer());
       const safe = String(name).replace(/[^\w.\-]+/g, "_");
@@ -615,7 +664,13 @@ async function importJobs() {
   console.log("\nJobs");
   const companies = await existingMap("tal_companies");
 
-  for await (const j of walk("/jobs")) {
+  for await (const row of walk("/jobs")) {
+    /*
+     * The list payload carries no description at all -- it is only on
+     * /jobs/{id}. There are a hundred and thirty-nine of them, so fetching each
+     * one is cheap, and a job advert with no text is not worth migrating.
+     */
+    const j = (await optional(`/jobs/${row.id}`)) ?? row;
     const companyId = pick(j, "company.id", "company_id");
     const status = String(nameOf(pick(j, "status", "job_status")) ?? "").toLowerCase();
     const loxoWorkflowId = String(pick(j, "workflow_id", "workflow.id") ?? "");
@@ -631,16 +686,21 @@ async function importJobs() {
         /fill|placed|closed.won/.test(status) ? "filled" :
         /closed|cancel|lost/.test(status) ? "closed" : "draft",
       job_kind: "contingency",
-      description: pick(j, "description", "public_description"),
+      // description is HTML and can run to tens of kilobytes; description_text
+      // is Loxo's own plain rendering and is what the screens want.
+      description: pick(j, "description_text", "description"),
       requirements: pick(j, "requirements", "qualifications"),
       internal_notes: pick(j, "internal_notes", "notes"),
-      city: pick(j, "city", "address.city", "location.city"),
-      state: pick(j, "state", "address.state", "location.state"),
-      country: pick(j, "country"),
-      salary_min: pick(j, "salary_min", "compensation_min"),
-      salary_max: pick(j, "salary_max", "compensation_max"),
+      city: pick(j, "city"),
+      state: pick(j, "state_code", "state"),
+      country: pick(j, "country_code", "country"),
+      remote: pick(j, "remote_work_allowed") ? "remote" : "onsite",
+      salary_min: Number(pick(j, "salary_min")) || null,
+      salary_max: Number(pick(j, "salary_max")) || null,
+      fee_flat: Number(pick(j, "fee")) || null,
       openings: pick(j, "openings", "positions") ?? 1,
-      opened_on: isoDate(pick(j, "published_at", "created_at")),
+      opened_on: isoDate(pick(j, "opened_at", "published_at", "created_at")),
+      closed_at: isoStamp(pick(j, "filled_at")),
       created_at: isoStamp(pick(j, "created_at")) ?? undefined,
       // Never published by an import: putting somebody else's advert live on
       // your careers page is not a migration decision.
@@ -673,7 +733,7 @@ async function importCandidates() {
       continue;
     }
 
-    const loxoStageId = String(pick(c, "workflow_stage.id", "workflow_stage_id") ?? "");
+    const loxoStageId = String(pick(c, "workflow_stage_id", "workflow_stage.id") ?? "");
     const stageName =
       nameOf(pick(c, "workflow_stage", "stage")) ?? stageNameByLoxoId.get(loxoStageId) ?? null;
     const stageId = stageIdByLoxoId.get(loxoStageId) ?? null;
@@ -688,10 +748,10 @@ async function importCandidates() {
       job_id: jobId,
       person_id: personId,
       stage_id: stageId,
-      status: pick(c, "rejected") ? "rejected"
-            : /placed|hired/i.test(stageName ?? "") ? "hired"
-            : /reject|decline|pass/i.test(stageName ?? "") ? "rejected" : "active",
-      rejection_reason: nameOf(pick(c, "rejection_reason")),
+      status: /placed|hired/i.test(stageName ?? "") ? "hired"
+            : /reject/i.test(stageName ?? "") || pick(c, "candidate_rejection_reason")
+              ? "rejected" : "active",
+      rejection_reason: nameOf(pick(c, "candidate_rejection_reason")),
       source: "import",
       source_detail: "Loxo migration",
       created_at: isoStamp(pick(c, "created_at")) ?? undefined,
@@ -723,8 +783,10 @@ async function importActivities() {
       person_id: personId,
       job_id: jobs.get(String(pick(e, "job.id", "job_id") ?? "")) ?? null,
       activity_type_id: typeName ? types.get(typeName.toLowerCase()) ?? null : null,
-      subject: pick(e, "subject", "title", "name") ?? typeName,
-      body: pick(e, "notes", "body", "description", "content"),
+      // A person event has no subject line -- the activity type is the label
+      // and `notes` is everything that was written.
+      subject: typeName,
+      body: pick(e, "notes"),
       pinned: !!pick(e, "pinned"),
       occurred_at: isoStamp(pick(e, "created_at", "occurred_at", "date")) ?? new Date().toISOString(),
     });
@@ -750,12 +812,15 @@ async function importPlacements() {
       job_id: jobId,
       person_id: personId,
       company_id: companies.get(String(pick(pl, "company.id", "company_id") ?? "")) ?? null,
-      title: pick(pl, "title", "job_title"),
-      started_on: isoDate(pick(pl, "start_date", "started_at")),
+      title: pick(pl, "job.title", "title"),
+      started_on: isoDate(pick(pl, "start_date")),
       ended_on: isoDate(pick(pl, "end_date")),
-      salary: pick(pl, "salary", "compensation"),
-      fee_amount: pick(pl, "fee", "fee_amount", "placement_fee"),
-      fee_percent: pick(pl, "fee_percentage", "fee_percent"),
+      // Money comes back as strings on this endpoint.
+      salary: Number(pick(pl, "salary")) || null,
+      fee_amount: Number(pick(pl, "fee")) || null,
+      fee_type: /percent/i.test(String(nameOf(pick(pl, "fee_type")) ?? "")) ? "percentage" : "flat",
+      bill_rate: Number(pick(pl, "bill_rate")) || null,
+      pay_rate: Number(pick(pl, "pay_rate")) || null,
       status: pick(pl, "end_date") ? "completed" : "active",
       notes: pick(pl, "notes"),
       created_at: isoStamp(pick(pl, "created_at")) ?? undefined,
@@ -799,22 +864,25 @@ async function importScorecards() {
 }
 
 /**
- * Campaigns, which matter twice over.
+ * Campaigns.
  *
- * They are outreach history, and they are the only place Loxo's API exposes the
- * *wording* a recruiter uses -- the standalone email templates have no
- * endpoint, so a campaign body is the nearest thing to getting her writing
- * across automatically.
+ * Metadata only, and not for want of trying: /campaigns and /campaigns/{id}
+ * both return name, job, stage and recipient counts and nothing else. There is
+ * no subject and no body anywhere on the endpoint, so the wording Hannah wrote
+ * cannot be pulled out of Loxo by any route the API offers.
+ *
+ * What comes across is therefore the record that a campaign ran, against which
+ * job and stage, and who was in it -- useful history, but the copy has to be
+ * re-entered by hand along with the templates.
  */
 async function importCampaigns() {
   console.log("\nCampaigns");
   const people = await existingMap("tal_people");
+  const jobs = await existingMap("tal_jobs");
 
   for await (const c of walk("/campaigns")) {
     const name = pick(c, "name", "title") ?? `Campaign ${c.id}`;
     if (DRY) { report.campaigns++; continue; }
-
-    const full = (await optional(`/campaigns/${c.id}`)) ?? c;
 
     const { data: had } = await db.from("tal_campaigns")
       .select("id").eq("external_source", SOURCE).eq("external_id", String(c.id)).maybeSingle();
@@ -823,22 +891,21 @@ async function importCampaigns() {
     if (!campaignId) {
       const { data, error } = await db.from("tal_campaigns")
         .insert({
-          name, status: "archived", mode: "semi", audience: "candidate",
-          external_source: SOURCE, external_id: String(c.id),
+          name,
+          job_id: jobs.get(String(pick(c, "job_id") ?? "")) ?? null,
+          // Archived, not draft: these already ran, over there. Leaving them
+          // active would put historic sequences back in the send queue.
+          status: "archived",
+          mode: "semi",
+          audience: "candidate",
+          external_source: SOURCE,
+          external_id: String(c.id),
           created_at: isoStamp(pick(c, "created_at")) ?? undefined,
         })
         .select("id").single();
       if (error) { report.errors.push(`campaign ${name}: ${error.message}`); continue; }
       campaignId = data.id;
     }
-
-    // The wording, which is the part worth keeping.
-    const body = pick(full, "body", "html_body", "content", "message") ?? "";
-    const subject = pick(full, "subject", "email_subject") ?? name;
-    await db.from("tal_campaign_steps").upsert(
-      { campaign_id: campaignId, position: 0, channel: "email", delay_days: 0, subject, body },
-      { onConflict: "campaign_id,position" }
-    );
 
     for (const r of listOf(await optional(`/campaign_recipients?campaign_id=${c.id}`))) {
       const personId = people.get(String(pick(r, "person.id", "person_id") ?? ""));
@@ -850,7 +917,12 @@ async function importCampaigns() {
     }
     report.campaigns++;
   }
-  console.log(`  ${report.campaigns} campaigns`);
+
+  report.notes.push(
+    `${report.campaigns} campaigns came across as history. Their subject lines and ` +
+    "bodies did not — Loxo's API does not expose campaign copy, only counts."
+  );
+  console.log(`  ${report.campaigns} campaigns (metadata only — no message bodies exist on the API)`);
 }
 
 async function importSchedule() {
@@ -861,10 +933,10 @@ async function importSchedule() {
   for await (const s of walk("/schedule_items")) {
     const personId = people.get(String(pick(s, "person.id", "person_id") ?? ""));
     if (!personId) continue;
-    const startsAt = isoStamp(pick(s, "starts_at", "start_time", "scheduled_at", "date"));
+    const startsAt = isoStamp(pick(s, "start_time", "starts_at"));
     if (!startsAt) continue;
 
-    const title = String(pick(s, "name", "title") ?? "");
+    const title = String(pick(s, "title", "name") ?? "");
     await put("tal_interviews", {
       external_id: String(s.id),
       person_id: personId,
@@ -872,7 +944,7 @@ async function importSchedule() {
       kind: /interview/i.test(title) ? "interview" : "meeting",
       title: title || null,
       starts_at: startsAt,
-      ends_at: isoStamp(pick(s, "ends_at", "end_time")),
+      ends_at: isoStamp(pick(s, "end_time", "ends_at")),
       location: pick(s, "location"),
       // Loxo's AI Notetaker outline, where there is one. It is the most useful
       // thing on the record and it is plain text on the way out.
@@ -889,7 +961,7 @@ async function importDeals() {
   const companies = await existingMap("tal_companies");
 
   for await (const d of walk("/deals")) {
-    const stage = String(nameOf(pick(d, "deal_stage", "stage", "pipeline_stage")) ?? "").toLowerCase();
+    const stage = String(nameOf(pick(d, "current_pipeline_stage", "deal_stage", "stage")) ?? "").toLowerCase();
     await put("tal_deals", {
       external_id: String(d.id),
       name: pick(d, "name", "title") ?? "(untitled)",
@@ -901,8 +973,8 @@ async function importDeals() {
         /won/.test(stage) ? "won" :
         /lost/.test(stage) ? "lost" : "new",
       status: /won/.test(stage) ? "won" : /lost/.test(stage) ? "lost" : "open",
-      value: pick(d, "amount", "value", "fee"),
-      expected_close_on: isoDate(pick(d, "closes_at", "expected_close_date", "close_date")),
+      value: Number(pick(d, "amount", "expected_amount")) || null,
+      expected_close_on: isoDate(pick(d, "closes_at")),
       notes: pick(d, "description", "notes"),
       created_at: isoStamp(pick(d, "created_at")) ?? undefined,
     });

@@ -62,7 +62,8 @@ function totalOf(body) {
 async function probe(label, path, { showKeys = true } = {}) {
   const { ok, status, body } = await get(path);
   if (!ok) {
-    console.log(`  ✗ ${label.padEnd(22)} ${status}  ${String(body).slice(0, 90)}`);
+    const why = typeof body === "string" ? body : JSON.stringify(body);
+    console.log(`  ✗ ${label.padEnd(22)} ${status}  ${why.slice(0, 110)}`);
     return null;
   }
   const { rows, key } = listOf(body);
@@ -161,6 +162,7 @@ async function main() {
    */
   console.log("\nCannot be migrated");
   console.log("  email + SMS templates   no API endpoint exists");
+  console.log("  campaign subject/body   /campaigns returns counts only, no copy");
   console.log("    Count them in Loxo (Settings -> Templates). They go in by hand at");
   console.log("    /settings/talent -> Templates -> Paste several. Ask Loxo support for");
   console.log("    an export first — it costs one email and might save the typing.");
