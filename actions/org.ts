@@ -188,6 +188,26 @@ export async function setPodManager(teamId: string, memberId: string | null) {
 }
 
 /** Coverage is set on the client: it is the thing that has exactly one owner. */
+/**
+ * Record any change to who is on a client, right after making one.
+ *
+ * A full reconcile rather than a targeted write: it compares every client's
+ * roles against the open history rows and touches only what actually moved, so
+ * it does not matter which of these functions was called or what it changed.
+ * The nightly job runs the same thing -- this only makes the timestamp the
+ * moment of the edit rather than the small hours afterwards.
+ *
+ * Deliberately never throws. Failing to record history is worth knowing about,
+ * but not worth failing an assignment the user just made.
+ */
+async function noteClientHistory(): Promise<void> {
+  try {
+    await createServiceClient().rpc("record_client_history", { p_source: "manual" });
+  } catch {
+    // Swallowed on purpose -- see above. The nightly run will catch it up.
+  }
+}
+
 export async function setClientOwner(
   clientId: string,
   owner: { teamId: string } | { memberId: string } | null
@@ -199,6 +219,7 @@ export async function setClientOwner(
     member_id: owner && "memberId" in owner ? owner.memberId : null,
   }).eq("id", clientId);
   if (error) return { success: false, error: error.message };
+  await noteClientHistory();
   revalidatePath("/settings/clients");
   revalidatePath("/settings/teams");
   return { success: true };
@@ -210,6 +231,7 @@ export async function setClientService(clientId: string, serviceId: string | nul
   const { error } = await db.from("org_clients")
     .update({ service_id: serviceId }).eq("id", clientId);
   if (error) return { success: false, error: error.message };
+  await noteClientHistory();
   revalidatePath("/settings/clients");
   return { success: true };
 }
@@ -412,6 +434,7 @@ export async function setClientRole(
         .eq("role_id", roleId);
 
   if (error) return { success: false, error: error.message };
+  await noteClientHistory();
   revalidatePath(`/settings/clients/${clientId}`);
   revalidatePath("/settings/clients");
   return { success: true };
@@ -442,6 +465,7 @@ export async function setClientLead(
   const db = createServiceClient();
   const { error } = await db.from("org_clients").update({ [field]: memberId }).eq("id", clientId);
   if (error) return { success: false, error: error.message };
+  await noteClientHistory();
   revalidatePath(`/settings/clients/${clientId}`);
   return { success: true };
 }
