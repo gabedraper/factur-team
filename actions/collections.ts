@@ -148,6 +148,8 @@ export type BoardChase = BoardRow & {
 };
 
 export type Visibility = {
+  /** Set when the check itself failed, rather than the answer being no. */
+  problem?: string | null;
   can_see_all: boolean;
   is_manager: boolean;
   attached: boolean;
@@ -161,17 +163,34 @@ export type Visibility = {
  * at all -- somebody on no client has no business reading the company's
  * debtors.
  */
+/*
+ * Whether this person sees collections at all.
+ *
+ * Called by the dashboard layout to decide on one nav link, which means every
+ * page in the app waits on it -- so it must not throw. It used to, and a
+ * database hiccup while PostgREST reloaded its schema cache took down pages
+ * with nothing to do with collections: the LMS went out with
+ * "collections visibility failed" behind it.
+ *
+ * A failure now answers "no" and says why. Nobody is shown a link they might
+ * not be entitled to, and nothing else on the page is lost over it.
+ */
 export async function getCollectionsVisibility(): Promise<Visibility> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("collections_visibility", {
-    p_as_member: await previewedMemberId(),
-  });
-  if (error) throw new Error(`collections visibility failed: ${error.message}`);
-  return (
-    ((data ?? []) as Visibility[])[0] ?? {
-      can_see_all: false, is_manager: false, attached: false, can_act: false,
-    }
-  );
+  const closed: Visibility = {
+    can_see_all: false, is_manager: false, attached: false, can_act: false,
+    problem: null,
+  };
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("collections_visibility", {
+      p_as_member: await previewedMemberId(),
+    });
+    if (error) return { ...closed, problem: error.message };
+    return { ...(((data ?? []) as Visibility[])[0] ?? closed), problem: null };
+  } catch (e) {
+    return { ...closed, problem: e instanceof Error ? e.message : "Unknown error" };
+  }
 }
 
 /**
