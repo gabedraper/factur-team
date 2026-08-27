@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { setClientRole, setClientLead, setClientOwner, setClientService } from "@/actions/org";
-import { CLIENT_ROLE_FIELDS, type ClientRoleField } from "@/lib/client-roles";
 
 type Person = { id: string; name: string };
 type Team = Record<string, unknown> | null;
@@ -16,14 +15,16 @@ const date = (v: unknown) =>
 const text = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
 
 export function ClientDetail({
-  client, salesforce, team, people, pods, services,
+  client, salesforce, team, people, services, roles, assignments,
 }: {
   client: Record<string, unknown>;
   salesforce: Record<string, unknown> | null;
   team: Team;
   people: Person[];
-  pods: { id: string; name: string }[];
   services: { id: string; name: string }[];
+  /** The roles Settings says are assigned per client, in the order shown. */
+  roles: { id: string; name: string }[];
+  assignments: Record<string, string | null>;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -65,12 +66,17 @@ export function ClientDetail({
         <h2 className="text-sm font-medium">Team {pending && <span className="text-xs text-muted-foreground">· saving…</span>}</h2>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {CLIENT_ROLE_FIELDS.map((f) => (
-            <label key={f.key} className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">{f.label}</span>
+          {roles.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No roles are set to be assigned per client.
+            </p>
+          )}
+          {roles.map((r) => (
+            <label key={r.id} className="block">
+              <span className="mb-1 block text-xs text-muted-foreground">{r.name}</span>
               <Picker
-                value={String(client[f.key] ?? "")}
-                onChange={(v) => run(() => setClientRole(id, f.key as ClientRoleField, v))}
+                value={String(assignments[r.id] ?? "")}
+                onChange={(v) => run(() => setClientRole(id, r.id, v))}
               />
             </label>
           ))}
@@ -104,32 +110,8 @@ export function ClientDetail({
       </section>
 
       <section className="rounded-md border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-medium">Coverage</h2>
+        <h2 className="text-sm font-medium">Service</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Covered by</span>
-            <select
-              className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
-              value={ownerValue}
-              disabled={pending}
-              onChange={(e) => {
-                const v = e.target.value;
-                const owner = v.startsWith("pod:") ? { teamId: v.slice(4) }
-                  : v.startsWith("person:") ? { memberId: v.slice(7) } : null;
-                run(() => setClientOwner(id, owner));
-              }}
-            >
-              <option value="">— unassigned —</option>
-              {pods.length > 0 && (
-                <optgroup label="Pods">
-                  {pods.map((t) => <option key={t.id} value={`pod:${t.id}`}>{t.name}</option>)}
-                </optgroup>
-              )}
-              <optgroup label="Individuals">
-                {people.map((p) => <option key={p.id} value={`person:${p.id}`}>{p.name}</option>)}
-              </optgroup>
-            </select>
-          </label>
           <label className="block">
             <span className="mb-1 block text-xs text-muted-foreground">Service</span>
             <select

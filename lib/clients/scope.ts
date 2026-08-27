@@ -1,7 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions, currentMemberId } from "@/lib/org";
-import { CLIENT_ROLE_FIELDS } from "@/lib/client-roles";
-
 export type ClientScope = {
   /** The clients this person is named on, in any role. */
   mine: Set<string>;
@@ -12,15 +10,11 @@ export type ClientScope = {
 };
 
 /*
- * Every column that names a person on a client, plus the two leads. The role
- * fields are shared with Settings; the leads are not in that list because they
- * are not editable there.
+ * The two leads, which are columns because they are worked out from the
+ * reporting line rather than assigned. Every other role now lives in
+ * org_client_assignments and is read from there.
  */
-const MINE_COLUMNS = [
-  ...CLIENT_ROLE_FIELDS.map((f) => f.key),
-  "team_lead_id",
-  "data_team_lead_id",
-] as const;
+const LEAD_COLUMNS = ["team_lead_id", "data_team_lead_id"] as const;
 
 /**
  * Which clients a person sees, and whether they may ask for the rest.
@@ -43,12 +37,17 @@ export async function clientScope(): Promise<ClientScope> {
   }
 
   const db = createServiceClient();
-  const { data } = await db
-    .from("org_clients")
-    .select("id")
-    .or(MINE_COLUMNS.map((c) => `${c}.eq.${memberId}`).join(","));
 
-  const mine = new Set(((data ?? []) as unknown as { id: string }[]).map((c) => c.id));
+  const [{ data: led }, { data: assigned }] = await Promise.all([
+    db.from("org_clients").select("id")
+      .or(LEAD_COLUMNS.map((c) => `${c}.eq.${memberId}`).join(",")),
+    db.from("org_client_assignments").select("client_id").eq("member_id", memberId),
+  ]);
+
+  const mine = new Set([
+    ...((led ?? []) as unknown as { id: string }[]).map((c) => c.id),
+    ...((assigned ?? []) as unknown as { client_id: string }[]).map((a) => a.client_id),
+  ]);
 
   // A team lead is someone a client is led by, read from the client record
   // rather than from a permission, so nobody has to grant it person by person.

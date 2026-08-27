@@ -383,17 +383,48 @@ export async function setRolePermission(roleId: string, permissionKey: string, o
   return { success: true };
 }
 
-/** Set one of a client's support roles, or clear it. */
+/**
+ * Put somebody in a role on a client, or take them out of it.
+ *
+ * Keyed on the role rather than a column, so a role added in Settings needs no
+ * change here. Choosing nobody deletes the row instead of storing a null, so an
+ * empty assignment and a role never filled in are the same thing.
+ */
 export async function setClientRole(
   clientId: string,
-  field: "account_manager_id" | "sdr_id" | "marketing_strategist_id" | "data_analyst_id" | "data_engineer_id",
+  roleId: string,
   memberId: string | null
 ) {
   await requireOrgManage();
   const db = createServiceClient();
-  const { error } = await db.from("org_clients").update({ [field]: memberId }).eq("id", clientId);
+
+  const { error } = memberId
+    ? await db
+        .from("org_client_assignments")
+        .upsert(
+          { client_id: clientId, role_id: roleId, member_id: memberId },
+          { onConflict: "client_id,role_id" }
+        )
+    : await db
+        .from("org_client_assignments")
+        .delete()
+        .eq("client_id", clientId)
+        .eq("role_id", roleId);
+
   if (error) return { success: false, error: error.message };
   revalidatePath(`/settings/clients/${clientId}`);
+  revalidatePath("/settings/clients");
+  return { success: true };
+}
+
+/** Show or hide a role as an assignment field on every client. */
+export async function setRoleClientAssignable(roleId: string, on: boolean) {
+  await requireOrgManage();
+  const db = createServiceClient();
+  const { error } = await db
+    .from("org_roles").update({ client_assignable: on }).eq("id", roleId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/roles");
   revalidatePath("/settings/clients");
   return { success: true };
 }

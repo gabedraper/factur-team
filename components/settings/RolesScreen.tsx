@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { createRole, updateRole, deleteRole, setRolePermission } from "@/actions/org";
+import {
+  createRole, updateRole, deleteRole, setRolePermission, setRoleClientAssignable,
+} from "@/actions/org";
 import { isStandaloneRole } from "@/lib/org-roles";
 import type { RoleDetail } from "@/lib/org";
 
@@ -100,7 +102,13 @@ export function RolesScreen({
               <span className="text-xs text-muted-foreground">
                 {r.holders} {r.holders === 1 ? "person" : "people"}
               </span>
-              <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground"
+                     title="Shows this role as an assignment on every client">
+                <input type="checkbox" defaultChecked={r.client_assignable}
+                       onChange={(e) => run(() => setRoleClientAssignable(r.id, e.target.checked))} />
+                On clients
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <input type="checkbox" defaultChecked={r.active}
                        onChange={(e) => run(() => updateRole(r.id, { active: e.target.checked }))} />
                 Active

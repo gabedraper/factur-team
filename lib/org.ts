@@ -228,7 +228,7 @@ export async function listPodsAndClients() {
 
 export type RoleDetail = {
   id: string; slug: string; name: string; description: string | null;
-  service_id: string | null; active: boolean;
+  service_id: string | null; active: boolean; client_assignable: boolean;
   permissionKeys: string[]; holders: number;
 };
 
@@ -236,7 +236,9 @@ export async function listRolesAndPermissions() {
   const db = createServiceClient();
   const [{ data: roles }, { data: perms }, { data: rolePerms }, { data: assignments }] =
     await Promise.all([
-      db.from("org_roles").select("id,slug,name,description,service_id,active").order("name"),
+      db.from("org_roles")
+        .select("id,slug,name,description,service_id,active,client_assignable")
+        .order("name"),
       db.from("org_permissions").select("key,name,description,category,position").order("position"),
       db.from("org_role_permissions").select("role_id,permission_key"),
       db.from("org_assignments").select("role_id"),
@@ -343,7 +345,21 @@ export async function visibleOwnerIds(): Promise<string[] | null> {
   return ids;
 }
 
-export { CLIENT_ROLE_FIELDS, type ClientRoleField } from "./client-roles";
+/**
+ * The roles that appear as a dropdown on every client.
+ *
+ * Read from the roles list rather than a fixed set of columns, so adding a role
+ * in Settings adds the field and unticking it takes the field away.
+ */
+export async function listClientRoles(): Promise<{ id: string; name: string }[]> {
+  const { data } = await createServiceClient()
+    .from("org_roles")
+    .select("id,name")
+    .eq("active", true)
+    .eq("client_assignable", true)
+    .order("name");
+  return (data ?? []) as unknown as { id: string; name: string }[];
+}
 
 /** One client with its team and everything Salesforce knows about it. */
 export async function getClientDetail(clientId: string) {
@@ -361,13 +377,23 @@ export async function getClientDetail(clientId: string) {
 
   // Leads are derived from the reporting line unless overridden, so read them
   // from the view rather than recomputing here.
-  const { data: team } = await db
-    .from("org_client_team").select("*").eq("client_id", clientId).maybeSingle();
+  const [{ data: team }, { data: assigned }, roles] = await Promise.all([
+    db.from("org_client_team").select("*").eq("client_id", clientId).maybeSingle(),
+    db.from("org_client_assignments").select("role_id,member_id").eq("client_id", clientId),
+    listClientRoles(),
+  ]);
+
+  const byRole: Record<string, string | null> = {};
+  for (const a of (assigned ?? []) as { role_id: string; member_id: string | null }[]) {
+    byRole[a.role_id] = a.member_id;
+  }
 
   return {
     client: row,
     salesforce: (sf ?? null) as Record<string, unknown> | null,
     team: (team ?? null) as Record<string, unknown> | null,
+    roles,
+    assignments: byRole,
   };
 }
 

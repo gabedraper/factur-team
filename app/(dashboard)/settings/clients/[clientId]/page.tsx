@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import {
-  myPermissions, getClientDetail, listMembers, listPodsAndClients, listServicesAndTeams,
+  myPermissions, getClientDetail, listMembers, listServicesAndTeams,
 } from "@/lib/org";
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { NpsPanel } from "@/components/clients/NpsPanel";
@@ -19,8 +19,8 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
   const detail = await getClientDetail((await params).clientId);
   if (!detail) notFound();
 
-  const [{ members }, { teams }, { services }, nps, contacts] = await Promise.all([
-    listMembers(), listPodsAndClients(), listServicesAndTeams(),
+  const [{ members }, { services }, nps, contacts] = await Promise.all([
+    listMembers(), listServicesAndTeams(),
     listNps((await params).clientId),
     listClientContacts((await params).clientId),
   ]);
@@ -28,11 +28,6 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
   const people = members
     .filter((m) => m.active)
     .map((m) => ({ id: m.id, name: m.full_name ?? m.email }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const pods = teams
-    .filter((t) => t.kind === "pod" && t.active)
-    .map((t) => ({ id: t.id, name: t.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -49,8 +44,9 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
         salesforce={detail.salesforce}
         team={detail.team}
         people={people}
-        pods={pods}
         services={services}
+        roles={detail.roles}
+        assignments={detail.assignments}
       />
 
       <section className="mt-8">
