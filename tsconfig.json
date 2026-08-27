@@ -40,6 +40,8 @@
     // Self-running tests: `node --experimental-strip-types lib/sort.test.ts`.
     // They import with a .ts extension, which Node needs and the build's type
     // check rejects -- and they are not part of the app that gets built.
-    "**/*.test.ts"
+    "**/*.test.ts",
+    // Same bargain: run by the Gaib workflow under Node, never bundled.
+    "lib/gaib/guard-cli.ts"
   ]
 }

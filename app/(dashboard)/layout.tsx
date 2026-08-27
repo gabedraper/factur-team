@@ -38,9 +38,10 @@ import {
   BadgeCheck,
   LineChart,
   Coins,
+  MessageCircle,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
-import { BugReportWidget } from "@/components/bug-report-widget";
+import { GaibWidget } from "@/components/gaib/gaib-widget";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
@@ -120,6 +121,17 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       { href: "/talent/reports", label: "Reports", icon: <LineChart className="h-4 w-4" /> },
     );
     groups.push({ label: "Talent", items: talent });
+  }
+
+  // Only whoever decides on the tickets needs the list of them; everyone else
+  // reaches Gaib through the button in the footer.
+  if (perms.has("org.manage")) {
+    groups.push({
+      label: "Gaib",
+      items: [
+        { href: "/gaib", label: "Tickets", icon: <MessageCircle className="h-4 w-4" /> },
+      ],
+    });
   }
 
   if (perms.has("timelines.view")) {
@@ -232,7 +244,7 @@ export default async function DashboardLayout({
           <>
             <div className="p-3 pb-0">
               <Separator className="mb-3" />
-              <BugReportWidget />
+              <GaibWidget />
               <form action={signOut}>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground" size="sm" type="submit">
                   <LogOut className="h-4 w-4" />

@@ -1,0 +1,57 @@
+# Closes the ticket when its pull request is dealt with.
+#
+# Without this the queue would fill with tickets that were finished weeks ago on
+# GitHub and still say "waiting on you" in the app -- and a queue that lies about
+# what is outstanding stops being read, which costs more than the feature gains.
+#
+# The ticket id is carried in the pull request body rather than in the branch
+# name, so renaming a branch cannot orphan a ticket.
+
+name: Gaib ticket closed
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close:
+    # Only pull requests Gaib opened carry the marker; every other one skips
+    # the job entirely rather than running and finding nothing.
+    if: contains(github.event.pull_request.body, 'Gaib-Ticket:')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update the ticket
+        env:
+          SB: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BODY: ${{ github.event.pull_request.body }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          TICKET=$(printf '%s' "$BODY" | grep -oE 'Gaib-Ticket: [0-9a-f-]{36}' | head -1 | awk '{print $2}')
+          if [ -z "$TICKET" ]; then
+            echo "No ticket id in the body" >&2
+            exit 0
+          fi
+
+          if [ "$MERGED" = "true" ]; then
+            PAYLOAD=$(jq -nc --arg s "$SHA" '{status:"shipped", commit_sha:$s}')
+            EVENT="merged"
+          else
+            # Closed without merging is a decision, and the same decision as
+            # pressing Reject in the app.
+            PAYLOAD='{"status":"rejected"}'
+            EVENT="closed without merging"
+          fi
+
+          curl -sS -X PATCH "$SB/rest/v1/gaib_tickets?id=eq.$TICKET" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+            -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+            -d "$PAYLOAD"
+
+          jq -nc --arg t "$TICKET" --arg e "$EVENT" \
+            '{ticket_id:$t, actor:"system", event:$e}' \
+          | curl -sS -X POST "$SB/rest/v1/gaib_ticket_events" \
+              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+              -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+              -d @-

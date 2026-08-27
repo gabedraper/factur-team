@@ -1,0 +1,332 @@
+# The agent that works on a Gaib ticket.
+#
+# Dispatched by the app the moment a ticket is raised. Only the ticket id and
+# the lane come in; everything else is read from the database here, so the
+# ticket stays the one copy of what was asked for.
+#
+# The three lanes end in three different places:
+#
+#   scoping   reads the code, writes down what the idea would take, changes
+#             nothing, and leaves the ticket waiting for a person
+#   auto      makes the fix, and ships it to main only if the build is green
+#             AND the guard agrees the diff went nowhere dangerous
+#   approval  makes the fix and opens a pull request, always
+#
+# An auto ticket whose diff trips the guard quietly becomes an approval ticket.
+# That is the design: the lane chosen from a conversation is a guess, and the
+# diff is the fact.
+
+name: Gaib agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket_id:
+        description: Ticket uuid
+        required: true
+      lane:
+        description: auto, approval or scoping
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  # One ticket at a time, but never cancel a run that may already have pushed.
+  group: gaib-${{ inputs.ticket_id }}
+  cancel-in-progress: false
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    env:
+      SB: ${{ secrets.SUPABASE_URL }}
+      SB_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TICKET: ${{ inputs.ticket_id }}
+      LANE: ${{ inputs.lane }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: |
+          npm ci
+          npm install -g @anthropic-ai/claude-code
+
+      # A tiny helper so every later step patches the ticket the same way.
+      - name: Set up ticket helpers
+        run: |
+          cat > /tmp/patch.sh <<'SH'
+          #!/usr/bin/env bash
+          # patch.sh '<json body>'
+          curl -sS -X PATCH \
+            "$SB/rest/v1/gaib_tickets?id=eq.$TICKET" \
+            -H "apikey: $SB_KEY" \
+            -H "Authorization: Bearer $SB_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "$1"
+          SH
+          cat > /tmp/event.sh <<'SH'
+          #!/usr/bin/env bash
+          # event.sh <event> [detail]
+          jq -nc --arg t "$TICKET" --arg e "$1" --arg d "${2:-}" \
+            '{ticket_id:$t, actor:"agent", event:$e, detail:(if $d=="" then null else $d end)}' \
+          | curl -sS -X POST "$SB/rest/v1/gaib_ticket_events" \
+              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+              -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+              -d @-
+          SH
+          chmod +x /tmp/patch.sh /tmp/event.sh
+
+      - name: Read the ticket
+        run: |
+          curl -sS "$SB/rest/v1/gaib_tickets?id=eq.$TICKET&select=*" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+          | jq '.[0]' > /tmp/ticket.json
+
+          if [ "$(jq -r '.id // "null"' /tmp/ticket.json)" = "null" ]; then
+            echo "No such ticket: $TICKET" >&2
+            exit 1
+          fi
+
+          jq -r '.title' /tmp/ticket.json > /tmp/title.txt
+          echo "Working on: $(cat /tmp/title.txt)"
+
+          /tmp/patch.sh "$(jq -nc --arg r "$RUN_URL" '{status:"running", run_url:$r}')"
+          /tmp/event.sh "started" "$RUN_URL"
+
+      # ---------------------------------------------------------------------
+      # Scoping: read, plan, stop.
+      # ---------------------------------------------------------------------
+      - name: Scope the idea
+        if: inputs.lane == 'scoping'
+        run: |
+          {
+            echo "Someone using this app asked for the following. Do NOT write any code."
+            echo
+            echo "## $(jq -r '.title' /tmp/ticket.json)"
+            echo
+            jq -r '.body' /tmp/ticket.json
+            echo
+            echo "Read enough of the codebase to answer, concretely and in plain language:"
+            echo "1. What this would actually change -- name the files and screens."
+            echo "2. Anything already in the codebase that does part of this."
+            echo "3. What could go wrong, and whether it touches the database, permissions,"
+            echo "   money, or anything that sends to people outside the company."
+            echo "4. Roughly how big it is: an hour, a day, or a week."
+            echo "5. Whether you would advise doing it, and honestly why or why not."
+            echo
+            echo "Be brief. This is read by one busy person deciding yes or no."
+          } > /tmp/prompt.txt
+
+          # No bypassPermissions here on purpose: it outranks --allowedTools, and
+          # this run is meant to be incapable of writing rather than merely
+          # instructed not to. The git check below is the backstop, not the rule.
+          claude -p "$(cat /tmp/prompt.txt)" \
+            --model claude-opus-5 \
+            --allowedTools "Read" "Grep" "Glob" "Bash(git log:*)" "Bash(git show:*)" \
+            --output-format json > /tmp/out.json || true
+
+          jq -r '.result // .text // "The agent did not produce a brief."' /tmp/out.json > /tmp/brief.md
+          head -c 400 /tmp/brief.md
+
+          # Nothing should have changed on disk. If something did, it is a bug in
+          # the prompt and the brief is not trustworthy -- say so rather than
+          # silently discarding the change.
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --porcelain
+            /tmp/event.sh "scoping wrote to disk" "$(git status --porcelain | head -20)"
+            git checkout -- . && git clean -fd
+          fi
+
+          /tmp/patch.sh "$(jq -nc --rawfile b /tmp/brief.md '{status:"awaiting_review", brief:$b}')"
+          /tmp/event.sh "scoped" "waiting on a decision"
+
+      # ---------------------------------------------------------------------
+      # Fixing: make the change.
+      # ---------------------------------------------------------------------
+      - name: Make the fix
+        if: inputs.lane != 'scoping'
+        run: |
+          {
+            echo "Fix this bug, reported by someone using this app."
+            echo
+            echo "## $(jq -r '.title' /tmp/ticket.json)"
+            echo
+            jq -r '.body' /tmp/ticket.json
+            echo
+            PAGE=$(jq -r '.page_url // ""' /tmp/ticket.json)
+            if [ -n "$PAGE" ]; then echo "They were on: $PAGE"; fi
+            echo
+            echo "Rules:"
+            echo "- Make the smallest change that fixes it. Do not tidy up nearby code."
+            echo "- Match the surrounding style, including how comments are written here."
+            echo "- Do not add dependencies, database migrations, or tests unless the fix is a test."
+            echo "- Do not touch anything to do with sign-in, permissions, billing, or sending"
+            echo "  email. If the fix needs any of those, change nothing and say so instead."
+            echo "- If you cannot reproduce the problem from the description, change nothing"
+            echo "  and say what you would need to know."
+            echo "- Run 'npm run build' when you are done and fix anything it reports."
+            echo
+            echo "Finish with two lines: what you changed, and why that fixes it."
+          } > /tmp/prompt.txt
+
+          claude -p "$(cat /tmp/prompt.txt)" \
+            --model claude-opus-5 \
+            --permission-mode bypassPermissions \
+            --allowedTools "Read" "Write" "Edit" "Grep" "Glob" "Bash" \
+            --output-format json > /tmp/out.json || true
+
+          jq -r '.result // .text // ""' /tmp/out.json > /tmp/notes.md
+          head -c 600 /tmp/notes.md
+
+      - name: Check the build
+        if: inputs.lane != 'scoping'
+        id: build
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=yes" >> "$GITHUB_OUTPUT"
+
+          if npm run build > /tmp/build.log 2>&1; then
+            echo "built=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "built=no" >> "$GITHUB_OUTPUT"
+            tail -40 /tmp/build.log
+          fi
+
+      - name: Run the guard
+        if: inputs.lane != 'scoping' && steps.build.outputs.changed == 'yes'
+        id: guard
+        run: |
+          # Untracked files count too -- a fix that adds a new file under a
+          # protected path is not made safe by the file being new.
+          git add -A
+          FILES=$(git diff --cached --name-only)
+          LINES=$(git diff --cached --numstat | awk '{a+=$1; r+=$2} END {print a+r+0}')
+          echo "$FILES"
+
+          VERDICT=$(printf '%s\n' "$FILES" | node --experimental-strip-types lib/gaib/guard-cli.ts "$LINES")
+          echo "$VERDICT"
+          echo "safe=$(echo "$VERDICT" | jq -r '.safe')" >> "$GITHUB_OUTPUT"
+          {
+            echo "reason<<EOF"
+            echo "$VERDICT" | jq -r '.reason // ""'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # Where it ends up.
+      # ---------------------------------------------------------------------
+      - name: Nothing changed
+        if: inputs.lane != 'scoping' && steps.build.outputs.changed == 'no'
+        run: |
+          /tmp/patch.sh "$(jq -nc --rawfile n /tmp/notes.md '{status:"failed", brief:$n}')"
+          /tmp/event.sh "no change" "the agent did not change anything"
+
+      - name: Build failed
+        if: inputs.lane != 'scoping' && steps.build.outputs.built == 'no'
+        run: |
+          /tmp/patch.sh "$(jq -nc --rawfile n /tmp/notes.md --rawfile l /tmp/build.log \
+            '{status:"failed", brief:($n + "\n\n---\n\n" + ($l | .[-4000:]))}')"
+          /tmp/event.sh "build failed"
+
+      - name: Ship it
+        if: >-
+          inputs.lane == 'auto' &&
+          steps.build.outputs.built == 'yes' &&
+          steps.guard.outputs.safe == 'true'
+        run: |
+          git config user.name "Gaib"
+          git config user.email "gaib@bethefactur.com"
+          {
+            cat /tmp/title.txt
+            echo
+            echo "Raised as Gaib $(jq -r '.ref' /tmp/ticket.json) by someone using the app."
+            echo
+            head -c 500 /tmp/notes.md
+            echo
+            echo
+            echo "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+          } > /tmp/msg.txt
+          git commit -q -F /tmp/msg.txt
+
+          # Someone may have pushed while the agent was working.
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+          SHA=$(git rev-parse HEAD)
+          /tmp/patch.sh "$(jq -nc --arg s "$SHA" --rawfile n /tmp/notes.md \
+            '{status:"shipped", commit_sha:$s, brief:$n}')"
+          /tmp/event.sh "shipped" "$SHA"
+
+      - name: Open a pull request
+        if: >-
+          inputs.lane != 'scoping' &&
+          steps.build.outputs.built == 'yes' &&
+          (inputs.lane == 'approval' || steps.guard.outputs.safe == 'false')
+        env:
+          # Through the environment rather than interpolated into the script:
+          # one of the guard's reasons contains an apostrophe, which would end
+          # a shell string early and fail the step with a syntax error.
+          GUARD: ${{ steps.guard.outputs.reason }}
+        run: |
+          REF=$(jq -r '.ref' /tmp/ticket.json)
+          BRANCH="gaib/$REF"
+          git config user.name "Gaib"
+          git config user.email "gaib@bethefactur.com"
+          git checkout -b "$BRANCH"
+          {
+            cat /tmp/title.txt
+            echo
+            echo "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+          } > /tmp/msg.txt
+          git commit -q -F /tmp/msg.txt
+          git push -u origin "$BRANCH"
+
+          {
+            echo "Raised as **Gaib $REF** by someone using the app."
+            echo
+            jq -r '.body' /tmp/ticket.json
+            echo
+            echo "---"
+            echo
+            cat /tmp/notes.md
+            if [ -n "$GUARD" ]; then
+              echo
+              echo "> Held back from shipping automatically: $GUARD"
+            fi
+            echo
+            # Read by the merge workflow to close the ticket. Do not remove.
+            echo "Gaib-Ticket: $TICKET"
+          } > /tmp/pr.md
+
+          URL=$(gh pr create --title "$(cat /tmp/title.txt)" --body-file /tmp/pr.md --base main --head "$BRANCH")
+          echo "$URL"
+
+          /tmp/patch.sh "$(jq -nc --arg u "$URL" --arg g "$GUARD" --rawfile n /tmp/notes.md \
+            '{status:"awaiting_review", pr_url:$u, brief:$n,
+              guard_tripped:(if $g=="" then null else $g end)}')"
+          /tmp/event.sh "opened a pull request" "$URL"
+
+      - name: Say it went wrong
+        if: failure()
+        run: |
+          curl -sS -X PATCH "$SB/rest/v1/gaib_tickets?id=eq.$TICKET" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+            -H "Content-Type: application/json" -H "Prefer: return=minimal" \
+            -d "$(jq -nc --arg r "$RUN_URL" '{status:"failed", run_url:$r}')"
