@@ -37,7 +37,8 @@ function Icon({ entry }: { entry: ConversationEntry }) {
   if (entry.kind === "invoice") return <FileText className={cls} />;
   if (entry.kind === "payment") return <CircleDollarSign className={cls} />;
   if (entry.kind === "gap") return <AlertTriangle className={cls} />;
-  if (entry.kind === "collections") return <MailWarning className={cls} />;
+  if (entry.kind === "collections" || entry.kind === "collections_upcoming")
+    return <MailWarning className={cls} />;
   if (entry.source === "google_chat") return <MessageSquare className={cls} />;
   if (entry.source === "meet_transcript") return <Video className={cls} />;
   // A logged call rather than an email; Salesforce records those as activities.
@@ -109,6 +110,34 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
                   No invoice raised for{" "}
                   {e.service_month ? monthName(e.service_month) : "this month"}
                   {e.service_month && <> {e.service_month.slice(0, 4)}</>}
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        /*
+         * A chase that has not happened yet, dated forward so it sits at the
+         * top of the feed. Outlined rather than filled: the trail is a record
+         * of what occurred, and this is the one thing on it that has not.
+         */
+        if (e.kind === "collections_upcoming") {
+          const overdue = e.service === "due";
+          return (
+            <div key={key} className="flex justify-end">
+              <div
+                className={`flex max-w-[80%] items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-xs ${
+                  overdue
+                    ? "border-amber-400/60 bg-amber-500/10 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+                    : "text-muted-foreground"
+                }`}
+              >
+                <Icon entry={e} />
+                <span>
+                  <span className="font-medium">{e.title}</span>
+                  {e.preview && <> · {e.preview}</>}
+                  {" · "}
+                  {overdue ? "due now" : e.on_date ? onDay(e.on_date) : ""}
                 </span>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { myPermissions } from "@/lib/org";
+import { myPermissions, previewedMemberId } from "@/lib/org";
 import { fill, type Figures } from "@/lib/collections/render";
 import { draftAs, sendAs } from "@/lib/google/compose";
 
@@ -115,6 +115,86 @@ export async function getCollectionsQueue(): Promise<Chase[]> {
     ...row,
     rendered_subject: fill(row.subject, figuresFor(row, sender)),
     rendered_body: fill(row.body, figuresFor(row, sender)),
+  }));
+}
+
+
+export type BoardRow = QueueRow & {
+  open_balance: number | null;
+  bucket_current: number;
+  bucket_1_30: number;
+  bucket_31_60: number;
+  bucket_61_90: number;
+  bucket_91_plus: number;
+  /** Null once every step has been sent for this run of arrears. */
+  next_step_position: number | null;
+  next_step_days: number | null;
+  next_step_on: string | null;
+};
+
+/** A board row with the due step's wording worked out, where one is due. */
+export type BoardChase = BoardRow & {
+  rendered_subject: string | null;
+  rendered_body: string | null;
+};
+
+export type Visibility = {
+  can_see_all: boolean;
+  is_manager: boolean;
+  attached: boolean;
+  can_act: boolean;
+};
+
+/**
+ * What this person may see and do here.
+ *
+ * Neither seeing everything nor being on a client means the page is not theirs
+ * at all -- somebody on no client has no business reading the company's
+ * debtors.
+ */
+export async function getCollectionsVisibility(): Promise<Visibility> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("collections_visibility", {
+    p_as_member: await previewedMemberId(),
+  });
+  if (error) throw new Error(`collections visibility failed: ${error.message}`);
+  return (
+    ((data ?? []) as Visibility[])[0] ?? {
+      can_see_all: false, is_manager: false, attached: false, can_act: false,
+    }
+  );
+}
+
+/**
+ * Every client in arrears the viewer may see, in the ageing report's order.
+ *
+ * Asking for "all" without being entitled to it quietly returns your own
+ * clients rather than erroring: the scope is a convenience, not a lock, and the
+ * lock is in the function.
+ */
+export async function getCollectionsBoard(
+  scope: "mine" | "all" = "mine"
+): Promise<BoardChase[]> {
+  const vis = await getCollectionsVisibility();
+  if (!vis.can_see_all && !vis.attached) return [];
+
+  const service = createServiceClient();
+  await service.rpc("refresh_collections_state");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_collections_board", {
+    p_scope: scope,
+    p_as_member: await previewedMemberId(),
+  });
+  if (error) throw new Error(`collections board failed: ${error.message}`);
+
+  const settings = await getCollectionsSettings();
+  const sender = await senderName(settings.send_as);
+
+  return ((data ?? []) as BoardRow[]).map((row) => ({
+    ...row,
+    rendered_subject: row.subject ? fill(row.subject, figuresFor(row, sender)) : null,
+    rendered_body: row.body ? fill(row.body, figuresFor(row, sender)) : null,
   }));
 }
 

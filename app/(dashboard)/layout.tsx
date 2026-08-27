@@ -34,8 +34,9 @@ import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sideba
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
 import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "@/lib/org";
+import { getCollectionsVisibility } from "@/actions/collections";
 
-function getNavGroups(perms: Set<string>): NavGroup[] {
+function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   const groups: NavGroup[] = [];
 
   // Built from what someone may do, so adding a permission to a role in
@@ -72,13 +73,13 @@ function getNavGroups(perms: Set<string>): NavGroup[] {
   }
   if (scoreboard.length) groups.push({ label: "Scoreboard", items: scoreboard });
 
-  if (perms.has("clients.health") || perms.has("finance.collections")) {
+  if (perms.has("clients.health") || collections) {
     const clients: NavItem[] = [];
     if (perms.has("clients.health")) {
       clients.push({ href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> });
       clients.push({ href: "/clients/nps", label: "NPS", icon: <Gauge className="h-4 w-4" /> });
     }
-    if (perms.has("finance.collections") || perms.has("org.manage")) {
+    if (collections) {
       clients.push({ href: "/collections", label: "Collections", icon: <MailWarning className="h-4 w-4" /> });
     }
     groups.push({ label: "Clients", items: clients });
@@ -133,7 +134,12 @@ export default async function DashboardLayout({
   const previewing = await previewedMember();
   const perms = await myPermissions();
   const roleLabel = await myRoleLabel();
-  const navGroups = getNavGroups(perms as Set<string>);
+  // The same test the page itself applies, so the link never leads to a redirect.
+  const collectionsVisibility = await getCollectionsVisibility();
+  const navGroups = getNavGroups(
+    perms as Set<string>,
+    collectionsVisibility.can_see_all || collectionsVisibility.attached
+  );
   const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
 
   return (
