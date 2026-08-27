@@ -7,6 +7,8 @@
  * one opening "Hi there".
  */
 
+import { escapeValue, htmlToText, isHtml, textToHtml, wrapHtml } from "@/lib/email/richtext";
+
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
 });
@@ -46,9 +48,40 @@ function values(f: Figures): Record<string, string> {
  * An unknown placeholder is left exactly as written rather than blanked. A
  * typo should look like a typo in the preview, not silently swallow a sentence.
  */
-export function fill(template: string, figures: Figures): string {
-  const table = values(figures);
+function apply(template: string, table: Record<string, string>): string {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, name: string) =>
     name in table ? table[name] : whole
   );
+}
+
+/**
+ * The plain-text rendering.
+ *
+ * Templates are HTML now, so the markup comes out first and the figures go in
+ * after -- the other order would fill a value into markup and then have to
+ * unpick which angle brackets were the template's and which were the client's
+ * name. Placeholders are plain text either way, so they survive the trip.
+ */
+export function fill(template: string, figures: Figures): string {
+  return apply(htmlToText(template), values(figures));
+}
+
+/**
+ * The same chase as HTML.
+ *
+ * The template is trusted markup, written in our own editor; the figures are
+ * not -- a client called "Smith & Sons" would otherwise put a stray entity
+ * through the middle of the message. So values are escaped and the template
+ * is left alone, which is the opposite of what this did when bodies were
+ * plain text.
+ *
+ * {{invoices}} arrives as several lines and has to keep them. Escaped text
+ * with real newlines in it collapses into one run-on line in HTML.
+ */
+export function fillHtml(template: string, figures: Figures): string {
+  const table = values(figures);
+  const safe = Object.fromEntries(
+    Object.entries(table).map(([k, v]) => [k, escapeValue(v).replace(/\n/g, "<br>")])
+  );
+  return wrapHtml(apply(isHtml(template) ? template : textToHtml(template), safe));
 }

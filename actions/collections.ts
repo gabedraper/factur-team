@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { myPermissions, previewedMemberId } from "@/lib/org";
-import { fill, type Figures } from "@/lib/collections/render";
+import { fill, fillHtml, type Figures } from "@/lib/collections/render";
+import { htmlToText } from "@/lib/email/richtext";
 import { draftAs, sendAs } from "@/lib/google/compose";
 
 export type QueueRow = {
@@ -123,7 +124,7 @@ export async function getCollectionsQueue(): Promise<Chase[]> {
   return ((data ?? []) as QueueRow[]).map((row) => ({
     ...row,
     rendered_subject: fill(row.subject, figuresFor(row, sender)),
-    rendered_body: fill(row.body, figuresFor(row, sender)),
+    rendered_body: fillHtml(row.body, figuresFor(row, sender)),
   }));
 }
 
@@ -222,7 +223,7 @@ export async function getCollectionsBoard(
   return ((data ?? []) as BoardRow[]).map((row) => ({
     ...row,
     rendered_subject: row.subject ? fill(row.subject, figuresFor(row, sender)) : null,
-    rendered_body: row.body ? fill(row.body, figuresFor(row, sender)) : null,
+    rendered_body: row.body ? fillHtml(row.body, figuresFor(row, sender)) : null,
   }));
 }
 
@@ -286,7 +287,8 @@ export async function draftToMe(
       // Marked in the subject, so a test can never be mistaken for the real one
       // sitting beside it in her drafts.
       subject: `[TEST — ${row.client_name}] ${subject.trim()}`,
-      body,
+      body: htmlToText(body),
+      html: body,
     });
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Gmail refused it." };
@@ -336,7 +338,10 @@ export async function placeChase(
     to: row.to_email,
     cc: row.cc_emails,
     subject: subject.trim(),
-    body,
+    // The queue edits HTML; the text part is derived from it so the two
+    // alternatives in the message always say the same thing.
+    body: htmlToText(body),
+    html: body,
   };
 
   let placed;

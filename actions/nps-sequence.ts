@@ -5,6 +5,7 @@ import { draftAs, sendAs } from "@/lib/google/compose";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { fill, fillHtml, surveyUrl, type Figures } from "@/lib/nps/render";
+import { htmlToText } from "@/lib/email/richtext";
 
 /*
  * Sending the survey, one step of the ladder at a time.
@@ -131,7 +132,7 @@ export async function getNpsQueue(): Promise<Invitation[]> {
   return ((data ?? []) as QueueRow[]).map((row) => ({
     ...row,
     rendered_subject: fill(row.subject, figuresFor(row)),
-    rendered_body: fill(row.body, figuresFor(row)),
+    rendered_body: fillHtml(row.body, figuresFor(row)),
   }));
 }
 
@@ -229,8 +230,10 @@ export async function placeSurvey(
     fromName: row.from_name,
     to: row.to_email,
     subject: subject.trim(),
-    body,
-    html: fillHtml(body, figures),
+    // The queue edits HTML; the text part is derived from it so the two
+    // alternatives in the message always say the same thing.
+    body: htmlToText(body),
+    html: body,
   };
 
   let placed;

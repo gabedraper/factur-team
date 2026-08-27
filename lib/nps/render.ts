@@ -12,6 +12,8 @@
  * row of buttons for HTML readers and as a legible list for everyone else.
  */
 
+import { escapeValue, htmlToText, isHtml, textToHtml, wrapHtml } from "@/lib/email/richtext";
+
 export type Figures = {
   client_name: string;
   contact_first_name: string | null;
@@ -84,50 +86,48 @@ function apply(template: string, table: Record<string, string>): string {
   );
 }
 
+/**
+ * The plain-text rendering.
+ *
+ * Templates are HTML now, so the markup comes out first and the figures go in
+ * after. The scale becomes one address rather than eleven, because eleven bare
+ * URLs in a row is not something anybody reads.
+ */
 export function fill(template: string, figures: Figures): string {
-  return apply(template, values(figures, scaleText(figures.url)));
+  return apply(htmlToText(template), values(figures, scaleText(figures.url)));
 }
 
 /**
- * The same template as HTML.
+ * The same invitation as HTML.
  *
- * The body is escaped before the scale goes in, so a client name containing an
- * ampersand cannot break the markup and nothing in a template can inject any.
- * Newlines become <br> afterwards, so the wording a person typed into a
- * textarea comes out looking the way they typed it.
+ * The template is trusted markup from our own editor and is left alone; the
+ * figures are escaped, so a client name containing an ampersand cannot break
+ * anything. That is the reverse of what this did when bodies were plain text
+ * and the whole template had to be escaped on the way in.
+ *
+ * The scale is the exception -- it is markup on purpose, so it goes in raw.
  */
-/*
- * A sentinel rather than the markup itself: the scale goes in *after* the
- * newline-to-<br> pass, or those <br>s would land inside the table's own
- * markup. A null byte cannot survive the escaping in fillHtml, so it can never
- * collide with anything a person typed into a template.
- */
-const MARK = "\u0000scale\u0000";
-
 export function fillHtml(template: string, figures: Figures): string {
-  const escaped = template
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const source = isHtml(template) ? template : textToHtml(template);
 
-  const table = values(figures, MARK);
-  const filled = apply(escaped, {
-    ...table,
-    client: escapeText(table.client),
-    contact: escapeText(table.contact),
-    sender: escapeText(table.sender),
-    link: escapeText(table.link),
-  });
+  /*
+   * The editor puts {{scale}} in a paragraph, and a <table> inside a <p> is
+   * invalid -- browsers and mail clients close the paragraph early and the
+   * buttons end up outside the message flow. So a paragraph that holds
+   * nothing but the placeholder is replaced by the table rather than filled.
+   */
+  const lifted = source.replace(
+    /<p\b[^>]*>\s*\{\{\s*scale\s*\}\}\s*<\/p>/gi,
+    "{{scale}}"
+  );
 
-  const withBreaks = filled.replace(/\n/g, "<br>\n");
+  const table = values(figures, "");
+  const safe: Record<string, string> = Object.fromEntries(
+    Object.entries(table).map(([k, v]) => [k, escapeValue(v).replace(/\n/g, "<br>")])
+  );
+  safe.scale = scaleHtml(figures.url);
 
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#18181b;">
-${withBreaks.split(MARK).join(scaleHtml(figures.url))}
-</div>`;
-}
-
-function escapeText(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return wrapHtml(apply(lifted, safe));
 }
 
 /** The survey address for one invitation. */

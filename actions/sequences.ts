@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { draftAs } from "@/lib/google/compose";
-import { fill as fillCollections } from "@/lib/collections/render";
-import { fill as fillNps, surveyUrl } from "@/lib/nps/render";
+import { fill as fillCollections, fillHtml as fillCollectionsHtml } from "@/lib/collections/render";
+import { fill as fillNps, fillHtml as fillNpsHtml, surveyUrl } from "@/lib/nps/render";
 import { myPermissions, type Permission } from "@/lib/org";
 import type { Ending } from "@/lib/sequences";
 
@@ -288,20 +288,18 @@ export async function testStep(slug: string, stepId: string, writerId?: string |
   const subject = String(config.subject ?? "");
   const body = String(config.body ?? "");
 
+  const npsFigures = {
+    client_name: String(c.client_name ?? "Example Client"),
+    contact_first_name: (c.contact_first_name as string) ?? "there",
+    sender_name: me,
+    url: surveyUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "", String(c.token ?? "test")),
+  };
+
   const rendered = slug === "nps"
     ? {
-        subject: fillNps(subject, {
-          client_name: String(c.client_name ?? "Example Client"),
-          contact_first_name: (c.contact_first_name as string) ?? "there",
-          sender_name: me,
-          url: surveyUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "", String(c.token ?? "test")),
-        }),
-        body: fillNps(body, {
-          client_name: String(c.client_name ?? "Example Client"),
-          contact_first_name: (c.contact_first_name as string) ?? "there",
-          sender_name: me,
-          url: surveyUrl(process.env.NEXT_PUBLIC_SITE_URL ?? "", String(c.token ?? "test")),
-        }),
+        subject: fillNps(subject, npsFigures),
+        body: fillNps(body, npsFigures),
+        html: fillNpsHtml(body, npsFigures),
       }
     : (() => {
         const figures = {
@@ -315,7 +313,11 @@ export async function testStep(slug: string, stepId: string, writerId?: string |
           invoice_lines: (c.invoice_lines as string) ?? null,
           sender_name: me,
         };
-        return { subject: fillCollections(subject, figures), body: fillCollections(body, figures) };
+        return {
+          subject: fillCollections(subject, figures),
+          body: fillCollections(body, figures),
+          html: fillCollectionsHtml(body, figures),
+        };
       })();
 
   try {
@@ -324,7 +326,10 @@ export async function testStep(slug: string, stepId: string, writerId?: string |
       fromName: null,
       to: me,
       subject: `[test] ${rendered.subject}`,
+      // A test that arrives as plain text would not be showing the thing being
+      // tested -- the formatting is most of what there is to check.
       body: rendered.body,
+      html: rendered.html,
     });
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Could not draft it." };

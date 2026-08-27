@@ -8,6 +8,7 @@ import {
 } from "@/actions/sequences";
 import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
+import RichTextEditor from "@/components/rich-text-editor";
 
 type Draft = {
   id?: string;
@@ -250,11 +251,10 @@ export function SequenceBuilder({
             value={row.config.subject ?? ""}
             onChange={(e) => changeConfig(i, "subject", e.target.value)}
           />
-          <textarea
-            className={`min-h-32 w-full rounded-md border p-2 text-sm ${FIELD}`}
-            placeholder="Body"
+          <RichTextEditor
             value={row.config.body ?? ""}
-            onChange={(e) => changeConfig(i, "body", e.target.value)}
+            onChange={(html) => changeConfig(i, "body", html)}
+            placeholder="Body"
           />
         </div>
       ))}

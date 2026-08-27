@@ -5,6 +5,7 @@ import {
   createNpsCampaign, draftSurveyToMe, placeSurvey,
   type Invitation, type Settings,
 } from "@/actions/nps-sequence";
+import RichTextEditor from "@/components/rich-text-editor";
 
 /**
  * Who is due a survey email, and the wording that would go out.
@@ -170,11 +171,9 @@ export function NpsQueue({
                     onChange={(e) => edit(r, { subject: e.target.value })}
                     className="block h-8 w-full rounded-md border bg-field px-2 text-sm"
                   />
-                  <textarea
+                  <RichTextEditor
                     value={d.body}
-                    onChange={(e) => edit(r, { body: e.target.value })}
-                    rows={12}
-                    className="block w-full rounded-md border bg-field px-3 py-2 font-mono text-xs"
+                    onChange={(html) => edit(r, { body: html })}
                   />
                   <button
                     onClick={() => preview(r)}

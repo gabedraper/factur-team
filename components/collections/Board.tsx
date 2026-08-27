@@ -10,6 +10,7 @@ import {
 import { FIELD } from "@/lib/field-class";
 import { AGEING_TONE } from "@/lib/ageing-colours";
 import { PauseCircle, PlayCircle, Send, FileText, FlaskConical } from "lucide-react";
+import RichTextEditor from "@/components/rich-text-editor";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -294,13 +295,11 @@ export function Board({
                   }
                   className={`${FIELD} w-full px-2 py-1 text-sm`}
                 />
-                <textarea
+                <RichTextEditor
                   value={w.body}
-                  rows={14}
-                  onChange={(e) =>
-                    setEdited((s) => ({ ...s, [key(r)]: { ...w, body: e.target.value } }))
+                  onChange={(html) =>
+                    setEdited((s) => ({ ...s, [key(r)]: { ...w, body: html } }))
                   }
-                  className={`${FIELD} w-full px-2 py-1 font-mono text-xs leading-relaxed`}
                 />
               </div>
             )}
