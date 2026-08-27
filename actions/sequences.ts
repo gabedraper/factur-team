@@ -85,29 +85,13 @@ export async function getSequence(
   const rows = (steps ?? []) as unknown as SequenceStep[];
 
   /*
-   * Who can have a version of their own: the people this sequence actually
-   * sends as. Collections goes out of one mailbox, so nobody does.
+   * Who may write their own version: whoever holds the role this sequence is
+   * sent by. Taken from the role rather than from who has already sent, so a
+   * team lead can write theirs before their first survey goes out -- and a
+   * sequence sent by account managers would need nothing changed here.
    */
-  const writers: Writer[] = [];
-  if (slug === "nps") {
-    const { data: leads } = await db
-      .from("org_members")
-      .select("id,full_name,email")
-      .eq("active", true)
-      .order("full_name");
-    const { data: used } = await db
-      .from("sequence_runs").select("send_as").eq("sequence_id", sequence.id);
-
-    const senders = new Set(
-      ((used ?? []) as { send_as: string | null }[])
-        .map((r) => r.send_as?.toLowerCase()).filter(Boolean) as string[]
-    );
-    for (const m of (leads ?? []) as { id: string; full_name: string | null; email: string }[]) {
-      if (senders.has(m.email.toLowerCase())) {
-        writers.push({ id: m.id, name: m.full_name ?? m.email });
-      }
-    }
-  }
+  const { data: people } = await db.rpc("get_sequence_writers", { p_slug: slug });
+  const writers = (people ?? []) as unknown as Writer[];
 
   if (writerId) {
     const { data: variants } = await db
@@ -264,7 +248,7 @@ export async function setSequenceEndings(slug: string, endings: Ending[]) {
  * where there is one, so what you read is what a client would read rather than
  * a row of braces.
  */
-export async function testStep(slug: string, stepId: string) {
+export async function testStep(slug: string, stepId: string, writerId?: string | null) {
   if (!(await mayEdit(slug))) return { success: false, error: "Not permitted." };
 
   const { data: { user } } = await (await createClient()).auth.getUser();
@@ -276,7 +260,22 @@ export async function testStep(slug: string, stepId: string) {
     .from("sequence_steps").select("config,sequence_id").eq("id", stepId).maybeSingle();
   if (!step) return { success: false, error: "No such step." };
 
-  const { config, sequence_id } = step as { config: Record<string, string>; sequence_id: string };
+  const { config: shared, sequence_id } =
+    step as { config: Record<string, string>; sequence_id: string };
+
+  /*
+   * Test what they would actually send. Their own wording where they have
+   * written any, the shared version where they have not -- which is exactly
+   * what the queue does at send time.
+   */
+  let config = shared;
+  if (writerId) {
+    const { data: variant } = await db
+      .from("sequence_step_variants").select("config")
+      .eq("step_id", stepId).eq("member_id", writerId).maybeSingle();
+    const own = (variant as { config: Record<string, string> } | null)?.config;
+    if (own) config = { ...shared, ...own };
+  }
 
   // Any live run will do; this is about the wording, not about who gets it.
   const { data: run } = await db

@@ -224,7 +224,7 @@ export function SequenceBuilder({
                 className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-sm disabled:opacity-40"
                 onClick={() =>
                   run(
-                    () => testStep(sequence.slug, row.id!),
+                    () => testStep(sequence.slug, row.id!, writerId),
                     "Drafted to your mailbox."
                   )
                 }

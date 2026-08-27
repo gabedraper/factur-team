@@ -33,6 +33,7 @@ import { BugReportWidget } from "@/components/bug-report-widget";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
+import { OnlineUsers } from "@/components/online-users";
 import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "@/lib/org";
 import { getCollectionsVisibility } from "@/actions/collections";
 
@@ -196,6 +197,17 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="flex flex-1 flex-col overflow-auto">
+        {/* Presence is the real signed-in person, not the previewed one -- the
+            point of it is who is actually at a keyboard. */}
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-end border-b bg-card px-4">
+          <OnlineUsers
+            me={{
+              id: user.id,
+              name: profile.full_name ?? user.email ?? "User",
+              avatarUrl: profile.avatar_url ?? null,
+            }}
+          />
+        </header>
         <MaintenanceAlert canSee={perms.has("org.manage")} />
         {(previewing || previewRole) && (
           <PreviewBanner
