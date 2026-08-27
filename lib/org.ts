@@ -1,6 +1,24 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { getAuthedUser } from "@/lib/supabase/session";
 import { isJobRole } from "@/lib/org-roles";
+
+/*
+ * Nearly everything below is wrapped in React's cache().
+ *
+ * These answer questions about one person during one request, and the answer
+ * cannot change while that request is being served -- but they were being
+ * asked over and over. The layout alone reached myRealPermissions four
+ * different ways, each one a round trip to Google's auth server followed by
+ * the same permissions query, all in sequence, before any page began to
+ * render.
+ *
+ * cache() is per-request, so this changes nothing about what is returned; it
+ * only stops the same question being asked five times. Anything that changes
+ * a person's rights does so in a request that ends, and the next one asks
+ * again from scratch.
+ */
 
 export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
@@ -15,7 +33,7 @@ export type Permission =
  * usually need to ask about several at once (a page that shows an admin tab and
  * an unmasked column would otherwise query twice).
  */
-async function permissionsForMember(column: "auth_user_id" | "id", value: string) {
+const permissionsForMember = cache(async (column: "auth_user_id" | "id", value: string) => {
   const db = createServiceClient();
   const { data } = await db
     .from("org_members")
@@ -31,41 +49,40 @@ async function permissionsForMember(column: "auth_user_id" | "id", value: string
     }
   }
   return keys;
-}
+});
 
 /** What the signed-in person actually holds, ignoring any preview. */
-export async function myRealPermissions(): Promise<Set<Permission>> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export const myRealPermissions = cache(async (): Promise<Set<Permission>> => {
+  const user = await getAuthedUser();
   if (!user) return new Set();
   return permissionsForMember("auth_user_id", user.id);
-}
+});
 
 /** Who the app should behave as: normally you, or someone you are previewing. */
-export async function previewedMemberId(): Promise<string | null> {
+export const previewedMemberId = cache(async (): Promise<string | null> => {
   const jar = await cookies();
   const id = jar.get("preview_member")?.value ?? null;
   if (!id) return null;
   // A stale cookie must not grant anything, so the real rights are rechecked.
   const real = await myRealPermissions();
   return real.has("org.manage") ? id : null;
-}
+});
 
 /** The person being previewed, for the banner and the identity block. */
-export async function previewedMember() {
+export const previewedMember = cache(async () => {
   const id = await previewedMemberId();
   if (!id) return null;
   const db = createServiceClient();
   const { data } = await db
     .from("org_members").select("id,full_name,email").eq("id", id).maybeSingle();
   return (data as { id: string; full_name: string | null; email: string } | null) ?? null;
-}
+});
 
-export async function myPermissions(): Promise<Set<Permission>> {
+export const myPermissions = cache(async (): Promise<Set<Permission>> => {
   const previewing = await previewedMemberId();
   if (previewing) return permissionsForMember("id", previewing);
   return myRealPermissions();
-}
+});
 
 export type MemberRow = {
   id: string;
@@ -324,8 +341,7 @@ export async function visibleOwnerIds(): Promise<string[] | null> {
       .from("org_members").select("id,salesforce_user_id").eq("id", previewing).maybeSingle();
     me = data as unknown as Me | null;
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthedUser();
     if (!user) return [];
     const { data } = await db
       .from("org_members").select("id,salesforce_user_id").eq("auth_user_id", user.id).maybeSingle();
@@ -431,18 +447,17 @@ export async function requirePermission(key: Permission) {
  * to them. Honours preview, so previewing a person shows their training.
  */
 /** Whose roles the app is answering as: the previewed person, or the signed-in one. */
-export async function currentMemberId(): Promise<string | null> {
+export const currentMemberId = cache(async (): Promise<string | null> => {
   const previewing = await previewedMemberId();
   if (previewing) return previewing;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   if (!user) return null;
 
   const { data } = await createServiceClient()
     .from("org_members").select("id").eq("auth_user_id", user.id).maybeSingle();
   return (data as { id: string } | null)?.id ?? null;
-}
+});
 
 /**
  * The job title to show against someone's name, taken from the roles defined in
@@ -454,7 +469,7 @@ export async function currentMemberId(): Promise<string | null> {
  * either. Split roles are both shown, since someone who is 60% OBDM and 40%
  * OSDR is genuinely both.
  */
-export async function myRoleLabel(): Promise<string | null> {
+export const myRoleLabel = cache(async (): Promise<string | null> => {
   const memberId = await currentMemberId();
   if (!memberId) return null;
 
@@ -468,7 +483,7 @@ export async function myRoleLabel(): Promise<string | null> {
     .map((r) => r.name);
 
   return [...new Set(names)].sort().join(" · ") || null;
-}
+});
 
 export async function myRoleIds(): Promise<string[]> {
   const db = createServiceClient();

@@ -160,19 +160,31 @@ export default async function DashboardLayout({
   // Role preview is honoured on the *real* rights, not on profiles.role -- that
   // column no longer decides anything, so someone granted org.manage in Settings
   // could set the cookie and then have it quietly ignored here.
-  const cookieStore = await cookies();
-  const realPerms = await myRealPermissions();
+  /*
+   * Asked together rather than one after another.
+   *
+   * None of these needs any of the others -- they were sequential only because
+   * that is how they were written, and the page could not start rendering
+   * until the last one came back. They share the same cached reads underneath,
+   * so asking at once costs one round trip rather than five.
+   */
+  const [cookieStore, realPerms, previewing, perms, roleLabel, collectionsVisibility] =
+    await Promise.all([
+      cookies(),
+      myRealPermissions(),
+      // Previewing a person changes who the app answers as; the identity block
+      // and the banner have to say so or it looks like the app is misbehaving.
+      previewedMember(),
+      myPermissions(),
+      myRoleLabel(),
+      // The same test the page itself applies, so the link never leads to a
+      // redirect.
+      getCollectionsVisibility(),
+    ]);
+
   const previewRole = realPerms.has("org.manage")
     ? (cookieStore.get("preview_role")?.value ?? null)
     : null;
-
-  // Previewing a person changes who the app answers as; the identity block and
-  // the banner have to say so or it looks like the app is just misbehaving.
-  const previewing = await previewedMember();
-  const perms = await myPermissions();
-  const roleLabel = await myRoleLabel();
-  // The same test the page itself applies, so the link never leads to a redirect.
-  const collectionsVisibility = await getCollectionsVisibility();
   const navGroups = getNavGroups(
     perms as Set<string>,
     collectionsVisibility.can_see_all || collectionsVisibility.attached
