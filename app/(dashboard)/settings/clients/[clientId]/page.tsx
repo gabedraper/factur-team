@@ -9,6 +9,8 @@ import { NpsPanel } from "@/components/clients/NpsPanel";
 import { listNps } from "@/actions/nps";
 import { ContactsPanel } from "@/components/clients/ContactsPanel";
 import { listClientContacts } from "@/actions/client-contacts";
+import { HistoryPanel } from "@/components/clients/HistoryPanel";
+import { clientHistory } from "@/actions/client-history";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +21,13 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
   const detail = await getClientDetail((await params).clientId);
   if (!detail) notFound();
 
-  const [{ members }, { services }, nps, contacts] = await Promise.all([
+  // Named roleHistory, not history: a bare `history` shadows the DOM global of
+  // the same name, and a missing binding then type-checks as Window.history.
+  const [{ members }, { services }, nps, contacts, roleHistory] = await Promise.all([
     listMembers(), listServicesAndTeams(),
     listNps((await params).clientId),
     listClientContacts((await params).clientId),
+    clientHistory((await params).clientId),
   ]);
 
   const people = members
@@ -59,6 +64,15 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
             contacts={contacts}
             canEdit={perms.has("org.manage")}
           />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Who has been on this client
+        </h2>
+        <div className="rounded-md border bg-card p-3">
+          <HistoryPanel spans={roleHistory} />
         </div>
       </section>
 

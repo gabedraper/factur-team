@@ -37,6 +37,19 @@ const SCOPES = {
    * rather than looking broken.
    */
   compose: ["https://www.googleapis.com/auth/gmail.compose"],
+  /*
+   * Who is actually using Chat, which the ingest cannot answer.
+   *
+   * The ingest only keeps messages it could tie to a client, so somebody who
+   * chats all day internally looks identical to somebody who has never opened
+   * it -- both come back as nothing. The domain's own audit log counts every
+   * message regardless of who it was with.
+   *
+   * The one scope here that cannot act as an ordinary member of staff: Google
+   * answers the Reports API only for an account holding admin rights, so this
+   * is used with GOOGLE_ADMIN_SUBJECT rather than whoever is being read.
+   */
+  reports: ["https://www.googleapis.com/auth/admin.reports.audit.readonly"],
 } as const;
 
 export type GoogleService = keyof typeof SCOPES;
