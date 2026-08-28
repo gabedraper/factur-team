@@ -215,6 +215,7 @@ export function Board({
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <Bucket label="Current" amount={r.bucket_current} tone={AGEING_TONE.current} />
                 <Bucket label="1 – 30" amount={r.bucket_1_30} tone={AGEING_TONE.b1_30} />
                 <Bucket label="31 – 60" amount={r.bucket_31_60} tone={AGEING_TONE.b31_60} />
                 <Bucket label="61 – 90" amount={r.bucket_61_90} tone={AGEING_TONE.b61_90} />
