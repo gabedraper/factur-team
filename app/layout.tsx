@@ -1,9 +1,26 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Montserrat } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-body" });
+
+/*
+ * Montserrat is Factur's typeface for internal material -- the brand guide
+ * names Sweet Sans Pro first but says to use Montserrat wherever that licence
+ * does not reach, which is here.
+ *
+ * Headings only, though. Montserrat is a geometric face with wide, even
+ * letterforms: handsome on a title, and costly across a table of forty rows,
+ * where it takes more width per figure and reads less cleanly at 13px than
+ * Inter does. So the brand voice sits on the headings and the data keeps the
+ * face built for it.
+ */
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-heading",
+});
 
 export const metadata: Metadata = {
   title: "Factur Team",
@@ -29,7 +46,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={theme === "dark" ? "dark" : undefined} suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${montserrat.variable}`}>
         {/* Only for a first visit, where there is no cookie yet: follow the
             operating system's setting rather than assuming light. Once anyone
             chooses, the cookie decides and this does nothing. */}

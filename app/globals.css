@@ -5,21 +5,36 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 173 100% 2%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    /* Factur blue #323CD0. Blue rather than orange carries the interactive
+       weight: it covers buttons, links and every focus ring, and orange at
+       that volume is exhausting in a screen you sit in front of all day. */
+    --primary: 236 63% 51%;
+    --primary-foreground: 0 0% 100%;
+    /* Factur orange #F16723, spent deliberately rather than by default --
+       the active page, a figure worth looking at. It stops meaning
+       "important" the moment it is everywhere. */
+    --brand: 20 88% 54%;
+    --brand-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 0 0% 36%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
+    /* Status had no tokens at all, so every warning and every success was
+       hand-mixed at the call site -- 601 hardcoded colour classes, and a
+       dark-mode pair typed out by hand each time. */
+    --success: 142 71% 33%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 42%;
+    --warning-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --field: 0 0% 100%;
@@ -29,7 +44,7 @@
        what made dropdowns invisible against their own panel. */
     --elevated: 210 40% 98%;
     --field-border: 214.3 31.8% 85%;
-    --ring: 221.2 83.2% 53.3%;
+    --ring: 236 63% 51%;
     --radius: 0.5rem;
   }
 
@@ -40,16 +55,24 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Lifted, not the same blue. #323CD0 on a dark ground is too close to
+       the background to read as a control. */
+    --primary: 236 72% 68%;
+    --primary-foreground: 236 60% 12%;
+    --brand: 20 90% 61%;
+    --brand-foreground: 20 90% 10%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 62% 45%;
+    --success-foreground: 142 60% 10%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 38 90% 10%;
     --border: 217.2 32.6% 20%;
     --input: 217.2 32.6% 20%;
     /* Field fill. Left as the page colour by default in this palette, which put
@@ -57,7 +80,28 @@
     --field: 217.2 32.6% 24%;
     --elevated: 217.2 32.6% 17.5%;
     --field-border: 217.2 32.6% 32%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 236 72% 68%;
+  }
+}
+
+/*
+ * A surface that stays light whatever the theme is.
+ *
+ * The sign-in circle is white on purpose, in both themes -- it is the brand
+ * mark, not a card. But the dark theme's tokens were still in force inside it,
+ * so the primary button rendered in the lifted blue meant for a dark ground
+ * and sat on white as a washed-out lavender. This restates the few tokens that
+ * decide contrast, for anything deliberately pinned to a light surface.
+ */
+@layer base {
+  .on-light {
+    --foreground: 173 100% 2%;
+    --muted-foreground: 0 0% 36%;
+    --primary: 236 63% 51%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --ring: 236 63% 51%;
   }
 }
 
@@ -67,6 +111,12 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* The brand face on headings, applied once here rather than asked of every
+     page -- a rule nobody has to remember cannot be forgotten. Tables and
+     body copy stay on Inter, which is built for figures at small sizes. */
+  h1, h2, h3 {
+    @apply font-heading tracking-tight;
   }
 }
 
