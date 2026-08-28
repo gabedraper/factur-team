@@ -79,6 +79,37 @@ mirrors `lib/scoreboard/allowed-domains.ts` in the app. **Change both together.*
 - `handle_new_user()` also links the account to its `reps` row. Both jobs share
   one trigger because both apps wanted the name `on_auth_user_created`.
 
+## Migrating from Loxo
+
+Two scripts. `scripts/loxo-probe.mjs` reads and reports and writes nothing;
+`scripts/import-loxo.mjs` does the move. Credentials live in `.env.local` as
+`LOXO_API_KEY` and `LOXO_AGENCY_SLUG`.
+
+```bash
+./scripts/resume-loxo.sh          # continue where it left off
+./scripts/resume-loxo.sh --resumes  # afterwards: pull the CV files
+```
+
+Safe to run repeatedly. Every row carries `external_source='loxo'` and its Loxo
+id, every write is an upsert on that pair, and people already imported are
+skipped -- so a restart continues rather than redoing. `--refresh` forces a
+re-read of everything, which is what you want after changing a mapping.
+
+**Loxo throttles hard**, and that is the ceiling: roughly seventy people a
+minute however the requests are arranged. Sixteen workers produced a rate-limit
+response on forty-seven of forty-eight people. Do not raise `--concurrency`
+expecting it to help.
+
+Two things cannot be migrated, both checked against the live account rather
+than assumed:
+
+- **Email and SMS templates.** No API endpoint exists.
+- **Campaign subject lines and bodies.** `/campaigns` and `/campaigns/{id}`
+  return counts only.
+
+Both have to be re-entered by hand. Settings -> Talent -> Templates has a bulk
+paste box that takes `name / Subject: / body` blocks separated by `---`.
+
 ## Database
 
 Migrations live in `supabase/migrations/` and target `ripnymdxplmoflpwmqwl`.

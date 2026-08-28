@@ -71,7 +71,7 @@ const LIMIT = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?
  * every record to be re-read, which is what you want after a mapping change.
  */
 const REFRESH = args.includes("--refresh");
-const CONCURRENCY = Number(args.find((a) => a.startsWith("--concurrency="))?.split("=")[1] ?? 6);
+const CONCURRENCY = Number(args.find((a) => a.startsWith("--concurrency="))?.split("=")[1] ?? 3);
 
 if (!API_KEY || !SLUG) {
   throw new Error(
@@ -607,49 +607,56 @@ async function importPeople() {
       try {
     const { first, last } = splitName(pick(p, "name"), pick(p, "first_name"), pick(p, "last_name"));
 
-      // Inlined when Loxo gives them, fetched when it does not. On a large
-      // database that choice is the difference between an afternoon and a day.
-      let emails = p.emails ?? p.email_addresses;
-      let phones = p.phones ?? p.phone_numbers;
-      if (!emails) emails = listOf(await optional(`/people/${p.id}/emails`));
-      if (!phones) phones = listOf(await optional(`/people/${p.id}/phones`));
+      /*
+       * One request for the whole person.
+       *
+       * /people/{id} returns job_profiles, education_profiles, emails, phones
+       * and resumes inline, where asking for each separately was three or four
+       * round trips. That matters more than it looks: Loxo throttles hard --
+       * sixteen workers on the old shape produced a rate-limit response on
+       * forty-seven of forty-eight people -- so the ceiling is requests per
+       * second, and the only real lever is asking fewer times.
+       */
+      const full = (await optional(`/people/${p.id}`)) ?? p;
+      const emails = full.emails ?? p.emails ?? [];
+      const phones = full.phones ?? p.phones ?? [];
 
-      const companyId = pick(p, "company.id", "company_id");
+      const companyId = pick(full, "company.id", "company_id");
 
       const personId = await put("tal_people", {
         external_id: String(p.id),
         first_name: first,
         last_name: last,
-        title: pick(p, "current_title", "title", "job_title"),
+        title: pick(full, "current_title", "title", "job_title"),
         company_id: companyId ? companies.get(String(companyId)) ?? null : null,
-        company_name: nameOf(pick(p, "current_company", "company", "employer")),
+        company_name: nameOf(pick(full, "current_company", "company", "employer")),
         emails: contacts(emails, ["value", "email", "address"], ["email_type", "type"]),
         phones: contacts(phones, ["value", "phone", "number"], ["phone_type", "type"]),
-        linkedin_url: pick(p, "linkedin_url", "linkedin"),
-        personal_website: pick(p, "website", "blog_url"),
-        city: pick(p, "city", "location.city"),
-        state: pick(p, "state", "location.state"),
-        country: pick(p, "country"),
+        linkedin_url: pick(full, "linkedin_url", "linkedin"),
+        personal_website: pick(full, "website", "blog_url"),
+        city: pick(full, "city", "location.city"),
+        state: pick(full, "state", "location.state"),
+        country: pick(full, "country"),
         // Loxo returns person_types as an array of {id,name}; ours is text[].
-        person_types: (listOf(p.person_types).map((t) => nameOf(t)).filter(Boolean)
+        person_types: (listOf(full.person_types).map((t) => nameOf(t)).filter(Boolean)
           .map((t) => String(t).toLowerCase())).length
-          ? listOf(p.person_types).map((t) => String(nameOf(t) ?? "").toLowerCase()).filter(Boolean)
+          ? listOf(full.person_types).map((t) => String(nameOf(t) ?? "").toLowerCase()).filter(Boolean)
           : ["candidate"],
-        skills: listOf(pick(p, "skillsets", "skills")).map((s) => nameOf(s) ?? s).filter(Boolean),
+        skills: listOf(pick(full, "skillsets", "skills")).map((s) => nameOf(s) ?? s).filter(Boolean),
         /*
          * Loxo calls this `description` and its users call it the intake note.
          * It is the single most valuable free-text field in the system and the
          * one a recruiter would most notice missing.
          */
-        summary: pick(p, "description", "blurb", "summary", "notes"),
+        summary: pick(full, "description", "blurb", "summary", "notes"),
         // Loxo sends money as strings.
-        current_salary: Number(pick(p, "current_compensation", "salary")) || null,
-        salary_expectation: Number(pick(p, "compensation", "desired_compensation")) || null,
-        compensation_notes: pick(p, "compensation_notes"),
+        current_salary: Number(pick(full, "current_compensation", "salary")) || null,
+        salary_expectation: Number(pick(full, "compensation", "desired_compensation")) || null,
+        compensation_notes: pick(full, "compensation_notes"),
         source: "import",
-        source_detail: `Loxo — ${nameOf(pick(p, "source_type")) ?? "migrated"}`,
-        do_not_contact: !!pick(p, "do_not_contact", "blocked", "opted_out"),
-        created_at: isoStamp(pick(p, "created_at")) ?? undefined,
+        source_detail: `Loxo — ${nameOf(pick(full, "source_type")) ?? "migrated"}`,
+        do_not_contact: !!pick(full, "do_not_contact", "blocked", "opted_out"),
+        created_at: isoStamp(pick(full, "created_at")) ?? undefined,
       });
 
       /*
@@ -713,8 +720,7 @@ async function importPeople() {
   console.log(`  ${report.people} people`);
 }
 
-async function importResumes(loxoPersonId, personId) {
-  const resumes = listOf(await optional(`/people/${loxoPersonId}/resumes`));
+async function importResumes(personId, resumes) {
   for (const r of resumes) {
     const url = pick(r, "download_url", "url", "file_url", "s3_url");
     const name = pick(r, "name", "filename", "file_name") ?? "Resume";
@@ -748,7 +754,7 @@ async function importResumes(loxoPersonId, personId) {
       });
       report.documents++;
     } catch (e) {
-      report.errors.push(`resume for person ${loxoPersonId}: ${e.message}`);
+      report.errors.push(`resume ${r.id}: ${e.message}`);
     }
   }
 }
