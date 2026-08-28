@@ -351,15 +351,30 @@ function splitConcatenatedSalary(raw) {
   if (!Number.isFinite(n) || n < 1_000_000) return { salary: n || null, range: null };
 
   const digits = String(Math.trunc(n));
-  if (digits.length % 2 !== 0) return { salary: n, range: null };
-
-  const half = digits.length / 2;
-  const low = Number(digits.slice(0, half));
-  const high = Number(digits.slice(half));
-
   const plausible = (v) => v >= 1_000 && v <= 1_000_000;
-  if (!plausible(low) || !plausible(high) || low > high) return { salary: n, range: null };
 
+  /*
+   * The split is not always down the middle: "3500075000" is 35000/75000 but
+   * "40000140000" is 40000/140000, five digits against six. Every split point
+   * is tried and the one that yields two plausible salaries in ascending order
+   * wins; a leading zero on the second half rules a split out, since no salary
+   * is written that way. If more than one split works, the most balanced is
+   * taken -- and if none does, the number is left alone.
+   */
+  const candidates = [];
+  for (let i = 4; i <= digits.length - 4; i++) {
+    const lowText = digits.slice(0, i);
+    const highText = digits.slice(i);
+    if (highText.startsWith("0")) continue;
+    const low = Number(lowText);
+    const high = Number(highText);
+    if (!plausible(low) || !plausible(high) || low > high) continue;
+    candidates.push({ low, high, skew: Math.abs(lowText.length - highText.length) });
+  }
+  if (!candidates.length) return { salary: n, range: null };
+
+  candidates.sort((a, b) => a.skew - b.skew);
+  const { low, high } = candidates[0];
   return { salary: low, range: `${low}-${high}` };
 }
 
