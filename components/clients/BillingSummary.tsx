@@ -77,7 +77,11 @@ export function BillingSummary({ summary }: { summary: Summary }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-        <Tile label="Current" value={money.format(summary.bucket_current)} />
+        <Tile
+          label="Current"
+          value={money.format(summary.bucket_current)}
+          tone={overdue(summary.bucket_current, AGEING_TONE.current)}
+        />
         {buckets.map((b) => (
           <Tile
             key={b.label}

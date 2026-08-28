@@ -10,7 +10,8 @@
  * and the 61-90 column shouted louder than the 91-and-over one beside it.
  */
 export const AGEING_TONE = {
-  current: "text-muted-foreground",
+  // Not late, and worth saying so: green reads as money behaving itself.
+  current: "text-emerald-600 dark:text-emerald-400",
   b1_30: "text-yellow-600 dark:text-yellow-300",
   b31_60: "text-orange-600 dark:text-orange-400",
   b61_90: "text-red-500 dark:text-red-300",
