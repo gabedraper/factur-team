@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Send, Ticket, X, SquarePen, History } from "lucide-react";
 import {
-  nudgeState, recordNudge, recordAnswered,
+  nudgeState, recordNudge, recordAnswered, hasUpdates,
   openingState, recentSessions, openSession, closeSession,
 } from "@/actions/gaib";
 
@@ -62,8 +62,18 @@ export function GaibWidget() {
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
+  /*
+   * The dot means one of two things: something to tell you, or something to ask
+   * you. Deliberately the same dot -- a person does not need two kinds of
+   * notification on one button, and news is the more common of the two once
+   * anybody has reported anything.
+   */
   useEffect(() => {
-    nudgeState().then((s) => setAsking(s.ask ? s.opener : null));
+    void (async () => {
+      if (await hasUpdates()) return setAsking("news");
+      const s = await nudgeState();
+      setAsking(s.ask ? s.opener : null);
+    })();
   }, []);
 
   useEffect(() => {
@@ -170,14 +180,27 @@ export function GaibWidget() {
     void (async () => {
       const state = await openingState();
 
+      // News first. Somebody owed an answer about a thing they reported gets it
+      // before anything else in the panel, including the conversation it came
+      // from -- which is below it, where it still reads in order.
+      const news: Line[] = state.updates.map((text) => ({
+        kind: "said" as const, who: "gaib" as const, text,
+      }));
+
       if (state.session) {
         setSessionId(state.session.id);
         setTitle(state.session.title);
-        setLines(state.session.lines);
+        setLines([...state.session.lines, ...news]);
         setAsking(null);
         // They were mid-conversation, so they have already answered as far as
         // the nudge counting is concerned.
         setAnswered(true);
+        return;
+      }
+
+      if (news.length) {
+        setLines(news);
+        setAsking(null);
         return;
       }
 

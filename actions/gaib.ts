@@ -7,6 +7,7 @@ import { myPermissions } from "@/lib/org";
 import { NUDGE_OPENERS } from "@/lib/gaib/prompt";
 import { dispatchAgent } from "@/lib/gaib/dispatch";
 import { logEvent } from "@/lib/gaib/tickets";
+import { phrase, type Notice } from "@/lib/gaib/notices";
 
 /*
  * How often Gaib is allowed to start a conversation.
@@ -187,12 +188,88 @@ async function replay(sessionId: string): Promise<ReplayLine[]> {
  * are one indexed lookup -- two server actions firing on every page load, for
  * every person, to draw one button is a cost nobody would choose deliberately.
  */
+/**
+ * Updates this person is owed, phrased and marked as told.
+ *
+ * Marked delivered at the moment they are handed over rather than when anybody
+ * confirms reading them. The alternative is a queue that never empties for
+ * somebody who opens the panel and closes it again, and being told the same
+ * news on every visit is its own kind of not being told.
+ */
+async function collectUpdates(userId: string): Promise<string[]> {
+  const db = createServiceClient();
+
+  const { data } = await db
+    .from("gaib_ticket_notices")
+    .select("id,to_status,note,gaib_tickets(ref,title,kind)")
+    .eq("user_id", userId)
+    .is("delivered_at", null)
+    .order("created_at", { ascending: true })
+    .limit(5);
+
+  // The embedded ticket comes back as an array even on a to-one relation, which
+  // is PostgREST being consistent rather than helpful.
+  type Row = {
+    id: string; to_status: string; note: string | null;
+    gaib_tickets: { ref: number; title: string; kind: "bug" | "idea" }[] | null;
+  };
+
+  const rows = (data ?? []) as unknown as Row[];
+  if (!rows.length) return [];
+
+  const lines: string[] = [];
+  for (const r of rows) {
+    const ticket = r.gaib_tickets?.[0];
+    if (!ticket) continue;
+    const notice: Notice = {
+      id: r.id,
+      ref: ticket.ref,
+      title: ticket.title,
+      kind: ticket.kind,
+      toStatus: r.to_status,
+      note: r.note,
+    };
+    lines.push(phrase(notice));
+  }
+
+  await db
+    .from("gaib_ticket_notices")
+    .update({ delivered_at: new Date().toISOString() })
+    .in("id", rows.map((r) => r.id));
+
+  return lines;
+}
+
+/** Whether there is anything waiting, for the dot on the button. */
+export async function hasUpdates(): Promise<boolean> {
+  const user = await getAuthedUser();
+  if (!user) return false;
+  const db = createServiceClient();
+  const { count } = await db
+    .from("gaib_ticket_notices")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .is("delivered_at", null);
+  return (count ?? 0) > 0;
+}
+
 export async function openingState(): Promise<{
   nudge: NudgeState;
   session: ResumedSession | null;
+  updates: string[];
 }> {
   const user = await getAuthedUser();
-  if (!user) return { nudge: { ask: false, opener: null }, session: null };
+  if (!user) return { nudge: { ask: false, opener: null }, session: null, updates: [] };
+
+  /*
+   * News first, and it outranks everything.
+   *
+   * Somebody who is owed an answer about a thing they reported should get it
+   * before they are asked how their week is going. Being asked for more
+   * feedback while still waiting on the last lot is the fastest way to teach
+   * people that reporting things is a one-way street.
+   */
+  const updates = await collectUpdates(user.id);
 
   const db = createServiceClient();
   const { data } = await db
@@ -205,20 +282,25 @@ export async function openingState(): Promise<{
     .maybeSingle();
 
   const row = data as { id: string; title: string | null } | null;
-  const nudge = await nudgeState();
-  if (!row) return { nudge, session: null };
+  // No point asking for feedback in the same breath as delivering some.
+  const nudge = updates.length ? { ask: false, opener: null } : await nudgeState();
+  if (!row) return { nudge, session: null, updates };
 
   const lines = await replay(row.id);
   // A session with nothing in it is one somebody opened and closed. Resuming it
   // shows an empty panel that claims to be a conversation.
-  if (!lines.length) return { nudge, session: null };
+  if (!lines.length) return { nudge, session: null, updates };
 
   /*
    * Never both. Somebody returning to a conversation they were in the middle of
    * should not also be greeted with "what's annoying you today?" -- they were
    * already telling us.
    */
-  return { nudge: { ask: false, opener: null }, session: { id: row.id, title: row.title, lines } };
+  return {
+    nudge: { ask: false, opener: null },
+    session: { id: row.id, title: row.title, lines },
+    updates,
+  };
 }
 
 /** Recent conversations, for the list behind the header. */
