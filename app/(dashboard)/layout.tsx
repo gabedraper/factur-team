@@ -25,6 +25,7 @@ import {
   Zap,
   CalendarClock,
   HeartPulse,
+  History,
   Gauge,
   MailWarning,
   Home,
@@ -91,6 +92,7 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     const clients: NavItem[] = [];
     if (perms.has("clients.health")) {
       clients.push({ href: "/clients/health", label: "Client Health", icon: <HeartPulse className="h-4 w-4" /> });
+      clients.push({ href: "/clients/results", label: "Client Results", icon: <History className="h-4 w-4" /> });
       clients.push({ href: "/clients/nps", label: "NPS", icon: <Gauge className="h-4 w-4" /> });
     }
     if (collections) {
