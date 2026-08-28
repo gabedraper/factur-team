@@ -331,6 +331,38 @@ function contacts(list, valueKeys, typeKeys) {
     .filter(Boolean);
 }
 
+/**
+ * Loxo salaries that are two numbers stuck together.
+ *
+ * Thirty-two of Factur's eighty-four placements carry a figure like
+ * "3500075000.0", which is 35000 and 75000 -- a salary *range* concatenated
+ * rather than stored as two fields. Imported literally they are salaries of
+ * three and a half billion dollars, and they poison every average, every fee
+ * calculation and every report that touches money.
+ *
+ * The lower bound is taken, because it is the defensible reading and the one
+ * that cannot overstate anything, and the original range is written to the
+ * record's notes so nothing is lost and the guess is auditable. A number that
+ * does not split into two plausible salaries is left exactly as it is -- this
+ * only rewrites what it can explain.
+ */
+function splitConcatenatedSalary(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1_000_000) return { salary: n || null, range: null };
+
+  const digits = String(Math.trunc(n));
+  if (digits.length % 2 !== 0) return { salary: n, range: null };
+
+  const half = digits.length / 2;
+  const low = Number(digits.slice(0, half));
+  const high = Number(digits.slice(half));
+
+  const plausible = (v) => v >= 1_000 && v <= 1_000_000;
+  if (!plausible(low) || !plausible(high) || low > high) return { salary: n, range: null };
+
+  return { salary: low, range: `${low}-${high}` };
+}
+
 const isoDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
@@ -939,11 +971,14 @@ async function importPlacements() {
   const jobs = await existingMap("tal_jobs");
   const people = await existingMap("tal_people");
   const companies = await existingMap("tal_companies");
+  let suspect = 0;
 
   for await (const pl of walk("/placements")) {
     const jobId = jobs.get(String(pick(pl, "job.id", "job_id") ?? ""));
     const personId = people.get(String(pick(pl, "person.id", "person_id") ?? ""));
     if (!jobId || !personId) continue;
+
+    const money = splitConcatenatedSalary(pick(pl, "salary"));
 
     await put("tal_placements", {
       external_id: String(pl.id),
@@ -953,17 +988,25 @@ async function importPlacements() {
       title: pick(pl, "job.title", "title"),
       started_on: isoDate(pick(pl, "start_date")),
       ended_on: isoDate(pick(pl, "end_date")),
-      // Money comes back as strings on this endpoint.
-      salary: Number(pick(pl, "salary")) || null,
+      salary: money.salary,
       fee_amount: Number(pick(pl, "fee")) || null,
       fee_type: /percent/i.test(String(nameOf(pick(pl, "fee_type")) ?? "")) ? "percentage" : "flat",
       bill_rate: Number(pick(pl, "bill_rate")) || null,
       pay_rate: Number(pick(pl, "pay_rate")) || null,
       status: pick(pl, "end_date") ? "completed" : "active",
-      notes: pick(pl, "notes"),
+      notes: [pick(pl, "notes"), money.range ? `Loxo salary range: ${money.range}` : null]
+        .filter(Boolean).join("\n") || null,
       created_at: isoStamp(pick(pl, "created_at")) ?? undefined,
     });
+    if (money.range) suspect++;
     report.placements++;
+  }
+  if (suspect) {
+    report.notes.push(
+      `${suspect} placement salaries in Loxo are two numbers concatenated (a range like ` +
+      `"3500075000" meaning 35000-75000). The lower bound was taken and the original range ` +
+      "written to the placement's notes. Worth fixing at the source."
+    );
   }
   console.log(`  ${report.placements} placements`);
 }
