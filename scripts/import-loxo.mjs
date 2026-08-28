@@ -64,6 +64,14 @@ const DRY = args.includes("--dry-run");
 const WITH_RESUMES = args.includes("--resumes");
 const ONLY = args.find((a) => a.startsWith("--only="))?.split("=")[1] ?? null;
 const LIMIT = Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1] ?? 0) || null;
+/*
+ * A re-run is normally a resume, so people already carrying a Loxo id are
+ * skipped by default -- re-walking eighteen thousand profiles to rewrite them
+ * identically is most of the runtime and none of the value. --refresh forces
+ * every record to be re-read, which is what you want after a mapping change.
+ */
+const REFRESH = args.includes("--refresh");
+const CONCURRENCY = Number(args.find((a) => a.startsWith("--concurrency="))?.split("=")[1] ?? 6);
 
 if (!API_KEY || !SLUG) {
   throw new Error(
@@ -95,6 +103,50 @@ const report = {
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Runs `fn` over a list, `limit` at a time.
+ *
+ * Each person costs two extra requests for their work history and education,
+ * and done strictly one at a time that is the whole runtime -- the script
+ * spends it waiting on Loxo rather than doing anything. Six at once is well
+ * inside their rate limiter and turns hours into minutes; the 429 handler in
+ * get() is what catches it if that ever stops being true.
+ */
+async function inParallel(items, limit, fn) {
+  const queue = [...items];
+  const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
+    for (;;) {
+      const item = queue.shift();
+      if (item === undefined) return;
+      await fn(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
+/** Buffers rows and upserts them in blocks rather than one request each. */
+function batcher(table, size = 250) {
+  let buffer = [];
+  const flush = async () => {
+    if (!buffer.length || DRY) { buffer = []; return 0; }
+    const rows = buffer;
+    buffer = [];
+    const { error } = await db
+      .from(table)
+      .upsert(rows.map((r) => ({ ...r, external_source: SOURCE })),
+              { onConflict: "external_source,external_id" });
+    if (error) throw new Error(`${table}: ${error.message}`);
+    return rows.length;
+  };
+  return {
+    async add(row) {
+      buffer.push(row);
+      return buffer.length >= size ? flush() : 0;
+    },
+    flush,
+  };
+}
 
 // Filled by the config stage and read by everything after it.
 const stageIdByLoxoId = new Map();   // loxo workflow_stage id -> our stage id
@@ -536,99 +588,128 @@ async function importCompanies() {
 async function importPeople() {
   console.log("\nPeople");
   const companies = await existingMap("tal_companies");
+  const already = REFRESH ? new Map() : await existingMap("tal_people");
+  if (already.size) console.log(`  ${already.size} already here — skipping (use --refresh to redo)`);
 
-  for await (const p of walk("/people")) {
+  /*
+   * Buffered a page at a time and then worked in parallel. The generator stays
+   * sequential because Loxo's scroll cursor has to be followed in order; only
+   * the per-person work fans out.
+   */
+  let batch = [];
+  let skipped = 0;
+
+  const flush = async () => {
+    if (!batch.length) return;
+    const work = batch;
+    batch = [];
+    await inParallel(work, CONCURRENCY, async (p) => {
+      try {
     const { first, last } = splitName(pick(p, "name"), pick(p, "first_name"), pick(p, "last_name"));
 
-    // Inlined when Loxo gives them, fetched when it does not. On a large
-    // database that choice is the difference between an afternoon and a day.
-    let emails = p.emails ?? p.email_addresses;
-    let phones = p.phones ?? p.phone_numbers;
-    if (!emails) emails = listOf(await optional(`/people/${p.id}/emails`));
-    if (!phones) phones = listOf(await optional(`/people/${p.id}/phones`));
+      // Inlined when Loxo gives them, fetched when it does not. On a large
+      // database that choice is the difference between an afternoon and a day.
+      let emails = p.emails ?? p.email_addresses;
+      let phones = p.phones ?? p.phone_numbers;
+      if (!emails) emails = listOf(await optional(`/people/${p.id}/emails`));
+      if (!phones) phones = listOf(await optional(`/people/${p.id}/phones`));
 
-    const companyId = pick(p, "company.id", "company_id");
+      const companyId = pick(p, "company.id", "company_id");
 
-    const personId = await put("tal_people", {
-      external_id: String(p.id),
-      first_name: first,
-      last_name: last,
-      title: pick(p, "current_title", "title", "job_title"),
-      company_id: companyId ? companies.get(String(companyId)) ?? null : null,
-      company_name: nameOf(pick(p, "current_company", "company", "employer")),
-      emails: contacts(emails, ["value", "email", "address"], ["email_type", "type"]),
-      phones: contacts(phones, ["value", "phone", "number"], ["phone_type", "type"]),
-      linkedin_url: pick(p, "linkedin_url", "linkedin"),
-      personal_website: pick(p, "website", "blog_url"),
-      city: pick(p, "city", "location.city"),
-      state: pick(p, "state", "location.state"),
-      country: pick(p, "country"),
-      // Loxo returns person_types as an array of {id,name}; ours is text[].
-      person_types: (listOf(p.person_types).map((t) => nameOf(t)).filter(Boolean)
-        .map((t) => String(t).toLowerCase())).length
-        ? listOf(p.person_types).map((t) => String(nameOf(t) ?? "").toLowerCase()).filter(Boolean)
-        : ["candidate"],
-      skills: listOf(pick(p, "skillsets", "skills")).map((s) => nameOf(s) ?? s).filter(Boolean),
+      const personId = await put("tal_people", {
+        external_id: String(p.id),
+        first_name: first,
+        last_name: last,
+        title: pick(p, "current_title", "title", "job_title"),
+        company_id: companyId ? companies.get(String(companyId)) ?? null : null,
+        company_name: nameOf(pick(p, "current_company", "company", "employer")),
+        emails: contacts(emails, ["value", "email", "address"], ["email_type", "type"]),
+        phones: contacts(phones, ["value", "phone", "number"], ["phone_type", "type"]),
+        linkedin_url: pick(p, "linkedin_url", "linkedin"),
+        personal_website: pick(p, "website", "blog_url"),
+        city: pick(p, "city", "location.city"),
+        state: pick(p, "state", "location.state"),
+        country: pick(p, "country"),
+        // Loxo returns person_types as an array of {id,name}; ours is text[].
+        person_types: (listOf(p.person_types).map((t) => nameOf(t)).filter(Boolean)
+          .map((t) => String(t).toLowerCase())).length
+          ? listOf(p.person_types).map((t) => String(nameOf(t) ?? "").toLowerCase()).filter(Boolean)
+          : ["candidate"],
+        skills: listOf(pick(p, "skillsets", "skills")).map((s) => nameOf(s) ?? s).filter(Boolean),
+        /*
+         * Loxo calls this `description` and its users call it the intake note.
+         * It is the single most valuable free-text field in the system and the
+         * one a recruiter would most notice missing.
+         */
+        summary: pick(p, "description", "blurb", "summary", "notes"),
+        // Loxo sends money as strings.
+        current_salary: Number(pick(p, "current_compensation", "salary")) || null,
+        salary_expectation: Number(pick(p, "compensation", "desired_compensation")) || null,
+        compensation_notes: pick(p, "compensation_notes"),
+        source: "import",
+        source_detail: `Loxo — ${nameOf(pick(p, "source_type")) ?? "migrated"}`,
+        do_not_contact: !!pick(p, "do_not_contact", "blocked", "opted_out"),
+        created_at: isoStamp(pick(p, "created_at")) ?? undefined,
+      });
+
       /*
-       * Loxo calls this `description` and its users call it the intake note.
-       * It is the single most valuable free-text field in the system and the
-       * one a recruiter would most notice missing.
+       * Loxo dates these by month and year rather than a date, so a role that ran
+       * "2019 - 2022" has no day in it. Rebuilt as the first of the month, which
+       * is the only honest reading -- inventing a day would look like precision
+       * that was never there.
        */
-      summary: pick(p, "description", "blurb", "summary", "notes"),
-      // Loxo sends money as strings.
-      current_salary: Number(pick(p, "current_compensation", "salary")) || null,
-      salary_expectation: Number(pick(p, "compensation", "desired_compensation")) || null,
-      compensation_notes: pick(p, "compensation_notes"),
-      source: "import",
-      source_detail: `Loxo — ${nameOf(pick(p, "source_type")) ?? "migrated"}`,
-      do_not_contact: !!pick(p, "do_not_contact", "blocked", "opted_out"),
-      created_at: isoStamp(pick(p, "created_at")) ?? undefined,
+      const ym = (month, year) =>
+        year ? `${year}-${String(month || 1).padStart(2, "0")}-01` : null;
+
+      for (const [scoped, table, map] of [
+        ["job_profiles", "tal_person_jobs", (j, i) => ({
+          person_id: personId,
+          company_name: nameOf(pick(j, "company", "company_name")),
+          title: pick(j, "title", "position"),
+          description: pick(j, "description", "summary"),
+          started_on: ym(j.month, j.year),
+          ended_on: ym(j.end_month, j.end_year),
+          is_current: !j.end_year,
+          position: i,
+        })],
+        ["education_profiles", "tal_person_educations", (e, i) => ({
+          person_id: personId,
+          school: nameOf(pick(e, "school", "institution")),
+          degree: nameOf(pick(e, "degree")) ?? nameOf(pick(e, "education_type")),
+          field_of_study: pick(e, "field_of_study", "major", "description"),
+          started_on: ym(e.month, e.year),
+          ended_on: ym(e.end_month, e.end_year),
+          position: i,
+        })],
+      ]) {
+        const rows = listOf(await optional(`/people/${p.id}/${scoped}`));
+        if (!rows.length || DRY) continue;
+        // Replaced wholesale: no stable id to upsert against, and a re-run must
+        // not stack three copies of the same job history.
+        await db.from(table).delete().eq("person_id", personId);
+        await db.from(table).insert(rows.map(map));
+      }
+
+      if (WITH_RESUMES) await importResumes(p.id, personId);
+
+      report.people++;
+        if (report.people % 250 === 0) {
+          console.log(`  ${report.people}${already.size ? ` (+${already.size} already had)` : ""}…`);
+        }
+      } catch (e) {
+        report.errors.push(`person ${p.id}: ${e instanceof Error ? e.message : e}`);
+      }
     });
+  };
 
-    /*
-     * Loxo dates these by month and year rather than a date, so a role that ran
-     * "2019 - 2022" has no day in it. Rebuilt as the first of the month, which
-     * is the only honest reading -- inventing a day would look like precision
-     * that was never there.
-     */
-    const ym = (month, year) =>
-      year ? `${year}-${String(month || 1).padStart(2, "0")}-01` : null;
-
-    for (const [scoped, table, map] of [
-      ["job_profiles", "tal_person_jobs", (j, i) => ({
-        person_id: personId,
-        company_name: nameOf(pick(j, "company", "company_name")),
-        title: pick(j, "title", "position"),
-        description: pick(j, "description", "summary"),
-        started_on: ym(j.month, j.year),
-        ended_on: ym(j.end_month, j.end_year),
-        is_current: !j.end_year,
-        position: i,
-      })],
-      ["education_profiles", "tal_person_educations", (e, i) => ({
-        person_id: personId,
-        school: nameOf(pick(e, "school", "institution")),
-        degree: nameOf(pick(e, "degree")) ?? nameOf(pick(e, "education_type")),
-        field_of_study: pick(e, "field_of_study", "major", "description"),
-        started_on: ym(e.month, e.year),
-        ended_on: ym(e.end_month, e.end_year),
-        position: i,
-      })],
-    ]) {
-      const rows = listOf(await optional(`/people/${p.id}/${scoped}`));
-      if (!rows.length || DRY) continue;
-      // Replaced wholesale: no stable id to upsert against, and a re-run must
-      // not stack three copies of the same job history.
-      await db.from(table).delete().eq("person_id", personId);
-      await db.from(table).insert(rows.map(map));
-    }
-
-    if (WITH_RESUMES) await importResumes(p.id, personId);
-
-    report.people++;
-    if (report.people % 50 === 0) console.log(`  ${report.people}…`);
-    await sleep(60);
+  for await (const p of walk("/people")) {
+    if (already.has(String(p.id))) { skipped++; continue; }
+    batch.push(p);
+    if (batch.length >= CONCURRENCY * 4) await flush();
   }
+  await flush();
+
+  if (skipped) console.log(`  ${skipped} skipped, already imported`);
   console.log(`  ${report.people} people`);
 }
 
@@ -795,12 +876,23 @@ async function importActivities() {
     for (const t of data ?? []) types.set(t.name.toLowerCase(), t.id);
   }
 
+  /*
+   * Written in blocks rather than one request per event. There are north of a
+   * hundred thousand of these, and a round trip each is the difference between
+   * twenty minutes and two hours -- the previous version spent almost all of
+   * its time waiting on PostgREST rather than on anything useful.
+   */
+  const batch = batcher("tal_activities", 250);
+  let orphaned = 0;
+
   for await (const e of walk("/person_events")) {
     const personId = people.get(String(pick(e, "person.id", "person_id") ?? ""));
-    if (!personId) continue;
+    // An event whose person was not imported has nowhere to live. Counted, not
+    // guessed at -- it usually means the people stage did not finish.
+    if (!personId) { orphaned++; continue; }
 
     const typeName = nameOf(pick(e, "activity_type", "event_type", "type"));
-    await put("tal_activities", {
+    await batch.add({
       external_id: String(e.id),
       person_id: personId,
       job_id: jobs.get(String(pick(e, "job.id", "job_id") ?? "")) ?? null,
@@ -812,8 +904,17 @@ async function importActivities() {
       pinned: !!pick(e, "pinned"),
       occurred_at: isoStamp(pick(e, "created_at", "occurred_at", "date")) ?? new Date().toISOString(),
     });
+
     report.activities++;
-    if (report.activities % 500 === 0) console.log(`  ${report.activities}…`);
+    if (report.activities % 2500 === 0) console.log(`  ${report.activities}…`);
+  }
+  await batch.flush();
+
+  if (orphaned) {
+    report.notes.push(
+      `${orphaned} activity events belong to people who are not imported yet — ` +
+      "finish the people stage and re-run --only=activities."
+    );
   }
   console.log(`  ${report.activities} activities`);
 }
