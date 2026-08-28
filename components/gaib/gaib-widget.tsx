@@ -4,8 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Send, Ticket, X } from "lucide-react";
-import { nudgeState, recordNudge, recordAnswered } from "@/actions/gaib";
+import { MessageCircle, Send, Ticket, X, SquarePen, History } from "lucide-react";
+import {
+  nudgeState, recordNudge, recordAnswered,
+  openingState, recentSessions, openSession, closeSession,
+} from "@/actions/gaib";
 
 type Line =
   | { kind: "said"; who: "you" | "gaib"; text: string }
@@ -51,6 +54,11 @@ export function GaibWidget() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [asking, setAsking] = useState<string | null>(null);
   const [answered, setAnswered] = useState(false);
+  const [title, setTitle] = useState<string | null>(null);
+  const [past, setPast] = useState<{ id: string; title: string | null; at: string }[] | null>(null);
+  // Null until the first open, so a page load costs one small query for the
+  // badge rather than replaying a conversation nobody has asked to see.
+  const [restored, setRestored] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -145,19 +153,70 @@ export function GaibWidget() {
     [sessionId]
   );
 
+  /*
+   * Opening the panel.
+   *
+   * The conversation lives in the database, so the first open asks for it back
+   * rather than starting empty. Everything after that is already in memory --
+   * the flag is what stops a re-open from re-fetching a conversation the person
+   * has been adding to since.
+   */
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (!next || lines.length) return;
+    if (!next || restored) return;
 
-    if (asking) {
-      // Gaib's own opening line is shown straight away rather than round-
-      // tripping for it: the first thing you see on opening should already be
-      // there, and the model has nothing to add to a question it was given.
-      setLines([{ kind: "said", who: "gaib", text: asking }]);
-      void recordNudge();
-      setAsking(null);
-    }
+    setRestored(true);
+    void (async () => {
+      const state = await openingState();
+
+      if (state.session) {
+        setSessionId(state.session.id);
+        setTitle(state.session.title);
+        setLines(state.session.lines);
+        setAsking(null);
+        // They were mid-conversation, so they have already answered as far as
+        // the nudge counting is concerned.
+        setAnswered(true);
+        return;
+      }
+
+      if (state.nudge.ask && state.nudge.opener) {
+        // Gaib's own opening line is shown straight away rather than round-
+        // tripping for it: the first thing you see on opening should already be
+        // there, and the model has nothing to add to a question it was given.
+        setLines([{ kind: "said", who: "gaib", text: state.nudge.opener }]);
+        void recordNudge();
+        setAsking(null);
+      }
+    })();
+  }
+
+  /** Put the current conversation away and start with a blank panel. */
+  function startNew() {
+    if (sessionId) void closeSession(sessionId);
+    setSessionId(null);
+    setTitle(null);
+    setLines([]);
+    setPast(null);
+    setAnswered(false);
+    box.current?.focus();
+  }
+
+  function showHistory() {
+    if (past) return setPast(null);
+    void recentSessions().then(setPast);
+  }
+
+  function resume(id: string) {
+    setPast(null);
+    void openSession(id).then((s) => {
+      if (!s) return;
+      setSessionId(s.id);
+      setTitle(s.title);
+      setLines(s.lines);
+      setAnswered(true);
+    });
   }
 
   function submit() {
@@ -207,17 +266,59 @@ export function GaibWidget() {
           aria-label="Gaib"
           className="fixed bottom-4 right-4 z-50 flex h-[30rem] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col rounded-xl border bg-background shadow-2xl sm:w-96"
         >
-          <div className="flex items-center gap-2 border-b px-4 py-3">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Gaib</span>
+          <div className="flex items-center gap-1 border-b px-3 py-2.5">
+            <MessageCircle className="ml-1 h-4 w-4 shrink-0" />
+            <span className="ml-1 min-w-0 flex-1 truncate text-sm font-medium">
+              {title ?? "Gaib"}
+            </span>
+            <button
+              onClick={showHistory}
+              aria-label="Past conversations"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+            >
+              <History className="h-4 w-4" />
+            </button>
+            <button
+              onClick={startNew}
+              aria-label="New conversation"
+              disabled={busy}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent disabled:opacity-40"
+            >
+              <SquarePen className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setOpen(false)}
               aria-label="Close"
-              className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-accent"
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {past && (
+            <div className="max-h-56 overflow-y-auto border-b">
+              {past.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-muted-foreground">Nothing yet</p>
+              ) : (
+                past.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => resume(p.id)}
+                    className={`flex w-full items-baseline gap-2 px-4 py-2 text-left hover:bg-accent ${
+                      p.id === sessionId ? "bg-accent" : ""
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-xs">
+                      {p.title ?? "Untitled"}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                      {new Date(p.at).toLocaleDateString()}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {lines.map((line, i) => {

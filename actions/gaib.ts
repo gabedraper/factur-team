@@ -100,6 +100,196 @@ export async function recordAnswered() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Picking a conversation back up
+// ---------------------------------------------------------------------------
+
+/*
+ * A conversation outlives the tab it was had in.
+ *
+ * Every message was already being written to gaib_messages; nothing was ever
+ * lost. What was missing is that the widget held the session id in React state
+ * and started from nothing on a reload, so somebody who described a bug, hit
+ * refresh, and came back found an empty panel and reasonably concluded the app
+ * had eaten it.
+ *
+ * The database is the record, so resuming is a read rather than anything
+ * clever: no local storage, nothing to fall out of step, and the conversation
+ * follows the person to another machine because it was never tied to this one.
+ */
+
+export type ReplayLine =
+  | { kind: "said"; who: "you" | "gaib"; text: string }
+  | { kind: "ticket"; ref: number; title: string; lane: string };
+
+export type ResumedSession = {
+  id: string;
+  title: string | null;
+  lines: ReplayLine[];
+};
+
+type StoredMessage = {
+  role: "user" | "assistant";
+  content: string;
+  blocks: unknown;
+  created_at: string;
+};
+
+/** Turn stored messages back into the lines the panel draws. */
+async function replay(sessionId: string): Promise<ReplayLine[]> {
+  const db = createServiceClient();
+
+  const [{ data: messages }, { data: tickets }] = await Promise.all([
+    db.from("gaib_messages")
+      .select("role,content,blocks,created_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true }),
+    db.from("gaib_tickets")
+      .select("ref,title,lane")
+      .eq("session_id", sessionId),
+  ]);
+
+  // Tickets are matched back to the tool call that raised them by title, which
+  // is what the call carried. Raising two tickets with identical titles in one
+  // conversation would collapse them into one card -- possible, and a good deal
+  // less confusing than dropping the card entirely.
+  const byTitle = new Map(
+    ((tickets ?? []) as { ref: number; title: string; lane: string }[])
+      .map((t) => [t.title, t])
+  );
+
+  const lines: ReplayLine[] = [];
+
+  for (const m of (messages ?? []) as StoredMessage[]) {
+    if (m.content.trim()) {
+      lines.push({ kind: "said", who: m.role === "user" ? "you" : "gaib", text: m.content });
+    }
+
+    // The card for a raised ticket lives in the tool call rather than in any
+    // text, so it has to be read back out of the blocks or it disappears on
+    // reload while the words around it survive.
+    const blocks = m.blocks as { type?: string; name?: string; input?: Record<string, unknown> }[] | null;
+    for (const b of blocks ?? []) {
+      if (b?.type !== "tool_use" || b.name !== "raise_ticket") continue;
+      const title = String(b.input?.title ?? "");
+      const hit = byTitle.get(title);
+      if (hit) lines.push({ kind: "ticket", ref: hit.ref, title: hit.title, lane: hit.lane });
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * Everything the panel needs on open, in one round trip.
+ *
+ * Combined with the nudge because they are asked at the same moment and both
+ * are one indexed lookup -- two server actions firing on every page load, for
+ * every person, to draw one button is a cost nobody would choose deliberately.
+ */
+export async function openingState(): Promise<{
+  nudge: NudgeState;
+  session: ResumedSession | null;
+}> {
+  const user = await getAuthedUser();
+  if (!user) return { nudge: { ask: false, opener: null }, session: null };
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_sessions")
+    .select("id,title")
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .order("last_message_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const row = data as { id: string; title: string | null } | null;
+  const nudge = await nudgeState();
+  if (!row) return { nudge, session: null };
+
+  const lines = await replay(row.id);
+  // A session with nothing in it is one somebody opened and closed. Resuming it
+  // shows an empty panel that claims to be a conversation.
+  if (!lines.length) return { nudge, session: null };
+
+  /*
+   * Never both. Somebody returning to a conversation they were in the middle of
+   * should not also be greeted with "what's annoying you today?" -- they were
+   * already telling us.
+   */
+  return { nudge: { ask: false, opener: null }, session: { id: row.id, title: row.title, lines } };
+}
+
+/** Recent conversations, for the list behind the header. */
+export async function recentSessions(): Promise<
+  { id: string; title: string | null; at: string }[]
+> {
+  const user = await getAuthedUser();
+  if (!user) return [];
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_sessions")
+    .select("id,title,last_message_at")
+    .eq("user_id", user.id)
+    .order("last_message_at", { ascending: false })
+    .limit(15);
+
+  return ((data ?? []) as { id: string; title: string | null; last_message_at: string }[])
+    .map((s) => ({ id: s.id, title: s.title, at: s.last_message_at }));
+}
+
+/** One conversation, by id, for when somebody picks an older one out of the list. */
+export async function openSession(sessionId: string): Promise<ResumedSession | null> {
+  const user = await getAuthedUser();
+  if (!user) return null;
+
+  // Ownership checked here rather than trusted from the client: the id comes
+  // back through the browser, and a guessed one would otherwise read somebody
+  // else's conversation.
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_sessions")
+    .select("id,title")
+    .eq("id", sessionId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const row = data as { id: string; title: string | null } | null;
+  if (!row) return null;
+
+  /*
+   * Picking an old conversation out of the list makes it the current one again.
+   *
+   * Without this, adding to a conversation that had been put away would leave
+   * it closed, and the next reload would resume some older still-open thread
+   * instead -- the panel would silently jump to a different conversation than
+   * the one that was just being typed into.
+   */
+  await db.from("gaib_sessions").update({ status: "open" }).eq("id", row.id);
+
+  return { id: row.id, title: row.title, lines: await replay(row.id) };
+}
+
+/**
+ * Close the current conversation so the next message starts a new one.
+ *
+ * Closed rather than deleted. What somebody said about the app is the record
+ * this whole feature exists to keep, and "start a new chat" is a statement
+ * about what happens next rather than a request to forget what happened.
+ */
+export async function closeSession(sessionId: string): Promise<void> {
+  const user = await getAuthedUser();
+  if (!user) return;
+  const db = createServiceClient();
+  await db
+    .from("gaib_sessions")
+    .update({ status: "closed" })
+    .eq("id", sessionId)
+    .eq("user_id", user.id);
+}
+
 export async function muteNudges(muted: boolean) {
   const user = await getAuthedUser();
   if (!user) return;
