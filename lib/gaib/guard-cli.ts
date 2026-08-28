@@ -11,9 +11,23 @@
  * it -- put this in scripts/ and a sufficiently determined fix could widen its
  * own permission on the way past, with a diff that looked like tidying up.
  */
-import { checkDiff } from "./danger.ts";
+import { checkDiff, type GuardOverrides } from "./danger.ts";
 
 const changedLines = Number(process.argv[2] ?? "0");
+
+/*
+ * What Settings had to say, handed in as JSON by the workflow.
+ *
+ * Unparseable is treated as absent rather than as an error: a malformed value
+ * here should fall back to the stricter defaults in code, never abort the run
+ * in a way that tempts somebody to skip the check to get a fix out.
+ */
+let overrides: GuardOverrides = {};
+try {
+  if (process.argv[3]) overrides = JSON.parse(process.argv[3]) as GuardOverrides;
+} catch {
+  overrides = {};
+}
 
 let input = "";
 process.stdin.setEncoding("utf8");
@@ -28,5 +42,5 @@ process.stdin.on("end", () => {
     return;
   }
 
-  console.log(JSON.stringify(checkDiff(paths, changedLines)));
+  console.log(JSON.stringify(checkDiff(paths, changedLines, overrides)));
 });

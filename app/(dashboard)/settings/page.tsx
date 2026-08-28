@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact } from "lucide-react";
+  MailWarning, Gauge, Contact, Bot } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -165,6 +165,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Performance</span>
                 <span className="block text-xs text-muted-foreground">
                   Which pages are used, and how long each one takes.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/agents"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Agents</span>
+                <span className="block text-xs text-muted-foreground">
+                  Gaib and any other assistants: what they are told, what they can read, who can use them.
                 </span>
               </span>
             </Link>

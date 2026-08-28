@@ -107,6 +107,21 @@ jobs:
           /tmp/patch.sh "$(jq -nc --arg r "$RUN_URL" '{status:"running", run_url:$r}')"
           /tmp/event.sh "started" "$RUN_URL"
 
+      - name: Read the dials
+        id: dials
+        run: |
+          # What Settings has turned down. Absent or unreadable means the
+          # defaults in danger.ts, which are the strictest values available.
+          curl -sS "$SB/rest/v1/gaib_coding_settings?id=eq.true&select=*" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+          | jq '.[0] // {}' > /tmp/dials.json
+          cat /tmp/dials.json
+
+          echo "auto_ship=$(jq -r '.auto_ship // false' /tmp/dials.json)" >> "$GITHUB_OUTPUT"
+          jq -c '{maxFiles: .max_files, maxLines: .max_lines, extraPaths: (.extra_protected_paths // [])}' \
+            /tmp/dials.json > /tmp/overrides.json
+          echo "overrides=$(cat /tmp/overrides.json)" >> "$GITHUB_OUTPUT"
+
       # ---------------------------------------------------------------------
       # Scoping: read, plan, stop.
       # ---------------------------------------------------------------------
@@ -212,6 +227,8 @@ jobs:
       - name: Run the guard
         if: inputs.lane != 'scoping' && steps.build.outputs.changed == 'yes'
         id: guard
+        env:
+          OVERRIDES: ${{ steps.dials.outputs.overrides }}
         run: |
           # Untracked files count too -- a fix that adds a new file under a
           # protected path is not made safe by the file being new.
@@ -220,7 +237,8 @@ jobs:
           LINES=$(git diff --cached --numstat | awk '{a+=$1; r+=$2} END {print a+r+0}')
           echo "$FILES"
 
-          VERDICT=$(printf '%s\n' "$FILES" | node --experimental-strip-types lib/gaib/guard-cli.ts "$LINES")
+          VERDICT=$(printf '%s\n' "$FILES" \
+            | node --experimental-strip-types lib/gaib/guard-cli.ts "$LINES" "$OVERRIDES")
           echo "$VERDICT"
           echo "safe=$(echo "$VERDICT" | jq -r '.safe')" >> "$GITHUB_OUTPUT"
           {
@@ -245,9 +263,14 @@ jobs:
             '{status:"failed", brief:($n + "\n\n---\n\n" + ($l | .[-4000:]))}')"
           /tmp/event.sh "build failed"
 
+      # Three things have to agree before anything reaches main by itself: the
+      # lane the conversation chose, the switch in Settings, and the guard's
+      # reading of the diff that actually got written. Any one of them says no
+      # and this becomes a pull request instead.
       - name: Ship it
         if: >-
           inputs.lane == 'auto' &&
+          steps.dials.outputs.auto_ship == 'true' &&
           steps.build.outputs.built == 'yes' &&
           steps.guard.outputs.safe == 'true'
         run: |
@@ -278,7 +301,9 @@ jobs:
         if: >-
           inputs.lane != 'scoping' &&
           steps.build.outputs.built == 'yes' &&
-          (inputs.lane == 'approval' || steps.guard.outputs.safe == 'false')
+          (inputs.lane == 'approval' ||
+           steps.guard.outputs.safe == 'false' ||
+           steps.dials.outputs.auto_ship != 'true')
         env:
           # Through the environment rather than interpolated into the script:
           # one of the guard's reasons contains an apostrophe, which would end

@@ -176,3 +176,82 @@ export async function fetchBillingMail(
  * person in it.
  */
 export const TALENT_QUERY = "-in:chats -in:drafts -category:promotions -category:social";
+
+/**
+ * One message, in full, for an assistant answering a question about it.
+ *
+ * fetchMail above deliberately never pulls a body: it builds a trail, and a
+ * trail does not need the correspondence. This does the opposite job -- somebody
+ * has asked about one specific message and wants to know what it said -- so it
+ * fetches that one message and returns the text without storing any of it.
+ *
+ * `actAs` is always the person asking. There is no version of this that reads
+ * somebody else's mailbox, and there should not be: the service account can
+ * technically open any mailbox in the domain, so the restraint has to live at
+ * every call site rather than in Google's answer.
+ */
+export async function fetchBody(
+  actAs: string,
+  messageId: string,
+  cap = 8000
+): Promise<{ subject: string | null; from: string | null; date: string | null; text: string }> {
+  const token = await tokenFor("gmail", actAs);
+  const msg = await call<{
+    payload?: GmailPart;
+    internalDate?: string;
+  }>(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?format=full`,
+    token
+  );
+
+  const headers = msg.payload?.headers ?? [];
+  const header = (name: string) =>
+    headers.find((h) => h.name.toLowerCase() === name)?.value ?? null;
+
+  const text = collectText(msg.payload).slice(0, cap);
+  return {
+    subject: header("subject"),
+    from: header("from"),
+    date: header("date"),
+    text: text || "(no readable text in this message)",
+  };
+}
+
+type GmailPart = {
+  mimeType?: string;
+  headers?: { name: string; value: string }[];
+  body?: { data?: string };
+  parts?: GmailPart[];
+};
+
+/**
+ * The plain-text half of a message.
+ *
+ * Gmail nests alternatives arbitrarily deep, so this walks the whole tree and
+ * prefers text/plain. HTML is taken only when there is nothing else, with the
+ * tags stripped -- a marketing email with no plain part is still readable that
+ * way, and unreadable otherwise.
+ */
+function collectText(part: GmailPart | undefined): string {
+  if (!part) return "";
+  const decode = (d?: string) =>
+    d ? Buffer.from(d.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8") : "";
+
+  if (part.mimeType === "text/plain" && part.body?.data) return decode(part.body.data);
+
+  if (part.parts?.length) {
+    const joined = part.parts.map(collectText).filter(Boolean).join("\n");
+    if (joined.trim()) return joined;
+  }
+
+  if (part.mimeType === "text/html" && part.body?.data) {
+    return decode(part.body.data)
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  return "";
+}

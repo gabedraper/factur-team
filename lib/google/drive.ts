@@ -103,3 +103,76 @@ export async function fetchTranscripts(
 
   return { transcripts, matching, hitCap: matching > cap };
 }
+
+export type DriveHit = {
+  id: string;
+  title: string;
+  mimeType: string;
+  modifiedAt: string | null;
+  owners: string[];
+  url: string;
+};
+
+/**
+ * Documents one person can reach, by full-text search.
+ *
+ * Drive's `fullText contains` covers the body of Docs and the extracted text of
+ * PDFs, which is what makes this worth having over a name search -- people
+ * remember what a document said far more reliably than what it was called.
+ *
+ * Scoped to whoever is asking, and Drive does the scoping: the token is theirs,
+ * so a file nobody shared with them is not in the answer. That is the same
+ * boundary they already live with, not a new one.
+ */
+export async function searchDrive(
+  actAs: string,
+  text: string,
+  cap = 15
+): Promise<DriveHit[]> {
+  const token = await tokenFor("drive", actAs);
+  // Drive's query language ends a string at an apostrophe, so one in a search
+  // term would otherwise produce a syntax error rather than a result.
+  const safe = text.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  const q = `fullText contains '${safe}' and trashed = false`;
+
+  const page = await call<{
+    files?: {
+      id: string; name: string; mimeType: string; modifiedTime?: string;
+      owners?: { emailAddress?: string }[];
+    }[];
+  }>(
+    `https://www.googleapis.com/drive/v3/files?pageSize=${cap}` +
+      "&fields=files(id,name,mimeType,modifiedTime,owners(emailAddress))" +
+      "&includeItemsFromAllDrives=true&supportsAllDrives=true" +
+      `&q=${encodeURIComponent(q)}`,
+    token
+  );
+
+  return (page.files ?? []).map((f) => ({
+    id: f.id,
+    title: f.name,
+    mimeType: f.mimeType,
+    modifiedAt: f.modifiedTime ?? null,
+    owners: (f.owners ?? []).map((o) => o.emailAddress ?? "").filter(Boolean),
+    url: `https://drive.google.com/open?id=${f.id}`,
+  }));
+}
+
+/** The text of one Doc, for when a search hit needs reading rather than listing. */
+export async function fetchDocText(
+  actAs: string,
+  fileId: string,
+  cap = 12000
+): Promise<string> {
+  const token = await tokenFor("drive", actAs);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text/plain`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    // Anything that is not a Google Doc cannot be exported this way. Say which
+    // rather than returning an empty string that reads as an empty document.
+    throw new Error(`Drive ${res.status}: this file cannot be read as text`);
+  }
+  return (await res.text()).slice(0, cap);
+}

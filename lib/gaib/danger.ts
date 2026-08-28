@@ -125,6 +125,22 @@ export type GuardVerdict =
   | { safe: false; reason: string };
 
 /**
+ * What Settings is allowed to say about this.
+ *
+ * Only ever in the strict direction. The numbers are clamped to the constants
+ * above and the paths are added to the list rather than replacing it, so the
+ * agent hub can tighten this and cannot loosen it. That asymmetry is what makes
+ * it safe to put these on a web form: somebody who reached the database still
+ * cannot widen what an automated agent may push to production, and every
+ * widening remains a change to this file that a person reviews.
+ */
+export type GuardOverrides = {
+  maxFiles?: number;
+  maxLines?: number;
+  extraPaths?: string[];
+};
+
+/**
  * Whether a diff may ship without a person looking at it.
  *
  * `paths` are repo-relative, as `git diff --name-only` gives them. Returns the
@@ -133,11 +149,21 @@ export type GuardVerdict =
  */
 export function checkDiff(
   paths: string[],
-  changedLines: number
+  changedLines: number,
+  overrides: GuardOverrides = {}
 ): GuardVerdict {
+  const maxFiles = Math.min(overrides.maxFiles ?? AUTO_MAX_FILES, AUTO_MAX_FILES);
+  const maxLines = Math.min(overrides.maxLines ?? AUTO_MAX_LINES, AUTO_MAX_LINES);
+  const guards = [
+    ...COMPILED,
+    ...(overrides.extraPaths ?? []).map((pattern) => ({
+      pattern, why: "added in Settings", re: toRegExp(pattern),
+    })),
+  ];
+
   const hits: string[] = [];
   for (const path of paths) {
-    const hit = COMPILED.find((g) => g.re.test(path));
+    const hit = guards.find((g) => g.re.test(path));
     if (hit) hits.push(`${path} (${hit.why})`);
   }
   if (hits.length) {
@@ -146,16 +172,16 @@ export function checkDiff(
       reason: `Touches protected paths: ${hits.join("; ")}`,
     };
   }
-  if (paths.length > AUTO_MAX_FILES) {
+  if (paths.length > maxFiles) {
     return {
       safe: false,
-      reason: `Changes ${paths.length} files, over the ${AUTO_MAX_FILES} allowed without review`,
+      reason: `Changes ${paths.length} files, over the ${maxFiles} allowed without review`,
     };
   }
-  if (changedLines > AUTO_MAX_LINES) {
+  if (changedLines > maxLines) {
     return {
       safe: false,
-      reason: `Changes ${changedLines} lines, over the ${AUTO_MAX_LINES} allowed without review`,
+      reason: `Changes ${changedLines} lines, over the ${maxLines} allowed without review`,
     };
   }
   return { safe: true };

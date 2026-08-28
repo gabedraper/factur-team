@@ -66,5 +66,29 @@ check("reason names the path",
 // A safe file alongside a dangerous one is still dangerous.
 check("mixed diff blocked", safe(["components/ok.tsx", "lib/org.ts"]), false);
 
+// ---------------------------------------------------------------------------
+// Overrides from Settings. The whole point is that they only ever tighten.
+// ---------------------------------------------------------------------------
+
+const withOpts = (paths: string[], lines: number, o: Parameters<typeof checkDiff>[2]) =>
+  checkDiff(paths, lines, o).safe;
+
+check("settings can lower the file cap",
+  withOpts(["a.tsx", "b.tsx", "c.tsx"], 10, { maxFiles: 2 }), false);
+check("settings cannot raise the file cap",
+  withOpts(Array.from({ length: AUTO_MAX_FILES + 1 }, (_, i) => `c${i}.tsx`), 10,
+    { maxFiles: 999 }), false);
+check("settings can lower the line cap",
+  withOpts(["a.tsx"], 100, { maxLines: 50 }), false);
+check("settings cannot raise the line cap",
+  withOpts(["a.tsx"], AUTO_MAX_LINES + 1, { maxLines: 99999 }), false);
+check("settings can add a protected path",
+  withOpts(["components/talent/board.tsx"], 10,
+    { extraPaths: ["components/talent/**"] }), false);
+check("added paths do not remove the built-in ones",
+  withOpts(["lib/org.ts"], 10, { extraPaths: ["nothing/**"] }), false);
+check("overrides absent behaves as before",
+  withOpts(["components/ok.tsx"], 10, {}), true);
+
 console.log(failed ? `\n${failed} failed` : "\nall passed");
 process.exit(failed ? 1 : 0);
