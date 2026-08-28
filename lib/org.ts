@@ -26,7 +26,11 @@ export type Permission =
   | "timelines.view" | "timelines.view.all" | "clients.health"
   | "finance.collections"
   | "nps.send"
-  | "talent.view" | "talent.recruit" | "talent.admin";
+  | "talent.view" | "talent.recruit" | "talent.admin"
+  // Reading conversations other people had with Gaib. Deliberately not folded
+  // into org.manage: that is held by nineteen people across three roles, and a
+  // transcript can contain what Gaib found in the asker's own mailbox.
+  | "gaib.transcripts";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers

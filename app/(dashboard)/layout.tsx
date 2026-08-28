@@ -40,6 +40,7 @@ import {
   LineChart,
   Coins,
   MessageCircle,
+  ScrollText,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
@@ -127,13 +128,18 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
 
   // Only whoever decides on the tickets needs the list of them; everyone else
   // reaches Gaib through the button in the footer.
-  if (perms.has("org.manage")) {
-    groups.push({
-      label: "Gaib",
-      items: [
-        { href: "/gaib", label: "Tickets", icon: <MessageCircle className="h-4 w-4" /> },
-      ],
-    });
+  if (perms.has("org.manage") || perms.has("gaib.transcripts")) {
+    const gaib: NavItem[] = [];
+    if (perms.has("org.manage")) {
+      gaib.push({ href: "/gaib", label: "Tickets", icon: <MessageCircle className="h-4 w-4" /> });
+    }
+    // Reading other people's conversations is a narrower right than running the
+    // ticket queue, so it is a separate check rather than a second link under
+    // the same one.
+    if (perms.has("gaib.transcripts")) {
+      gaib.push({ href: "/gaib/transcripts", label: "Conversations", icon: <ScrollText className="h-4 w-4" /> });
+    }
+    groups.push({ label: "Gaib", items: gaib });
   }
 
   if (perms.has("timelines.view")) {
