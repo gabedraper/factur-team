@@ -11,15 +11,25 @@ import { logEvent } from "@/lib/gaib/tickets";
 /*
  * How often Gaib is allowed to start a conversation.
  *
- * Three weeks, and only if the last one was actually answered within a
- * reasonable stretch. The number is a judgement, not a finding: it is set at
- * the point where being asked feels like someone checking in rather than a
- * system running. Shorten it and the badge becomes something people learn to
- * click away without reading, which costs more than the extra answers gain.
+ * Four days. Frequent enough that a small irritation is still fresh when it
+ * gets asked about, which is the whole point -- people do not remember on
+ * Friday what annoyed them on Monday, and the annoyances they forget are
+ * exactly the ones that never get fixed.
+ *
+ * The cost of asking this often is that the badge becomes wallpaper. Two things
+ * hold that off: the count below, which stops asking anyone who keeps ignoring
+ * it, and the fact that a nudge is a soft dot on a sidebar button rather than
+ * anything that interrupts. If people start reporting that Gaib is pestering
+ * them -- and Gaib will hear about it first -- this is the number to raise.
  */
-const NUDGE_GAP_DAYS = 21;
-/** After this many unanswered openings, stop asking that person. */
-const GIVE_UP_AFTER = 3;
+const NUDGE_GAP_DAYS = 4;
+/**
+ * After this many unanswered openings, stop asking that person.
+ *
+ * Higher than it was, because at four days apart a few unanswered nudges only
+ * means somebody had a busy fortnight, not that they want to be left alone.
+ */
+const GIVE_UP_AFTER = 5;
 
 export type NudgeState = { ask: boolean; opener: string | null };
 
