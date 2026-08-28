@@ -110,7 +110,11 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    /* font-sans is not decorative here. The font moved to CSS variables so
+       headings could take Montserrat, and a variable only *defines* a family
+       -- it does not apply one. Without this the whole app fell back to the
+       browser default and every page rendered in Times. */
+    @apply bg-background font-sans text-foreground;
   }
   /* The brand face on headings, applied once here rather than asked of every
      page -- a rule nobody has to remember cannot be forgotten. Tables and

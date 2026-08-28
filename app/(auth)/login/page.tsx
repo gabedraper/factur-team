@@ -4,7 +4,6 @@ import { useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BrandMesh } from "@/components/BrandMesh";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -37,17 +36,10 @@ export default function LoginPage() {
   }
 
   return (
-    /* Brand black (#000807), not the slate it borrowed before, with the
-       connected-dot supergraphic behind. This is the one screen that is pure
-       brand -- there is nothing on it to compete with, which is exactly where
-       the guidelines say this graphic belongs. */
+    /* Brand black (#000807), not the slate it borrowed before. The
+       supergraphic belongs here too, but drawn from the real artwork rather
+       than from a description of it. */
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#000807] p-4">
-      <BrandMesh
-        tone="brand"
-        columns={11}
-        rows={7}
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.18]"
-      />
       {/* One white circle holding everything. A circle wastes its corners, so
           the content sits in a narrower column than the width suggests --
           hence the heavy horizontal padding. Capped against the viewport so it
