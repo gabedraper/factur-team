@@ -208,43 +208,45 @@ function listOf(body) {
  * response actually offers rather than being told which to expect.
  */
 /*
- * Endpoints that reject `per_page` outright with a 422. Loxo is not uniform
- * about this and there is no way to tell from the response shape, so the two
- * that do it are named.
+ * Endpoints that reject `per_page` with a 422. They still support scroll
+ * pagination -- treating them as single-shot is what fetched only the first
+ * 10 of 34 deals and 25 of 84 placements.
  */
-const NO_PAGING = [/^\/deals/, /^\/placements/, /^\/workflows/, /^\/activity_types/,
-                   /^\/dynamic_fields/, /^\/person_lists/, /^\/users/, /^\/workflow_stages/];
+const NO_PER_PAGE = [/^\/deals/, /^\/placements/, /^\/workflows/, /^\/activity_types/,
+                     /^\/dynamic_fields/, /^\/person_lists/, /^\/users/, /^\/workflow_stages/];
 
+/**
+ * Walks a whole endpoint.
+ *
+ * Loxo paginates three ways depending on the resource: a scroll_id on the big
+ * collections, page numbers on jobs, and nothing at all on the small
+ * configuration lists. The first request asks for neither a page nor a scroll
+ * id -- `page` is rejected outright by the scroll endpoints -- and what comes
+ * back decides which to follow.
+ *
+ * Termination is by *seen ids* rather than by trusting the cursor to change.
+ * Some of these endpoints hand back the same scroll_id twice, and a loop that
+ * only watched the cursor either stopped a page early or ran forever.
+ */
 async function* walk(path, perPage = 100) {
+  const noPerPage = NO_PER_PAGE.some((re) => re.test(path));
+  const seen = new Set();
   let scrollId = null;
   let page = 1;
-  let seen = 0;
+  let yielded = 0;
 
-  if (NO_PAGING.some((re) => re.test(path))) {
-    for (const row of listOf(await optional(path))) {
-      yield row;
-      if (LIMIT && ++seen >= LIMIT) return;
-    }
-    return;
-  }
-
-  /*
-   * The first request asks for neither a page nor a scroll id, because Loxo
-   * rejects `page` outright on the scroll endpoints -- and there is no way to
-   * know which is which until it answers. What comes back decides: a scroll_id
-   * means follow the scroll, a full page without one means count pages.
-   */
   for (;;) {
+    const params = [];
+    if (!noPerPage) params.push(`per_page=${perPage}`);
+    if (scrollId) params.push(`scroll_id=${encodeURIComponent(scrollId)}`);
+    else if (page > 1) params.push(`page=${page}`);
+
     const sep = path.includes("?") ? "&" : "?";
-    const q = scrollId
-      ? `${sep}per_page=${perPage}&scroll_id=${encodeURIComponent(scrollId)}`
-      : page > 1
-        ? `${sep}per_page=${perPage}&page=${page}`
-        : `${sep}per_page=${perPage}`;
+    const url = params.length ? `${path}${sep}${params.join("&")}` : path;
 
     let body;
     try {
-      body = await get(`${path}${q}`);
+      body = await get(url);
     } catch (e) {
       if (/-> 40[0-9]/.test(e.message)) {
         report.notes.push(`${path} is not available on this Loxo plan — skipped`);
@@ -256,20 +258,27 @@ async function* walk(path, perPage = 100) {
     const rows = listOf(body);
     if (!rows.length) return;
 
+    let fresh = 0;
     for (const row of rows) {
+      const id = row?.id === undefined ? null : String(row.id);
+      if (id !== null) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
       yield row;
-      seen++;
-      if (LIMIT && seen >= LIMIT) return;
+      fresh++;
+      if (LIMIT && ++yielded >= LIMIT) return;
     }
 
+    // A page that repeated everything we already had is the end, whatever the
+    // cursor says.
+    if (!fresh) return;
+
     const nextScroll = body?.scroll_id ?? null;
-    if (nextScroll && nextScroll !== scrollId) {
-      scrollId = nextScroll;
-    } else if (!nextScroll && rows.length === perPage) {
-      page++;
-    } else {
-      return;
-    }
+    if (nextScroll) scrollId = nextScroll;
+    else if (rows.length >= perPage && !noPerPage) page++;
+    else return;
+
     await sleep(120);
   }
 }
@@ -1054,35 +1063,65 @@ async function importCampaigns() {
   console.log(`  ${report.campaigns} campaigns (metadata only — no message bodies exist on the API)`);
 }
 
+/**
+ * Meetings.
+ *
+ * Loxo leaves `person_id` null on these and puts the attendees in
+ * `schedule_item_participants` as bare email addresses, so the person is
+ * resolved the same way the mail sync resolves one: by exact address. Most of
+ * these turn out to be internal Factur meetings with no candidate on them at
+ * all, and those are dropped rather than filed against nobody.
+ */
 async function importSchedule() {
   console.log("\nSchedule");
-  const people = await existingMap("tal_people");
   const jobs = await existingMap("tal_jobs");
 
+  // Every known address -> person, built once.
+  const byEmail = new Map();
+  if (!DRY) {
+    let from = 0;
+    for (;;) {
+      const { data } = await db
+        .from("tal_person_emails").select("person_id,email").range(from, from + 999);
+      for (const r of data ?? []) byEmail.set(r.email, r.person_id);
+      if (!data || data.length < 1000) break;
+      from += 1000;
+    }
+  }
+
+  const batch = batcher("tal_interviews", 200);
+  let internal = 0;
+
   for await (const s of walk("/schedule_items")) {
-    const personId = people.get(String(pick(s, "person.id", "person_id") ?? ""));
-    if (!personId) continue;
     const startsAt = isoStamp(pick(s, "start_time", "starts_at"));
     if (!startsAt) continue;
 
+    let personId = null;
+    for (const part of listOf(s.schedule_item_participants).concat(listOf(s.schedule_item_invitees))) {
+      const email = String(pick(part, "email_address", "email") ?? "").toLowerCase().trim();
+      if (email && byEmail.has(email)) { personId = byEmail.get(email); break; }
+    }
+    if (!personId) { internal++; continue; }
+
     const title = String(pick(s, "title", "name") ?? "");
-    await put("tal_interviews", {
+    await batch.add({
       external_id: String(s.id),
       person_id: personId,
-      job_id: jobs.get(String(pick(s, "job.id", "job_id") ?? "")) ?? null,
+      job_id: jobs.get(String(pick(s, "job_id") ?? "")) ?? null,
       kind: /interview/i.test(title) ? "interview" : "meeting",
       title: title || null,
       starts_at: startsAt,
       ends_at: isoStamp(pick(s, "end_time", "ends_at")),
       location: pick(s, "location"),
-      // Loxo's AI Notetaker outline, where there is one. It is the most useful
-      // thing on the record and it is plain text on the way out.
-      notes: pick(s, "outline_text", "notes", "description", "transcript_text"),
+      notes: pick(s, "outline_text", "description", "transcript_text"),
       status: new Date(startsAt) < new Date() ? "completed" : "scheduled",
     });
     report.interviews++;
   }
-  console.log(`  ${report.interviews} scheduled items`);
+  await batch.flush();
+
+  if (internal) console.log(`  ${internal} skipped — no candidate on the invitation`);
+  console.log(`  ${report.interviews} meetings`);
 }
 
 async function importDeals() {
