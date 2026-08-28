@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { BrandMesh } from "@/components/BrandMesh";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -37,9 +38,14 @@ export default function LoginPage() {
 
   return (
     /* Brand black (#000807), not the slate it borrowed before. The
-       supergraphic belongs here too, but drawn from the real artwork rather
-       than from a description of it. */
+       supergraphic rising out of the bottom-left corner and running off the
+       edges, the way the artwork does. This is the one screen that is pure
+       brand -- nothing on it competes with the graphic. */
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#000807] p-4">
+      {/* A band along the bottom rather than a full-bleed fill. The artwork is
+          wide and rises out of one corner; stretched over a tall viewport it
+          crops to its own left edge and the shape disappears. */}
+      <BrandMesh className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full opacity-40" />
       {/* One white circle holding everything. A circle wastes its corners, so
           the content sits in a narrower column than the width suggests --
           hence the heavy horizontal padding. Capped against the viewport so it
