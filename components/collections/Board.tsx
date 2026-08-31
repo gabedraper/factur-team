@@ -146,6 +146,18 @@ export function Board({
   const owed = board.reduce((n, r) => n + Number(r.past_due_total ?? 0), 0);
   const dueNow = board.filter((r) => r.step_id).length;
 
+  // Summed over what is on screen, so switching to My clients re-totals to it.
+  const sum = (pick: (r: BoardChase) => number) =>
+    board.reduce((n, r) => n + Number(pick(r) ?? 0), 0);
+  const totals = {
+    current: sum((r) => r.bucket_current),
+    b1_30: sum((r) => r.bucket_1_30),
+    b31_60: sum((r) => r.bucket_31_60),
+    b61_90: sum((r) => r.bucket_61_90),
+    b91_plus: sum((r) => r.bucket_91_plus),
+    past_due: owed,
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -307,6 +319,27 @@ export function Board({
           </div>
         );
       })}
+
+      {board.length > 0 && (
+        <div className="rounded-lg border bg-muted/40">
+          <div className="flex flex-wrap items-start gap-x-4 gap-y-2 px-3 py-2 text-sm">
+            <div className="min-w-56 font-medium">
+              Total
+              <div className="mt-0.5 text-xs font-normal text-muted-foreground">
+                {board.length} {board.length === 1 ? "client" : "clients"}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <Bucket label="Current" amount={totals.current} tone={AGEING_TONE.current} />
+              <Bucket label="1 – 30" amount={totals.b1_30} tone={AGEING_TONE.b1_30} />
+              <Bucket label="31 – 60" amount={totals.b31_60} tone={AGEING_TONE.b31_60} />
+              <Bucket label="61 – 90" amount={totals.b61_90} tone={AGEING_TONE.b61_90} />
+              <Bucket label="91+" amount={totals.b91_plus} tone={AGEING_TONE.b91_plus} />
+              <Bucket label="Past due" amount={totals.past_due} tone="font-semibold" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
