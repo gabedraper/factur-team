@@ -63,8 +63,13 @@ export async function listClientsForLinking(): Promise<LinkableClient[]> {
       name: c.name,
       active: c.active && (c.status ?? "") !== "Inactive",
     }))
-    // Current clients first: the common case should not be scrolled past.
-    .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
+    /*
+     * Plain alphabetical. Sorting current clients above former ones read as
+     * broken to the person using it -- she was hunting by name, found the list
+     * out of order, and had no way to know the order was deliberate. The
+     * "(former)" tag already says which is which.
+     */
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
