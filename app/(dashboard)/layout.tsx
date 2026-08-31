@@ -99,6 +99,9 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     if (collections) {
       clients.push({ href: "/collections", label: "Collections", icon: <MailWarning className="h-4 w-4" /> });
     }
+    if (perms.has("sequences.send") || perms.has("org.manage")) {
+      clients.push({ href: "/sequences", label: "Sequences", icon: <Send className="h-4 w-4" /> });
+    }
     groups.push({ label: "Clients", items: clients });
   }
 
