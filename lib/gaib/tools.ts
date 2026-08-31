@@ -83,6 +83,8 @@ export const READABLE_TABLES: Record<string, string[]> = {
   Clients: [
     "org_clients", "org_client_assignments", "client_history", "client_contacts",
     "client_aliases", "client_nps", "client_quickbooks_links",
+    "client_roster", "client_profile", "client_cohorts", "client_service_periods",
+    "client_monthly_results", "client_results_summary",
   ],
   Money: [
     "qb_invoices_raw", "qb_payments_raw", "qb_ar_aging_raw", "qb_customers_raw",
