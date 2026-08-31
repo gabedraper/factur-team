@@ -1,7 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { getAuthedUser } from "@/lib/supabase/session";
+import { myPermissions } from "@/lib/org";
 import { INTEGRATIONS, catalogued, type Integration } from "@/lib/integrations/catalogue";
 import { SCOPES } from "@/lib/google/auth";
 import { BILLING_QUERY } from "@/lib/google/gmail";
@@ -76,14 +76,12 @@ function inEnglish(cron: string): string {
 }
 
 export async function integrationsReport(): Promise<IntegrationsReport> {
-  // Readable by anyone signed in. The point of the page is that the people
-  // relying on this data can see where it comes from.
-  const user = await getAuthedUser();
-  if (!user) {
+  // Administrative: this reports on the plumbing rather than the figures.
+  if (!(await myPermissions()).has("org.manage")) {
     return {
       integrations: [], schedules: [], recentRuns: [], failing: [],
       undocumented: [], googleScopes: [], billingQuery: BILLING_QUERY,
-      uptime: null, problem: "Not signed in.",
+      uptime: null, problem: "Not permitted.",
     };
   }
 

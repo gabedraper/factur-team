@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getAuthedUser } from "@/lib/supabase/session";
+import { myPermissions } from "@/lib/org";
 import { integrationsReport } from "@/actions/integrations";
 import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from "lucide-react";
 
@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 /**
  * Where the app's data comes from and where it goes.
  *
- * Open to everyone who can sign in, deliberately. The people who most need to
- * know that a figure is two days stale, or that a mailbox stopped being read
- * on Tuesday, are the ones reading the figure -- not the two administrators
- * who would otherwise be the only ones able to find out.
+ * Administrators only, and reached through Settings rather than the sidebar.
+ * It reports on the plumbing -- schedules, table sizes, which mailboxes are
+ * read and what failed -- which is a different audience from the people
+ * reading the figures those syncs produce.
  *
  * This is the one screen in the app that is mostly prose. Everywhere else the
  * rule is labels and data with the explaining done elsewhere; here the
@@ -45,8 +45,9 @@ const DIRECTION = {
 } as const;
 
 export default async function IntegrationsPage() {
-  const user = await getAuthedUser();
-  if (!user) redirect("/login");
+  // Checked here, not merely hidden from the navigation. A link that is not
+  // drawn is not a permission.
+  if (!(await myPermissions()).has("org.manage")) redirect("/");
 
   const report = await integrationsReport();
 

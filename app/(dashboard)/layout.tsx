@@ -8,7 +8,6 @@ import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import {
   BookOpen,
-  Plug,
   LayoutDashboard,
   Users,
   Map,
@@ -40,8 +39,6 @@ import {
   BadgeCheck,
   LineChart,
   Coins,
-  MessageCircle,
-  ScrollText,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
@@ -130,34 +127,13 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     groups.push({ label: "Talent", items: talent });
   }
 
-  // Only whoever decides on the tickets needs the list of them; everyone else
-  // reaches Gaib through the button in the footer.
-  if (perms.has("org.manage") || perms.has("gaib.transcripts")) {
-    const gaib: NavItem[] = [];
-    if (perms.has("org.manage")) {
-      gaib.push({ href: "/gaib", label: "Tickets", icon: <MessageCircle className="h-4 w-4" /> });
-    }
-    // Reading other people's conversations is a narrower right than running the
-    // ticket queue, so it is a separate check rather than a second link under
-    // the same one.
-    if (perms.has("gaib.transcripts")) {
-      gaib.push({ href: "/gaib/transcripts", label: "Conversations", icon: <ScrollText className="h-4 w-4" /> });
-    }
-    groups.push({ label: "Gaib", items: gaib });
-  }
-
   /*
-   * Open to everybody rather than gated on org.manage. The people who most
-   * need to know a figure is two days stale are the ones reading the figure,
-   * not the two administrators who would otherwise be the only ones who could
-   * find out.
+   * Gaib and Integrations are not in the sidebar. They are administrative --
+   * the ticket queue, the conversation log, and where the data comes from --
+   * so they live under Settings with the rest of the administration, and the
+   * pages themselves check the permission. Everyone still reaches Gaib
+   * through the button in the footer.
    */
-  groups.push({
-    label: "Data",
-    items: [
-      { href: "/integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
-    ],
-  });
 
   if (perms.has("timelines.view")) {
     groups.push({
