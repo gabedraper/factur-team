@@ -84,14 +84,17 @@ export const READABLE_TABLES: Record<string, string[]> = {
     "org_clients", "org_client_assignments", "client_history", "client_contacts",
     "client_aliases", "client_nps", "client_quickbooks_links",
   ],
-  Money: [
-    "qb_invoices_raw", "qb_payments_raw", "qb_ar_aging_raw", "qb_customers_raw",
-    "collections_client_state", "collections_steps", "collections_sent",
-  ],
-  Salesforce: [
-    "sf_clients_raw", "sf_opportunities_raw", "sf_users_raw", "sf_orders_raw",
-    "sf_tasks_raw", "sf_events_raw", "sf_opp_stage_changes_raw",
-  ],
+  /*
+   * No qb_ or sf_ tables here any more, and none in gaib_query either.
+   *
+   * The sync drops and recreates them, which takes any policy attached to them
+   * with it -- so they cannot be protected between one sync and the next. And
+   * they are the wrong source regardless: matching a QuickBooks customer to a
+   * client and netting off credits are decisions the app already makes, so an
+   * agent doing its own arithmetic on the raw rows would quietly disagree with
+   * the screens. Money questions go through client_billing instead.
+   */
+  Money: ["collections_client_state", "collections_steps", "collections_sent"],
   Performance: ["raw_activities", "deal_activities", "metric_snapshots", "timeline_summaries"],
   "Surveys and sequences": [
     "nps_campaigns", "nps_sends", "nps_send_team", "sequences", "sequence_runs",
@@ -296,6 +299,51 @@ const queryDataTool: GaibTool = {
   },
 };
 
+const clientBillingTool: GaibTool = {
+  name: "client_billing",
+  label: "Client billing",
+  blurb: "What clients owe and have paid, for the clients that person may see.",
+  reads: "Invoices and payments, scoped per person",
+  definition: {
+    name: "client_billing",
+    description:
+      "What a client owes, what they have paid, and how overdue it is. Use this " +
+      "for every money question -- the raw QuickBooks tables are not queryable and " +
+      "the figures here already account for credits and customer matching, so they " +
+      "agree with what the app shows. Leave client empty to list everyone with a " +
+      "balance, worst overdue first. Set detail to true with a client name to get " +
+      "that client's invoices and payments. " +
+      "The result says whether it covers every client or only theirs; if it says " +
+      "only theirs and nothing matched, say you cannot see that one rather than " +
+      "that it does not exist -- you cannot tell the difference and neither can they.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        client: {
+          type: "string",
+          description: "Part of a client's name, or an empty string for all of them.",
+        },
+        detail: {
+          type: "boolean",
+          description: "True for one client's invoices and payments. Needs a client name.",
+        },
+      },
+      required: ["client", "detail"],
+      additionalProperties: false,
+    },
+  },
+  async run(ctx, input) {
+    const client = String(input.client ?? "").trim();
+    const { data, error } = await ctx.db.rpc("gaib_billing", {
+      p_client: client || null,
+      p_detail: Boolean(input.detail),
+    });
+    if (error) return `Could not read the billing: ${error.message}`;
+    return JSON.stringify(data);
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Google, always as the person asking
 // ---------------------------------------------------------------------------
@@ -455,6 +503,7 @@ export const TOOLS: GaibTool[] = [
   raiseTicketTool,
   describeDataTool,
   queryDataTool,
+  clientBillingTool,
   searchMyEmailTool,
   readMyEmailTool,
   searchMyChatTool,
