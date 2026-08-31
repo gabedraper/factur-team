@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Users, ShieldCheck, Building2, Briefcase, SlidersHorizontal,
+  Users, ShieldCheck, Building2, Layers, Briefcase, SlidersHorizontal,
   MailWarning, Gauge, Contact, Bot, Plug } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -236,6 +236,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Pods</span>
                 <span className="block text-xs text-muted-foreground">
                   Pods, who is in them, and who runs them.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/services"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Layers className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Services</span>
+                <span className="block text-xs text-muted-foreground">
+                  The list behind the Service dropdown on a client.
                 </span>
               </span>
             </Link>

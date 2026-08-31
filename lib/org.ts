@@ -499,3 +499,44 @@ export async function myRoleIds(): Promise<string[]> {
     .from("org_assignments").select("role_id").eq("member_id", memberId);
   return ((data ?? []) as { role_id: string }[]).map((r) => r.role_id);
 }
+
+export type ServiceRow = {
+  id: string; slug: string; name: string; description: string | null;
+  position: number; active: boolean;
+  clients: number; roles: number; pods: number;
+};
+
+/**
+ * The services, with what each one is holding up.
+ *
+ * The counts are the point: they are what tells someone whether the row in
+ * front of them can be deleted or only turned off, before they try it.
+ */
+export async function listServices(): Promise<ServiceRow[]> {
+  const db = createServiceClient();
+  const [{ data: services }, { data: clients }, { data: roles }, { data: teams }] =
+    await Promise.all([
+      db.from("org_services").select("id,slug,name,description,position,active").order("position"),
+      db.from("org_clients").select("service_id"),
+      db.from("org_roles").select("service_id"),
+      db.from("org_teams").select("service_id"),
+    ]);
+
+  const tally = (rows: { service_id: string | null }[] | null) => {
+    const m = new Map<string, number>();
+    for (const r of rows ?? []) {
+      if (r.service_id) m.set(r.service_id, (m.get(r.service_id) ?? 0) + 1);
+    }
+    return m;
+  };
+  const byClient = tally(clients);
+  const byRole = tally(roles);
+  const byTeam = tally(teams);
+
+  return ((services ?? []) as Omit<ServiceRow, "clients" | "roles" | "pods">[]).map((s) => ({
+    ...s,
+    clients: byClient.get(s.id) ?? 0,
+    roles: byRole.get(s.id) ?? 0,
+    pods: byTeam.get(s.id) ?? 0,
+  }));
+}

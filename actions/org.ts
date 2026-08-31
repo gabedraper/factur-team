@@ -469,3 +469,135 @@ export async function setClientLead(
   revalidatePath(`/settings/clients/${clientId}`);
   return { success: true };
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * Services
+ *
+ * The list behind the Service dropdown on a client, and the grouping every role
+ * hangs off. Six rows seeded at the start and no way to touch them since, which
+ * is fine until the day the business adds a service.
+ *
+ * Not to be confused with Salesforce's Service__c on the client record. That
+ * one is the product a client buys -- LG, OP, OSDR. These are the parts of
+ * Factur that deliver it.
+ * ---------------------------------------------------------------------------
+ */
+
+export async function createService(name: string, description: string | null) {
+  await requireOrgManage();
+  const trimmed = name.trim();
+  if (!trimmed) return { success: false, error: "A service needs a name." };
+  const db = createServiceClient();
+
+  const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!slug) return { success: false, error: "That name has no letters or numbers in it." };
+
+  // Onto the end of the list; ordering is a drag or an arrow away afterwards.
+  const { data: last } = await db.from("org_services")
+    .select("position").order("position", { ascending: false }).limit(1).maybeSingle();
+  const position = ((last as { position: number } | null)?.position ?? 0) + 1;
+
+  const { error } = await db.from("org_services")
+    .insert({ name: trimmed, slug, description: description?.trim() || null, position });
+  if (error) {
+    return {
+      success: false,
+      error: error.message.includes("duplicate")
+        ? "A service with that name already exists."
+        : error.message,
+    };
+  }
+  revalidatePath("/settings/services");
+  revalidatePath("/settings/clients");
+  return { success: true };
+}
+
+export async function updateService(
+  serviceId: string,
+  fields: { name?: string; description?: string | null; active?: boolean }
+) {
+  await requireOrgManage();
+  if (fields.name !== undefined && !fields.name.trim()) {
+    return { success: false, error: "A service needs a name." };
+  }
+  const db = createServiceClient();
+
+  /*
+   * The slug is deliberately left alone on rename. Seeded roles and the
+   * scoreboard match on it, so renaming "Outsourced Prospecting" to something
+   * friendlier should change the label and nothing else.
+   */
+  const patch: Record<string, unknown> = {};
+  if (fields.name !== undefined) patch.name = fields.name.trim();
+  if (fields.description !== undefined) patch.description = fields.description?.trim() || null;
+  if (fields.active !== undefined) patch.active = fields.active;
+
+  const { error } = await db.from("org_services").update(patch).eq("id", serviceId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/services");
+  revalidatePath("/settings/clients");
+  return { success: true };
+}
+
+/**
+ * Refused while anything still points at it.
+ *
+ * Deleting a service that clients or roles reference would blank the field on
+ * those records with nothing said. Deactivating is nearly always what was
+ * meant: it drops out of the dropdown for new work and leaves history intact.
+ */
+export async function deleteService(serviceId: string) {
+  await requireOrgManage();
+  const db = createServiceClient();
+
+  const [clients, roles, teams] = await Promise.all([
+    db.from("org_clients").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
+    db.from("org_roles").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
+    db.from("org_teams").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
+  ]);
+
+  const blockers = [
+    clients.count ? `${clients.count} clients` : null,
+    roles.count ? `${roles.count} roles` : null,
+    teams.count ? `${teams.count} pods` : null,
+  ].filter(Boolean);
+
+  if (blockers.length) {
+    return {
+      success: false,
+      error: `${blockers.join(", ")} still use this service. Move them first, or turn it off instead.`,
+    };
+  }
+
+  const { error } = await db.from("org_services").delete().eq("id", serviceId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/services");
+  revalidatePath("/settings/clients");
+  return { success: true };
+}
+
+/** Swaps a service with its neighbour, which is what the arrows in the UI do. */
+export async function moveService(serviceId: string, direction: "up" | "down") {
+  await requireOrgManage();
+  const db = createServiceClient();
+
+  const { data: rows } = await db.from("org_services").select("id,position").order("position");
+  const list = (rows ?? []) as { id: string; position: number }[];
+  const i = list.findIndex((s) => s.id === serviceId);
+  const j = direction === "up" ? i - 1 : i + 1;
+  if (i === -1 || j < 0 || j >= list.length) return { success: true };
+
+  /*
+   * Positions are swapped by value rather than recomputed, so a list that was
+   * never contiguous to begin with does not get silently renumbered.
+   */
+  const [a, b] = [list[i], list[j]];
+  const { error } = await db.from("org_services").upsert([
+    { id: a.id, position: b.position },
+    { id: b.id, position: a.position },
+  ]);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/settings/services");
+  return { success: true };
+}

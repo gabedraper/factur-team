@@ -50,6 +50,29 @@ import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "
 import { getCollectionsVisibility } from "@/actions/collections";
 import { PageTiming } from "@/components/PageTiming";
 
+/*
+ * The talent sections Factur actually works in.
+ *
+ * The system was built to Loxo's full shape, and most of that shape is
+ * machinery for a recruiting *agency* -- client submissions, a deal pipeline,
+ * placement fees, a master pipeline across many searches. Factur hires for
+ * itself, so those are answers to questions nobody here asks.
+ *
+ * Hidden, not removed: every page still exists, still works and is still
+ * reachable by URL, and the imported data is untouched. Take an href out of
+ * this list to put it back in the menu.
+ */
+const HIDDEN_TALENT_SECTIONS = new Set([
+  "/talent",            // Today
+  "/talent/companies",
+  "/talent/pipeline",
+  "/talent/campaigns",
+  "/talent/schedule",
+  "/talent/deals",
+  "/talent/placements",
+  "/talent/reports",
+]);
+
 function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   const groups: NavGroup[] = [];
 
@@ -124,7 +147,8 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       { href: "/talent/placements", label: "Placements", icon: <BadgeCheck className="h-4 w-4" /> },
       { href: "/talent/reports", label: "Reports", icon: <LineChart className="h-4 w-4" /> },
     );
-    groups.push({ label: "Talent", items: talent });
+    const shown = talent.filter((item) => !HIDDEN_TALENT_SECTIONS.has(item.href));
+    if (shown.length) groups.push({ label: "Talent", items: shown });
   }
 
   /*
