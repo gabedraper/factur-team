@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Star, Trash2, Eye, EyeOff } from "lucide-react";
 import type { Agent } from "@/lib/gaib/agents";
+import { MODELS } from "@/lib/gaib/models";
 import {
   createAgent, updateAgent, setAgentTools, setAgentRoles,
   makeDefaultAgent, deleteAgent,
@@ -15,12 +16,6 @@ import {
 type ToolInfo = { name: string; label: string; blurb: string; reads: string | null };
 type Role = { id: string; name: string };
 
-const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-const MODELS = [
-  { id: "claude-opus-5", label: "Opus 5" },
-  { id: "claude-sonnet-5", label: "Sonnet 5" },
-  { id: "claude-haiku-4-5", label: "Haiku 4.5" },
-];
 
 export function AgentsHub({
   agents, roles, tools,
@@ -124,6 +119,7 @@ function Editor({
   const [model, setModel] = useState(agent.model);
   const [effort, setEffort] = useState(agent.effort);
   const [held, setHeld] = useState<string[]>(agent.tools);
+  const efforts = MODELS.find((m) => m.id === model)?.efforts ?? [];
   const [audience, setAudience] = useState<string[]>(agent.roleIds);
 
   const dirty =
@@ -180,25 +176,34 @@ function Editor({
 
       <div className="flex flex-wrap gap-6">
         <Field label="Model">
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {MODELS.map((m) => (
-              <Button key={m.id} size="sm" variant={model === m.id ? "default" : "outline"}
+              <Button key={m.id} size="sm" title={m.note}
+                variant={model === m.id ? "default" : "outline"}
                 onClick={() => setModel(m.id)}>
                 {m.label}
               </Button>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground">
+            {MODELS.find((m) => m.id === model)?.note}
+          </p>
         </Field>
-        <Field label="Effort">
-          <div className="flex gap-1.5">
-            {EFFORTS.map((e) => (
-              <Button key={e} size="sm" variant={effort === e ? "default" : "outline"}
-                onClick={() => setEffort(e)}>
-                {e}
-              </Button>
-            ))}
-          </div>
-        </Field>
+        {/* Hidden rather than disabled for a model that does not take it: a
+            greyed-out row invites the question "why can't I set this", and the
+            answer is that there is nothing to set. */}
+        {efforts.length > 0 && (
+          <Field label="Effort">
+            <div className="flex gap-1.5">
+              {efforts.map((e) => (
+                <Button key={e} size="sm" variant={effort === e ? "default" : "outline"}
+                  onClick={() => setEffort(e)}>
+                  {e}
+                </Button>
+              ))}
+            </div>
+          </Field>
+        )}
       </div>
 
       <Button
