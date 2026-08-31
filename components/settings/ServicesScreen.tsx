@@ -61,7 +61,6 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
               <th className="w-8 px-2 py-2" />
               <th className="px-3 py-2 font-medium">Service</th>
               <th className="px-3 py-2 font-medium">Description</th>
-              <th className="px-3 py-2 font-medium">Clients</th>
               <th className="px-3 py-2 font-medium">Roles</th>
               <th className="px-3 py-2 font-medium">Pods</th>
               <th className="px-3 py-2 font-medium">In dropdown</th>
@@ -70,7 +69,7 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
           </thead>
           <tbody>
             {services.map((s, i) => {
-              const inUse = s.clients + s.roles + s.pods > 0;
+              const inUse = s.roles + s.pods > 0;
               const isEditing = editing === s.id;
               return (
                 <tr key={s.id} className="border-t align-middle">
@@ -105,7 +104,7 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                           className="w-48"
                         />
                       </td>
-                      <td className="px-3 py-1.5" colSpan={5}>
+                      <td className="px-3 py-1.5" colSpan={4}>
                         <Field
                           value={draft.description}
                           onChange={(v) => setDraft({ ...draft, description: v })}
@@ -122,7 +121,6 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                         </button>
                       </td>
                       <td className="px-3 py-1.5 text-muted-foreground">{s.description ?? "—"}</td>
-                      <td className="px-3 py-1.5 tabular-nums">{s.clients || "—"}</td>
                       <td className="px-3 py-1.5 tabular-nums">{s.roles || "—"}</td>
                       <td className="px-3 py-1.5 tabular-nums">{s.pods || "—"}</td>
                       <td className="px-3 py-1.5">
@@ -195,7 +193,7 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                     className="w-48"
                   />
                 </td>
-                <td className="px-3 py-1.5" colSpan={5}>
+                <td className="px-3 py-1.5" colSpan={4}>
                   <Field
                     value={fresh.description}
                     onChange={(v) => setFresh({ ...fresh, description: v })}

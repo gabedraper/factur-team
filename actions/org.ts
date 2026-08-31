@@ -225,17 +225,6 @@ export async function setClientOwner(
   return { success: true };
 }
 
-export async function setClientService(clientId: string, serviceId: string | null) {
-  await requireOrgManage();
-  const db = createServiceClient();
-  const { error } = await db.from("org_clients")
-    .update({ service_id: serviceId }).eq("id", clientId);
-  if (error) return { success: false, error: error.message };
-  await noteClientHistory();
-  revalidatePath("/settings/clients");
-  return { success: true };
-}
-
 // --- people -----------------------------------------------------------------
 
 export async function createMember(email: string, fullName: string) {
@@ -551,14 +540,12 @@ export async function deleteService(serviceId: string) {
   await requireOrgManage();
   const db = createServiceClient();
 
-  const [clients, roles, teams] = await Promise.all([
-    db.from("org_clients").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
+  const [roles, teams] = await Promise.all([
     db.from("org_roles").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
     db.from("org_teams").select("id", { count: "exact", head: true }).eq("service_id", serviceId),
   ]);
 
   const blockers = [
-    clients.count ? `${clients.count} clients` : null,
     roles.count ? `${roles.count} roles` : null,
     teams.count ? `${teams.count} pods` : null,
   ].filter(Boolean);
@@ -599,5 +586,156 @@ export async function moveService(serviceId: string, direction: "up" | "down") {
   ]);
   if (error) return { success: false, error: error.message };
   revalidatePath("/settings/services");
+  return { success: true };
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Client service periods
+ *
+ * A client's service is not one value that gets overwritten. An upgrade closes
+ * one period and opens another, which is why these are rows rather than a
+ * field. Overlaps are allowed: running two services at once is normal.
+ *
+ * Every write sets source = 'manual', which is what stops the nightly rebuild
+ * from flattening a hand correction back into whatever the opportunity tags
+ * happened to say.
+ * ---------------------------------------------------------------------------
+ */
+
+async function requireClientEdit() {
+  const perms = await myPermissions();
+  if (!perms.has("org.manage") && !perms.has("clients.health")) {
+    throw new Error("Forbidden: clients.health or org.manage required");
+  }
+}
+
+function badDates(startedOn: string, endedOn: string | null) {
+  if (!startedOn) return "A period needs a start date.";
+  if (endedOn && endedOn < startedOn) return "The end date is before the start date.";
+  return null;
+}
+
+export async function addServicePeriod(
+  clientId: string,
+  fields: {
+    service: string; started_on: string; ended_on: string | null;
+    monthly_rate: number | null; tier: string | null; note: string | null;
+  }
+) {
+  await requireClientEdit();
+  if (!fields.service.trim()) return { success: false, error: "A period needs a service." };
+  const bad = badDates(fields.started_on, fields.ended_on);
+  if (bad) return { success: false, error: bad };
+
+  const { error } = await createServiceClient().from("client_service_periods").insert({
+    salesforce_client_id: clientId,
+    service: fields.service.trim(),
+    started_on: fields.started_on,
+    ended_on: fields.ended_on || null,
+    monthly_rate: fields.monthly_rate,
+    tier: fields.tier?.trim() || null,
+    note: fields.note?.trim() || null,
+    source: "manual",
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/clients/results/${clientId}`);
+  return { success: true };
+}
+
+export async function updateServicePeriod(
+  periodId: string,
+  clientId: string,
+  fields: {
+    service?: string; started_on?: string; ended_on?: string | null;
+    monthly_rate?: number | null; tier?: string | null; note?: string | null;
+  }
+) {
+  await requireClientEdit();
+  const db = createServiceClient();
+
+  const { data: current } = await db.from("client_service_periods")
+    .select("started_on,ended_on").eq("id", periodId).maybeSingle();
+  const row = current as { started_on: string; ended_on: string | null } | null;
+  if (!row) return { success: false, error: "That period no longer exists." };
+
+  const bad = badDates(
+    fields.started_on ?? row.started_on,
+    fields.ended_on === undefined ? row.ended_on : fields.ended_on,
+  );
+  if (bad) return { success: false, error: bad };
+
+  const patch: Record<string, unknown> = { source: "manual" };
+  if (fields.service !== undefined) patch.service = fields.service.trim();
+  if (fields.started_on !== undefined) patch.started_on = fields.started_on;
+  if (fields.ended_on !== undefined) patch.ended_on = fields.ended_on || null;
+  if (fields.monthly_rate !== undefined) patch.monthly_rate = fields.monthly_rate;
+  if (fields.tier !== undefined) patch.tier = fields.tier?.trim() || null;
+  if (fields.note !== undefined) patch.note = fields.note?.trim() || null;
+
+  const { error } = await db.from("client_service_periods").update(patch).eq("id", periodId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/clients/results/${clientId}`);
+  return { success: true };
+}
+
+export async function deleteServicePeriod(periodId: string, clientId: string) {
+  await requireClientEdit();
+  const { error } = await createServiceClient()
+    .from("client_service_periods").delete().eq("id", periodId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/clients/results/${clientId}`);
+  return { success: true };
+}
+
+/**
+ * The upgrade or downgrade, as one action.
+ *
+ * Closes whatever is currently open the day before the new service starts, and
+ * opens the new one. Doing it as two edits is the same thing, but this is the
+ * move people actually make and it should not need two forms and a date
+ * subtraction done in someone's head.
+ */
+export async function switchService(
+  clientId: string,
+  toService: string,
+  onDate: string,
+  monthlyRate: number | null
+) {
+  await requireClientEdit();
+  if (!toService.trim()) return { success: false, error: "Pick a service to switch to." };
+  if (!onDate) return { success: false, error: "Pick the date the change took effect." };
+  const db = createServiceClient();
+
+  const dayBefore = new Date(`${onDate}T00:00:00Z`);
+  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+
+  const { data: open } = await db.from("client_service_periods")
+    .select("id,started_on").eq("salesforce_client_id", clientId).is("ended_on", null);
+
+  for (const p of (open ?? []) as { id: string; started_on: string }[]) {
+    /*
+     * A period cannot end before it began. If someone backdates a switch to
+     * before the open period started, that period was a mistake -- drop it
+     * rather than writing a negative span the check constraint would reject.
+     */
+    if (p.started_on > dayBefore.toISOString().slice(0, 10)) {
+      await db.from("client_service_periods").delete().eq("id", p.id);
+      continue;
+    }
+    await db.from("client_service_periods")
+      .update({ ended_on: dayBefore.toISOString().slice(0, 10), source: "manual" })
+      .eq("id", p.id);
+  }
+
+  const { error } = await db.from("client_service_periods").insert({
+    salesforce_client_id: clientId,
+    service: toService.trim(),
+    started_on: onDate,
+    monthly_rate: monthlyRate,
+    source: "manual",
+  });
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/clients/results/${clientId}`);
   return { success: true };
 }

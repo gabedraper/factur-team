@@ -4,6 +4,7 @@ import {
   getClient, getServiceSeries, getServicePeriods, HEADLINE_LABEL,
   type ServiceSeries,
 } from "@/lib/clients/results";
+import { ServicePeriods } from "@/components/clients/ServicePeriods";
 
 export const dynamic = "force-dynamic";
 
@@ -169,34 +170,7 @@ export default async function ClientResultPage({
         />
       </div>
 
-      {periods.length > 0 && (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Service</th>
-                <th className="px-3 py-2 font-medium">From</th>
-                <th className="px-3 py-2 font-medium">To</th>
-                <th className="px-3 py-2 font-medium">Rate</th>
-                <th className="px-3 py-2 font-medium">Tier</th>
-                <th className="px-3 py-2 font-medium">Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {periods.map((p, i) => (
-                <tr key={`${p.service}-${p.startedOn}-${i}`} className="border-t">
-                  <td className="px-3 py-1.5">{p.service}</td>
-                  <td className="px-3 py-1.5 tabular-nums">{p.startedOn}</td>
-                  <td className="px-3 py-1.5 tabular-nums">{p.endedOn ?? "—"}</td>
-                  <td className="px-3 py-1.5 tabular-nums">—</td>
-                  <td className="px-3 py-1.5">—</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">{p.source}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ServicePeriods clientId={clientId} periods={periods} />
 
       <div className="space-y-2 rounded-md border p-3">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">

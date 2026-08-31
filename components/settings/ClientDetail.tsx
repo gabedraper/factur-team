@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setClientRole, setClientLead, setClientOwner, setClientService } from "@/actions/org";
+import { setClientRole, setClientLead, setClientOwner } from "@/actions/org";
 
 type Person = { id: string; name: string };
 type Team = Record<string, unknown> | null;
@@ -15,13 +15,12 @@ const date = (v: unknown) =>
 const text = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
 
 export function ClientDetail({
-  client, salesforce, team, people, services, roles, assignments,
+  client, salesforce, team, people, roles, assignments,
 }: {
   client: Record<string, unknown>;
   salesforce: Record<string, unknown> | null;
   team: Team;
   people: Person[];
-  services: { id: string; name: string }[];
   /** The roles Settings says are assigned per client, in the order shown. */
   roles: { id: string; name: string }[];
   assignments: Record<string, string | null>;
@@ -106,24 +105,6 @@ export function ClientDetail({
               </label>
             );
           })}
-        </div>
-      </section>
-
-      <section className="rounded-md border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-medium">Service</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Service</span>
-            <select
-              className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
-              value={String(client.service_id ?? "")}
-              disabled={pending}
-              onChange={(e) => run(() => setClientService(id, e.target.value || null))}
-            >
-              <option value="">— none —</option>
-              {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
         </div>
       </section>
 

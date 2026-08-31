@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ClientResult, MonthRow, ServiceSeries } from "./result-metrics";
+import type { ClientResult, MonthRow, ServiceSeries, ServicePeriod } from "./result-metrics";
 import { serviceHeadline } from "./result-metrics";
 
 export * from "./result-metrics";
@@ -74,25 +74,22 @@ export async function getClient(id: string): Promise<ClientResult | null> {
   return data ? toClient(data) : null;
 }
 
-export type ServicePeriod = {
-  service: string;
-  startedOn: string;
-  endedOn: string | null;
-  source: string;
-};
-
 export async function getServicePeriods(id: string): Promise<ServicePeriod[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("client_service_periods")
-    .select("service,started_on,ended_on,source")
+    .select("id,service,started_on,ended_on,monthly_rate,tier,note,source")
     .eq("salesforce_client_id", id)
     .order("started_on");
   if (error) throw new Error(error.message);
   return (data ?? []).map((r: any) => ({
+    id: r.id,
     service: r.service,
     startedOn: r.started_on,
     endedOn: r.ended_on,
+    monthlyRate: r.monthly_rate === null ? null : Number(r.monthly_rate),
+    tier: r.tier,
+    note: r.note,
     source: r.source,
   }));
 }

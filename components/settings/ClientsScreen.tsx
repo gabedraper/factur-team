@@ -2,16 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { setClientOwner, setClientService } from "@/actions/org";
+import { setClientOwner } from "@/actions/org";
 import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
 import { effectiveTeamLeadId } from "@/lib/team-lead";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 
-type Service = { id: string; name: string };
-
 export function ClientsScreen({
-  clients, teams, members, services,
-}: { clients: ClientRow[]; teams: TeamRow[]; members: MemberRow[]; services: Service[] }) {
+  clients, teams, members,
+}: { clients: ClientRow[]; teams: TeamRow[]; members: MemberRow[] }) {
   const [rows, setRows] = useState(clients);
   const [filter, setFilter] = useState("");
   const [onlyUnassigned, setOnlyUnassigned] = useState(false);
@@ -66,7 +64,6 @@ export function ClientsScreen({
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
     status: (c) => c.status,
-    service: (c) => services.find((s) => s.id === c.service_id)?.name,
     owner: ownerName,
     lead: leadName,
   });
@@ -131,7 +128,6 @@ export function ClientsScreen({
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("status")}>Status</SortHeader>
-              <SortHeader className="px-3 py-2" {...sortProps("service")}>Service</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("owner")}>Covered by</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
             </tr>
@@ -146,22 +142,6 @@ export function ClientsScreen({
                   </Link>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{c.status ?? "—"}</td>
-                <td className="px-3 py-2">
-                  <select
-                    className="h-8 rounded-md border bg-field px-2 text-sm"
-                    value={c.service_id ?? ""}
-                    onChange={(e) => {
-                      const next = e.target.value || null;
-                      run(
-                        () => setClientService(c.id, next),
-                        () => setRows((rs) => rs.map((r) => r.id === c.id ? { ...r, service_id: next } : r))
-                      );
-                    }}
-                  >
-                    <option value="">— none —</option>
-                    {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </td>
                 <td className="px-3 py-2">
                   <select
                     className="h-8 max-w-56 rounded-md border bg-field px-2 text-sm"

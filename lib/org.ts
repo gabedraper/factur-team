@@ -203,7 +203,7 @@ export type TeamRow = {
 
 export type ClientRow = {
   id: string; salesforce_client_id: string | null; name: string;
-  status: string | null; service_id: string | null;
+  status: string | null;
   team_id: string | null; member_id: string | null; active: boolean;
   account_manager_id: string | null; team_lead_id: string | null;
 };
@@ -224,7 +224,7 @@ export async function listPodsAndClients() {
     db.from("org_teams").select("id,service_id,name,slug,kind,active,manager_member_id").order("name"),
     db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
     db.from("org_clients")
-      .select("id,salesforce_client_id,name,status,service_id,team_id,member_id,active,account_manager_id,team_lead_id")
+      .select("id,salesforce_client_id,name,status,team_id,member_id,active,account_manager_id,team_lead_id")
       .order("name"),
   ]);
 
@@ -503,7 +503,7 @@ export async function myRoleIds(): Promise<string[]> {
 export type ServiceRow = {
   id: string; slug: string; name: string; description: string | null;
   position: number; active: boolean;
-  clients: number; roles: number; pods: number;
+  roles: number; pods: number;
 };
 
 /**
@@ -514,10 +514,9 @@ export type ServiceRow = {
  */
 export async function listServices(): Promise<ServiceRow[]> {
   const db = createServiceClient();
-  const [{ data: services }, { data: clients }, { data: roles }, { data: teams }] =
+  const [{ data: services }, { data: roles }, { data: teams }] =
     await Promise.all([
       db.from("org_services").select("id,slug,name,description,position,active").order("position"),
-      db.from("org_clients").select("service_id"),
       db.from("org_roles").select("service_id"),
       db.from("org_teams").select("service_id"),
     ]);
@@ -529,13 +528,11 @@ export async function listServices(): Promise<ServiceRow[]> {
     }
     return m;
   };
-  const byClient = tally(clients);
   const byRole = tally(roles);
   const byTeam = tally(teams);
 
-  return ((services ?? []) as Omit<ServiceRow, "clients" | "roles" | "pods">[]).map((s) => ({
+  return ((services ?? []) as Omit<ServiceRow, "roles" | "pods">[]).map((s) => ({
     ...s,
-    clients: byClient.get(s.id) ?? 0,
     roles: byRole.get(s.id) ?? 0,
     pods: byTeam.get(s.id) ?? 0,
   }));

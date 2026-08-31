@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import {
-  myPermissions, getClientDetail, listMembers, listServicesAndTeams,
+  myPermissions, getClientDetail, listMembers,
 } from "@/lib/org";
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { NpsPanel } from "@/components/clients/NpsPanel";
@@ -23,8 +23,8 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
 
   // Named roleHistory, not history: a bare `history` shadows the DOM global of
   // the same name, and a missing binding then type-checks as Window.history.
-  const [{ members }, { services }, nps, contacts, roleHistory] = await Promise.all([
-    listMembers(), listServicesAndTeams(),
+  const [{ members }, nps, contacts, roleHistory] = await Promise.all([
+    listMembers(),
     listNps((await params).clientId),
     listClientContacts((await params).clientId),
     clientHistory((await params).clientId),
@@ -49,7 +49,6 @@ export default async function ClientPage({ params }: { params: Promise<{ clientI
         salesforce={detail.salesforce}
         team={detail.team}
         people={people}
-        services={services}
         roles={detail.roles}
         assignments={detail.assignments}
       />

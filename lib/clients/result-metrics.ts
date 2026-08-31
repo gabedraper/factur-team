@@ -56,6 +56,18 @@ export type ClientResult = {
   leadsPerMonth: number | null;
 };
 
+/** One stint a client spent on a service. Overlaps between rows are legitimate. */
+export type ServicePeriod = {
+  id: string;
+  service: string;
+  startedOn: string;
+  endedOn: string | null;
+  monthlyRate: number | null;
+  tier: string | null;
+  note: string | null;
+  source: string;
+};
+
 /** One service's run of months, in engagement order. */
 export type ServiceSeries = {
   service: string;

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { myPermissions, listMembers, listPodsAndClients, listServicesAndTeams } from "@/lib/org";
+import { myPermissions, listMembers, listPodsAndClients } from "@/lib/org";
 import { ClientsScreen } from "@/components/settings/ClientsScreen";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,8 @@ export default async function ClientsPage() {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) redirect("/settings");
 
-  const [{ members }, { teams, clients }, { services }] = await Promise.all([
-    listMembers(), listPodsAndClients(), listServicesAndTeams(),
+  const [{ members }, { teams, clients }] = await Promise.all([
+    listMembers(), listPodsAndClients(),
   ]);
 
   return (
@@ -22,7 +22,7 @@ export default async function ClientsPage() {
         </Link>
         <h1 className="mt-1 text-xl font-semibold">Clients</h1>
       </div>
-      <ClientsScreen clients={clients} teams={teams} members={members} services={services} />
+      <ClientsScreen clients={clients} teams={teams} members={members} />
     </div>
   );
 }
