@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact, Bot, Plug, MessageCircle, ScrollText } from "lucide-react";
+  MailWarning, Gauge, Contact, Bot, Plug } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -25,9 +25,6 @@ export default async function SettingsPage() {
   // as -- otherwise stepping into a learner's shoes would strand you there.
   const canPreview = (await myRealPermissions()).has("org.manage");
   const canAdminTalent = perms.has("talent.admin") || canManage;
-  // Narrower than administration on purpose -- the page itself checks this, and
-  // the card must not offer a door the page will not open.
-  const canReadTranscripts = perms.has("gaib.transcripts");
 
   const jar = await cookies();
   const previewRole = jar.get("preview_role")?.value ?? null;
@@ -188,28 +185,6 @@ export default async function SettingsPage() {
                 </span>
               </span>
             </Link>
-            <Link href="/gaib"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
-              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-sm font-medium">Gaib tickets</span>
-                <span className="block text-xs text-muted-foreground">
-                  What people have asked for, and what was done about it.
-                </span>
-              </span>
-            </Link>
-            {canReadTranscripts && (
-              <Link href="/gaib/transcripts"
-                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
-                <ScrollText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <span>
-                  <span className="block text-sm font-medium">Gaib conversations</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Full transcripts of what people asked Gaib.
-                  </span>
-                </span>
-              </Link>
-            )}
             <Link href="/settings/performance"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
