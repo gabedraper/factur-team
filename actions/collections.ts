@@ -130,6 +130,8 @@ export async function getCollectionsQueue(): Promise<Chase[]> {
 
 
 export type BoardRow = QueueRow & {
+  /** False for a former client who still owes; the debt outlives the contract. */
+  client_active: boolean;
   open_balance: number | null;
   bucket_current: number;
   bucket_1_30: number;

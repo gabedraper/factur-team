@@ -229,6 +229,11 @@ export function Board({
                 <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
                   {r.client_name}
                 </Link>
+                {!r.client_active && (
+                  <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    former client
+                  </span>
+                )}
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {r.last_sent_at
                     ? `Last: step ${r.last_step_position} on ${onDayShort(
