@@ -38,9 +38,24 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getUser() verifies the token against Supabase, which is a network call on
+  // every request from a signed-in person. On 31 Aug a bulk Loxo import starved
+  // the project and that call reached 28 seconds, so Vercel killed the whole
+  // middleware invocation and every signed-in user got a 504 on every page.
+  //
+  // The verification is worth keeping, so it is bounded rather than removed. If
+  // it does not answer in time we do not know whether the visitor is signed in
+  // -- and "don't know" must not mean "turn them away", or a slow Supabase
+  // would bounce the whole company to the login page. The request goes through
+  // instead and the page does its own check, which is where the profile and
+  // permission checks already live.
+  const AUTH_TIMEOUT_MS = 2000;
+  const authResult = await Promise.race([
+    supabase.auth.getUser(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), AUTH_TIMEOUT_MS)),
+  ]);
+  const user = authResult?.data?.user ?? null;
+  const authUnknown = authResult === null;
 
   const { pathname } = request.nextUrl;
 
@@ -52,7 +67,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(prefix)
   );
 
-  if (isProtected && !user) {
+  if (isProtected && !user && !authUnknown) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
