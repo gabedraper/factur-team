@@ -24,17 +24,47 @@ export async function listUnmatchedQuickbooks(): Promise<UnmatchedCustomer[]> {
   return (data ?? []) as UnmatchedCustomer[];
 }
 
-export async function listClientsForLinking(): Promise<{ id: string; name: string }[]> {
+/**
+ * The clients still available to link a QuickBooks customer to.
+ *
+ * Two rules, and they pull in opposite directions.
+ *
+ * Former clients are in. Matching exists to attach an open balance to whoever
+ * ran up the debt, and most unattached balances belong to somebody who has
+ * since left -- a list of current clients only is a list that cannot answer the
+ * question it is being asked. They are marked, so nobody links to one by
+ * accident.
+ *
+ * Anyone already tied to a customer is out. A client has one set of books
+ * behind them, so offering a name that is spoken for is offering a mistake, and
+ * on a list of nine hundred the free ones are what somebody is hunting for.
+ */
+export type LinkableClient = { id: string; name: string; active: boolean };
+
+export async function listClientsForLinking(): Promise<LinkableClient[]> {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) return [];
 
-  const { data } = await createServiceClient()
-    .from("org_clients")
-    .select("id,name")
-    .eq("active", true)
-    .neq("status", "Inactive")
-    .order("name");
-  return (data ?? []) as { id: string; name: string }[];
+  const db = createServiceClient();
+  const [{ data: clients }, { data: taken }] = await Promise.all([
+    db.from("org_clients").select("id,name,active,status").order("name"),
+    db.rpc("get_client_quickbooks", { p_include_inactive: true }),
+  ]);
+
+  const spoken_for = new Set(
+    ((taken ?? []) as { client_id: string }[]).map((t) => t.client_id)
+  );
+
+  type Row = { id: string; name: string; active: boolean; status: string | null };
+  return ((clients ?? []) as Row[])
+    .filter((c) => !spoken_for.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      active: c.active && (c.status ?? "") !== "Inactive",
+    }))
+    // Current clients first: the common case should not be scrolled past.
+    .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
 }
 
 /**

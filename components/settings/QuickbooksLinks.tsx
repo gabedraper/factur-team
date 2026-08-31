@@ -19,7 +19,7 @@ export function QuickbooksLinks({
   rows, clients, canDecide,
 }: {
   rows: UnmatchedCustomer[];
-  clients: { id: string; name: string }[];
+  clients: { id: string; name: string; active: boolean }[];
   canDecide: boolean;
 }) {
   const [left, setLeft] = useState(rows);
@@ -93,6 +93,7 @@ export function QuickbooksLinks({
                       {clients.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
+                          {c.active ? "" : "  (former)"}
                           {c.id === r.suggested_client_id && r.score !== null
                             ? `  (closest, ${r.score})`
                             : ""}
