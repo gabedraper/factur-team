@@ -336,6 +336,27 @@ jobs:
             echo "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
           } > /tmp/msg.txt
           git commit -q -F /tmp/msg.txt
+          #
+          # Brought up to date before pushing.
+          #
+          # The run checked main out minutes ago and main may have moved since.
+          # That matters more than staleness usually does here: if anything on
+          # main changed a file under .github, this branch is now carrying an
+          # older copy of it, and GitHub refuses a push that appears to modify
+          # a workflow -- the token it hands the runner is never allowed to do
+          # that. The branch then dies with an error about workflow permissions
+          # that has nothing to do with what the agent actually changed.
+          #
+          # A conflict is not worth failing over: push the branch as it stands
+          # and let the person reviewing it deal with a stale base, which is a
+          # problem they can see.
+          #
+          git fetch -q origin main
+          if ! git rebase origin/main; then
+            git rebase --abort || true
+            /tmp/event.sh "could not update the branch onto main" "pushed as it was"
+          fi
+
           # Forced, because the branch belongs to this ticket and this workflow
           # and nothing else writes to it. A re-run supersedes the attempt
           # before it; without this, retrying a ticket whose first attempt got
