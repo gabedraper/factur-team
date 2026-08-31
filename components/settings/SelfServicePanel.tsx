@@ -8,11 +8,12 @@ import { FIELD } from "@/lib/field-class";
  * Your own role and your own client list, set without an administrator.
  *
  * The server works out who you are from your session, so nothing this
- * component sends can name somebody else. What it can do is give you any role
- * that exists, including one that carries org.manage.
+ * component sends can name somebody else. Roles carrying administrator or
+ * manager access are shown but unavailable unless you already hold
+ * org.manage; the server refuses them regardless of what this sends.
  */
 
-type Role = { id: string; name: string; service_id: string | null };
+type Role = { id: string; name: string; service_id: string | null; restricted: boolean };
 type Service = { id: string; name: string };
 type Client = { id: string; name: string; heldBy: string | null; mine: boolean };
 
@@ -21,11 +22,14 @@ export function SelfServicePanel({
   services,
   currentRoleId,
   clients,
+  canAssignRestricted,
 }: {
   roles: Role[];
   services: Service[];
   currentRoleId: string | null;
   clients: Client[];
+  /** Whether this person may take a role carrying administrator or manager access. */
+  canAssignRestricted: boolean;
 }) {
   const [roleId, setRoleId] = useState(currentRoleId ?? "");
   const [rows, setRows] = useState(clients);
@@ -100,11 +104,21 @@ export function SelfServicePanel({
           <option value="">None</option>
           {[...grouped.entries()].map(([service, list]) => (
             <optgroup key={service} label={service}>
-              {list.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
+              {list.map((r) => {
+                /*
+                 * Shown but unavailable rather than hidden. Somebody looking
+                 * for Team Lead should find it and see that it needs an
+                 * administrator, not decide the list is broken. The server
+                 * refuses it either way.
+                 */
+                const locked = r.restricted && !canAssignRestricted;
+                return (
+                  <option key={r.id} value={r.id} disabled={locked}>
+                    {r.name}
+                    {locked ? " — administrator only" : ""}
+                  </option>
+                );
+              })}
             </optgroup>
           ))}
         </select>

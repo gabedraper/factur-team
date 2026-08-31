@@ -8,7 +8,7 @@ import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/or
 import { ROLES } from "@/lib/roles";
 import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
 import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
-import { listClientsForSelf } from "@/actions/self-service";
+import { listClientsForSelf, listRolesForSelf } from "@/actions/self-service";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +58,10 @@ export default async function SettingsPage() {
    * Anyone may now set their own role and take clients, so the pickers are
    * built for everybody rather than behind the administration section.
    */
-  const [{ data: allRoles }, myClients] = await Promise.all([
-    db.from("org_roles").select("id,name,service_id,active").eq("active", true).order("name"),
+  const [{ roles: selfRoles, canAssignRestricted }, myClients] = await Promise.all([
+    listRolesForSelf(),
     listClientsForSelf(),
   ]);
-  const selfRoles = ((allRoles ?? []) as
-    { id: string; name: string; service_id: string | null }[]);
 
   // Already fetched above with the rest of this person's own record.
   const myRoleId = mine?.org_assignments?.[0]?.role_id ?? null;
@@ -100,6 +98,7 @@ export default async function SettingsPage() {
           services={services}
           currentRoleId={myRoleId}
           clients={myClients}
+          canAssignRestricted={canAssignRestricted}
         />
       </section>
 
