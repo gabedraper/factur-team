@@ -243,7 +243,7 @@ export function Board({
                 )}
                 {r.matched && r.client_active === false && (
                   <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    former client
+                    inactive client
                   </span>
                 )}
                 {!r.matched && (

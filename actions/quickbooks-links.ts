@@ -25,21 +25,26 @@ export async function listUnmatchedQuickbooks(): Promise<UnmatchedCustomer[]> {
 }
 
 /**
- * The clients still available to link a QuickBooks customer to.
+ * Every client, with the ones already spoken for marked and sent to the bottom.
  *
- * Two rules, and they pull in opposite directions.
- *
- * Former clients are in. Matching exists to attach an open balance to whoever
+ * Inactive clients are in. Matching exists to attach an open balance to whoever
  * ran up the debt, and most unattached balances belong to somebody who has
- * since left -- a list of current clients only is a list that cannot answer the
- * question it is being asked. They are marked, so nobody links to one by
- * accident.
+ * since left -- a list of current clients only cannot answer the question it is
+ * being asked.
  *
- * Anyone already tied to a customer is out. A client has one set of books
- * behind them, so offering a name that is spoken for is offering a mistake, and
- * on a list of nine hundred the free ones are what somebody is hunting for.
+ * Clients already tied to a customer are in too, but last and unselectable.
+ * Leaving them out entirely was tidier and told a lie by omission: somebody
+ * checking whether the screen worked searched for a client she knew existed,
+ * did not find it, and reasonably concluded it was broken. An absent name meant
+ * either "not here" or "already done" and the screen would not say which.
  */
-export type LinkableClient = { id: string; name: string; active: boolean };
+export type LinkableClient = {
+  id: string;
+  name: string;
+  active: boolean;
+  /** The QuickBooks customer already on this client, if any. */
+  matchedTo: string | null;
+};
 
 export async function listClientsForLinking(): Promise<LinkableClient[]> {
   const perms = await myPermissions();
@@ -51,25 +56,27 @@ export async function listClientsForLinking(): Promise<LinkableClient[]> {
     db.rpc("get_client_quickbooks", { p_include_inactive: true }),
   ]);
 
-  const spoken_for = new Set(
-    ((taken ?? []) as { client_id: string }[]).map((t) => t.client_id)
-  );
+  // A client can hold more than one customer through a hand-made link, so the
+  // names are gathered rather than the last one winning.
+  const spoken_for = new Map<string, string[]>();
+  for (const t of (taken ?? []) as { client_id: string; qb_customer_name: string }[]) {
+    spoken_for.set(t.client_id, [...(spoken_for.get(t.client_id) ?? []), t.qb_customer_name]);
+  }
 
   type Row = { id: string; name: string; active: boolean; status: string | null };
   return ((clients ?? []) as Row[])
-    .filter((c) => !spoken_for.has(c.id))
     .map((c) => ({
       id: c.id,
       name: c.name,
       active: c.active && (c.status ?? "") !== "Inactive",
+      matchedTo: spoken_for.get(c.id)?.join(", ") ?? null,
     }))
-    /*
-     * Plain alphabetical. Sorting current clients above former ones read as
-     * broken to the person using it -- she was hunting by name, found the list
-     * out of order, and had no way to know the order was deliberate. The
-     * "(former)" tag already says which is which.
-     */
-    .sort((a, b) => a.name.localeCompare(b.name));
+    // Free names first, alphabetical; taken ones after, alphabetical again.
+    .sort(
+      (a, b) =>
+        Number(Boolean(a.matchedTo)) - Number(Boolean(b.matchedTo)) ||
+        a.name.localeCompare(b.name)
+    );
 }
 
 /**
