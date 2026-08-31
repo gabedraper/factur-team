@@ -42,6 +42,9 @@ export type ClientResult = {
   sizeInferred: boolean;
   industry: string | null;
   summary: string | null;
+  servicesDelivered: string[];
+  busiestService: string | null;
+  multiService: boolean;
   monthsWithResults: number;
   leads: number;
   appointments: number;
@@ -53,7 +56,16 @@ export type ClientResult = {
   leadsPerMonth: number | null;
 };
 
+/** One service's run of months, in engagement order. */
+export type ServiceSeries = {
+  service: string;
+  headline: HeadlineMetric | null;
+  months: MonthRow[];
+  totals: { leads: number; appointments: number; quotes: number; pos: number; poAmount: number };
+};
+
 export type MonthRow = {
+  service: string;
   monthIndex: number;
   monthStart: string;
   leads: number;
@@ -63,3 +75,16 @@ export type MonthRow = {
   quoteAmount: number;
   poAmount: number;
 };
+
+/**
+ * Which metric a service is contracted on. Mirrors the SQL function of the
+ * same name; both exist because the view sorts on it and the page labels with
+ * it, and neither should have to call the other.
+ */
+export function serviceHeadline(service: string | null): HeadlineMetric | null {
+  if (!service) return null;
+  if (["OP", "OBDM", "SMB - OBDM", "Constructur - OBDM"].includes(service)) return "quotes";
+  if (["OSDR", "SMB - OSDR", "Constructur - OSDR"].includes(service)) return "appointments";
+  if (["LG", "Constructur - LG", "RG"].includes(service)) return "leads";
+  return null;
+}

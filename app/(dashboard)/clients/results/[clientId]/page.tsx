@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getClient, getMonths, HEADLINE_LABEL } from "@/lib/clients/results";
+import {
+  getClient, getServiceSeries, getServicePeriods, HEADLINE_LABEL,
+  type ServiceSeries,
+} from "@/lib/clients/results";
 
 export const dynamic = "force-dynamic";
 
@@ -39,17 +42,97 @@ function Tags({ label, items }: { label: string; items: string[] }) {
   );
 }
 
+/** One service's months. The headline column is tinted; the rest sit beside it. */
+function ServiceTable({ series }: { series: ServiceSeries }) {
+  const headline = series.headline;
+  const peak = Math.max(
+    1,
+    ...series.months.map((m) =>
+      headline === "quotes" ? m.quotes : headline === "appointments" ? m.appointments : m.leads,
+    ),
+  );
+  const bar = (m: (typeof series.months)[number]) =>
+    headline === "quotes" ? m.quotes : headline === "appointments" ? m.appointments : m.leads;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <h2 className="font-semibold">{series.service}</h2>
+        {headline && (
+          <span className="text-xs text-muted-foreground">{HEADLINE_LABEL[headline]}</span>
+        )}
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {monthLabel.format(new Date(`${series.months[0].monthStart}T00:00:00Z`))} –{" "}
+          {monthLabel.format(
+            new Date(`${series.months[series.months.length - 1].monthStart}T00:00:00Z`),
+          )}
+          {" · "}
+          {series.months.length} months · {nf.format(series.totals.leads)} leads ·{" "}
+          {nf.format(series.totals.appointments)} appts ·{" "}
+          {nf.format(series.totals.quotes)} quotes · {nf.format(series.totals.pos)} POs
+          {series.totals.poAmount > 0 && ` · ${money.format(series.totals.poAmount)}`}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left">
+            <tr>
+              <th className="px-3 py-2 font-medium">Month</th>
+              <th className="px-3 py-2 font-medium">Calendar</th>
+              <th className="px-3 py-2 font-medium">Leads</th>
+              <th className="px-3 py-2 font-medium">Appts</th>
+              <th className="px-3 py-2 font-medium">Quotes</th>
+              <th className="px-3 py-2 font-medium">POs</th>
+              <th className="px-3 py-2 font-medium">Quote value</th>
+              <th className="px-3 py-2 font-medium">PO value</th>
+              <th className="w-28 px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {series.months.map((m) => (
+              <tr key={m.monthIndex} className="border-t">
+                <td className="px-3 py-1.5 tabular-nums">{m.monthIndex}</td>
+                <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">
+                  {monthLabel.format(new Date(`${m.monthStart}T00:00:00Z`))}
+                </td>
+                <td className="px-3 py-1.5 tabular-nums">{m.leads || "—"}</td>
+                <td className="px-3 py-1.5 tabular-nums">{m.appointments || "—"}</td>
+                <td className="px-3 py-1.5 tabular-nums">{m.quotes || "—"}</td>
+                <td className="px-3 py-1.5 tabular-nums">{m.pos || "—"}</td>
+                <td className="px-3 py-1.5 tabular-nums">
+                  {m.quoteAmount ? money.format(m.quoteAmount) : "—"}
+                </td>
+                <td className="px-3 py-1.5 tabular-nums">
+                  {m.poAmount ? money.format(m.poAmount) : "—"}
+                </td>
+                <td className="px-3 py-1.5">
+                  <span
+                    className="block h-1.5 rounded-sm bg-sky-500/70"
+                    style={{ width: `${(bar(m) / peak) * 100}%` }}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default async function ClientResultPage({
   params,
 }: {
   params: Promise<{ clientId: string }>;
 }) {
   const { clientId } = await params;
-  const [client, months] = await Promise.all([getClient(clientId), getMonths(clientId)]);
+  const [client, series, periods] = await Promise.all([
+    getClient(clientId),
+    getServiceSeries(clientId),
+    getServicePeriods(clientId),
+  ]);
   if (!client) notFound();
-
-  const headline = client.headlineMetric;
-  const peak = Math.max(1, ...months.map((m) => m.leads));
 
   return (
     <div className="space-y-5 p-6">
@@ -58,10 +141,6 @@ export default async function ClientResultPage({
           Client Results
         </Link>
         <h1 className="text-xl font-semibold">{client.name}</h1>
-        <span className="text-sm text-muted-foreground">
-          {client.primaryService ?? "—"}
-          {headline && ` · ${HEADLINE_LABEL[headline]}`}
-        </span>
         <span className="text-sm text-muted-foreground">{client.status ?? "—"}</span>
         {client.website && (
           <a
@@ -85,12 +164,39 @@ export default async function ClientResultPage({
         <Stat
           label="POs"
           value={
-            client.pos
-              ? `${nf.format(client.pos)} · ${money.format(client.poAmount)}`
-              : "—"
+            client.pos ? `${nf.format(client.pos)} · ${money.format(client.poAmount)}` : "—"
           }
         />
       </div>
+
+      {periods.length > 0 && (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-left">
+              <tr>
+                <th className="px-3 py-2 font-medium">Service</th>
+                <th className="px-3 py-2 font-medium">From</th>
+                <th className="px-3 py-2 font-medium">To</th>
+                <th className="px-3 py-2 font-medium">Rate</th>
+                <th className="px-3 py-2 font-medium">Tier</th>
+                <th className="px-3 py-2 font-medium">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map((p, i) => (
+                <tr key={`${p.service}-${p.startedOn}-${i}`} className="border-t">
+                  <td className="px-3 py-1.5">{p.service}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{p.startedOn}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{p.endedOn ?? "—"}</td>
+                  <td className="px-3 py-1.5 tabular-nums">—</td>
+                  <td className="px-3 py-1.5">—</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">{p.source}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="space-y-2 rounded-md border p-3">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
@@ -121,57 +227,14 @@ export default async function ClientResultPage({
         <Tags label="Markets" items={client.marketsServed} />
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Month</th>
-              <th className="px-3 py-2 font-medium">Calendar</th>
-              <th className="px-3 py-2 font-medium">Leads</th>
-              <th className="px-3 py-2 font-medium">Appts</th>
-              <th className="px-3 py-2 font-medium">Quotes</th>
-              <th className="px-3 py-2 font-medium">POs</th>
-              <th className="px-3 py-2 font-medium">Quote value</th>
-              <th className="px-3 py-2 font-medium">PO value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {months.map((m) => (
-              <tr key={m.monthIndex} className="border-t">
-                <td className="px-3 py-1.5 tabular-nums">{m.monthIndex}</td>
-                <td className="px-3 py-1.5 whitespace-nowrap text-muted-foreground">
-                  {monthLabel.format(new Date(`${m.monthStart}T00:00:00Z`))}
-                </td>
-                <td className="px-3 py-1.5 tabular-nums">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-8 text-right">{m.leads || "—"}</span>
-                    <span
-                      className="h-1.5 rounded-sm bg-sky-500/70"
-                      style={{ width: `${(m.leads / peak) * 96}px` }}
-                    />
-                  </span>
-                </td>
-                <td className="px-3 py-1.5 tabular-nums">{m.appointments || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">{m.quotes || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">{m.pos || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">
-                  {m.quoteAmount ? money.format(m.quoteAmount) : "—"}
-                </td>
-                <td className="px-3 py-1.5 tabular-nums">
-                  {m.poAmount ? money.format(m.poAmount) : "—"}
-                </td>
-              </tr>
-            ))}
-            {!months.length && (
-              <tr>
-                <td colSpan={8} className="px-3 py-4 text-muted-foreground">
-                  No results recorded.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {series.map((s) => (
+        <ServiceTable key={s.service} series={s} />
+      ))}
+      {!series.length && (
+        <p className="rounded-md border p-4 text-sm text-muted-foreground">
+          No results recorded.
+        </p>
+      )}
     </div>
   );
 }

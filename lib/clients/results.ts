@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ClientResult, MonthRow } from "./result-metrics";
+import type { ClientResult, MonthRow, ServiceSeries } from "./result-metrics";
+import { serviceHeadline } from "./result-metrics";
 
 export * from "./result-metrics";
 
@@ -27,6 +28,9 @@ function toClient(r: any): ClientResult {
     sizeInferred: Boolean(r.size_inferred),
     industry: r.industry,
     summary: r.summary,
+    servicesDelivered: r.services_delivered ?? [],
+    busiestService: r.busiest_service ?? null,
+    multiService: Boolean(r.multi_service),
     monthsWithResults: r.months_with_results ?? 0,
     leads: r.leads ?? 0,
     appointments: r.appointments ?? 0,
@@ -70,7 +74,37 @@ export async function getClient(id: string): Promise<ClientResult | null> {
   return data ? toClient(data) : null;
 }
 
-export async function getMonths(id: string): Promise<MonthRow[]> {
+export type ServicePeriod = {
+  service: string;
+  startedOn: string;
+  endedOn: string | null;
+  source: string;
+};
+
+export async function getServicePeriods(id: string): Promise<ServicePeriod[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client_service_periods")
+    .select("service,started_on,ended_on,source")
+    .eq("salesforce_client_id", id)
+    .order("started_on");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: any) => ({
+    service: r.service,
+    startedOn: r.started_on,
+    endedOn: r.ended_on,
+    source: r.source,
+  }));
+}
+
+/**
+ * A client's months, one run per service.
+ *
+ * Split rather than pooled because a client who moved from OP to LG is judged
+ * on quotes for the first stretch and leads for the second, and one column of
+ * numbers cannot say that.
+ */
+export async function getServiceSeries(id: string): Promise<ServiceSeries[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("client_monthly_results")
@@ -80,6 +114,7 @@ export async function getMonths(id: string): Promise<MonthRow[]> {
   if (error) throw new Error(error.message);
 
   const rows: MonthRow[] = (data ?? []).map((r: any) => ({
+    service: r.service,
     monthIndex: r.month_index,
     monthStart: r.month_start,
     leads: r.leads,
@@ -89,36 +124,60 @@ export async function getMonths(id: string): Promise<MonthRow[]> {
     quoteAmount: Number(r.quote_amount ?? 0),
     poAmount: Number(r.po_amount ?? 0),
   }));
-  if (!rows.length) return rows;
+  if (!rows.length) return [];
 
-  /*
-   * A month with nothing in it produced no row, and a gap in a chart reads as
-   * "no data" when what happened was "no results". Fill the run so the shape of
-   * a quiet stretch is visible.
-   */
-  const filled: MonthRow[] = [];
-  /*
-   * Month one of the engagement, which is not necessarily the first row --
-   * a client whose first result landed in month five has no month-one row to
-   * read the date off.
-   */
-  const first = new Date(`${rows[0].monthStart}T00:00:00Z`);
-  const start = new Date(
-    Date.UTC(first.getUTCFullYear(), first.getUTCMonth() - (rows[0].monthIndex - 1), 1),
-  );
-  const byIndex = new Map(rows.map((r) => [r.monthIndex, r]));
-  for (let i = 1; i <= rows[rows.length - 1].monthIndex; i += 1) {
-    const existing = byIndex.get(i);
-    if (existing) {
-      filled.push(existing);
-      continue;
+  const byService = new Map<string, MonthRow[]>();
+  for (const r of rows) {
+    const list = byService.get(r.service) ?? [];
+    list.push(r);
+    byService.set(r.service, list);
+  }
+
+  const series: ServiceSeries[] = [];
+  for (const [service, months] of byService) {
+    months.sort((a, b) => a.monthIndex - b.monthIndex);
+
+    /*
+     * A month that produced nothing has no row, and a gap reads as "no data"
+     * when what happened was "no results". Fill from this service's first
+     * month to its last -- not from month one, because a service the client
+     * only took up in year two did not have a quiet first year, it had none.
+     */
+    const first = new Date(`${months[0].monthStart}T00:00:00Z`);
+    const byIndex = new Map(months.map((m) => [m.monthIndex, m]));
+    const filled: MonthRow[] = [];
+    for (let i = months[0].monthIndex; i <= months[months.length - 1].monthIndex; i += 1) {
+      const existing = byIndex.get(i);
+      if (existing) {
+        filled.push(existing);
+        continue;
+      }
+      const d = new Date(
+        Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + (i - months[0].monthIndex), 1),
+      );
+      filled.push({
+        service, monthIndex: i, monthStart: d.toISOString().slice(0, 10),
+        leads: 0, appointments: 0, quotes: 0, pos: 0, quoteAmount: 0, poAmount: 0,
+      });
     }
-    const d = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i - 1, 1));
-    filled.push({
-      monthIndex: i,
-      monthStart: d.toISOString().slice(0, 10),
-      leads: 0, appointments: 0, quotes: 0, pos: 0, quoteAmount: 0, poAmount: 0,
+
+    series.push({
+      service,
+      headline: serviceHeadline(service),
+      months: filled,
+      totals: filled.reduce(
+        (a, m) => ({
+          leads: a.leads + m.leads,
+          appointments: a.appointments + m.appointments,
+          quotes: a.quotes + m.quotes,
+          pos: a.pos + m.pos,
+          poAmount: a.poAmount + m.poAmount,
+        }),
+        { leads: 0, appointments: 0, quotes: 0, pos: 0, poAmount: 0 },
+      ),
     });
   }
-  return filled;
+
+  // Busiest first, so the service that defined the engagement leads the page.
+  return series.sort((a, b) => b.totals.leads - a.totals.leads);
 }

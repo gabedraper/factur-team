@@ -59,13 +59,14 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
   const [work, setWork] = useState("");
   const [size, setSize] = useState("");
   const [capability, setCapability] = useState("");
+  const [onlySwitched, setOnlySwitched] = useState(false);
 
   const options = useMemo(() => {
     const uniq = (xs: (string | null)[]) =>
       [...new Set(xs.filter((x): x is string => Boolean(x)))].sort();
     return {
       status: uniq(clients.map((c) => c.status)),
-      service: uniq(clients.flatMap((c) => c.services)),
+      service: uniq(clients.flatMap((c) => c.servicesDelivered)),
       work: uniq(clients.map((c) => c.businessType)),
       capability: uniq(clients.flatMap((c) => c.capabilities)),
       size: SIZE_ORDER.filter((s) => clients.some((c) => c.sizeBand === s)),
@@ -77,21 +78,22 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
     return clients.filter(
       (c) =>
         (!status || c.status === status) &&
-        (!service || c.services.includes(service)) &&
+        (!service || c.servicesDelivered.includes(service)) &&
         (!work || c.businessType === work) &&
         (!size || c.sizeBand === size) &&
         (!capability || c.capabilities.includes(capability)) &&
+        (!onlySwitched || c.multiService) &&
         (!q ||
           c.name.toLowerCase().includes(q) ||
           (c.businessType ?? "").toLowerCase().includes(q) ||
           c.capabilities.some((x) => x.toLowerCase().includes(q))),
     );
-  }, [clients, term, status, service, work, size, capability]);
+  }, [clients, term, status, service, work, size, capability, onlySwitched]);
 
   const { sorted, sortProps } = useSort(shown, {
     name: (c) => c.name,
     status: (c) => c.status,
-    service: (c) => c.primaryService,
+    service: (c) => c.busiestService ?? c.primaryService,
     work: (c) => c.businessType,
     size: (c) => (c.sizeBand ? SIZE_ORDER.indexOf(c.sizeBand) : null),
     since: (c) => c.clientSince,
@@ -147,6 +149,14 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
             all="All capabilities"
           />
         )}
+        <label className="flex items-center gap-1.5 text-sm">
+          <input
+            type="checkbox"
+            checked={onlySwitched}
+            onChange={(e) => setOnlySwitched(e.target.checked)}
+          />
+          Changed service
+        </label>
         <span className="ml-auto text-sm text-muted-foreground tabular-nums">
           {nf.format(shown.length)} clients · {nf.format(totals.leads)} leads ·{" "}
           {nf.format(totals.appointments)} appts · {nf.format(totals.quotes)} quotes ·{" "}
@@ -185,8 +195,10 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
                 <td className={`px-3 py-2 ${STATUS_CLASS[c.status ?? ""] ?? ""}`}>
                   {c.status ?? "—"}
                 </td>
-                <td className="px-3 py-2">
-                  {c.primaryService ?? "—"}
+                <td className="whitespace-nowrap px-3 py-2">
+                  {c.servicesDelivered.length
+                    ? c.servicesDelivered.join(" → ")
+                    : c.primaryService ?? "—"}
                   {c.headlineMetric && (
                     <span className="ml-1 text-xs text-muted-foreground">
                       {HEADLINE_LABEL[c.headlineMetric]}
