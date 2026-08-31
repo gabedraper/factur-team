@@ -336,7 +336,11 @@ jobs:
             echo "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
           } > /tmp/msg.txt
           git commit -q -F /tmp/msg.txt
-          git push -u origin "$BRANCH"
+          # Forced, because the branch belongs to this ticket and this workflow
+          # and nothing else writes to it. A re-run supersedes the attempt
+          # before it; without this, retrying a ticket whose first attempt got
+          # as far as pushing fails on a branch it put there itself.
+          git push -u --force origin "$BRANCH"
 
           {
             echo "Raised as **Gaib $REF** by someone using the app."
