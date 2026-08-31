@@ -10,7 +10,12 @@ import { JWT } from "google-auth-library";
  * anyone in the domain, so the restraint has to live in the code that decides
  * whose name to put in this field.
  */
-const SCOPES = {
+/*
+ * Exported so the Integrations page can show the real list rather than a
+ * description of it. A page that restates what the code does drifts from it;
+ * one that reads the same constant cannot.
+ */
+export const SCOPES = {
   gmail: ["https://www.googleapis.com/auth/gmail.readonly"],
   /*
    * Two scopes, not one. Listing the spaces a person is in is governed by

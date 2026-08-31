@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import {
   BookOpen,
+  Plug,
   LayoutDashboard,
   Users,
   Map,
@@ -144,6 +145,19 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     }
     groups.push({ label: "Gaib", items: gaib });
   }
+
+  /*
+   * Open to everybody rather than gated on org.manage. The people who most
+   * need to know a figure is two days stale are the ones reading the figure,
+   * not the two administrators who would otherwise be the only ones who could
+   * find out.
+   */
+  groups.push({
+    label: "Data",
+    items: [
+      { href: "/integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
+    ],
+  });
 
   if (perms.has("timelines.view")) {
     groups.push({
