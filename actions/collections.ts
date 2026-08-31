@@ -86,7 +86,19 @@ async function senderName(sendAs: string): Promise<string> {
   return ((data as { full_name: string | null } | null)?.full_name ?? sendAs).trim();
 }
 
-function figuresFor(row: QueueRow, sender: string): Figures {
+function figuresFor(
+  row: {
+    client_name: string;
+    contact_first_name: string | null;
+    payment_terms: string | null;
+    days_past_due: number;
+    past_due_total: number | null;
+    open_balance: number | null;
+    oldest_invoice_no: string | null;
+    invoice_lines: string | null;
+  },
+  sender: string
+): Figures {
   return {
     client_name: row.client_name,
     contact_first_name: row.contact_first_name,
@@ -129,9 +141,13 @@ export async function getCollectionsQueue(): Promise<Chase[]> {
 }
 
 
-export type BoardRow = QueueRow & {
-  /** False for a former client who still owes; the debt outlives the contract. */
-  client_active: boolean;
+export type BoardRow = Omit<QueueRow, "client_id"> & {
+  /** Null for a QuickBooks customer with no client record behind them. */
+  client_id: string | null;
+  /** Null when unmatched; otherwise false for a former client who still owes. */
+  client_active: boolean | null;
+  matched: boolean;
+  qb_customer_id: string;
   open_balance: number | null;
   bucket_current: number;
   bucket_1_30: number;

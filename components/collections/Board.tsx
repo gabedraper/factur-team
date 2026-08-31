@@ -65,7 +65,7 @@ export function Board({
   const [note, setNote] = useState<{ kind: "ok" | "bad"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const key = (r: BoardChase) => r.client_id;
+  const key = (r: BoardChase) => r.qb_customer_id;
 
   function wording(r: BoardChase) {
     return (
@@ -80,7 +80,7 @@ export function Board({
     // The row stays -- they are still in arrears -- but the due step is spent.
     setBoard((b) =>
       b.map((x) =>
-        x.client_id === r.client_id
+        x.qb_customer_id === r.qb_customer_id
           ? {
               ...x,
               step_id: null as unknown as string,
@@ -96,10 +96,13 @@ export function Board({
   }
 
   function place(r: BoardChase) {
+    // Only a matched client can be chased; the button is hidden either way.
+    const clientId = r.client_id;
+    if (!clientId) return;
     const { subject, body } = wording(r);
     setNote(null);
     startTransition(async () => {
-      const res = await placeChase(r.client_id, r.step_id, subject, body);
+      const res = await placeChase(clientId, r.step_id, subject, body);
       if (res.success) {
         afterPlaced(r);
         setNote({
@@ -116,10 +119,13 @@ export function Board({
   }
 
   function test(r: BoardChase) {
+    // Only a matched client can be chased; the button is hidden either way.
+    const clientId = r.client_id;
+    if (!clientId) return;
     const { subject, body } = wording(r);
     setNote(null);
     startTransition(async () => {
-      const res = await draftToMe(r.client_id, r.step_id, subject, body);
+      const res = await draftToMe(clientId, r.step_id, subject, body);
       setNote(
         res.success
           ? { kind: "ok", text: `Test draft waiting in ${res.to}. ${r.client_name} is still due.` }
@@ -129,16 +135,18 @@ export function Board({
   }
 
   function pause(r: BoardChase, on: boolean) {
+    const clientId = r.client_id;
+    if (!clientId) return;
     const until = on ? new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10) : null;
     setNote(null);
     startTransition(async () => {
-      const res = await pauseClient(r.client_id, until, on ? "Paused from the board" : "");
+      const res = await pauseClient(clientId, until, on ? "Paused from the board" : "");
       if (!res.success) {
         setNote({ kind: "bad", text: res.error ?? "Couldn't change that." });
         return;
       }
       setBoard((b) =>
-        b.map((x) => (x.client_id === r.client_id ? { ...x, paused_until: until } : x))
+        b.map((x) => (x.qb_customer_id === r.qb_customer_id ? { ...x, paused_until: until } : x))
       );
     });
   }
@@ -226,14 +234,31 @@ export function Board({
           <div key={key(r)} className="rounded-lg border bg-card">
             <div className="flex flex-wrap items-start gap-x-4 gap-y-2 px-3 py-2 text-sm">
               <div className="min-w-56">
-                <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
-                  {r.client_name}
-                </Link>
-                {!r.client_active && (
+                {r.client_id ? (
+                  <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
+                    {r.client_name}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{r.client_name}</span>
+                )}
+                {r.matched && r.client_active === false && (
                   <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     former client
                   </span>
                 )}
+                {!r.matched && (
+                  <span className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    not matched to a client
+                  </span>
+                )}
+                {!r.matched ? (
+                  <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    No client record — link it in Settings →{" "}
+                    <Link href="/settings/quickbooks" className="underline">
+                      QuickBooks customers
+                    </Link>
+                  </div>
+                ) : (
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {r.last_sent_at
                     ? `Last: step ${r.last_step_position} on ${onDayShort(
@@ -247,6 +272,7 @@ export function Board({
                       ? `Next: step ${r.next_step_position} on ${onDayShort(r.next_step_on)}`
                       : "Next: sequence finished"}
                 </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1">
