@@ -177,10 +177,28 @@ export function Board({
           </div>
         )}
         <span className="text-sm">
-          <b>{board.length}</b> past due · <b>{money.format(owed)}</b>
+          <b>{board.length}</b> past due
           {dueNow > 0 && <> · <b>{dueNow}</b> due a chase</>}
         </span>
       </div>
+
+      {/*
+        * The totals lead rather than close. Forty-nine clients is a page and a
+        * half of scrolling, and the first question anyone brings here is how
+        * much is out and how old it is -- not who is fourth alphabetically.
+        */}
+      {board.length > 0 && (
+        <div className="rounded-lg border bg-muted/40 px-3 py-2">
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <Bucket label="Current" amount={totals.current} tone={AGEING_TONE.current} />
+            <Bucket label="1 – 30" amount={totals.b1_30} tone={AGEING_TONE.b1_30} />
+            <Bucket label="31 – 60" amount={totals.b31_60} tone={AGEING_TONE.b31_60} />
+            <Bucket label="61 – 90" amount={totals.b61_90} tone={AGEING_TONE.b61_90} />
+            <Bucket label="91+" amount={totals.b91_plus} tone={AGEING_TONE.b91_plus} />
+            <Bucket label="Past due" amount={totals.past_due} tone="font-semibold" />
+          </div>
+        </div>
+      )}
 
       {note && (
         <p
@@ -319,27 +337,6 @@ export function Board({
           </div>
         );
       })}
-
-      {board.length > 0 && (
-        <div className="rounded-lg border bg-muted/40">
-          <div className="flex flex-wrap items-start gap-x-4 gap-y-2 px-3 py-2 text-sm">
-            <div className="min-w-56 font-medium">
-              Total
-              <div className="mt-0.5 text-xs font-normal text-muted-foreground">
-                {board.length} {board.length === 1 ? "client" : "clients"}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <Bucket label="Current" amount={totals.current} tone={AGEING_TONE.current} />
-              <Bucket label="1 – 30" amount={totals.b1_30} tone={AGEING_TONE.b1_30} />
-              <Bucket label="31 – 60" amount={totals.b31_60} tone={AGEING_TONE.b31_60} />
-              <Bucket label="61 – 90" amount={totals.b61_90} tone={AGEING_TONE.b61_90} />
-              <Bucket label="91+" amount={totals.b91_plus} tone={AGEING_TONE.b91_plus} />
-              <Bucket label="Past due" amount={totals.past_due} tone="font-semibold" />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
