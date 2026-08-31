@@ -753,7 +753,6 @@ async function importPeople() {
         await db.from(table).insert(rows.map(map));
       }
 
-      if (WITH_RESUMES) await importResumes(p.id, personId);
 
       report.people++;
         if (report.people % 250 === 0) {
@@ -776,43 +775,104 @@ async function importPeople() {
   console.log(`  ${report.people} people`);
 }
 
-async function importResumes(personId, resumes) {
-  for (const r of resumes) {
-    const url = pick(r, "download_url", "url", "file_url", "s3_url");
-    const name = pick(r, "name", "filename", "file_name") ?? "Resume";
-    if (!url || DRY) continue;
+/**
+ * Resume files, as a stage of its own.
+ *
+ * It used to hang off the people loop, which made it unreachable the moment
+ * the people were imported -- they are skipped on a re-run, and the download
+ * went with them. Driving off our own database instead means it can be run
+ * whenever, resumed freely, and stopped without losing the profiles.
+ *
+ * Anybody who already has a resume on file is passed over, so this converges
+ * the same way everything else here does.
+ */
+async function importResumeFiles() {
+  console.log("\nResume files");
+  if (DRY) { console.log("  (dry run — no files fetched)"); return; }
 
-    try {
-      /*
-       * No Authorization header. download_url is a short-lived presigned S3
-       * link and S3 rejects a request that carries both its own signature and
-       * a bearer token.
-       */
-      const file = await fetch(url);
-      if (!file.ok) throw new Error(`download ${file.status}`);
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const safe = String(name).replace(/[^\w.\-]+/g, "_");
-      const path = `${personId}/loxo-${r.id ?? Date.now()}-${safe}`;
-
-      const { error: upErr } = await db.storage
-        .from("talent-documents")
-        .upload(path, bytes, {
-          contentType: file.headers.get("content-type") ?? "application/pdf",
-          upsert: true,
-        });
-      if (upErr) throw new Error(upErr.message);
-
-      await put("tal_documents", {
-        external_id: String(r.id ?? path),
-        person_id: personId, name, kind: "resume",
-        storage_path: path, size_bytes: bytes.length,
-        mime_type: file.headers.get("content-type"),
-      });
-      report.documents++;
-    } catch (e) {
-      report.errors.push(`resume ${r.id}: ${e.message}`);
-    }
+  // Everybody imported from Loxo who has no resume yet.
+  const people = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await db
+      .from("tal_people")
+      .select("id,external_id")
+      .eq("external_source", SOURCE)
+      .range(from, from + 999);
+    if (error) throw new Error(`tal_people: ${error.message}`);
+    people.push(...data);
+    if (data.length < 1000) break;
+    from += 1000;
   }
+
+  const have = new Set();
+  from = 0;
+  for (;;) {
+    const { data } = await db
+      .from("tal_documents").select("person_id").eq("kind", "resume").range(from, from + 999);
+    for (const d of data ?? []) have.add(d.person_id);
+    if (!data || data.length < 1000) break;
+    from += 1000;
+  }
+
+  const todo = people.filter((p) => !have.has(p.id));
+  console.log(`  ${todo.length} to fetch, ${have.size} already have one`);
+  let none = 0;
+
+  await inParallel(todo, CONCURRENCY, async (p) => {
+    try {
+      const list = listOf(await optional(`/people/${p.external_id}/resumes`));
+      if (!list.length) { none++; return; }
+
+      for (const r of list) {
+        const url = pick(r, "download_url", "url", "file_url", "s3_url");
+        const name = pick(r, "name", "filename", "file_name") ?? "Resume";
+        if (!url) continue;
+
+        /*
+         * No Authorization header. download_url is a short-lived presigned S3
+         * link and S3 rejects a request carrying both its own signature and a
+         * bearer token.
+         */
+        const file = await fetch(url);
+        if (!file.ok) throw new Error(`download ${file.status}`);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (!bytes.length) continue;
+
+        const safe = String(name).replace(/[^\w.\-]+/g, "_").slice(-80);
+        const path = `${p.id}/loxo-${r.id ?? Date.now()}-${safe}`;
+
+        const { error: upErr } = await db.storage
+          .from("talent-documents")
+          .upload(path, bytes, {
+            contentType: file.headers.get("content-type") ?? "application/pdf",
+            upsert: true,
+          });
+        if (upErr) throw new Error(upErr.message);
+
+        await put("tal_documents", {
+          external_id: String(r.id ?? path),
+          person_id: p.id,
+          name,
+          kind: "resume",
+          storage_path: path,
+          size_bytes: bytes.length,
+          mime_type: file.headers.get("content-type"),
+          is_primary: true,
+        });
+        report.documents++;
+      }
+
+      if (report.documents % 250 === 0 && report.documents) {
+        console.log(`  ${report.documents} files…`);
+      }
+    } catch (e) {
+      report.errors.push(`resumes for person ${p.external_id}: ${e instanceof Error ? e.message : e}`);
+    }
+  });
+
+  if (none) console.log(`  ${none} people have no resume in Loxo`);
+  console.log(`  ${report.documents} files`);
 }
 
 async function importJobs() {
@@ -1223,6 +1283,11 @@ const STAGES = {
   campaigns: importCampaigns,
   schedule: importSchedule,
   deals: importDeals,
+  /*
+   * Last, and only when asked for. Eighteen thousand downloads takes hours and
+   * has nothing the rest of the system waits on.
+   */
+  resumes: importResumeFiles,
 };
 
 async function main() {
@@ -1237,7 +1302,9 @@ async function main() {
    * work, but it needs config to have run at some point or every candidate
    * lands with no stage.
    */
-  const run = ONLY ? [ONLY] : Object.keys(STAGES);
+  const run = ONLY
+    ? [ONLY]
+    : Object.keys(STAGES).filter((k) => k !== "resumes" || WITH_RESUMES);
   if (ONLY && ONLY !== "config" && !DRY) {
     // Rebuild the stage lookup so a single-stage re-run still maps correctly.
     try { await importConfig(); } catch { /* reported below */ }

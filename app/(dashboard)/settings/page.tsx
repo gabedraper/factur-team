@@ -7,6 +7,8 @@ import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
 import { ROLES } from "@/lib/roles";
 import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
+import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
+import { listClientsForSelf } from "@/actions/self-service";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +33,13 @@ export default async function SettingsPage() {
   const db = createServiceClient();
   const { data: me } = await db
     .from("org_members")
-    .select("full_name,email,needs_review,manager_member_id,org_assignments(org_roles(name))")
+    .select("id,full_name,email,needs_review,manager_member_id,org_assignments(role_id,org_roles(name))")
     .eq("auth_user_id", user?.id ?? "")
     .maybeSingle();
 
   type Me = {
-    full_name: string | null; email: string; manager_member_id: string | null;
-    org_assignments?: { org_roles?: { name: string } }[];
+    id: string; full_name: string | null; email: string; manager_member_id: string | null;
+    org_assignments?: { role_id: string; org_roles?: { name: string } }[];
   };
   const mine = me as Me | null;
   const roles = (mine?.org_assignments ?? []).map((a) => a.org_roles?.name).filter(Boolean);
@@ -50,7 +52,21 @@ export default async function SettingsPage() {
     managerName = m?.full_name ?? m?.email ?? null;
   }
 
-  const { services } = canManage ? await listServicesAndTeams() : { services: [] };
+  const { services } = await listServicesAndTeams();
+
+  /*
+   * Anyone may now set their own role and take clients, so the pickers are
+   * built for everybody rather than behind the administration section.
+   */
+  const [{ data: allRoles }, myClients] = await Promise.all([
+    db.from("org_roles").select("id,name,service_id,active").eq("active", true).order("name"),
+    listClientsForSelf(),
+  ]);
+  const selfRoles = ((allRoles ?? []) as
+    { id: string; name: string; service_id: string | null }[]);
+
+  // Already fetched above with the rest of this person's own record.
+  const myRoleId = mine?.org_assignments?.[0]?.role_id ?? null;
 
   let people: { id: string; name: string }[] = [];
   if (canPreview) {
@@ -79,10 +95,12 @@ export default async function SettingsPage() {
           <dt className="text-muted-foreground">Manager</dt>
           <dd>{managerName ?? <span className="text-muted-foreground">not set</span>}</dd>
         </dl>
-        <p className="text-xs text-muted-foreground">
-          Your name and email come from the Google account you signed in with. Role and manager
-          are set by an administrator.
-        </p>
+        <SelfServicePanel
+          roles={selfRoles}
+          services={services}
+          currentRoleId={myRoleId}
+          clients={myClients}
+        />
       </section>
 
       <section className="rounded-md border bg-card p-4 space-y-3">
