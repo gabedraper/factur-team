@@ -7,7 +7,9 @@ import { useSort, SortHeader } from "@/components/ui/sortable";
 import { PROSPECTING_KEY } from "@/lib/timelines/classify";
 import { formatBusinessDate, formatBusinessDateTime } from "@/lib/timelines/business-day";
 import { SalesforceIcon } from "@/components/salesforce-icon";
-import { ALL_REPS, DISPLAY_DAYS, type RepSummary } from "@/lib/timelines/assemble";
+import {
+  ALL_REPS, DISPLAY_DAYS, SUMMARY_DEFINITIONS, summaryScope, type RepSummary,
+} from "@/lib/timelines/assemble";
 
 
 export type { ViewKey };
@@ -78,11 +80,12 @@ function verdictFor(view: ViewKey, l: Lead) {
 
 export function TimelineBoard({
   view, leads, reps, clients, summaries = {}, held, generated, coldAfterDays = 14, total,
-  showRepFilter = true, scope = "all", canManageOrg = false,
+  summaryWindowFrom, showRepFilter = true, scope = "all", canManageOrg = false,
 }: {
   view: ViewKey; leads: Lead[]; reps: { id: string; name: string }[]; clients: string[];
   summaries?: Record<string, RepSummary>; held?: number;
   generated: string; coldAfterDays?: number; total?: number;
+  summaryWindowFrom: string;
   showRepFilter?: boolean;
   scope?: "all" | "scoped" | "unlinked";
   canManageOrg?: boolean;
@@ -164,39 +167,45 @@ export function TimelineBoard({
    */
   const summary = summaries[rep || ALL_REPS];
 
-  const tiles: [string, string | number, string][] = useMemo(() => {
+  const tiles: [string, string | number, string, string][] = useMemo(() => {
     if (!summary) return [];
     const s = summary;
     const n = s.leads;
 
+    // Each tile carries its own definition, taken from beside the rule that
+    // works the figure out -- an admin asked which Salesforce stages make up
+    // "Never touched", and the answer is none of them.
+    const why = (k: keyof RepSummary) =>
+      `${SUMMARY_DEFINITIONS[k]}\n\n${summaryScope(summaryWindowFrom)}`;
+
     if (view === "quick") {
       return [
-        ["Leads", n, `${s.touches} rep touches`],
-        [`Hit ${FIRST_RESPONSE_TARGET_H}h target`, pct(s.hitTarget, n), `${s.hitTarget} of ${n} leads`],
-        ["Touched same day", pct(s.sameDay, n), "first touch inside 24h"],
-        ["Never touched", s.neverTouched, "no rep outreach at all"],
-        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
-        ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds"],
+        ["Leads", n, `${s.touches} rep touches`, why("leads")],
+        [`Hit ${FIRST_RESPONSE_TARGET_H}h target`, pct(s.hitTarget, n), `${s.hitTarget} of ${n} leads`, why("hitTarget")],
+        ["Touched same day", pct(s.sameDay, n), "first touch inside 24h", why("sameDay")],
+        ["Never touched", s.neverTouched, "no rep outreach at all", why("neverTouched")],
+        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach", why("medianFirstTouch")],
+        ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds", why("medianRespond")],
       ];
     }
     if (view === "week") {
       return [
-        ["Leads", n, `${s.touches} rep touches`],
-        ["Untouched all week", pct(s.untouchedAllWeek, n), "zero rep touches in week one"],
-        ["Median days touched", s.medianDaysTouched ?? "—", "of the first seven"],
-        ["Median gap between touches", s.medianGap !== null ? `${s.medianGap}d` : "—", "across the whole lead"],
-        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
+        ["Leads", n, `${s.touches} rep touches`, why("leads")],
+        ["Untouched all week", pct(s.untouchedAllWeek, n), "zero rep touches in week one", why("untouchedAllWeek")],
+        ["Median days touched", s.medianDaysTouched ?? "—", "of the first seven", why("medianDaysTouched")],
+        ["Median gap between touches", s.medianGap !== null ? `${s.medianGap}d` : "—", "across the whole lead", why("medianGap")],
+        ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach", why("medianFirstTouch")],
       ];
     }
     return [
-      ["Leads", n, `${s.touches} rep touches`],
-      ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach"],
-      ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds"],
-      ["Median touches", s.medianTouches ?? "—", "per lead"],
-      ["Meetings booked", s.meetings, s.meetings === 1 ? "lead with a confirmed invite" : "leads with a confirmed invite"],
-      ["Gone quiet", s.goneQuiet, `open, no touch in ${coldAfterDays}+ days`],
+      ["Leads", n, `${s.touches} rep touches`, why("leads")],
+      ["Median time to first touch", dur(s.medianFirstTouch), "lead created → first outreach", why("medianFirstTouch")],
+      ["Median reply to prospect", dur(s.medianRespond), "prospect replies → rep responds", why("medianRespond")],
+      ["Median touches", s.medianTouches ?? "—", "per lead", why("medianTouches")],
+      ["Meetings booked", s.meetings, s.meetings === 1 ? "lead with a confirmed invite" : "leads with a confirmed invite", why("meetings")],
+      ["Gone quiet", s.goneQuiet, `open, no touch in ${coldAfterDays}+ days`, why("goneQuiet")],
     ];
-  }, [summary, view, coldAfterDays]);
+  }, [summary, view, coldAfterDays, summaryWindowFrom]);
 
   const v = VIEWS[view];
 
@@ -208,9 +217,9 @@ export function TimelineBoard({
         </header>
 
         <div className="tiles">
-          {tiles.map(([label, value, sub]) => (
-            <div className="tile" key={label}>
-              <div className="label">{label}</div>
+          {tiles.map(([label, value, sub, definition]) => (
+            <div className="tile" key={label} title={definition}>
+              <div className="label">{label} <span className="why">ⓘ</span></div>
               <div className="value">{value}</div>
               <div className="sub">{sub}</div>
             </div>

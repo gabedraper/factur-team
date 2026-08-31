@@ -332,6 +332,85 @@ export function summarise(leads: Lead[]): RepSummary {
   };
 }
 
+const TOUCH =
+  "A touch is outreach the rep logged in Salesforce: an outbound email, a call, an " +
+  "SMS or a meeting invitation. Replies from the prospect, and machine mail such as " +
+  "bounces and out-of-office replies, are never touches.";
+
+/**
+ * What each figure above counts, in a sentence, kept beside the rule that
+ * counts it.
+ *
+ * These are the numbers managers are measured on, and the rule behind one of
+ * them lived only in the code above: "Never touched" is no Salesforce stage, so
+ * nobody reading the page could tell what was in it or what had been left out.
+ * Written here rather than in a help page because a change to summarise() and a
+ * change to its definition are then the same edit. Keyed on RepSummary, so a
+ * new figure cannot be added without one.
+ */
+export const SUMMARY_DEFINITIONS: Record<keyof RepSummary, string> = {
+  leads:
+    "One row per Salesforce opportunity, and the denominator every other figure " +
+    "here is counted against.",
+  touches: `Every rep touch on those leads added together, not a count of leads. ${TOUCH}`,
+  hitTarget:
+    `Leads whose first rep touch landed within ${FIRST_RESPONSE_TARGET_H} hour of the lead ` +
+    "being created -- clock hours from CreatedDate, nights and weekends included. A lead " +
+    `never touched counts against this. ${TOUCH}`,
+  sameDay:
+    "Leads with a rep touch in the 24 hours after they were created. Clock hours from the " +
+    "moment the lead arrived rather than the calendar day, so a lead in at 4pm has until " +
+    "4pm the next day.",
+  neverTouched:
+    "Leads with no rep touch on the record at all, at any point since they were created. " +
+    "Not a Salesforce stage -- nothing on the opportunity says this, it is counted from the " +
+    `activity. ${TOUCH}`,
+  medianFirstTouch:
+    "The middle lead's time from being created to its first rep touch. Leads never touched " +
+    "have no first touch and are left out rather than counted as a zero, so read this " +
+    "beside Never touched.",
+  medianRespond:
+    "The middle lead's time from the prospect getting in touch -- an inbound email or call, " +
+    "or a meeting they accepted -- to the rep's next outbound touch. Leads the prospect " +
+    "never contacted are left out.",
+  touchedEveryDay:
+    "Leads touched on every day of their first week that has actually happened: a lead that " +
+    "arrived on Tuesday is judged on the days since, not on a full seven.",
+  untouchedAllWeek:
+    "Leads with no rep touch on any day of their first week -- the seven days from the lead " +
+    "arriving, not Monday to Sunday. A lead younger than a week is in this figure from the " +
+    "day it arrives.",
+  medianDaysTouched:
+    "Of the seven days after a lead arrived, the middle lead's number of days carrying at " +
+    "least one rep touch.",
+  medianGap:
+    "Each lead's own median gap between one rep touch and the next, across its whole life; " +
+    "this is the middle lead of those. A lead with fewer than two touches has no gap and is " +
+    "left out.",
+  medianTouches:
+    "The middle lead's number of rep touches, across its whole life rather than the hours " +
+    "the lane draws.",
+  meetings:
+    "Leads where a meeting was actually confirmed: a calendar invitation the prospect " +
+    "accepted, or a call the dialler logged as a booked meeting. An invitation the rep sent " +
+    "is not one.",
+  goneQuiet:
+    "Leads still open in the pipeline whose most recent activity of any kind, theirs or the " +
+    `rep's, was ${COLD_AFTER_DAYS} or more days ago. Closed leads never count, and the days ` +
+    "are measured to the data-through time in the footer rather than to now.",
+};
+
+/** The window and the records all of those are counted over. */
+export function summaryScope(from: string): string {
+  return (
+    `Counted over leads created on or after ${from} and owned by the rep on show -- ` +
+    "everyone you can see, when no rep is picked. Leads handed to a client to work " +
+    `themselves, and leads parked as long-term follow up (${NURTURE_STAGE} / ` +
+    `${NURTURE_STATUS}), are left out entirely. The filters below move the rows, never ` +
+    "these figures."
+  );
+}
+
 /**
  * Leads delivered to a client for the client to follow up.
  *
