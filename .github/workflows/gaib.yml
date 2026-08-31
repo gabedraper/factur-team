@@ -92,9 +92,24 @@ jobs:
 
       - name: Read the ticket
         run: |
-          curl -sS "$SB/rest/v1/gaib_tickets?id=eq.$TICKET&select=*" \
-            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
-          | jq '.[0]' > /tmp/ticket.json
+          # Tried three times. A read that fails returns an error object rather
+          # than a list, and one transient failure used to end the run -- which
+          # then told the person who reported the bug that we needed more detail
+          # from them, when the only thing wrong was a moment of network.
+          for attempt in 1 2 3; do
+            curl -sS "$SB/rest/v1/gaib_tickets?id=eq.$TICKET&select=*" \
+              -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" > /tmp/raw.json || true
+            if jq -e 'type == "array"' /tmp/raw.json >/dev/null 2>&1; then break; fi
+            echo "Attempt $attempt did not return a list:"; head -c 300 /tmp/raw.json; echo
+            sleep 5
+          done
+
+          if ! jq -e 'type == "array"' /tmp/raw.json >/dev/null 2>&1; then
+            echo "Could not read the ticket after three tries." >&2
+            exit 1
+          fi
+
+          jq '.[0] // {}' /tmp/raw.json > /tmp/ticket.json
 
           if [ "$(jq -r '.id // "null"' /tmp/ticket.json)" = "null" ]; then
             echo "No such ticket: $TICKET" >&2
@@ -340,7 +355,19 @@ jobs:
             echo "Gaib-Ticket: $TICKET"
           } > /tmp/pr.md
 
-          URL=$(gh pr create --title "$(cat /tmp/title.txt)" --body-file /tmp/pr.md --base main --head "$BRANCH")
+          # The branch is pushed by now, so the work exists either way. If the
+          # pull request cannot be opened -- the repository setting that allows
+          # it is off by default, and that is exactly how this failed the first
+          # two times -- fall back to a compare link so the change is still one
+          # click away rather than lost behind a red cross.
+          URL=$(gh pr create --title "$(cat /tmp/title.txt)" --body-file /tmp/pr.md \
+                  --base main --head "$BRANCH" 2>/tmp/pr-error.txt) || URL=""
+
+          if [ -z "$URL" ]; then
+            cat /tmp/pr-error.txt
+            URL="${{ github.server_url }}/${{ github.repository }}/compare/main...$BRANCH"
+            /tmp/event.sh "could not open a pull request" "$(head -c 300 /tmp/pr-error.txt)"
+          fi
           echo "$URL"
 
           /tmp/patch.sh "$(jq -nc --arg u "$URL" --arg g "$GUARD" --rawfile n /tmp/notes.md \
@@ -348,10 +375,28 @@ jobs:
               guard_tripped:(if $g=="" then null else $g end)}')"
           /tmp/event.sh "opened a pull request" "$URL"
 
+      # Whose fault it was decides what the reporter gets told.
+      #
+      # "failed" reaches the person who raised it as "I got stuck, can you tell
+      # me more?" -- which is the right thing to say when the agent read their
+      # description and could not work from it, and quite the wrong thing when
+      # the run fell over before it ever got that far. Asking somebody for more
+      # detail about a network error teaches them that reporting things is
+      # pointless.
       - name: Say it went wrong
         if: failure()
         run: |
+          if [ -s /tmp/notes.md ]; then
+            PAYLOAD=$(jq -nc --arg r "$RUN_URL" '{status:"failed", run_url:$r}')
+            WHAT="the agent could not finish"
+          else
+            PAYLOAD=$(jq -nc --arg r "$RUN_URL" '{status:"queued", run_url:$r}')
+            WHAT="the run broke before the agent started -- nothing to do with the report"
+          fi
+
           curl -sS -X PATCH "$SB/rest/v1/gaib_tickets?id=eq.$TICKET" \
             -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
             -H "Content-Type: application/json" -H "Prefer: return=minimal" \
-            -d "$(jq -nc --arg r "$RUN_URL" '{status:"failed", run_url:$r}')"
+            -d "$PAYLOAD"
+
+          /tmp/event.sh "run failed" "$WHAT" || true
