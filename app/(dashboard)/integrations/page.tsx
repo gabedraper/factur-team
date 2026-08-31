@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { myPermissions } from "@/lib/org";
 import { integrationsReport } from "@/actions/integrations";
-import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, SlidersHorizontal } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -188,9 +189,23 @@ export default async function IntegrationsPage() {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">
-              Feeds: {i.feeds.join(" · ")}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Feeds: {i.feeds.join(" · ")}
+              </p>
+              {/* Where to go and change it, beside the description of what it
+                  does -- those were two screens apart before. */}
+              {i.configure && (
+                <Link
+                  href={i.configure.href}
+                  title={i.configure.what}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {i.configure.label}
+                </Link>
+              )}
+            </div>
           </section>
         );
       })}

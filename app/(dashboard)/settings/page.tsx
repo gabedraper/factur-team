@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  Mail, Users, ShieldCheck, Building2, Link2, Briefcase, SlidersHorizontal,
+  Users, ShieldCheck, Building2, Briefcase, SlidersHorizontal,
   MailWarning, Gauge, Contact, Bot, Plug } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -155,26 +155,6 @@ export default async function SettingsPage() {
                 </span>
               </Link>
             )}
-            <Link href="/settings/salesforce"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
-              <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-sm font-medium">Salesforce accounts</span>
-                <span className="block text-xs text-muted-foreground">
-                  Match people to their Salesforce user so activity is attributed correctly.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/quickbooks"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
-              <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-sm font-medium">QuickBooks customers</span>
-                <span className="block text-xs text-muted-foreground">
-                  Tie customers who owe money to the right client, where the names differ.
-                </span>
-              </span>
-            </Link>
             <Link href="/integrations"
                   className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
               <Plug className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -202,16 +182,6 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Agents</span>
                 <span className="block text-xs text-muted-foreground">
                   Gaib and any other assistants: what they are told, what they can read, who can use them.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/google"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-sm font-medium">Google Workspace</span>
-                <span className="block text-xs text-muted-foreground">
-                  Check the connection used to read billing mail, chat and meeting transcripts.
                 </span>
               </span>
             </Link>

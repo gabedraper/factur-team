@@ -34,6 +34,15 @@ export type Integration = {
   feeds: string[];
   /** Who to tell. */
   ownedBy: string;
+  /*
+   * Where this connection is configured, when there is somewhere.
+   *
+   * Kept beside the description of the connection rather than in a list of
+   * settings cards: the question "how is Salesforce wired up" and the question
+   * "where do I fix the wiring" are the same question, and they were two
+   * screens apart.
+   */
+  configure?: { href: string; label: string; what: string };
 };
 
 export const INTEGRATIONS: Integration[] = [
@@ -70,6 +79,11 @@ export const INTEGRATIONS: Integration[] = [
       "Client health",
     ],
     ownedBy: "RevOps",
+    configure: {
+      href: "/settings/salesforce",
+      label: "Salesforce accounts",
+      what: "Match people to their Salesforce user so activity is attributed correctly.",
+    },
   },
   {
     key: "quickbooks",
@@ -93,6 +107,11 @@ export const INTEGRATIONS: Integration[] = [
       "Client health receivables score",
     ],
     ownedBy: "Finance",
+    configure: {
+      href: "/settings/quickbooks",
+      label: "QuickBooks customers",
+      what: "Tie customers who owe money to the right client, where the names differ.",
+    },
   },
   {
     key: "google-ingest",
@@ -114,6 +133,11 @@ export const INTEGRATIONS: Integration[] = [
     ],
     feeds: ["The conversation trail on a client", "Collections context"],
     ownedBy: "Operations",
+    configure: {
+      href: "/settings/google",
+      label: "Google Workspace",
+      what: "Check the connection, and read a mailbox on demand.",
+    },
   },
   {
     key: "google-send",
@@ -133,6 +157,11 @@ export const INTEGRATIONS: Integration[] = [
     ],
     feeds: ["Collections", "NPS", "Talent outreach"],
     ownedBy: "Operations",
+    configure: {
+      href: "/settings/google",
+      label: "Google Workspace",
+      what: "Check which addresses have been granted permission to send.",
+    },
   },
 ];
 
