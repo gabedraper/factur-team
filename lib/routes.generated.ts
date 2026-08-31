@@ -62,6 +62,7 @@ export const ROUTES: readonly string[] = [
   "/settings/salesforce",
   "/settings/sequences",
   "/settings/sequences/[slug]",
+  "/settings/services",
   "/settings/talent",
   "/settings/teams",
   "/talent",
