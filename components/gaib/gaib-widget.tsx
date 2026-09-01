@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Send, Ticket, X, SquarePen, History } from "lucide-react";
+import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell } from "lucide-react";
+import { canAsk, ask, notify } from "@/lib/gaib/notify";
 import {
   nudgeState, recordNudge, recordAnswered, hasUpdates,
   openingState, recentSessions, openSession, closeSession,
@@ -14,6 +15,7 @@ type Line =
   | { kind: "said"; who: "you" | "gaib"; text: string }
   | { kind: "working"; text: string }
   | { kind: "ticket"; ref: number; title: string; lane: string }
+  | { kind: "offer-notify" }
   | { kind: "error"; text: string };
 
 type Event =
@@ -59,6 +61,9 @@ export function GaibWidget() {
   // Null until the first open, so a page load costs one small query for the
   // badge rather than replaying a conversation nobody has asked to see.
   const [restored, setRestored] = useState(false);
+  // What Gaib last said, kept in a ref rather than state: it is read once when
+  // the turn ends and should not cause a render every time a word arrives.
+  const lastSaid = useRef("");
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -121,9 +126,17 @@ export function GaibWidget() {
             const event = JSON.parse(part) as Event;
 
             if (event.type === "session") setSessionId(event.id);
-            else if (event.type === "text") {
+            else if (event.type === "done") {
+              /*
+               * The moment worth interrupting somebody for: the answer is
+               * finished and they are not looking at it. notify() checks focus
+               * itself, so a reply somebody watched arrive stays silent.
+               */
+              notify(lastSaid.current || "Gaib has replied.", () => setOpen(true));
+            } else if (event.type === "text") {
               // Words are arriving, so the dots have done their job.
               setThinking(false);
+              lastSaid.current = streaming ? lastSaid.current + event.text : event.text;
               setLines((l) => {
                 const last = l[l.length - 1];
                 if (streaming && last?.kind === "said" && last.who === "gaib") {
@@ -144,6 +157,13 @@ export function GaibWidget() {
               setLines((l) => [
                 ...l,
                 { kind: "ticket", ref: event.ref, title: event.title, lane: event.lane },
+                /*
+                 * Asked here and nowhere else. Gaib has just promised to come
+                 * back about this, so the offer follows from what it said --
+                 * and a permission box that appears on page load gets refused,
+                 * which the browser then treats as final.
+                 */
+                ...(canAsk() ? [{ kind: "offer-notify" as const }] : []),
               ]);
             } else if (event.type === "error") {
               setLines((l) => [...l, { kind: "error", text: event.message }]);
@@ -376,6 +396,24 @@ export function GaibWidget() {
                       {LANE_LABEL[line.lane] ?? line.lane}
                     </Badge>
                   </div>
+                );
+              }
+              if (line.kind === "offer-notify") {
+                return (
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      await ask();
+                      // Gone once answered either way -- there is no second ask.
+                      setLines((l) => l.filter((x) => x.kind !== "offer-notify"));
+                    }}
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                    Notify me
+                  </Button>
                 );
               }
               return (
