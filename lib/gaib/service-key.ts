@@ -27,7 +27,11 @@ export type KeyProblem =
  */
 /** Raw newlines inside string values, escaped back into what JSON expects. */
 function repair(text: string): string {
-  return text.replace(/"(?:[^"\\]|\\.)*"/gs, (m) => m.replace(/\n/g, "\\n").replace(/\r/g, "\\r"));
+  // [\s\S] rather than . with the s flag, which this project's TypeScript
+  // target does not allow. Same meaning: any character, newlines included.
+  return text.replace(/"(?:[^"\\]|\\[\s\S])*"/g, (m) =>
+    m.replace(/\n/g, "\\n").replace(/\r/g, "\\r")
+  );
 }
 
 export function readKey():
