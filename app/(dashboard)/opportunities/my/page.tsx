@@ -17,19 +17,11 @@ export default async function MyOpportunitiesPage() {
   await requirePipeline("view");
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("opportunities")
-    .select("client_id, org_clients(name)")
-    .limit(2000);
-
-  type Row = { client_id: string; org_clients: { name: string } | null };
-  const seen = new Map<string, string>();
-  for (const r of (data as unknown as Row[]) ?? []) {
-    if (!seen.has(r.client_id)) seen.set(r.client_id, r.org_clients?.name ?? "Unnamed client");
-  }
-  const clients = [...seen.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Real DISTINCT, not a capped sample -- see my_pursuit_clients() for why
+  // that matters once one client alone can carry tens of thousands of rows.
+  const { data } = await supabase.rpc("my_pursuit_clients");
+  const clients = ((data as { client_id: string; name: string }[] | null) ?? [])
+    .map((r) => ({ id: r.client_id, name: r.name }));
 
   if (clients.length === 1) redirect(`/opportunities/my/${clients[0].id}`);
 
