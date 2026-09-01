@@ -4,12 +4,32 @@ import { useRef, useState, useTransition } from "react";
 import { Plus, Trash2, Send, Mail, Check } from "lucide-react";
 import {
   saveSequenceStep, deleteSequenceStep, setSequenceMode, setSequenceEndings, testStep,
-  saveStepVariant, type SequenceStep, type Sequence, type Writer,
+  saveStepVariant, setSequenceRules, type SequenceStep, type Sequence, type Writer,
 } from "@/actions/sequences";
 import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
 import { STEP_ACTIONS, resolveAction } from "@/lib/sequences/step-actions";
 import RichTextEditor from "@/components/rich-text-editor";
+
+/*
+ * The settings this screen offers, and the ones it does not yet.
+ *
+ * The unbuilt ones are listed and greyed rather than left out. Omitting them
+ * makes the product look smaller than the job actually is; a switch that
+ * silently does nothing is worse than either.
+ */
+const SETTING_SECTIONS = [
+  { id: "sending", label: "Sending", built: true },
+  { id: "recipients", label: "Recipients", built: true },
+  { id: "exit", label: "Exit criteria", built: true },
+  { id: "tracking", label: "Tracking", built: false },
+  { id: "schedule", label: "Schedule", built: false },
+  { id: "ooo", label: "Out of office", built: false },
+  { id: "crm", label: "CRMs", built: false },
+  { id: "unsubscribe", label: "Unsubscribe", built: false },
+  { id: "notifications", label: "Notifications", built: false },
+  { id: "ccbcc", label: "CC & BCC", built: false },
+];
 
 type Draft = {
   id?: string;
@@ -78,6 +98,11 @@ export function SequenceBuilder({
 
   const [mode, setMode] = useState(sequence.mode);
   const [ends, setEnds] = useState<Ending[]>(sequence.ends_on);
+  const [rules, setRules] = useState({
+    skip_if_completed: sequence.skip_if_completed,
+    skip_if_active_elsewhere: sequence.skip_if_active_elsewhere,
+    exit_same_domain: sequence.exit_same_domain,
+  });
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -99,6 +124,11 @@ export function SequenceBuilder({
     const next = on ? [...ends, key] : ends.filter((e) => e !== key);
     setEnds(next);
     run(() => setSequenceEndings(sequence.slug, next));
+  }
+
+  function setRule(key: keyof typeof rules, on: boolean) {
+    setRules((r) => ({ ...r, [key]: on }));
+    run(() => setSequenceRules(sequence.slug, { [key]: on }));
   }
 
   function touch(i: number) {
@@ -212,61 +242,131 @@ export function SequenceBuilder({
       )}
 
       {tab === "settings" ? (
-        <div className="max-w-2xl space-y-3">
-          <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
-            <span className="text-sm">When a step comes due</span>
-            {([
-              ["semi", "leave me a draft"],
-              ["full", "send it"],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                disabled={pending}
-                onClick={() => { setMode(value); run(() => setSequenceMode(sequence.slug, value)); }}
-                className={`h-8 rounded-md border px-3 text-sm ${
-                  mode === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          {/* What is on offer, and what is not yet. */}
+          <nav className="w-full shrink-0 space-y-1 text-sm lg:w-48">
+            {SETTING_SECTIONS.map((sec) => (
+              <a
+                key={sec.id}
+                href={sec.built ? `#${sec.id}` : undefined}
+                aria-disabled={!sec.built}
+                className={`block rounded-md px-2 py-1.5 ${
+                  sec.built
+                    ? "hover:bg-accent"
+                    : "cursor-not-allowed text-muted-foreground/50"
                 }`}
               >
-                {label}
-              </button>
+                {sec.label}
+              </a>
             ))}
-            <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
-          </div>
+          </nav>
 
-          {writers.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
-              <span className="text-sm">Wording for</span>
-              <select
-                className={`h-8 rounded-md border px-2 text-sm ${FIELD}`}
-                value={writerId ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  window.location.search = v ? `?writer=${v}` : "";
-                }}
-              >
-                <option value="">Everyone (the shared version)</option>
-                {writers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+          <div className="min-w-0 flex-1 space-y-6">
+            <section id="sending" className="space-y-3">
+              <h2 className="text-sm font-medium">Sending</h2>
+              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
+                <span className="text-sm">When a step comes due</span>
+                {([
+                  ["semi", "leave me a draft"],
+                  ["full", "send it"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    disabled={pending}
+                    onClick={() => { setMode(value); run(() => setSequenceMode(sequence.slug, value)); }}
+                    className={`h-8 rounded-md border px-3 text-sm ${
+                      mode === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                    }`}
+                  >
+                    {label}
+                  </button>
                 ))}
-              </select>
-            </div>
-          )}
+                <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
+              </div>
 
-          <div className="rounded-md border bg-card p-3">
-            <p className="mb-2 text-sm">What stops it</p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {ENDINGS.filter((e) => !e.only || e.only === sequence.slug).map((e) => (
-                <label key={e.key} className="flex items-center gap-2 text-sm">
+              {writers.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
+                  <span className="text-sm">Wording for</span>
+                  <select
+                    className={`h-8 rounded-md border px-2 text-sm ${FIELD}`}
+                    value={writerId ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      window.location.search = v ? `?writer=${v}` : "";
+                    }}
+                  >
+                    <option value="">Everyone (the shared version)</option>
+                    {writers.map((w) => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </section>
+
+            <section id="recipients" className="space-y-3">
+              <h2 className="text-sm font-medium">Recipients</h2>
+              <div className="space-y-2 rounded-md border bg-card p-3 text-sm">
+                <label className="flex items-start gap-2">
                   <input
                     type="checkbox"
-                    checked={ends.includes(e.key)}
-                    disabled={pending || e.key === "manual"}
-                    onChange={(ev) => toggleEnding(e.key, ev.target.checked)}
+                    className="mt-0.5"
+                    disabled={pending}
+                    checked={rules.skip_if_completed}
+                    onChange={(e) => setRule("skip_if_completed", e.target.checked)}
                   />
-                  <span className={e.key === "manual" ? "text-muted-foreground" : ""}>{e.label}</span>
+                  Skip anyone who has already been through this sequence
                 </label>
-              ))}
-            </div>
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    disabled={pending}
+                    checked={rules.skip_if_active_elsewhere}
+                    onChange={(e) => setRule("skip_if_active_elsewhere", e.target.checked)}
+                  />
+                  Skip anyone part way through a different sequence
+                </label>
+                <label className="flex items-start gap-2 text-muted-foreground/50">
+                  <input type="checkbox" className="mt-0.5" disabled />
+                  Skip anyone in a sequence from chosen teams — needs team scoping
+                </label>
+              </div>
+            </section>
+
+            <section id="exit" className="space-y-3">
+              <h2 className="text-sm font-medium">Exit criteria</h2>
+              <div className="space-y-2 rounded-md border bg-card p-3 text-sm">
+                {ENDINGS.filter((e) => !e.only || e.only === sequence.slug).map((e) => (
+                  <label key={e.key} className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={ends.includes(e.key)}
+                      disabled={pending || e.key === "manual"}
+                      onChange={(ev) => toggleEnding(e.key, ev.target.checked)}
+                    />
+                    <span className={e.key === "manual" ? "text-muted-foreground" : ""}>
+                      {e.label}
+                    </span>
+                  </label>
+                ))}
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    disabled={pending}
+                    checked={rules.exit_same_domain}
+                    onChange={(e) => setRule("exit_same_domain", e.target.checked)}
+                  />
+                  Also stop the others at the same company when one replies
+                </label>
+                <label className="flex items-start gap-2 text-muted-foreground/50">
+                  <input type="checkbox" className="mt-0.5" disabled />
+                  Stop when they book a meeting — no booking connected
+                </label>
+              </div>
+            </section>
           </div>
         </div>
       ) : (

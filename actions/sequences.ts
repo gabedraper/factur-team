@@ -30,6 +30,12 @@ export type Sequence = {
   description: string | null;
   mode: "semi" | "full";
   ends_on: Ending[];
+  /** Do not start a run for somebody who has already been through this one. */
+  skip_if_completed: boolean;
+  /** Do not start one for somebody part way through a different sequence. */
+  skip_if_active_elsewhere: boolean;
+  /** When one person at a company replies, stop chasing the others there. */
+  exit_same_domain: boolean;
 };
 
 export type SequenceStep = {
@@ -71,7 +77,7 @@ export async function getSequence(
   const db = createServiceClient();
 
   const { data: seq } = await db
-    .from("sequences").select("id,slug,name,description,mode,ends_on")
+    .from("sequences").select("id,slug,name,description,mode,ends_on,skip_if_completed,skip_if_active_elsewhere,exit_same_domain")
     .eq("slug", slug).maybeSingle();
   if (!seq) return { sequence: null, steps: [], writers: [] };
 
@@ -227,6 +233,29 @@ export async function createSequence(name: string, description: string) {
   }
   revalidatePath("/settings/sequences");
   return { success: true, slug };
+}
+
+/**
+ * The rules that decide who gets added and when a run stops early.
+ *
+ * One setter for the three flags rather than three, because the screen offers
+ * them as one group of switches and a round trip each would let two of them
+ * disagree if one failed.
+ */
+export async function setSequenceRules(
+  slug: string,
+  patch: Partial<{
+    skip_if_completed: boolean;
+    skip_if_active_elsewhere: boolean;
+    exit_same_domain: boolean;
+  }>
+) {
+  if (!(await mayEdit(slug))) return { success: false, error: "Not permitted." };
+  const { error } = await createServiceClient()
+    .from("sequences").update(patch).eq("slug", slug);
+  if (error) return { success: false, error: error.message };
+  revalidatePath(`/settings/sequences/${slug}`);
+  return { success: true };
 }
 
 export async function setSequenceEndings(slug: string, endings: Ending[]) {
