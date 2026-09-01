@@ -4,32 +4,34 @@ import { useEffect, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
-import { Panel, Empty } from "@/components/pipeline/bits";
+import { Panel, Empty, AlphaFilter } from "@/components/pipeline/bits";
 import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
 import { searchCrmContacts, type ContactMatch } from "@/actions/pipeline";
 
 type ClientOption = { id: string; name: string; heldBy: string | null; mine: boolean };
 
-/** Browse-or-search directory over crm_contacts, with a shortcut into starting a pursuit against whoever's found. */
+/** Browse-or-search directory over crm_contacts, with a shortcut into creating an opportunity against whoever's found. */
 export function PeopleSearch({ clients }: { clients: ClientOption[] }) {
   const [query, setQuery] = useState("");
+  const [letter, setLetter] = useState<string | null>(null);
   const [results, setResults] = useState<ContactMatch[]>([]);
   const [searching, start] = useTransition();
 
-  function run(q: string) {
-    start(async () => setResults(await searchCrmContacts(q)));
+  function run(q: string, l: string | null) {
+    start(async () => setResults(await searchCrmContacts(q, l)));
   }
 
-  useEffect(() => { run(""); }, []);
+  useEffect(() => { run("", null); }, []);
 
   return (
     <div className="space-y-3">
       <Input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); run(e.target.value); }}
+        onChange={(e) => { setQuery(e.target.value); setLetter(null); run(e.target.value, null); }}
         placeholder="Search people by name or email…"
         className="max-w-sm"
       />
+      <AlphaFilter active={letter} onSelect={(l) => { setLetter(l); setQuery(""); run("", l); }} />
       <Panel>
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No one matches."}</Empty>

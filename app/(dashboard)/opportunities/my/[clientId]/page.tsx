@@ -4,8 +4,9 @@ import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { listClientsForSelf } from "@/actions/self-service";
-import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
+import { PageHeader, Panel, Empty, Chip, stageTone, AlphaFilter } from "@/components/pipeline/bits";
 import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
+import { OpportunityListFilters } from "@/components/pipeline/OpportunityListFilters";
 import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +21,16 @@ type Row = {
   crm_accounts: { name: string } | null;
 };
 
-function filterHref(clientId: string, stage: string | null, status: string | null) {
+type Filters = { stage?: string; status?: string; letter?: string; person?: string; company?: string };
+
+function filterHref(clientId: string, patch: Partial<Filters>, current: Filters) {
+  const merged = { ...current, ...patch };
   const q = new URLSearchParams();
-  if (stage) q.set("stage", stage);
-  if (status) q.set("status", status);
+  if (merged.stage) q.set("stage", merged.stage);
+  if (merged.status) q.set("status", merged.status);
+  if (merged.letter) q.set("letter", merged.letter);
+  if (merged.person) q.set("person", merged.person);
+  if (merged.company) q.set("company", merged.company);
   const qs = q.toString();
   return `/opportunities/my/${clientId}${qs ? `?${qs}` : ""}`;
 }
@@ -32,19 +39,28 @@ export default async function ClientOpportunitiesPage({
   params, searchParams,
 }: {
   params: Promise<{ clientId: string }>;
-  searchParams: Promise<{ stage?: string; status?: string }>;
+  searchParams: Promise<Filters>;
 }) {
   await requirePipeline("view");
   const { clientId } = await params;
-  const { stage, status } = await searchParams;
+  const filters = await searchParams;
+  const { stage, status, letter, person, company } = filters;
   const supabase = await createClient();
 
   const { data: client } = await supabase.from("org_clients").select("id,name").eq("id", clientId).maybeSingle();
   if (!client) notFound();
 
+  // crm_contacts/crm_accounts default to a left-embed so a row with no
+  // matched contact still shows -- switched to !inner only when a filter on
+  // that embed is active, since !inner is what actually makes ilike() on an
+  // embedded column restrict the outer opportunities rows rather than just
+  // nulling out the embed for non-matches.
+  const contactsJoin = letter || person ? "crm_contacts!inner" : "crm_contacts";
+  const accountsJoin = company ? "crm_accounts!inner" : "crm_accounts";
+
   let query = supabase
     .from("opportunities")
-    .select("id,name,stage,lead_status,next_action_date,crm_contacts(first_name,last_name),crm_accounts(name)")
+    .select(`id,name,stage,lead_status,next_action_date,${contactsJoin}(first_name,last_name),${accountsJoin}(name)`)
     .eq("client_id", clientId);
 
   if (stage) query = query.eq("stage", stage);
@@ -53,6 +69,15 @@ export default async function ClientOpportunitiesPage({
   // can carry tens of thousands of historical Closed/DQ rows, and that's an
   // archive to filter into on purpose, not the working list.
   if (!stage && !status) query = query.not("stage", "ilike", "Closed:%");
+  if (letter) query = query.ilike("crm_contacts.last_name", `${letter}%`);
+  if (person) {
+    const p = person.trim().replace(/[,()]/g, " ").trim();
+    if (p.length >= 2) query = query.or(`first_name.ilike.%${p}%,last_name.ilike.%${p}%`, { foreignTable: "crm_contacts" });
+  }
+  if (company) {
+    const c = company.trim().replace(/[,()]/g, " ").trim();
+    if (c.length >= 2) query = query.ilike("crm_accounts.name", `%${c}%`);
+  }
 
   const { data, error } = await query
     .order("next_action_date", { ascending: true, nullsFirst: false })
@@ -75,12 +100,12 @@ export default async function ClientOpportunitiesPage({
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">Stage</span>
-          <Link href={filterHref(clientId, null, status ?? null)}
+          <Link href={filterHref(clientId, { stage: undefined }, filters)}
                 className={`rounded-full border px-2 py-0.5 text-xs ${!stage ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
             Open (default)
           </Link>
           {STAGE_GROUPS.flatMap((g) => g.values).map((v) => (
-            <Link key={v} href={filterHref(clientId, v, status ?? null)}
+            <Link key={v} href={filterHref(clientId, { stage: v }, filters)}
                   className={`rounded-full border px-2 py-0.5 text-xs ${stage === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
               {v}
             </Link>
@@ -88,17 +113,25 @@ export default async function ClientOpportunitiesPage({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">Lead status</span>
-          <Link href={filterHref(clientId, stage ?? null, null)}
+          <Link href={filterHref(clientId, { status: undefined }, filters)}
                 className={`rounded-full border px-2 py-0.5 text-xs ${!status ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
             Any
           </Link>
           {LEAD_STATUSES.map((v) => (
-            <Link key={v} href={filterHref(clientId, stage ?? null, v)}
+            <Link key={v} href={filterHref(clientId, { status: v }, filters)}
                   className={`rounded-full border px-2 py-0.5 text-xs ${status === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
               {v}
             </Link>
           ))}
         </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground">Contact</span>
+          <AlphaFilter
+            active={letter ?? null}
+            hrefFor={(l) => filterHref(clientId, { letter: l ?? undefined }, filters)}
+          />
+        </div>
+        <OpportunityListFilters />
       </div>
 
       <Panel>

@@ -88,7 +88,7 @@ export function NewOpportunityDialog({
         reset();
         router.push(`/opportunities/${result.id}`);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not start that pursuit.");
+        setError(e instanceof Error ? e.message : "Could not create that opportunity.");
       }
     });
   }
@@ -96,10 +96,10 @@ export function NewOpportunityDialog({
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        {trigger ?? <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New pursuit</Button>}
+        {trigger ?? <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New Opportunity</Button>}
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Start a pursuit</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>New Opportunity</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -108,7 +108,7 @@ export function NewOpportunityDialog({
           <div>
             <label className="text-xs text-muted-foreground">Client</label>
             <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger><SelectValue placeholder="Which client is pursuing?" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Which client?" /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -166,7 +166,7 @@ export function NewOpportunityDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving}>{saving ? "Starting…" : "Start pursuit"}</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create Opportunity"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

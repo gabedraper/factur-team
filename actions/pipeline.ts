@@ -167,7 +167,7 @@ export type ContactMatch = {
  * itself) and the /data/people directory, where an empty query means browse
  * rather than search.
  */
-export async function searchCrmContacts(query: string): Promise<ContactMatch[]> {
+export async function searchCrmContacts(query: string, letter?: string | null): Promise<ContactMatch[]> {
   await assertPipeline("view");
   // PostgREST's .or() reads commas/parens as filter syntax, not literal text --
   // stripped here so a name typed as "Smith, John" searches instead of erroring.
@@ -177,10 +177,12 @@ export async function searchCrmContacts(query: string): Promise<ContactMatch[]> 
   let sel = supabase
     .from("crm_contacts")
     .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)");
-  if (q.length >= 2) {
+  if (letter) {
+    sel = sel.ilike("last_name", `${letter}%`);
+  } else if (q.length >= 2) {
     sel = sel.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
   }
-  const { data, error } = await sel.order("last_name", { ascending: true, nullsFirst: false }).limit(q.length >= 2 ? 20 : 50);
+  const { data, error } = await sel.order("last_name", { ascending: true, nullsFirst: false }).limit(50);
   if (error) throw new Error(`Could not search contacts: ${error.message}`);
 
   return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
@@ -204,16 +206,18 @@ export type AccountMatch = {
 };
 
 /** The /data/companies directory. Same empty-query-browses shape as searchCrmContacts. */
-export async function searchCrmAccounts(query: string): Promise<AccountMatch[]> {
+export async function searchCrmAccounts(query: string, letter?: string | null): Promise<AccountMatch[]> {
   await assertPipeline("view");
   const q = query.trim().replace(/[,()]/g, " ").trim();
 
   const supabase = await createClient();
   let sel = supabase.from("crm_accounts").select("id,name,domain,industry,city,state");
-  if (q.length >= 2) {
+  if (letter) {
+    sel = sel.ilike("name", `${letter}%`);
+  } else if (q.length >= 2) {
     sel = sel.or(`name.ilike.%${q}%,domain.ilike.%${q}%`);
   }
-  const { data, error } = await sel.order("name").limit(q.length >= 2 ? 30 : 50);
+  const { data, error } = await sel.order("name").limit(50);
   if (error) throw new Error(`Could not search companies: ${error.message}`);
 
   return data as unknown as AccountMatch[];

@@ -55,7 +55,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
   }
 
   return (
-    <Panel title="Pursuit" action={saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3 w-3" /> Saved</span>}>
+    <Panel title="Opportunity" action={saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3 w-3" /> Saved</span>}>
       <div className="space-y-3 p-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
 

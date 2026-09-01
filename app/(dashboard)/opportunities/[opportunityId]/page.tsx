@@ -136,7 +136,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         <div className="space-y-4">
           <Panel title="Activity">
             {!activities || activities.length === 0 ? (
-              <Empty>Nothing logged against this pursuit yet.</Empty>
+              <Empty>Nothing logged against this opportunity yet.</Empty>
             ) : (
               <ul className="divide-y">
                 {(activities as unknown as Activity[]).map((a) => {

@@ -87,3 +87,40 @@ export function stageTone(stage: string): keyof typeof TONE {
   if (stage.startsWith("prospecting")) return "slate";
   return "blue";
 }
+
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+/**
+ * A-Z jump filter, shared across every list (People, Companies, My
+ * Opportunities and its per-client list). Two ways to drive it depending on
+ * whether the list is a client component with data already in hand
+ * (`onSelect`) or a server-rendered page that re-fetches per query param
+ * (`hrefFor`) — same as the Stage/Lead-status buttons already do.
+ */
+export function AlphaFilter({
+  active, onSelect, hrefFor,
+}: {
+  active: string | null;
+  onSelect?: (letter: string | null) => void;
+  hrefFor?: (letter: string | null) => string;
+}) {
+  const cls = (isActive: boolean) =>
+    cn("rounded px-1.5 py-0.5 text-xs tabular-nums", isActive ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted");
+
+  return (
+    <div className="flex flex-wrap items-center gap-0.5">
+      {hrefFor ? (
+        <Link href={hrefFor(null)} className={cls(!active)}>All</Link>
+      ) : (
+        <button type="button" onClick={() => onSelect?.(null)} className={cls(!active)}>All</button>
+      )}
+      {LETTERS.map((l) =>
+        hrefFor ? (
+          <Link key={l} href={hrefFor(l)} className={cls(active === l)}>{l}</Link>
+        ) : (
+          <button key={l} type="button" onClick={() => onSelect?.(l)} className={cls(active === l)}>{l}</button>
+        )
+      )}
+    </div>
+  );
+}

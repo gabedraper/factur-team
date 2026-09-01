@@ -2,28 +2,30 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
-import { Panel, Empty } from "@/components/pipeline/bits";
+import { Panel, Empty, AlphaFilter } from "@/components/pipeline/bits";
 import { searchCrmAccounts, type AccountMatch } from "@/actions/pipeline";
 
 export function CompaniesSearch() {
   const [query, setQuery] = useState("");
+  const [letter, setLetter] = useState<string | null>(null);
   const [results, setResults] = useState<AccountMatch[]>([]);
   const [searching, start] = useTransition();
 
-  function run(q: string) {
-    start(async () => setResults(await searchCrmAccounts(q)));
+  function run(q: string, l: string | null) {
+    start(async () => setResults(await searchCrmAccounts(q, l)));
   }
 
-  useEffect(() => { run(""); }, []);
+  useEffect(() => { run("", null); }, []);
 
   return (
     <div className="space-y-3">
       <Input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); run(e.target.value); }}
+        onChange={(e) => { setQuery(e.target.value); setLetter(null); run(e.target.value, null); }}
         placeholder="Search companies by name or domain…"
         className="max-w-sm"
       />
+      <AlphaFilter active={letter} onSelect={(l) => { setLetter(l); setQuery(""); run("", l); }} />
       <Panel>
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No companies match."}</Empty>
