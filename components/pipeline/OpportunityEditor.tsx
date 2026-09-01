@@ -10,38 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Panel } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
-
-// Salesforce's actual Opportunity.StageName picklist, read from the org's
-// field metadata -- Skyvia syncs this both ways, so this can't drift from
-// what Salesforce will actually accept or the sync starts rejecting writes.
-const STAGE_GROUPS: { label: string; values: string[] }[] = [
-  {
-    label: "Prospecting",
-    values: [
-      "Prospecting: Pipeline Cold", "Prospecting: Cold Call List", "Prospecting: Cold Referral",
-      "Prospecting: Warm Referral", "Prospecting: Referred", "Lead Generated", "Lead Generated: Scheduled",
-    ],
-  },
-  {
-    label: "Pipeline",
-    values: [
-      "Pipeline: Warm", "Pipeline: Hot", "Pipeline: LT Follow Up", "Pipeline - Selling",
-      "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Quote Follow up", "Pipeline Hot: Quoting",
-      "Pipeline Hot: Supplier forms / NDA", "Pipeline Hot: Appointment set",
-    ],
-  },
-  {
-    label: "Closed",
-    values: ["Closed: Closed Won", "Closed: Closed Lost", "Closed: DQ Contact", "Closed: DQ Company", "Closed: No Quote"],
-  },
-  { label: "Other", values: ["Sales Support"] },
-];
-
-// Salesforce's Opportunity.Prospecting_Lead_Status__c picklist, same reason.
-const LEAD_STATUSES = [
-  "Pipeline - Cold", "Pipeline - Warm SDR", "Pipeline - Warm", "Pipeline - Selling",
-  "Closing", "LTFU", "Lost Follow Up", "Customer", "Relationship", "No Fit Ever - Contact", "No Fit Ever - Account",
-];
+import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 const FUNNEL_STEPS = [
   { key: "reached_lead", label: "Lead" },

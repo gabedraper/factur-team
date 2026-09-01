@@ -26,13 +26,21 @@ type ClientOption = { id: string; name: string; heldBy: string | null; mine: boo
  * human call, not a validation failure, so it's surfaced as a note on the
  * new pursuit rather than something to dismiss here.
  */
-export function NewOpportunityDialog({ clients }: { clients: ClientOption[] }) {
+export function NewOpportunityDialog({
+  clients, initialContact, trigger,
+}: {
+  clients: ClientOption[];
+  /** Pre-fills the contact step, e.g. from a "Create opportunity" row on /data/people. */
+  initialContact?: ContactMatch;
+  /** Replaces the default "New pursuit" button as the open trigger. */
+  trigger?: React.ReactNode;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [clientId, setClientId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ContactMatch[]>([]);
-  const [contact, setContact] = useState<ContactMatch | null>(null);
+  const [contact, setContact] = useState<ContactMatch | null>(initialContact ?? null);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [collisionNote, setCollisionNote] = useState<string | null>(null);
@@ -53,7 +61,7 @@ export function NewOpportunityDialog({ clients }: { clients: ClientOption[] }) {
   }
 
   function reset() {
-    setClientId(""); setQuery(""); setResults([]); setContact(null);
+    setClientId(""); setQuery(""); setResults([]); setContact(initialContact ?? null);
     setNotes(""); setError(null); setCollisionNote(null);
   }
 
@@ -78,7 +86,7 @@ export function NewOpportunityDialog({ clients }: { clients: ClientOption[] }) {
         }
         setOpen(false);
         reset();
-        router.push(`/pipeline/${result.id}`);
+        router.push(`/opportunities/${result.id}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not start that pursuit.");
       }
@@ -88,7 +96,7 @@ export function NewOpportunityDialog({ clients }: { clients: ClientOption[] }) {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New pursuit</Button>
+        {trigger ?? <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> New pursuit</Button>}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Start a pursuit</DialogTitle></DialogHeader>

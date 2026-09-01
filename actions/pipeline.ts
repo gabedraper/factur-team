@@ -114,7 +114,7 @@ export async function createOpportunity(input: OpportunityInput) {
   if (error) throw new Error(`Could not create that opportunity: ${error.message}`);
 
   await supabase.rpc("record_opportunity_history", { p_source: "manual" });
-  revalidatePath("/pipeline");
+  revalidatePath("/opportunities", "layout");
 
   return { id: (data as { id: string }).id, collision };
 }
@@ -149,7 +149,7 @@ export async function updateOpportunity(id: string, patch: OpportunityUpdate) {
   if (error) throw new Error(`Could not update that opportunity: ${error.message}`);
 
   await supabase.rpc("record_opportunity_history", { p_source: "manual" });
-  revalidatePath("/pipeline");
+  revalidatePath("/opportunities", "layout");
 }
 
 export type ContactMatch = {
@@ -162,20 +162,25 @@ export type ContactMatch = {
   account_name: string | null;
 };
 
-/** Typeahead for the "new pursuit" contact picker. Empty query returns nothing -- this list is large enough that browsing it unfiltered isn't useful. */
+/**
+ * Doubles as the "new pursuit" typeahead (caller gates that on 2+ characters
+ * itself) and the /data/people directory, where an empty query means browse
+ * rather than search.
+ */
 export async function searchCrmContacts(query: string): Promise<ContactMatch[]> {
   await assertPipeline("view");
   // PostgREST's .or() reads commas/parens as filter syntax, not literal text --
   // stripped here so a name typed as "Smith, John" searches instead of erroring.
   const q = query.trim().replace(/[,()]/g, " ").trim();
-  if (q.length < 2) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let sel = supabase
     .from("crm_contacts")
-    .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)")
-    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
-    .limit(20);
+    .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)");
+  if (q.length >= 2) {
+    sel = sel.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
+  }
+  const { data, error } = await sel.order("last_name", { ascending: true, nullsFirst: false }).limit(q.length >= 2 ? 20 : 50);
   if (error) throw new Error(`Could not search contacts: ${error.message}`);
 
   return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
@@ -187,6 +192,31 @@ export async function searchCrmContacts(query: string): Promise<ContactMatch[]> 
     account_id: r.account_id as string | null,
     account_name: (r.crm_accounts as { name: string } | null)?.name ?? null,
   }));
+}
+
+export type AccountMatch = {
+  id: string;
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  city: string | null;
+  state: string | null;
+};
+
+/** The /data/companies directory. Same empty-query-browses shape as searchCrmContacts. */
+export async function searchCrmAccounts(query: string): Promise<AccountMatch[]> {
+  await assertPipeline("view");
+  const q = query.trim().replace(/[,()]/g, " ").trim();
+
+  const supabase = await createClient();
+  let sel = supabase.from("crm_accounts").select("id,name,domain,industry,city,state");
+  if (q.length >= 2) {
+    sel = sel.or(`name.ilike.%${q}%,domain.ilike.%${q}%`);
+  }
+  const { data, error } = await sel.order("name").limit(q.length >= 2 ? 30 : 50);
+  if (error) throw new Error(`Could not search companies: ${error.message}`);
+
+  return data as unknown as AccountMatch[];
 }
 
 export async function logOpportunityActivity(input: {
@@ -202,5 +232,5 @@ export async function logOpportunityActivity(input: {
   const { error } = await supabase.from("opp_activities").insert({ ...input, created_by: me });
   if (error) throw new Error(`Could not log that activity: ${error.message}`);
 
-  revalidatePath("/pipeline");
+  revalidatePath("/opportunities", "layout");
 }

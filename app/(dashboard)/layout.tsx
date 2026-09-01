@@ -127,17 +127,6 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     groups.push({ label: "Clients", items: clients });
   }
 
-  // Same signal as the Sequences item above: whoever sends a sequence is
-  // also who a click-to-dial pursuit belongs to. Not gated on clients.health
-  // (that's reporting) -- pipeline.access has no dedicated permission of its
-  // own, RLS on opportunities is the real guard either way.
-  if (perms.has("sequences.send") || perms.has("org.manage")) {
-    groups.push({
-      label: "Sales",
-      items: [{ href: "/pipeline", label: "Pipeline", icon: <PhoneCall className="h-4 w-4" /> }],
-    });
-  }
-
   /*
    * Talent is a section rather than a page -- it is an applicant tracker and a
    * recruiting CRM, and neither fits behind one link. The order follows the way
@@ -171,10 +160,23 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
    * through the button in the footer.
    */
 
+  // Data and Opportunities share the timelines.view audience -- browsing
+  // people/companies is only useful to someone who also works opportunities.
   if (perms.has("timelines.view")) {
     groups.push({
-      label: "Opportunity Timelines",
+      label: "Data",
       items: [
+        { href: "/data/people", label: "People", icon: <Contact className="h-4 w-4" /> },
+        { href: "/data/companies", label: "Companies", icon: <Building2 className="h-4 w-4" /> },
+      ],
+    });
+  }
+
+  if (perms.has("timelines.view")) {
+    groups.push({
+      label: "Opportunities",
+      items: [
+        { href: "/opportunities/my", label: "My Opportunities", icon: <PhoneCall className="h-4 w-4" /> },
         { href: "/timelines/quick-response", label: "Lead Response", icon: <Zap className="h-4 w-4" /> },
         { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },
         { href: "/timelines/full-life", label: "Full lead life", icon: <Activity className="h-4 w-4" /> },

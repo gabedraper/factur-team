@@ -70,10 +70,10 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="p-6 space-y-4 max-w-6xl">
       <div>
-        <Link href="/pipeline" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Pipeline
+        <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" /> My Opportunities
         </Link>
         <PageHeader title={contactName}>
           <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
@@ -86,37 +86,10 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-4">
-          <Panel title="Activity">
-            {!activities || activities.length === 0 ? (
-              <Empty>Nothing logged against this pursuit yet.</Empty>
-            ) : (
-              <ul className="divide-y">
-                {(activities as unknown as Activity[]).map((a) => {
-                  const Icon = ACTIVITY_ICON[a.activity_type];
-                  return (
-                    <li key={a.id} className="flex gap-3 px-4 py-3">
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium capitalize">{a.activity_type}</span>
-                          {a.direction && <span className="text-xs text-muted-foreground">{a.direction}</span>}
-                          {a.outcome && <Chip colour="slate">{a.outcome}</Chip>}
-                          <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
-                            {new Date(a.occurred_at).toLocaleString()}
-                          </span>
-                        </div>
-                        {a.body && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Panel>
-        </div>
-
+      {/* Fields in the middle, activity feed on the right -- same shape as a
+          Salesforce record page, so the layout is legible to anyone coming
+          from there. */}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <DialWidget
             opportunityId={o.id}
@@ -157,6 +130,36 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
                 <dd>{o.crm_accounts?.industry ?? "—"}</dd>
               </div>
             </dl>
+          </Panel>
+        </div>
+
+        <div className="space-y-4">
+          <Panel title="Activity">
+            {!activities || activities.length === 0 ? (
+              <Empty>Nothing logged against this pursuit yet.</Empty>
+            ) : (
+              <ul className="divide-y">
+                {(activities as unknown as Activity[]).map((a) => {
+                  const Icon = ACTIVITY_ICON[a.activity_type];
+                  return (
+                    <li key={a.id} className="flex gap-3 px-4 py-3">
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium capitalize">{a.activity_type}</span>
+                          {a.direction && <span className="text-xs text-muted-foreground">{a.direction}</span>}
+                          {a.outcome && <Chip colour="slate">{a.outcome}</Chip>}
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {new Date(a.occurred_at).toLocaleString()}
+                        </span>
+                        {a.body && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Panel>
         </div>
       </div>
