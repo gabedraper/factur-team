@@ -50,9 +50,9 @@ export const INTEGRATIONS: Integration[] = [
     key: "salesforce",
     name: "Salesforce",
     what:
-      "The record of opportunities, accounts and the activity logged against them. " +
-      "Salesforce is the source of truth for anything to do with selling; the app " +
-      "reads it and never writes back.",
+      "The record of opportunities, accounts and the activity logged against them, " +
+      "mirrored for reporting. This particular connection reads and never writes " +
+      "back -- see the separate Skyvia connection below for the one that does.",
     direction: "in",
     transport:
       "Coupler.io copies whole tables on a schedule. Each sync drops the table and " +
@@ -162,6 +162,31 @@ export const INTEGRATIONS: Integration[] = [
       label: "Google Workspace",
       what: "Check which addresses have been granted permission to send.",
     },
+  },
+  {
+    key: "skyvia",
+    name: "Skyvia — pipeline",
+    what:
+      "The one connection that writes into Salesforce. Opportunities are edited " +
+      "here now, not there, and the pursuit of a Contact by a Client needs to stay " +
+      "true in both places while people transition off Salesforce for day-to-day work.",
+    direction: "both",
+    transport:
+      "Skyvia polls roughly once a minute, both directions. Writes to Salesforce " +
+      "authenticate as a dedicated integration user with a Disable_Triggers_On_Objects__c " +
+      "override on System_Settings__c, so Salesforce's own automation (naming, emails, " +
+      "contact-role upserts) doesn't fire a second time on a sync-originated write.",
+    tables: ["opportunities", "crm_accounts", "crm_contacts"],
+    excluded: [
+      "Only worked Opportunities sync — Prospecting: Cold Call List rows stay in " +
+      "Salesforce untouched; they aren't a pursuit of anyone yet.",
+      "Accounts and Contacts sync in only. They're read-only in the app on purpose.",
+      "Client name/status now sync both ways -- a deliberate exception to the " +
+      "insert-only rule sync_clients_from_salesforce() otherwise holds to, so a " +
+      "Salesforce-side edit can now overwrite one made here.",
+    ],
+    feeds: ["The pipeline", "Rep-collision review"],
+    ownedBy: "RevOps",
   },
 ];
 
