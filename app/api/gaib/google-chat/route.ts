@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn } from "@/lib/gaib/chat";
-import { defaultAgent, getAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
+import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 
 /*
  * Gaib, reachable from Google Chat.
@@ -25,12 +25,41 @@ export const maxDuration = 60;
 /** Google's patience, minus enough to get an answer back through the wire. */
 const BUDGET_MS = 25_000;
 
+/*
+ * Is this thing switched on?
+ *
+ * Google reports every refusal as "Gaib not responding", which covers a missing
+ * setting and a forged request equally and tells you nothing about which. The
+ * refusal has to stay silent -- an error that explains itself helps somebody
+ * work out what to forge next -- so the setup check lives here instead.
+ *
+ * Says whether the project number is set and never what it is. Knowing that a
+ * setting exists helps nobody sign anything.
+ */
+export async function GET() {
+  const configured = Boolean(process.env.GOOGLE_CHAT_PROJECT_NUMBER);
+  const agent = await defaultAgent().catch(() => null);
+
+  return NextResponse.json({
+    ready: configured && Boolean(agent),
+    projectNumberSet: configured,
+    agent: agent ? agent.name : null,
+    ...(configured ? {} : { fix: "Set GOOGLE_CHAT_PROJECT_NUMBER in Vercel, then redeploy." }),
+  });
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
 
   const event = await verifyAndParse(request.headers.get("authorization"), body);
   if (!event) {
-    // Deliberately says nothing about which part failed.
+    // Silent to the caller, loud in the logs -- the person setting this up needs
+    // to know which of the two it was, and the caller must not.
+    console.warn(
+      process.env.GOOGLE_CHAT_PROJECT_NUMBER
+        ? "google-chat: a request failed verification"
+        : "google-chat: GOOGLE_CHAT_PROJECT_NUMBER is not set, so nothing can verify"
+    );
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
