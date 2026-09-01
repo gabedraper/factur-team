@@ -36,6 +36,19 @@ export type RepCollision = {
   other_opportunity_id: string;
 };
 
+/**
+ * Mirrors OpportunityHelper.getName() in Apex exactly -- Salesforce requires
+ * Name to create an Opportunity, and its own naming trigger never fires for
+ * Skyvia's sync-originated writes (triggers are deliberately bypassed for
+ * that user), so the app has to produce the same name Salesforce would have.
+ */
+function computeOpportunityName(accountName: string | null, clientName: string, contactName: string): string {
+  const name = accountName
+    ? `${accountName} - ${clientName} - ${contactName}`
+    : `${clientName} - ${contactName}`;
+  return name.length > 119 ? name.slice(0, 119) : name;
+}
+
 async function checkRepCollision(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clientId: string,
@@ -75,9 +88,27 @@ export async function createOpportunity(input: OpportunityInput) {
 
   const collision = await checkRepCollision(supabase, input.client_id, input.contact_id);
 
+  const [{ data: client }, { data: contact }, { data: account }] = await Promise.all([
+    supabase.from("org_clients").select("name").eq("id", input.client_id).single(),
+    supabase.from("crm_contacts").select("first_name, last_name").eq("id", input.contact_id).single(),
+    input.account_id
+      ? supabase.from("crm_accounts").select("name").eq("id", input.account_id).single()
+      : Promise.resolve({ data: null }),
+  ]);
+  const clientName = (client as { name: string } | null)?.name ?? "";
+  const contactRow = contact as { first_name: string | null; last_name: string | null } | null;
+  const contactName = [contactRow?.first_name, contactRow?.last_name].filter(Boolean).join(" ");
+  const accountName = (account as { name: string } | null)?.name ?? null;
+
   const { data, error } = await supabase
     .from("opportunities")
-    .insert({ ...input, created_by: me, updated_by: me })
+    .insert({
+      ...input,
+      name: computeOpportunityName(accountName, clientName, contactName),
+      close_date: new Date().toISOString().slice(0, 10),
+      created_by: me,
+      updated_by: me,
+    })
     .select("id")
     .single();
   if (error) throw new Error(`Could not create that opportunity: ${error.message}`);
