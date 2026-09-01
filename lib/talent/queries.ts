@@ -50,9 +50,23 @@ export async function listPeople(f: PeopleFilter = {}) {
   const supabase = await db();
   const limit = Math.min(f.limit ?? 50, 200);
 
+  /*
+   * An exact count means scanning every row, and tal_people is a fat table --
+   * it carries the resume text and a tsvector built over it, so 18,833 rows is
+   * a couple of seconds of sequential read on every page load, spent entirely
+   * on a number in a header.
+   *
+   * Filtered searches return few enough rows to count honestly. The unfiltered
+   * list, which is the one people actually open, takes the planner's estimate:
+   * it is used for the row count and the page arithmetic, and neither is worth
+   * two seconds of precision.
+   */
+  const filtered = !!(f.q?.trim() || f.type || f.ownerId || f.companyId ||
+                      f.skill || f.hasEmail || f.hasResume);
+
   let query = supabase
     .from("tal_person_summary")
-    .select("*", { count: "exact" })
+    .select("*", { count: filtered ? "exact" : "estimated" })
     .range(f.offset ?? 0, (f.offset ?? 0) + limit - 1);
 
   /*
