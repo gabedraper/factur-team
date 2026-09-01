@@ -63,6 +63,24 @@ export function readKey():
 
   attempts.push(repair(unquoted));
 
+  /*
+   * A paste that lost its first character or two.
+   *
+   * Selecting a file by dragging rather than with select-all clips the opening
+   * brace, and sometimes the quote after it. The result ends correctly, is the
+   * right length, and fails to parse -- which reads as a corrupt key rather than
+   * as a near-miss.
+   *
+   * Putting them back is safe here only because nothing is taken on trust: a
+   * repaired value still has to parse AND still has to carry a client_email and
+   * a private_key, or it is rejected exactly as before. This tolerates a known
+   * truncation; it does not guess at credentials.
+   */
+  if (!unquoted.startsWith("{") && unquoted.trimEnd().endsWith("}")) {
+    attempts.push(repair(`{${unquoted}`));
+    attempts.push(repair(`{"${unquoted}`));
+  }
+
   let lastError = "";
   for (const candidate of attempts) {
     try {

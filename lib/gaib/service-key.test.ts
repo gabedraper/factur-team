@@ -33,6 +33,8 @@ check("quotes added round it by hand", `"${good}"`, true);
 check("escapes turned into real newlines", good.replace(/\\n/g, "\n"), true);
 check("base64 encoded", Buffer.from(good).toString("base64"), true);
 check("with surrounding whitespace", `\n  ${good}\n `, true);
+check("first character clipped off", good.slice(1), true);
+check("first two characters clipped off", good.slice(2), true);
 check("truncated halfway", good.slice(0, Math.floor(good.length / 2)), false);
 check("some other json entirely", JSON.stringify({ hello: "world" }), false);
 check("not set at all", undefined, false);
