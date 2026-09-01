@@ -70,82 +70,179 @@ export async function verifyAndParse(
   authorization: string | null,
   body: unknown
 ): Promise<ChatEvent | null> {
-  const projectNumber = process.env.GOOGLE_CHAT_PROJECT_NUMBER;
-  if (!projectNumber) return null;
-
   const bearer = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length).trim()
     : null;
   if (!bearer) return null;
 
-  try {
-    const client = new OAuth2Client();
-    await client.verifySignedJwtWithCertsAsync(
-      bearer,
-      await signingCerts(),
-      projectNumber,
-      [CHAT_ISSUER]
-    );
-  } catch {
-    return null;
-  }
-
-  return read(body);
+  return (await verifySignature(bearer)) ? read(body) : null;
 }
 
+/*
+ * Two ways in, because Google signs the request differently depending on a
+ * setting in the Chat configuration, and neither is more correct than the
+ * other.
+ *
+ *   Project Number  a token Chat signs itself, checked against that account's
+ *                   published certificates, addressed to the Cloud project
+ *   App URL         an ordinary Google identity token, addressed to this
+ *                   endpoint's own address
+ *
+ * Supporting both means the setting can be either without anybody having to
+ * remember which, and a Console change cannot silently break this. Both are
+ * strict: whichever shape arrives has to be signed by Google and addressed to
+ * us, or it is refused.
+ */
+async function verifySignature(bearer: string): Promise<boolean> {
+  const client = new OAuth2Client();
+
+  const projectNumber = process.env.GOOGLE_CHAT_PROJECT_NUMBER;
+  if (projectNumber) {
+    try {
+      await client.verifySignedJwtWithCertsAsync(
+        bearer, await signingCerts(), projectNumber, [CHAT_ISSUER]
+      );
+      return true;
+    } catch {
+      // Falls through to the other shape rather than refusing here -- this one
+      // failing is expected when the setting is the other way round.
+    }
+  }
+
+  /*
+   * Derived rather than configured. In this mode the audience Google signs for
+   * is this endpoint's own address, which is already known from the site URL --
+   * asking somebody to type it into Vercel as well would be one more place for
+   * the two to disagree.
+   */
+  const site = process.env.NEXT_PUBLIC_SITE_URL;
+  const audience = process.env.GOOGLE_CHAT_AUDIENCE_URL
+    ?? (site ? `${site.replace(/\/$/, "")}/api/gaib/google-chat` : null);
+
+  if (audience) {
+    try {
+      const ticket = await client.verifyIdToken({ idToken: bearer, audience });
+      const claims = ticket.getPayload();
+      /*
+       * The audience is checked by verifyIdToken; the issuer is checked here
+       * because that method accepts any Google identity token and only this
+       * pair of issuers belongs to Google itself.
+       */
+      const issuer = claims?.iss ?? "";
+      return issuer === "https://accounts.google.com" || issuer === "accounts.google.com";
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/*
+ * Two payload shapes, because a Chat app and a Workspace add-on that extends
+ * Chat send completely different requests -- and the Console decides which this
+ * is with a checkbox that cannot be unticked once set.
+ *
+ *   classic  { type, message, space } at the top level
+ *   add-on   { chat: { messagePayload: { message, space } }, commonEventObject }
+ *
+ * Both are read, because being wrong about which one this is should not be a
+ * silence. The add-on shape is checked first: it is what this app actually is.
+ */
+
+type Message = {
+  text?: string;
+  argumentText?: string;
+  sender?: { email?: string; displayName?: string };
+  thread?: { name?: string };
+};
+type Space = { name?: string; type?: string; spaceType?: string; singleUserBotDm?: boolean };
+
 type Payload = {
+  // classic
   type?: string;
-  message?: {
-    text?: string;
-    argumentText?: string;
-    sender?: { email?: string; displayName?: string };
-    thread?: { name?: string };
-  };
+  message?: Message;
   user?: { email?: string; displayName?: string };
-  space?: { name?: string; type?: string; singleUserBotDm?: boolean };
+  space?: Space;
+  // add-on
+  chat?: {
+    user?: { email?: string; displayName?: string };
+    messagePayload?: { message?: Message; space?: Space };
+    addedToSpacePayload?: { space?: Space };
+    removedFromSpacePayload?: { space?: Space };
+    appCommandPayload?: { message?: Message; space?: Space };
+  };
 };
 
 function read(body: unknown): ChatEvent | null {
   const p = (body ?? {}) as Payload;
+  const chat = p.chat;
+
+  const addOnMessage = chat?.messagePayload ?? chat?.appCommandPayload;
+
+  const message: Message | undefined = addOnMessage?.message ?? p.message;
+  const space: Space | undefined =
+    addOnMessage?.space
+    ?? chat?.addedToSpacePayload?.space
+    ?? chat?.removedFromSpacePayload?.space
+    ?? p.space;
 
   /*
-   * The sender is taken from the message where there is one and from the event
-   * otherwise. Both come from Google inside the signed request -- there is no
-   * path here that reads an address out of anything a person typed, which is
-   * the property that makes the impersonation above impossible rather than
-   * merely unlikely.
+   * The sender comes from Google inside the signed request, never from anything
+   * a person typed. That is the property the whole permission model rests on,
+   * so every branch here reads a field Google set.
    */
-  const email = p.message?.sender?.email ?? p.user?.email ?? "";
+  const email = message?.sender?.email ?? chat?.user?.email ?? p.user?.email ?? "";
   if (!email) return null;
 
-  const kind: ChatEventKind =
+  let kind: ChatEventKind = "UNKNOWN";
+  if (chat) {
+    if (chat.messagePayload || chat.appCommandPayload) kind = "MESSAGE";
+    else if (chat.addedToSpacePayload) kind = "ADDED_TO_SPACE";
+    else if (chat.removedFromSpacePayload) kind = "REMOVED_FROM_SPACE";
+  } else if (
     p.type === "MESSAGE" || p.type === "ADDED_TO_SPACE" ||
     p.type === "REMOVED_FROM_SPACE" || p.type === "CARD_CLICKED"
-      ? p.type
-      : "UNKNOWN";
+  ) {
+    kind = p.type;
+  }
 
   /*
    * argumentText is the message with the app's own @mention stripped out. In a
-   * space, text begins "@Gaib " and feeding that to the model wastes a line
+   * space the text begins "@Gaib ", and feeding that to the model wastes a line
    * explaining that it is being spoken to.
    */
-  const text = (p.message?.argumentText ?? p.message?.text ?? "").trim();
+  const text = (message?.argumentText ?? message?.text ?? "").trim();
+  const spaceType = space?.spaceType ?? space?.type;
 
   return {
     kind,
     senderEmail: email,
-    senderName: p.message?.sender?.displayName ?? p.user?.displayName ?? null,
+    senderName: message?.sender?.displayName ?? chat?.user?.displayName ?? p.user?.displayName ?? null,
     text,
-    spaceName: p.space?.name ?? null,
-    threadName: p.message?.thread?.name ?? null,
-    isDirectMessage: p.space?.type === "DM" || Boolean(p.space?.singleUserBotDm),
+    spaceName: space?.name ?? null,
+    threadName: message?.thread?.name ?? null,
+    isDirectMessage: spaceType === "DM" || spaceType === "DIRECT_MESSAGE" || Boolean(space?.singleUserBotDm),
   };
 }
 
-/** A plain reply, which is all Chat needs for text. */
+/*
+ * A reply, in whichever shape the caller understands.
+ *
+ * A classic Chat app takes { text }. An add-on ignores that entirely and needs
+ * the message wrapped three deep -- so a reply in the wrong shape is accepted,
+ * returns 200, and shows nothing at all, which is the most annoying way for
+ * this to fail. Both are sent: each side reads the part it knows and ignores
+ * the rest.
+ */
 export function reply(text: string, threadName?: string | null) {
-  return {
+  const message = {
     text,
     ...(threadName ? { thread: { name: threadName } } : {}),
+  };
+
+  return {
+    ...message,
+    hostAppDataAction: { chatDataAction: { createMessageAction: { message } } },
   };
 }

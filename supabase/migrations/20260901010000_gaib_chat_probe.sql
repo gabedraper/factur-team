@@ -48,3 +48,8 @@ drop trigger if exists gaib_chat_probe_trim on public.gaib_chat_probe;
 create trigger gaib_chat_probe_trim
   after insert on public.gaib_chat_probe
   for each statement execute function public.gaib_chat_probe_trim();
+
+-- Which fields the payload arrived with. Names only, never values -- enough to
+-- tell a classic Chat app request from a Workspace add-on one, which send
+-- entirely different shapes and are otherwise indistinguishable from a failure.
+alter table public.gaib_chat_probe add column if not exists body_keys text;

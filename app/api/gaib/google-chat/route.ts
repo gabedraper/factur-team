@@ -53,7 +53,11 @@ const BUDGET_MS = 25_000;
 async function noteArrival(
   authorization: string | null,
   verified: boolean,
-  eventType: string | null
+  eventType: string | null,
+  // Names only, never values. The shape of the payload is what is needed to
+  // work out why a field came back empty; what is in it is none of this
+  // function's business.
+  bodyKeys: string | null
 ) {
   let audience: string | null = null;
   let issuer: string | null = null;
@@ -81,6 +85,7 @@ async function noteArrival(
       claimed_audience: audience,
       claimed_issuer: issuer,
       event_type: eventType,
+      body_keys: bodyKeys,
     });
   } catch {
     // Diagnostics must never be the reason a reply fails.
@@ -93,7 +98,7 @@ export async function GET() {
 
   const { data: arrivals } = await createServiceClient()
     .from("gaib_chat_probe")
-    .select("at,had_auth_header,verified,claimed_audience,claimed_issuer,event_type")
+    .select("at,had_auth_header,verified,claimed_audience,claimed_issuer,event_type,body_keys")
     .order("at", { ascending: false })
     .limit(5);
 
@@ -124,7 +129,8 @@ export async function POST(request: NextRequest) {
   await noteArrival(
     authorization,
     Boolean(event),
-    (body as { type?: string } | null)?.type ?? null
+    (body as { type?: string } | null)?.type ?? null,
+    body && typeof body === "object" ? Object.keys(body).join(",") : null
   );
 
   if (!event) {
