@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell } from "lucide-react";
+import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell, Smartphone } from "lucide-react";
 import { canAsk, ask, notify } from "@/lib/gaib/notify";
 import {
   nudgeState, recordNudge, recordAnswered, hasUpdates,
@@ -12,7 +12,7 @@ import {
 } from "@/actions/gaib";
 
 type Line =
-  | { kind: "said"; who: "you" | "gaib"; text: string }
+  | { kind: "said"; who: "you" | "gaib"; text: string; fromChat?: boolean }
   | { kind: "working"; text: string }
   | { kind: "ticket"; ref: number; title: string; lane: string }
   | { kind: "offer-notify" }

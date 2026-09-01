@@ -55,11 +55,12 @@ async function save(
   role: "user" | "assistant",
   content: string,
   blocks: unknown | null,
-  pageUrl: string | null = null
+  pageUrl: string | null = null,
+  channel: "app" | "google_chat" = "app"
 ) {
   const db = createServiceClient();
   await db.from("gaib_messages").insert({
-    session_id: sessionId, role, content, blocks, page_url: pageUrl,
+    session_id: sessionId, role, content, blocks, page_url: pageUrl, channel,
   });
   await db
     .from("gaib_sessions")
@@ -82,6 +83,8 @@ export type TurnInput = {
   /** What they typed. Null when the agent is opening the conversation itself. */
   message: string | null;
   pageUrl: string | null;
+  /** Where this turn is being had, so a transcript shows where each line was said. */
+  channel?: "app" | "google_chat";
   person: { name: string; role: string | null };
 };
 
@@ -106,7 +109,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const tools = toolsFor(input.agent.tools);
 
   if (input.message) {
-    await save(input.sessionId, "user", input.message, null, input.pageUrl);
+    await save(input.sessionId, "user", input.message, null, input.pageUrl, input.channel);
     messages.push({ role: "user", content: input.message });
   }
 
@@ -179,7 +182,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
     }
 
     messages.push({ role: "assistant", content: message.content });
-    await save(input.sessionId, "assistant", textOf(message.content), message.content);
+    await save(input.sessionId, "assistant", textOf(message.content), message.content, null, input.channel);
 
     if (message.stop_reason !== "tool_use") break;
 
@@ -234,7 +237,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
     }
 
     messages.push({ role: "user", content: results });
-    await save(input.sessionId, "user", "", results);
+    await save(input.sessionId, "user", "", results, null, input.channel);
   }
 
   await title(input.sessionId, client, input.agent.model);

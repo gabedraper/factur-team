@@ -229,6 +229,7 @@ async function answer(event: ChatEvent) {
       email: acting.session.email,
       db: acting.session.db,
       message: event.text,
+      channel: "google_chat",
       pageUrl: null,
       person: { name: person.fullName ?? acting.session.email, role: null },
     });
@@ -274,13 +275,16 @@ async function answer(event: ChatEvent) {
 }
 
 /*
- * One running conversation per person per space.
+ * One conversation, wherever it is being had.
  *
- * A chat window is a continuous thing: somebody who says "and what about last
- * month" expects it to follow on. Keyed on the space as well as the person so a
- * private chat and a team space stay separate conversations, and reused only
- * while it is recent -- picking up a fortnight-old thread because it happens to
- * be the last one is worse than starting fresh.
+ * Deliberately not keyed on the space. Somebody who asks Gaib something on
+ * their phone on the way in and then opens the app at their desk is having one
+ * conversation, and making them repeat themselves because they changed window
+ * is the sort of thing that makes an assistant feel like two assistants.
+ *
+ * Bounded by time rather than by place: recent enough that following on makes
+ * sense, old enough to start fresh. Picking up a fortnight-old thread because
+ * it happens to be the last one is worse than not picking up anything.
  */
 const RESUME_WITHIN_HOURS = 12;
 
@@ -290,13 +294,23 @@ async function conversationFor(
   spaceName: string | null
 ): Promise<string> {
   const db = createServiceClient();
+
+  // Remembered so Gaib can speak first later. A direct message space does not
+  // exist until somebody opens one, so this is the only moment it can be known.
+  if (spaceName) {
+    await db.from("gaib_chat_spaces").upsert({
+      user_id: userId,
+      space_name: spaceName,
+      last_seen: new Date().toISOString(),
+    });
+  }
+
   const since = new Date(Date.now() - RESUME_WITHIN_HOURS * 3600_000).toISOString();
 
   const { data: existing } = await db
     .from("gaib_sessions")
     .select("id")
     .eq("user_id", userId)
-    .eq("channel_ref", spaceName ?? "chat")
     .eq("status", "open")
     .gte("last_message_at", since)
     .order("last_message_at", { ascending: false })

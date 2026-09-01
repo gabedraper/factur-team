@@ -120,7 +120,7 @@ export async function recordAnswered() {
  */
 
 export type ReplayLine =
-  | { kind: "said"; who: "you" | "gaib"; text: string }
+  | { kind: "said"; who: "you" | "gaib"; text: string; fromChat?: boolean }
   | { kind: "ticket"; ref: number; title: string; lane: string };
 
 export type ResumedSession = {
@@ -133,6 +133,7 @@ type StoredMessage = {
   role: "user" | "assistant";
   content: string;
   blocks: unknown;
+  channel: string | null;
   created_at: string;
 };
 
@@ -142,7 +143,7 @@ async function replay(sessionId: string): Promise<ReplayLine[]> {
 
   const [{ data: messages }, { data: tickets }] = await Promise.all([
     db.from("gaib_messages")
-      .select("role,content,blocks,created_at")
+      .select("role,content,blocks,channel,created_at")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true }),
     db.from("gaib_tickets")
@@ -163,7 +164,14 @@ async function replay(sessionId: string): Promise<ReplayLine[]> {
 
   for (const m of (messages ?? []) as StoredMessage[]) {
     if (m.content.trim()) {
-      lines.push({ kind: "said", who: m.role === "user" ? "you" : "gaib", text: m.content });
+      lines.push({
+        kind: "said",
+        who: m.role === "user" ? "you" : "gaib",
+        text: m.content,
+        // Marked so a conversation that moved between the phone and the desk
+        // reads as one thing that happened in two places, rather than as a gap.
+        ...(m.channel === "google_chat" ? { fromChat: true } : {}),
+      });
     }
 
     // The card for a raised ticket lives in the tool call rather than in any
