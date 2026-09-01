@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
+import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn } from "@/lib/gaib/chat";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
@@ -130,23 +131,15 @@ export async function GET() {
    * So: say what the key is, and let it be checked against the one place both
    * names appear together, which is the Cloud console home page.
    */
-  let postingKey: Record<string, string> | string;
-  try {
-    const raw = process.env.GOOGLE_CHAT_APP_KEY;
-    if (!raw) {
-      postingKey = "not set — Gaib can reply but cannot start a conversation";
-    } else {
-      const parsed = JSON.parse(raw) as { project_id?: string; client_email?: string };
-      postingKey = {
-        project: parsed.project_id ?? "(none in the key)",
-        account: parsed.client_email ?? "(none in the key)",
-        check: "This must be the same project the Chat app is configured in. " +
+  const key = readKey();
+  const postingKey = key.ok
+    ? {
+        project: key.project_id,
+        account: key.client_email,
+        check: "This must be the project the Chat app is configured in. " +
                "The console home page shows a project's id and number together.",
-      };
-    }
-  } catch {
-    postingKey = "set, but is not readable as JSON — check the whole file was pasted";
-  }
+      }
+    : { problem: key.problem, detail: key.detail };
 
   return NextResponse.json({
     ready: configured && Boolean(agent),

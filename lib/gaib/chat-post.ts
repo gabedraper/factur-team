@@ -1,5 +1,6 @@
 import { JWT } from "google-auth-library";
 import { createServiceClient } from "@/lib/supabase/server";
+import { readKey } from "./service-key";
 
 /*
  * Gaib speaking first.
@@ -28,15 +29,8 @@ export type PostResult =
   | { ok: false; reason: string };
 
 function credentials(): { client_email: string; private_key: string } | null {
-  const raw = process.env.GOOGLE_CHAT_APP_KEY;
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { client_email?: string; private_key?: string };
-    if (!parsed.client_email || !parsed.private_key) return null;
-    return { client_email: parsed.client_email, private_key: parsed.private_key };
-  } catch {
-    return null;
-  }
+  const key = readKey();
+  return key.ok ? { client_email: key.client_email, private_key: key.private_key } : null;
 }
 
 /** Whether Gaib is able to start conversations at all. */
@@ -111,3 +105,4 @@ export async function spaceFor(userId: string): Promise<string | null> {
     .maybeSingle();
   return (data as { space_name: string } | null)?.space_name ?? null;
 }
+export { readKey } from "./service-key";
