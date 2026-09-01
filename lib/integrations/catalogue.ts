@@ -188,6 +188,34 @@ export const INTEGRATIONS: Integration[] = [
     feeds: ["The pipeline", "Rep-collision review"],
     ownedBy: "RevOps",
   },
+  {
+    key: "dialpad",
+    name: "Dialpad — Mini Dialer",
+    what:
+      "Click-to-dial on a pipeline pursuit. The call itself never touches this app's " +
+      "server — a rep's browser posts messages straight into Dialpad's own iframe, " +
+      "which places the call using whoever is logged into it.",
+    direction: "out",
+    transport:
+      "An embedded iframe (Dialpad's Mini Dialer/CTI), driven client-side with " +
+      "window.postMessage. No Dialpad API key is held server-side for this. The one " +
+      "thing that is ours is outbound_caller_id — which reserved number presents as " +
+      "caller ID — picked from dialpad_numbers before each call.",
+    tables: ["dialpad_numbers"],
+    excluded: [
+      "No server-side call API, no recordings, no call-duration webhook yet — a call's " +
+      "outcome is whatever the rep dispositions by hand into opp_activities.",
+      "Numbers aren't purchased or reserved here — that still happens in Dialpad's own " +
+      "admin. This only tracks the pool already bought, for rotation.",
+    ],
+    feeds: ["Opportunity activity timeline"],
+    ownedBy: "RevOps",
+    configure: {
+      href: "/settings/dialpad",
+      label: "Dialpad",
+      what: "The outbound number pool, and whether the Mini Dialer's Client ID is set.",
+    },
+  },
 ];
 
 /** Every table the catalogue claims, for checking against what the database holds. */

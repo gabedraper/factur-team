@@ -39,6 +39,7 @@ import {
   BadgeCheck,
   LineChart,
   Coins,
+  PhoneCall,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
@@ -124,6 +125,17 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       clients.push({ href: "/sequences", label: "Sequences", icon: <Send className="h-4 w-4" /> });
     }
     groups.push({ label: "Clients", items: clients });
+  }
+
+  // Same signal as the Sequences item above: whoever sends a sequence is
+  // also who a click-to-dial pursuit belongs to. Not gated on clients.health
+  // (that's reporting) -- pipeline.access has no dedicated permission of its
+  // own, RLS on opportunities is the real guard either way.
+  if (perms.has("sequences.send") || perms.has("org.manage")) {
+    groups.push({
+      label: "Sales",
+      items: [{ href: "/pipeline", label: "Pipeline", icon: <PhoneCall className="h-4 w-4" /> }],
+    });
   }
 
   /*
