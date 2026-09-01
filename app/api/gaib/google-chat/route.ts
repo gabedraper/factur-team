@@ -92,13 +92,26 @@ async function noteArrival(
   }
 }
 
+/** What became of the last arrival, appended to its row. */
+async function noteOutcome(outcome: string) {
+  try {
+    const db = createServiceClient();
+    const { data } = await db
+      .from("gaib_chat_probe").select("id").order("id", { ascending: false }).limit(1).maybeSingle();
+    const row = data as { id: number } | null;
+    if (row) await db.from("gaib_chat_probe").update({ outcome }).eq("id", row.id);
+  } catch {
+    /* diagnostics must never break a reply */
+  }
+}
+
 export async function GET() {
   const configured = Boolean(process.env.GOOGLE_CHAT_PROJECT_NUMBER);
   const agent = await defaultAgent().catch(() => null);
 
   const { data: arrivals } = await createServiceClient()
     .from("gaib_chat_probe")
-    .select("at,had_auth_header,verified,claimed_audience,claimed_issuer,event_type,body_keys")
+    .select("at,verified,claimed_issuer,event_type,body_keys,outcome")
     .order("at", { ascending: false })
     .limit(5);
 
@@ -150,19 +163,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       reply(
         "Hello. Ask me about the app, your clients, or anything you can see in it — " +
-          "and tell me when something is broken and I will get it fixed."
+          "and tell me when something is broken and I will get it fixed.",
+        event
       )
     );
   }
 
-  if (event.kind !== "MESSAGE" || !event.text) return NextResponse.json({});
+  if (event.kind !== "MESSAGE" || !event.text) {
+    await noteOutcome(`ignored: kind=${event.kind} textLength=${event.text.length}`);
+    return NextResponse.json({});
+  }
 
   try {
-    return NextResponse.json(await answer(event));
+    const body = await answer(event);
+    await noteOutcome(`replied ${JSON.stringify(body).length} bytes`);
+    return NextResponse.json(body);
   } catch (e) {
     console.error("google-chat", e);
+    await noteOutcome(`threw: ${e instanceof Error ? e.message.slice(0, 120) : "unknown"}`);
     return NextResponse.json(
-      reply("Something went wrong at my end. Try again in a moment.", event.threadName)
+      reply("Something went wrong at my end. Try again in a moment.", event)
     );
   }
 }
@@ -172,15 +192,15 @@ async function answer(event: ChatEvent) {
   if (!person) {
     return reply(
       "I do not recognise that account. Sign in to team.facturmfg.com once and I will know who you are.",
-      event.threadName
+      event
     );
   }
 
   const agent = await defaultAgent();
-  if (!agent) return reply("No assistant is set up yet.", event.threadName);
+  if (!agent) return reply("No assistant is set up yet.", event);
 
   if (!mayUse(agent, await myRoleIds(person.userId))) {
-    return reply("That assistant is not available to you.", event.threadName);
+    return reply("That assistant is not available to you.", event);
   }
 
   /*
@@ -195,7 +215,7 @@ async function answer(event: ChatEvent) {
       acting.reason === "no-such-account"
         ? "Sign in to team.facturmfg.com once and I will know who you are."
         : "I could not check who you are just now. Try again shortly.",
-      event.threadName
+      event
     );
   }
 
@@ -243,11 +263,11 @@ async function answer(event: ChatEvent) {
       return reply(
         "That is taking me longer than Chat will wait. I have kept working on it — " +
           "open Gaib in the app in a minute and the answer will be there.",
-        event.threadName
+        event
       );
     }
 
-    return reply(text || "I do not have an answer for that.", event.threadName);
+    return reply(text || "I do not have an answer for that.", event);
   } finally {
     await acting.session.release();
   }

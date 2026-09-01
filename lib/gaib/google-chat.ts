@@ -48,6 +48,8 @@ export type ChatEventKind =
 
 export type ChatEvent = {
   kind: ChatEventKind;
+  /** Which shape the request came in, so the reply goes back in the same one. */
+  isAddOn: boolean;
   /** Verified by Google, not read from the body. The whole model rests on it. */
   senderEmail: string;
   senderName: string | null;
@@ -217,6 +219,7 @@ function read(body: unknown): ChatEvent | null {
 
   return {
     kind,
+    isAddOn: Boolean(chat),
     senderEmail: email,
     senderName: message?.sender?.displayName ?? chat?.user?.displayName ?? p.user?.displayName ?? null,
     text,
@@ -227,22 +230,24 @@ function read(body: unknown): ChatEvent | null {
 }
 
 /*
- * A reply, in whichever shape the caller understands.
+ * A reply, in exactly the shape the request came in.
  *
- * A classic Chat app takes { text }. An add-on ignores that entirely and needs
- * the message wrapped three deep -- so a reply in the wrong shape is accepted,
- * returns 200, and shows nothing at all, which is the most annoying way for
- * this to fail. Both are sent: each side reads the part it knows and ignores
- * the rest.
+ * A classic Chat app takes { text }. An add-on ignores that and needs the
+ * message wrapped three deep under hostAppDataAction. Sending both at once
+ * seemed safe and is not: an add-on response carrying an unexpected top-level
+ * field is rejected outright, so the endpoint answers 200 with something Chat
+ * throws away and the app reads as not responding -- which looks identical to
+ * every other failure and is why this took three passes to find.
+ *
+ * One shape, chosen from what arrived.
  */
-export function reply(text: string, threadName?: string | null) {
+export function reply(text: string, event?: { isAddOn: boolean; threadName?: string | null } | null) {
   const message = {
     text,
-    ...(threadName ? { thread: { name: threadName } } : {}),
+    ...(event?.threadName ? { thread: { name: event.threadName } } : {}),
   };
 
-  return {
-    ...message,
-    hostAppDataAction: { chatDataAction: { createMessageAction: { message } } },
-  };
+  return event?.isAddOn === false
+    ? message
+    : { hostAppDataAction: { chatDataAction: { createMessageAction: { message } } } };
 }

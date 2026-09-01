@@ -53,3 +53,8 @@ create trigger gaib_chat_probe_trim
 -- tell a classic Chat app request from a Workspace add-on one, which send
 -- entirely different shapes and are otherwise indistinguishable from a failure.
 alter table public.gaib_chat_probe add column if not exists body_keys text;
+
+-- What became of the request, not just that it arrived. An arrival that
+-- verified and then produced nothing is a different problem from one that was
+-- refused, and until this column existed the two looked the same from outside.
+alter table public.gaib_chat_probe add column if not exists outcome text;
