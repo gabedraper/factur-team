@@ -148,6 +148,11 @@ export async function GET() {
     postingKey = "set, but is not readable as JSON — check the whole file was pasted";
   }
 
+  return NextResponse.json({
+    ready: configured && Boolean(agent),
+    projectNumberSet: configured,
+    expectedAudience: process.env.GOOGLE_CHAT_PROJECT_NUMBER ?? null,
+    agent: agent ? agent.name : null,
     postingKey,
     messagesSeen: seen.length,
     lastArrivals: seen,
