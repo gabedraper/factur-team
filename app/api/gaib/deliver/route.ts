@@ -31,9 +31,23 @@ export async function POST(request: NextRequest) {
    * at will could not read anything or change anything -- but they could make
    * Gaib message the company repeatedly, and being able to do that from outside
    * is not something to leave lying around.
+   *
+   * Read from the database rather than from the environment. The schedule that
+   * calls this lives in the database too, so both ends can reach one row --
+   * whereas an environment variable would have to be copied to both and kept in
+   * step by somebody remembering to. The environment is still honoured as a
+   * fallback, for triggering a run by hand.
    */
-  const expected = process.env.GAIB_DELIVER_SECRET;
-  if (!expected || request.headers.get("x-gaib-secret") !== expected) {
+  const offered = request.headers.get("x-gaib-secret");
+  if (!offered) return new NextResponse("Unauthorized", { status: 401 });
+
+  const { data: secretRow } = await createServiceClient()
+    .from("gaib_secrets").select("value").eq("name", "deliver").maybeSingle();
+
+  const expected = (secretRow as { value: string } | null)?.value
+    ?? process.env.GAIB_DELIVER_SECRET;
+
+  if (!expected || offered !== expected) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
