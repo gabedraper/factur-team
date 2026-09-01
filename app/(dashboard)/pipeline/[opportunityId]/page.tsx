@@ -6,6 +6,7 @@ import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { DialWidget } from "@/components/pipeline/DialWidget";
+import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,12 @@ type Opportunity = {
   notes: string | null;
   next_action_date: string | null;
   updates: string | null;
+  reached_lead: boolean;
+  reached_eval_call_scheduled: boolean;
+  reached_selling: boolean;
+  reached_discovery: boolean;
+  reached_proposal: boolean;
+  reached_closing: boolean;
   org_clients: { name: string } | null;
   crm_accounts: { name: string; industry: string | null } | null;
   crm_contacts: { first_name: string | null; last_name: string | null; title: string | null; email: string | null; phone: string | null } | null;
@@ -44,7 +51,9 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates,org_clients(name),crm_accounts(name,industry),crm_contacts(first_name,last_name,title,email,phone)"
+        "id,name,stage,lead_status,notes,next_action_date,updates," +
+        "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
+        "org_clients(name),crm_accounts(name,industry),crm_contacts(first_name,last_name,title,email,phone)"
       )
       .eq("id", opportunityId)
       .maybeSingle(),
@@ -114,6 +123,23 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
             phoneNumber={o.crm_contacts?.phone ?? null}
             contactName={contactName}
             canAdmin={perms.has("org.manage")}
+          />
+
+          <OpportunityEditor
+            opportunity={{
+              id: o.id,
+              stage: o.stage,
+              lead_status: o.lead_status,
+              notes: o.notes,
+              next_action_date: o.next_action_date,
+              updates: o.updates,
+              reached_lead: o.reached_lead,
+              reached_eval_call_scheduled: o.reached_eval_call_scheduled,
+              reached_selling: o.reached_selling,
+              reached_discovery: o.reached_discovery,
+              reached_proposal: o.reached_proposal,
+              reached_closing: o.reached_closing,
+            }}
           />
 
           <Panel title="Contact">

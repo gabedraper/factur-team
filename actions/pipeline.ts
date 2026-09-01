@@ -131,6 +131,11 @@ export type OpportunityUpdate = Partial<
     reached_proposal: boolean;
     reached_closing: boolean;
     closed_on: string | null;
+    // Columns added by pipeline_next_action_and_updates -- editable from the
+    // app by design, just never added to this type until the pipeline UI
+    // existed to edit them.
+    next_action_date: string | null;
+    updates: string | null;
   }
 >;
 
@@ -145,6 +150,43 @@ export async function updateOpportunity(id: string, patch: OpportunityUpdate) {
 
   await supabase.rpc("record_opportunity_history", { p_source: "manual" });
   revalidatePath("/pipeline");
+}
+
+export type ContactMatch = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  email: string | null;
+  account_id: string | null;
+  account_name: string | null;
+};
+
+/** Typeahead for the "new pursuit" contact picker. Empty query returns nothing -- this list is large enough that browsing it unfiltered isn't useful. */
+export async function searchCrmContacts(query: string): Promise<ContactMatch[]> {
+  await assertPipeline("view");
+  // PostgREST's .or() reads commas/parens as filter syntax, not literal text --
+  // stripped here so a name typed as "Smith, John" searches instead of erroring.
+  const q = query.trim().replace(/[,()]/g, " ").trim();
+  if (q.length < 2) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("crm_contacts")
+    .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)")
+    .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`)
+    .limit(20);
+  if (error) throw new Error(`Could not search contacts: ${error.message}`);
+
+  return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id as string,
+    first_name: r.first_name as string | null,
+    last_name: r.last_name as string | null,
+    title: r.title as string | null,
+    email: r.email as string | null,
+    account_id: r.account_id as string | null,
+    account_name: (r.crm_accounts as { name: string } | null)?.name ?? null,
+  }));
 }
 
 export async function logOpportunityActivity(input: {

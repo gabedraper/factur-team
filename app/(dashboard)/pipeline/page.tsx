@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
+import { listClientsForSelf } from "@/actions/self-service";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
+import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -22,19 +24,24 @@ export default async function PipelinePage() {
 
   // RLS (opportunities_scoped) already limits this to the caller's clients,
   // or every client for org.manage — no manual client_id filter needed here.
-  const { data, error } = await supabase
-    .from("opportunities")
-    .select(
-      "id,name,stage,lead_status,next_action_date,org_clients(name),crm_contacts(first_name,last_name),crm_accounts(name)"
-    )
-    .order("next_action_date", { ascending: true, nullsFirst: false })
-    .limit(200);
+  const [{ data, error }, clients] = await Promise.all([
+    supabase
+      .from("opportunities")
+      .select(
+        "id,name,stage,lead_status,next_action_date,org_clients(name),crm_contacts(first_name,last_name),crm_accounts(name)"
+      )
+      .order("next_action_date", { ascending: true, nullsFirst: false })
+      .limit(200),
+    listClientsForSelf(),
+  ]);
 
   const rows = (error ? [] : (data as unknown as Row[])) ?? [];
 
   return (
     <div className="p-6 space-y-4">
-      <PageHeader title="Pipeline" count={rows.length} />
+      <PageHeader title="Pipeline" count={rows.length}>
+        <NewOpportunityDialog clients={clients} />
+      </PageHeader>
 
       <Panel>
         {rows.length === 0 ? (
