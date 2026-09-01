@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { postToSpace, spaceFor, canPost } from "@/lib/gaib/chat-post";
 import { phrase, type Notice } from "@/lib/gaib/notices";
+import { embedded } from "@/lib/gaib/embedded";
 
 /*
  * Delivering the updates people are owed, without waiting for them to look.
@@ -49,18 +50,26 @@ export async function POST(request: NextRequest) {
     .order("created_at", { ascending: true })
     .limit(PER_RUN);
 
+  type Ticket = { ref: number; title: string; kind: "bug" | "idea" };
   type Row = {
     id: string; user_id: string; to_status: string; note: string | null;
-    gaib_tickets: { ref: number; title: string; kind: "bug" | "idea" }[] | null;
+    gaib_tickets: Ticket | Ticket[] | null;
   };
 
   const rows = (data ?? []) as unknown as Row[];
   const delivered: string[] = [];
   const skipped: string[] = [];
+  // Counted rather than dropped in silence. A row that goes nowhere and is
+  // reported nowhere is how the whole feature stayed broken without a trace.
+  const orphaned: string[] = [];
+  const failed: string[] = [];
 
   for (const row of rows) {
-    const ticket = row.gaib_tickets?.[0];
-    if (!ticket) continue;
+    const ticket = embedded(row.gaib_tickets);
+    if (!ticket) {
+      orphaned.push(row.id);
+      continue;
+    }
 
     const space = await spaceFor(row.user_id);
     if (!space) {
@@ -81,6 +90,7 @@ export async function POST(request: NextRequest) {
 
     const sent = await postToSpace(space, phrase(notice));
     if (sent.ok) delivered.push(row.id);
+    else failed.push(`${row.id}: ${sent.reason}`);
   }
 
   /*
@@ -98,7 +108,10 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
+    considered: rows.length,
     delivered: delivered.length,
     waitingOnSomebodyToSayHelloFirst: skipped.length,
+    ticketMissing: orphaned.length,
+    failed,
   });
 }

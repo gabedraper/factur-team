@@ -8,6 +8,7 @@ import { NUDGE_OPENERS } from "@/lib/gaib/prompt";
 import { dispatchAgent } from "@/lib/gaib/dispatch";
 import { logEvent } from "@/lib/gaib/tickets";
 import { phrase, type Notice } from "@/lib/gaib/notices";
+import { embedded } from "@/lib/gaib/embedded";
 
 /*
  * How often Gaib is allowed to start a conversation.
@@ -215,11 +216,10 @@ async function collectUpdates(userId: string): Promise<string[]> {
     .order("created_at", { ascending: true })
     .limit(5);
 
-  // The embedded ticket comes back as an array even on a to-one relation, which
-  // is PostgREST being consistent rather than helpful.
+  type Ticket = { ref: number; title: string; kind: "bug" | "idea" };
   type Row = {
     id: string; to_status: string; note: string | null;
-    gaib_tickets: { ref: number; title: string; kind: "bug" | "idea" }[] | null;
+    gaib_tickets: Ticket | Ticket[] | null;
   };
 
   const rows = (data ?? []) as unknown as Row[];
@@ -227,7 +227,7 @@ async function collectUpdates(userId: string): Promise<string[]> {
 
   const lines: string[] = [];
   for (const r of rows) {
-    const ticket = r.gaib_tickets?.[0];
+    const ticket = embedded(r.gaib_tickets);
     if (!ticket) continue;
     const notice: Notice = {
       id: r.id,
