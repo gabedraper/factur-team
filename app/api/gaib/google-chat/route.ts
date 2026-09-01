@@ -117,6 +117,36 @@ export async function GET() {
 
   const seen = (arrivals ?? []) as Record<string, unknown>[];
 
+  /*
+   * Which project the posting key belongs to, read from the key itself.
+   *
+   * A service account created in the wrong project looks entirely correct and
+   * then silently fails to post, because Google works out which Chat app you
+   * are from the project the credentials came from. The project id is not a
+   * secret -- it is in every one of that account's email addresses -- so saying
+   * it here turns a confusing silence into a one-line check.
+   */
+  let postingKey: { projectMatches: boolean; project: string; account: string } | string;
+  try {
+    const raw = process.env.GOOGLE_CHAT_APP_KEY;
+    if (!raw) {
+      postingKey = "not set — Gaib can reply but cannot start a conversation";
+    } else {
+      const parsed = JSON.parse(raw) as { project_id?: string; client_email?: string };
+      const account = parsed.client_email ?? "(no client_email in the key)";
+      postingKey = {
+        // The Chat app lives in this project; a key from any other one will not
+        // post as Gaib however valid it is in its own right.
+        projectMatches: account.includes(`@${parsed.project_id}.iam.gserviceaccount.com`)
+          && parsed.project_id !== "scoreboard-505215",
+        project: parsed.project_id ?? "(none)",
+        account,
+      };
+    }
+  } catch {
+    postingKey = "set, but is not readable as JSON — check the whole file was pasted";
+  }
+
   return NextResponse.json({
     ready: configured && Boolean(agent),
     projectNumberSet: configured,
@@ -127,6 +157,7 @@ export async function GET() {
      * reached this address, which is a wrong URL in the Chat configuration and
      * not anything wrong with the code.
      */
+    postingKey,
     messagesSeen: seen.length,
     lastArrivals: seen,
     ...(configured ? {} : { fix: "Set GOOGLE_CHAT_PROJECT_NUMBER in Vercel, then redeploy." }),
