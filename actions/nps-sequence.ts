@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { draftAs, sendAs } from "@/lib/google/compose";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { resolveAction } from "@/lib/sequences/step-actions";
 import { myPermissions } from "@/lib/org";
 import { fill, fillHtml, surveyUrl, type Figures } from "@/lib/nps/render";
 import { htmlToText } from "@/lib/email/richtext";
@@ -238,7 +239,22 @@ export async function placeSurvey(
 
   let placed;
   try {
-    placed = settings.mode === "full" ? await sendAs(outgoing) : await draftAs(outgoing);
+    /*
+     * The step decides, falling back to the sequence.
+     *
+     * A step written before step actions existed carries none, and
+     * resolveAction hands back the sequence's own mode for it -- so nothing
+     * that already runs changes behaviour until somebody deliberately picks
+     * an action on a step.
+     */
+    const { data: stepRow } = await createServiceClient()
+      .from("sequence_steps").select("config").eq("id", stepId).maybeSingle();
+    const action = resolveAction(
+      ((stepRow as { config?: Record<string, string> } | null)?.config ?? {}).action,
+      settings.mode
+    );
+
+    placed = action.automatic ? await sendAs(outgoing) : await draftAs(outgoing);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Gmail refused it." };
   }

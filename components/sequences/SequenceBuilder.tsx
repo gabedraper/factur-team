@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Plus, Trash2, Send, Mail, Check } from "lucide-react";
 import {
   saveSequenceStep, deleteSequenceStep, setSequenceMode, setSequenceEndings, testStep,
@@ -8,6 +8,7 @@ import {
 } from "@/actions/sequences";
 import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
+import { STEP_ACTIONS, resolveAction } from "@/lib/sequences/step-actions";
 import RichTextEditor from "@/components/rich-text-editor";
 
 type Draft = {
@@ -73,6 +74,7 @@ export function SequenceBuilder({
    * the work looks lost.
    */
   const [dirty, setDirty] = useState<Set<number>>(new Set());
+  const subjectRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState(sequence.mode);
   const [ends, setEnds] = useState<Ending[]>(sequence.ends_on);
@@ -133,6 +135,28 @@ export function SequenceBuilder({
         next.delete(i);
         return next;
       });
+    });
+  }
+
+  /*
+   * Drop a merge field into the subject where the caret is.
+   *
+   * The body has its own inserter in the editor toolbar; a subject is a plain
+   * input, so it needs this. Appending to the end would be useless -- subjects
+   * read "Invoice {{oldest_invoice}} is overdue", not "... is overdue{{x}}".
+   */
+  function insertIntoSubject(field: string) {
+    const el = subjectRef.current;
+    if (!el) return;
+    const text = step?.config.subject ?? "";
+    const at = el.selectionStart ?? text.length;
+    const next = `${text.slice(0, at)}{{${field}}}${text.slice(el.selectionEnd ?? at)}`;
+    changeConfig(selected, "subject", next);
+    // Put the caret after what was just inserted rather than at the end.
+    requestAnimationFrame(() => {
+      const pos = at + field.length + 4;
+      el.focus();
+      el.setSelectionRange(pos, pos);
     });
   }
 
@@ -315,6 +339,7 @@ export function SequenceBuilder({
               </div>
 
               <input
+                ref={subjectRef}
                 className={`h-9 w-full rounded-md border px-3 text-sm ${FIELD}`}
                 placeholder="Subject"
                 value={step.config.subject ?? ""}
@@ -325,14 +350,19 @@ export function SequenceBuilder({
                 value={step.config.body ?? ""}
                 onChange={(html) => changeConfig(selected, "body", html)}
                 placeholder="Body"
+                mergeFields={placeholders}
               />
 
-              <div className="flex flex-wrap gap-1.5">
+              {/* Into the subject. The body has its own inserter in the toolbar. */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Subject fields</span>
                 {placeholders.map((p) => (
-                  <code
+                  <button
                     key={p}
-                    className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                  >{`{{${p}}}`}</code>
+                    type="button"
+                    onClick={() => insertIntoSubject(p)}
+                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >{`{{${p}}}`}</button>
                 ))}
               </div>
 
@@ -372,6 +402,28 @@ export function SequenceBuilder({
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Step settings
               </p>
+
+              <label className="block space-y-1 text-sm">
+                <span className="text-muted-foreground">Action</span>
+                <select
+                  className={`h-9 w-full rounded-md border px-2 text-sm ${FIELD}`}
+                  value={resolveAction(step.config.action, mode).key}
+                  onChange={(e) => changeConfig(selected, "action", e.target.value)}
+                >
+                  {STEP_ACTIONS.map((a) => (
+                    /*
+                     * The ones with nothing behind them are shown and
+                     * disabled, not hidden. Leaving "Call recipient" out makes
+                     * the product look smaller; offering it and doing nothing
+                     * would be worse. The reason travels with the option.
+                     */
+                    <option key={a.key} value={a.key} disabled={!a.available}>
+                      {a.label}
+                      {a.available ? "" : ` — ${a.blocked}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <label className="block space-y-1 text-sm">
                 <span className="text-muted-foreground">Days after start</span>

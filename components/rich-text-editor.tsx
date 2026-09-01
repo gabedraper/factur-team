@@ -26,9 +26,20 @@ interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /*
+   * Merge fields this editor can insert, as names without the braces.
+   *
+   * Offered here rather than listed beside the editor, because a list you have
+   * to copy the braces out of by hand is a reference, not a control -- and
+   * getting them wrong is silent: {{contact}} mistyped is not a merge field,
+   * it is those characters, sent to a customer.
+   */
+  mergeFields?: string[];
 }
 
-export default function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+export default function RichTextEditor({
+  value, onChange, placeholder, mergeFields,
+}: RichTextEditorProps) {
   const [showImageInput, setShowImageInput] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -125,6 +136,30 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
           onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
           <Redo className="h-4 w-4" />
         </Button>
+
+        {mergeFields && mergeFields.length > 0 && (
+          <>
+            <div className="w-px h-5 bg-border mx-1" />
+            <select
+              aria-label="Insert merge field"
+              value=""
+              onChange={(e) => {
+                const field = e.target.value;
+                if (!field) return;
+                // Inserted at the cursor, then the picker resets so the same
+                // field can be inserted twice in a row.
+                editor.chain().focus().insertContent(`{{${field}}}`).run();
+                e.target.value = "";
+              }}
+              className="h-8 rounded-md border bg-transparent px-2 text-xs text-muted-foreground"
+            >
+              <option value="">{"{ }"} Insert field</option>
+              {mergeFields.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {/* Image URL input */}
