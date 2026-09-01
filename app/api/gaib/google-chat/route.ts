@@ -36,14 +36,81 @@ const BUDGET_MS = 25_000;
  * Says whether the project number is set and never what it is. Knowing that a
  * setting exists helps nobody sign anything.
  */
+/*
+ * Note that something arrived, and what it looked like.
+ *
+ * "Gaib not responding" covers a request that was refused, one that errored,
+ * and one that never arrived, and those have completely different fixes. This
+ * makes the three distinguishable: nothing here at all means Google is not
+ * reaching the address; rows saying refused mean it is, and the signature check
+ * is the problem.
+ *
+ * The audience is read out of the token WITHOUT verifying it, and used for
+ * nothing but this note. That is safe because it decides nothing -- but it is
+ * exactly the sort of thing that stops being safe the moment somebody reaches
+ * for it later, so: never trust anything this function reads.
+ */
+async function noteArrival(
+  authorization: string | null,
+  verified: boolean,
+  eventType: string | null
+) {
+  let audience: string | null = null;
+  let issuer: string | null = null;
+
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : null;
+
+  if (token) {
+    try {
+      const claims = JSON.parse(
+        Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")
+      ) as { aud?: unknown; iss?: unknown };
+      audience = claims.aud == null ? null : String(claims.aud);
+      issuer = claims.iss == null ? null : String(claims.iss);
+    } catch {
+      audience = "(unreadable)";
+    }
+  }
+
+  try {
+    await createServiceClient().from("gaib_chat_probe").insert({
+      had_auth_header: Boolean(authorization),
+      verified,
+      claimed_audience: audience,
+      claimed_issuer: issuer,
+      event_type: eventType,
+    });
+  } catch {
+    // Diagnostics must never be the reason a reply fails.
+  }
+}
+
 export async function GET() {
   const configured = Boolean(process.env.GOOGLE_CHAT_PROJECT_NUMBER);
   const agent = await defaultAgent().catch(() => null);
 
+  const { data: arrivals } = await createServiceClient()
+    .from("gaib_chat_probe")
+    .select("at,had_auth_header,verified,claimed_audience,claimed_issuer,event_type")
+    .order("at", { ascending: false })
+    .limit(5);
+
+  const seen = (arrivals ?? []) as Record<string, unknown>[];
+
   return NextResponse.json({
     ready: configured && Boolean(agent),
     projectNumberSet: configured,
+    expectedAudience: process.env.GOOGLE_CHAT_PROJECT_NUMBER ?? null,
     agent: agent ? agent.name : null,
+    /*
+     * The one that answers the question. Nothing here means Google never
+     * reached this address, which is a wrong URL in the Chat configuration and
+     * not anything wrong with the code.
+     */
+    messagesSeen: seen.length,
+    lastArrivals: seen,
     ...(configured ? {} : { fix: "Set GOOGLE_CHAT_PROJECT_NUMBER in Vercel, then redeploy." }),
   });
 }
@@ -51,7 +118,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
 
-  const event = await verifyAndParse(request.headers.get("authorization"), body);
+  const authorization = request.headers.get("authorization");
+  const event = await verifyAndParse(authorization, body);
+
+  await noteArrival(
+    authorization,
+    Boolean(event),
+    (body as { type?: string } | null)?.type ?? null
+  );
+
   if (!event) {
     // Silent to the caller, loud in the logs -- the person setting this up needs
     // to know which of the two it was, and the caller must not.
