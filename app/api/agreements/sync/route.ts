@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
         p_opportunity_id: d.opportunityId,
         p_account_id: d.accountId,
         p_account_name: d.tokens["Account.Name"] ?? null,
+        p_signed_on: d.date_completed ? d.date_completed.slice(0, 10) : null,
       });
       const hit = ((resolved ?? []) as { client_id: string }[])[0];
 
