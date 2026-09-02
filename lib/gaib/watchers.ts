@@ -18,17 +18,46 @@ import { postToSpace, canPost } from "./chat-post";
 /** Enough of what they said to know whether it needs you. */
 const EXCERPT = 180;
 
-export type IncomingMessage = {
-  fromUserId: string;
-  fromName: string;
-  text: string;
-  channel: "app" | "google_chat";
-  sessionId: string;
-  /** True when this is the first thing said in the conversation. */
-  isFirst: boolean;
+/*
+ * Two moments, not every message.
+ *
+ * Every message was the honest reading of "tell me when somebody talks to
+ * Gaib", and it does not survive forty people using it -- a hundred pings a day
+ * in which the three that matter are indistinguishable from the ninety-seven
+ * that do not, and the whole thing gets muted.
+ *
+ * These two carry nearly all of the value. The opening line of a conversation
+ * says who is asking about what, which is the part worth skimming. A raised
+ * ticket is somebody's actual problem, which is the part worth acting on.
+ * Everything in between is the middle of a conversation you can read later.
+ */
+export type WatchEvent =
+  | {
+      kind: "started";
+      fromUserId: string;
+      fromName: string;
+      text: string;
+      channel: "app" | "google_chat";
+      sessionId: string;
+    }
+  | {
+      kind: "ticket";
+      fromUserId: string;
+      fromName: string;
+      ref: number;
+      title: string;
+      ticketKind: "bug" | "idea";
+      lane: string;
+      sessionId: string | null;
+    };
+
+const LANE_MEANS: Record<string, string> = {
+  auto: "being fixed now",
+  approval: "waiting for you",
+  scoping: "being scoped, then waiting for you",
 };
 
-export async function tellWatchers(message: IncomingMessage): Promise<void> {
+export async function tellWatchers(event: WatchEvent): Promise<void> {
   try {
     if (!canPost()) return;
 
@@ -37,27 +66,32 @@ export async function tellWatchers(message: IncomingMessage): Promise<void> {
     const watchers = (data ?? []) as { user_id: string; full_name: string; space_name: string }[];
     if (!watchers.length) return;
 
-    const excerpt = message.text.length > EXCERPT
-      ? `${message.text.slice(0, EXCERPT).trimEnd()}…`
-      : message.text;
-
-    const where = message.channel === "google_chat" ? "in Chat" : "in the app";
-    const opener = message.isFirst ? "started a conversation with" : "said to";
-
-    const body = [
-      `*${message.fromName}* ${opener} Gaib ${where}:`,
-      "",
-      `_${excerpt}_`,
-      "",
-      `https://team.facturmfg.com/gaib/transcripts?s=${message.sessionId}`,
-    ].join("\n");
+    const body = event.kind === "started"
+      ? [
+          `*${event.fromName}* asked Gaib ` +
+            `${event.channel === "google_chat" ? "in Chat" : "in the app"}:`,
+          "",
+          `_${event.text.length > EXCERPT
+              ? `${event.text.slice(0, EXCERPT).trimEnd()}…`
+              : event.text}_`,
+          "",
+          `https://team.facturmfg.com/gaib/transcripts?s=${event.sessionId}`,
+        ].join("\n")
+      : [
+          `*${event.fromName}* reported ${event.ticketKind === "bug" ? "a bug" : "an idea"} ` +
+            `— Gaib ${event.ref}, ${LANE_MEANS[event.lane] ?? event.lane}:`,
+          "",
+          `_${event.title}_`,
+          "",
+          `https://team.facturmfg.com/gaib`,
+        ].join("\n");
 
     await Promise.all(
       watchers
         // Nobody needs telling about their own messages. Without this, the
         // person who reads the notifications is also the person generating
         // half of them, and they stop reading.
-        .filter((w) => w.user_id !== message.fromUserId)
+        .filter((w) => w.user_id !== event.fromUserId)
         .map((w) => postToSpace(w.space_name, body))
     );
   } catch {

@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { dispatchAgent } from "./dispatch";
+import { tellWatchers } from "./watchers";
 
 export type Lane = "auto" | "approval" | "scoping";
 export type TicketKind = "bug" | "idea";
@@ -124,7 +125,27 @@ export async function createTicket(input: NewTicket): Promise<Ticket> {
   if (error || !data) throw new Error(`could not raise ticket: ${error?.message}`);
   const ticket = data as Ticket;
 
+  const { data: who } = await db
+    .from("profiles").select("full_name").eq("id", input.raisedBy).maybeSingle();
+  const raisedByName = (who as { full_name: string | null } | null)?.full_name;
+
   await logEvent(ticket.id, "gaib", "raised", `${input.lane} lane -- ${input.laneReason}`);
+
+  /*
+   * The second moment worth an interruption: somebody's problem has become a
+   * ticket. Sent from here rather than from the tool so that anything which
+   * raises a ticket in future is covered without having to remember to.
+   */
+  void tellWatchers({
+    kind: "ticket",
+    fromUserId: input.raisedBy,
+    fromName: raisedByName ?? "Somebody",
+    ref: ticket.ref,
+    title: ticket.title,
+    ticketKind: ticket.kind,
+    lane: ticket.lane,
+    sessionId: input.sessionId,
+  });
 
   const sent = await dispatchAgent(ticket.id, input.lane);
   if (sent.dispatched) {

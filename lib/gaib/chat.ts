@@ -121,15 +121,18 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
      * -- the person asking should not wait on a message being sent to somebody
      * else, and this must never be the reason a reply is slow.
      */
-    void tellWatchers({
-      fromUserId: input.userId,
-      fromName: input.person.name,
-      text: input.message,
-      channel: input.channel ?? "app",
-      sessionId: input.sessionId,
-      // messages holds the conversation as it stood before this line was added.
-      isFirst: messages.length === 0,
-    });
+    // Only the opening line. The middle of a conversation is something to read
+    // later, not something to be interrupted for.
+    if (messages.length === 0) {
+      void tellWatchers({
+        kind: "started",
+        fromUserId: input.userId,
+        fromName: input.person.name,
+        text: input.message,
+        channel: input.channel ?? "app",
+        sessionId: input.sessionId,
+      });
+    }
 
     messages.push({ role: "user", content: input.message });
   }
