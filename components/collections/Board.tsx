@@ -25,22 +25,51 @@ function onDay(date: string | null) {
   });
 }
 
-function onDayShort(date: string | null) {
-  if (!date) return "—";
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", { day: "numeric", month: "short" });
-}
+/*
+ * The header, the totals and every row share this. Laying each row out on its
+ * own with flex-wrap let the columns drift by a few pixels per row, which on
+ * seventy-eight rows reads as a broken table rather than a rounding difference.
+ */
+const COLS =
+  "grid items-center gap-x-3 " +
+  "grid-cols-[minmax(9rem,1fr)_6.5rem_repeat(6,minmax(5.5rem,6.5rem))_minmax(0,13rem)]";
 
-function Bucket({ label, amount, tone }: { label: string; amount: number; tone?: string }) {
+/** One money cell. Zero stays grey: a colour should mean there is something there. */
+function Cell({ amount, tone }: { amount: number; tone?: string }) {
   return (
-    <div className="min-w-16">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`tabular-nums ${amount > 0 ? tone ?? "" : "text-muted-foreground"}`}>
-        {money.format(amount)}
-      </div>
+    <div className={`text-right tabular-nums ${amount > 0 ? tone ?? "" : "text-muted-foreground"}`}>
+      {money.format(amount)}
     </div>
   );
 }
+
+/**
+ * Where a client stands in the chase, in one word.
+ *
+ * Paused overrides everything -- somebody decided to stop, and that decision is
+ * more interesting than where the ladder had got to. Collections means the
+ * ladder ran out: every step has been sent and they still have not paid, which
+ * is the point a person has to do something a sequence cannot.
+ */
+type Stage = "Current" | "Collecting" | "Paused" | "Collections";
+
+function stageOf(r: BoardChase, paused: boolean): Stage {
+  if (paused) return "Paused";
+  // Nothing to chase them with, so the ladder has not started.
+  if (!r.matched) return "Current";
+  const chased = r.last_sent_at !== null;
+  const stepsLeft = r.step_id !== null || r.next_step_on !== null;
+  if (chased && !stepsLeft) return "Collections";
+  if (chased) return "Collecting";
+  return "Current";
+}
+
+const STAGE_TONE: Record<Stage, string> = {
+  Current: "bg-muted text-muted-foreground",
+  Collecting: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  Paused: "bg-muted text-muted-foreground",
+  Collections: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+};
 
 /**
  * Every client in arrears, in the order the ageing report lists them.
@@ -196,14 +225,28 @@ export function Board({
         * much is out and how old it is -- not who is fourth alphabetically.
         */}
       {board.length > 0 && (
-        <div className="rounded-lg border bg-muted/40 px-3 py-2">
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            <Bucket label="Current" amount={totals.current} tone={AGEING_TONE.current} />
-            <Bucket label="1 – 30" amount={totals.b1_30} tone={AGEING_TONE.b1_30} />
-            <Bucket label="31 – 60" amount={totals.b31_60} tone={AGEING_TONE.b31_60} />
-            <Bucket label="61 – 90" amount={totals.b61_90} tone={AGEING_TONE.b61_90} />
-            <Bucket label="91+" amount={totals.b91_plus} tone={AGEING_TONE.b91_plus} />
-            <Bucket label="Past due" amount={totals.past_due} tone="font-semibold" />
+        <div className="space-y-1">
+          <div className={`${COLS} px-3 text-[10px] uppercase tracking-wide text-muted-foreground`}>
+            <div>Client</div>
+            <div>Stage</div>
+            <div className="text-right">Current</div>
+            <div className="text-right">1 – 30</div>
+            <div className="text-right">31 – 60</div>
+            <div className="text-right">61 – 90</div>
+            <div className="text-right">91+</div>
+            <div className="text-right">Past due</div>
+            <div />
+          </div>
+          <div className={`${COLS} rounded-lg border bg-muted/40 px-3 py-2 text-sm`}>
+            <div className="font-medium">Total</div>
+            <div />
+            <Cell amount={totals.current} tone={AGEING_TONE.current} />
+            <Cell amount={totals.b1_30} tone={AGEING_TONE.b1_30} />
+            <Cell amount={totals.b31_60} tone={AGEING_TONE.b31_60} />
+            <Cell amount={totals.b61_90} tone={AGEING_TONE.b61_90} />
+            <Cell amount={totals.b91_plus} tone={AGEING_TONE.b91_plus} />
+            <Cell amount={totals.past_due} tone="font-semibold text-foreground" />
+            <div />
           </div>
         </div>
       )}
@@ -228,12 +271,15 @@ export function Board({
         const isOpen = open === key(r);
         const paused = r.paused_until !== null && new Date(r.paused_until) >= new Date();
         const due = Boolean(r.step_id);
+        const stage = stageOf(r, paused);
         const w = wording(r);
 
         return (
           <div key={key(r)} className="rounded-lg border bg-card">
-            <div className="flex flex-wrap items-start gap-x-4 gap-y-2 px-3 py-2 text-sm">
-              <div className="min-w-56">
+            <div className={`${COLS} px-3 py-2 text-sm`}>
+              {/* Truncated rather than wrapped: a long name must not push the
+                  money out of line with the row above it. */}
+              <div className="min-w-0 truncate" title={r.client_name}>
                 {r.client_id ? (
                   <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
                     {r.client_name}
@@ -247,86 +293,70 @@ export function Board({
                   </span>
                 )}
                 {!r.matched && (
-                  <span className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                    not matched to a client
-                  </span>
-                )}
-                {!r.matched ? (
-                  <div className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                    No client record — link it in Settings →{" "}
-                    <Link href="/settings/quickbooks" className="underline">
-                      QuickBooks customers
-                    </Link>
-                  </div>
-                ) : (
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {r.last_sent_at
-                    ? `Last: step ${r.last_step_position} on ${onDayShort(
-                        r.last_sent_at.slice(0, 10)
-                      )}`
-                    : "Last: never chased"}
-                  {" · "}
-                  {due
-                    ? `Next: step ${r.step_position} due now`
-                    : r.next_step_on
-                      ? `Next: step ${r.next_step_position} on ${onDayShort(r.next_step_on)}`
-                      : "Next: sequence finished"}
-                </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <Bucket label="Current" amount={r.bucket_current} tone={AGEING_TONE.current} />
-                <Bucket label="1 – 30" amount={r.bucket_1_30} tone={AGEING_TONE.b1_30} />
-                <Bucket label="31 – 60" amount={r.bucket_31_60} tone={AGEING_TONE.b31_60} />
-                <Bucket label="61 – 90" amount={r.bucket_61_90} tone={AGEING_TONE.b61_90} />
-                <Bucket label="91+" amount={r.bucket_91_plus} tone={AGEING_TONE.b91_plus} />
-                <Bucket label="Past due" amount={Number(r.past_due_total ?? 0)} tone="font-semibold" />
-              </div>
-
-              {paused && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                  paused to {onDayShort(r.paused_until)}
-                </span>
-              )}
-
-              {visibility.can_act && (
-                <span className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={() => pause(r, !paused)}
-                    disabled={pending}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                  <Link
+                    href="/settings/quickbooks"
+                    className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 hover:underline dark:bg-amber-950 dark:text-amber-200"
                   >
-                    {paused ? <PlayCircle className="h-3.5 w-3.5" /> : <PauseCircle className="h-3.5 w-3.5" />}
-                    {paused ? "Resume" : "Pause"}
-                  </button>
-                  {due && (
-                    <>
-                      <button
-                        onClick={() => setOpen(isOpen ? null : key(r))}
-                        className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-                      >
-                        {isOpen ? "Hide" : "Read"}
-                      </button>
-                      <button
-                        onClick={() => test(r)}
-                        disabled={pending}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
-                      >
-                        <FlaskConical className="h-3.5 w-3.5" /> Test to me
-                      </button>
-                      <button
-                        onClick={() => place(r)}
-                        disabled={pending || paused || !r.to_email}
-                        className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {settings.mode === "full" ? <Send className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                        {settings.mode === "full" ? "Send" : "Draft"}
-                      </button>
-                    </>
-                  )}
+                    not matched to a client
+                  </Link>
+                )}
+              </div>
+
+              <div>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] ${STAGE_TONE[stage]}`}>
+                  {stage}
                 </span>
-              )}
+              </div>
+
+              <Cell amount={r.bucket_current} tone={AGEING_TONE.current} />
+              <Cell amount={r.bucket_1_30} tone={AGEING_TONE.b1_30} />
+              <Cell amount={r.bucket_31_60} tone={AGEING_TONE.b31_60} />
+              <Cell amount={r.bucket_61_90} tone={AGEING_TONE.b61_90} />
+              <Cell amount={r.bucket_91_plus} tone={AGEING_TONE.b91_plus} />
+              <Cell amount={Number(r.past_due_total ?? 0)} tone="font-semibold text-foreground" />
+
+              <div className="flex items-center justify-end gap-1">
+                {visibility.can_act && r.matched && (
+                  <>
+                    {due && (
+                      <>
+                        <button
+                          onClick={() => setOpen(isOpen ? null : key(r))}
+                          className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                        >
+                          {isOpen ? "Hide" : "Read"}
+                        </button>
+                        <button
+                          onClick={() => test(r)}
+                          disabled={pending}
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                          title="Draft this to yourself instead of the client"
+                        >
+                          <FlaskConical className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => place(r)}
+                          disabled={pending || paused || !r.to_email}
+                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {settings.mode === "full" ? <Send className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                          {settings.mode === "full" ? "Send" : "Draft"}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => pause(r, !paused)}
+                      disabled={pending}
+                      className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                    >
+                      {paused ? <PlayCircle className="h-3.5 w-3.5 shrink-0" /> : <PauseCircle className="h-3.5 w-3.5 shrink-0" />}
+                      <span className="truncate">
+                        {paused ? "Resume Collection Sequence" : "Pause Collection Sequence"}
+                      </span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {due && !r.to_email && (
