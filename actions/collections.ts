@@ -145,10 +145,14 @@ export async function getCollectionsQueue(): Promise<Chase[]> {
 export type BoardRow = Omit<QueueRow, "client_id"> & {
   /** Null for a QuickBooks customer with no client record behind them. */
   client_id: string | null;
-  /** Null when unmatched; otherwise false for a former client who still owes. */
+  /** Null when unmatched; otherwise false for an inactive client who still owes. */
   client_active: boolean | null;
   matched: boolean;
   qb_customer_id: string;
+  /** Current, Past Due, Service Paused or Sent to Collections. */
+  stage: string;
+  /** True when a person set it, rather than it following from the money. */
+  stage_is_manual: boolean;
   open_balance: number | null;
   bucket_current: number;
   bucket_1_30: number;
@@ -249,6 +253,38 @@ export async function getCollectionsBoard(
 
 
 
+
+/**
+ * Record a decision about where a client stands.
+ *
+ * Only the two states a person decides can be set. Current and Past Due follow
+ * from the ageing report, so "clear" is how you hand it back to the money
+ * rather than a third thing to choose.
+ */
+export async function setCollectionsStage(
+  clientId: string,
+  stage: "service_paused" | "sent_to_collections" | null
+) {
+  if (!(await mayRun())) return { success: false, error: "Not permitted." };
+
+  const { error } = await createServiceClient()
+    .from("collections_client_state")
+    .upsert(
+      {
+        client_id: clientId,
+        stage,
+        stage_set_by: stage ? await whoAmI() : null,
+        stage_set_at: stage ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "client_id" }
+    );
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/collections");
+  revalidatePath(`/clients/${clientId}`);
+  return { success: true };
+}
 
 /** Stop chasing one client, with the reason kept beside it. */
 export async function pauseClient(clientId: string, until: string | null, reason: string) {

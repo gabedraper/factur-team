@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  placeChase, pauseClient, draftToMe,
+  placeChase, pauseClient, draftToMe, setCollectionsStage,
   type BoardChase, type Settings, type Visibility,
 } from "@/actions/collections";
 import { FIELD } from "@/lib/field-class";
@@ -44,41 +44,26 @@ function Cell({ amount, tone }: { amount: number; tone?: string }) {
 }
 
 /**
- * Where a client stands in the chase, in one word.
+ * Where a client stands, in one phrase.
  *
- * Paused overrides everything -- somebody decided to stop, and that decision is
- * more interesting than where the ladder had got to. Collections means the
- * ladder ran out: every step has been sent and they still have not paid, which
- * is the point a person has to do something a sequence cannot.
+ * Current and Past Due follow from the ageing report and nobody keeps them up
+ * to date by hand. Service Paused and Sent to Collections are decisions, and no
+ * amount of reading invoices will reveal them -- so those two are set here and
+ * cleared here, and clearing hands the row back to the money.
  */
-type Stage = "Current" | "Collecting" | "Paused" | "Collections";
-
-function stageOf(r: BoardChase, paused: boolean): Stage {
-  if (paused) return "Paused";
-  // Nothing to chase them with, so the ladder has not started.
-  if (!r.matched) return "Current";
-  const chased = r.last_sent_at !== null;
-  const stepsLeft = r.step_id !== null || r.next_step_on !== null;
-  if (chased && !stepsLeft) return "Collections";
-  if (chased) return "Collecting";
-  return "Current";
-}
-
-const STAGE_TONE: Record<Stage, string> = {
-  Current: "bg-muted text-muted-foreground",
-  Collecting: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-  Paused: "bg-muted text-muted-foreground",
-  Collections: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+const STAGE_TONE: Record<string, string> = {
+  Current: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  "Past Due": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  "Service Paused": "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
+  "Sent to Collections": "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
 };
 
-/**
- * Every client in arrears, in the order the ageing report lists them.
- *
- * The point of the page is the two dates under each name: what was last sent,
- * and when the next one lands. A client ninety days late who was chased on
- * Tuesday needs nothing today, and a queue of only today's work could not say
- * so.
- */
+const SETTABLE = [
+  { value: "", label: "Follow the balance" },
+  { value: "service_paused", label: "Service Paused" },
+  { value: "sent_to_collections", label: "Sent to Collections" },
+] as const;
+
 export function Board({
   rows, settings, visibility, scope,
 }: {
@@ -163,6 +148,21 @@ export function Board({
     });
   }
 
+  function stage(r: BoardChase, next: string) {
+    const clientId = r.client_id;
+    if (!clientId) return;
+    const value = next === "" ? null : (next as "service_paused" | "sent_to_collections");
+    setNote(null);
+    startTransition(async () => {
+      const res = await setCollectionsStage(clientId, value);
+      if (!res.success) {
+        setNote({ kind: "bad", text: res.error ?? "Couldn't change that." });
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   function pause(r: BoardChase, on: boolean) {
     const clientId = r.client_id;
     if (!clientId) return;
@@ -214,7 +214,9 @@ export function Board({
           </div>
         )}
         <span className="text-sm">
-          <b>{board.length}</b> past due
+          <b>{board.filter((r) => Number(r.past_due_total ?? 0) > 0).length}</b> past due
+          {" · "}
+          <b>{board.length}</b> with a balance
           {dueNow > 0 && <> · <b>{dueNow}</b> due a chase</>}
         </span>
       </div>
@@ -271,7 +273,6 @@ export function Board({
         const isOpen = open === key(r);
         const paused = r.paused_until !== null && new Date(r.paused_until) >= new Date();
         const due = Boolean(r.step_id);
-        const stage = stageOf(r, paused);
         const w = wording(r);
 
         return (
@@ -302,10 +303,30 @@ export function Board({
                 )}
               </div>
 
-              <div>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] ${STAGE_TONE[stage]}`}>
-                  {stage}
-                </span>
+              <div className="min-w-0">
+                {visibility.can_act && r.matched ? (
+                  <select
+                    value={r.stage_is_manual
+                      ? (r.stage === "Service Paused" ? "service_paused" : "sent_to_collections")
+                      : ""}
+                    onChange={(e) => stage(r, e.target.value)}
+                    disabled={pending}
+                    title={r.stage}
+                    className={`w-full rounded-full px-2 py-0.5 text-[11px] ${STAGE_TONE[r.stage] ?? ""}`}
+                  >
+                    {/* What it reads as today, whether or not anybody chose it. */}
+                    {!r.stage_is_manual && <option value="">{r.stage}</option>}
+                    {SETTABLE.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.value === "" ? "Follow the balance" : o.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] ${STAGE_TONE[r.stage] ?? ""}`}>
+                    {r.stage}
+                  </span>
+                )}
               </div>
 
               <Cell amount={r.bucket_current} tone={AGEING_TONE.current} />
