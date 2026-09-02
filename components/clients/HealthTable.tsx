@@ -61,26 +61,15 @@ function Ageing({ c }: { c: ClientHealth }) {
   ];
 
   return (
-    <div className="mt-2 space-y-1">
-      {c.collectionsStage && (
-        <span
-          className={`inline-block rounded-full px-2 py-0.5 text-[11px] ${
-            STAGE_TONE[c.collectionsStage] ?? ""
-          }`}
-        >
-          {c.collectionsStage}
-        </span>
-      )}
-      <div className="space-y-0.5">
-        {rows.map(([label, amount, tone]) => (
-          <div key={label} className="flex justify-between gap-2 text-xs">
-            <span className="text-muted-foreground">{label}</span>
-            <span className={`tabular-nums ${amount > 0 ? tone : "text-muted-foreground"}`}>
-              {money.format(amount)}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="mt-2 space-y-0.5">
+      {rows.map(([label, amount, tone]) => (
+        <div key={label} className="flex justify-between gap-2 text-xs">
+          <span className="text-muted-foreground">{label}</span>
+          <span className={`tabular-nums ${amount > 0 ? tone : "text-muted-foreground"}`}>
+            {money.format(amount)}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -258,29 +247,44 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         {c.inputs.map((i) => (
                           <div key={i.key} className="rounded-md border bg-card p-3">
-                            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                              {i.label}
-                            </div>
-                            <div
-                              className="mt-1 text-lg"
-                              title={i.key === "receivables" ? AR_BLURB : undefined}
-                            >
-                              <Score value={i.score} />
-                            </div>
-                            {i.detail && (
-                              <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
-                            )}
-                            {i.key === "receivables" && (
-                              <>
-                                <Ageing c={c} />
+                            {/* The label keeps the left; the way out of the card
+                                sits opposite it rather than below the numbers. */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                {i.label}
+                              </span>
+                              {i.key === "receivables" && (
                                 <Link
                                   href={`/clients/${c.clientId}`}
-                                  className="mt-2 inline-block text-xs underline"
+                                  className="shrink-0 text-xs underline"
                                 >
                                   Payment History
                                 </Link>
-                              </>
+                              )}
+                            </div>
+
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <span
+                                className="text-lg"
+                                title={i.key === "receivables" ? AR_BLURB : undefined}
+                              >
+                                <Score value={i.score} />
+                              </span>
+                              {i.key === "receivables" && c.collectionsStage && (
+                                <span
+                                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
+                                    STAGE_TONE[c.collectionsStage] ?? ""
+                                  }`}
+                                >
+                                  {c.collectionsStage}
+                                </span>
+                              )}
+                            </div>
+
+                            {i.detail && (
+                              <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
                             )}
+                            {i.key === "receivables" && <Ageing c={c} />}
                           </div>
                         ))}
                       </div>
