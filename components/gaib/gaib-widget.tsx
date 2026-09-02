@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell, Smartphone } from "lucide-react";
 import { canAsk, ask, notify } from "@/lib/gaib/notify";
+import { createClient } from "@/lib/supabase/client";
 import {
   nudgeState, recordNudge, recordAnswered, hasUpdates,
   openingState, recentSessions, openSession, closeSession,
@@ -45,6 +46,27 @@ function Typing() {
       ))}
     </div>
   );
+}
+
+/*
+ * Nudge the browser into refreshing the login if it is close to expiring.
+ *
+ * getSession() renews an expired token on its own; the explicit refresh covers
+ * the minute either side of expiry, where a request can leave here valid and
+ * arrive stale. Failures are swallowed: if this cannot refresh, the request
+ * will say so far more usefully than a thrown error here would.
+ */
+async function refreshSignIn(): Promise<void> {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getSession();
+    const expiresAt = data.session?.expires_at;
+    if (expiresAt && expiresAt * 1000 - Date.now() < 120_000) {
+      await supabase.auth.refreshSession();
+    }
+  } catch {
+    /* the request itself will report this better than we can */
+  }
 }
 
 export function GaibWidget() {
@@ -100,6 +122,21 @@ export function GaibWidget() {
       if (text) setLines((l) => [...l, { kind: "said", who: "you", text }]);
 
       try {
+        /*
+         * Make sure the sign-in is still fresh before asking.
+         *
+         * The server reads the login from a cookie that the middleware keeps
+         * current -- and the middleware only runs when a page is loaded. Somebody
+         * who opens this panel and talks to Gaib for an hour never navigates, so
+         * the cookie quietly expires underneath them and the next message comes
+         * back "not signed in" from an app they are plainly signed in to.
+         *
+         * The browser's own client knows how to refresh and writes the cookie
+         * back when it does. Asking it here costs nothing when the token is
+         * healthy and fixes the case where it is not.
+         */
+        await refreshSignIn();
+
         const res = await fetch("/api/gaib/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,6 +144,13 @@ export function GaibWidget() {
             sessionId, message: text, pageUrl: window.location.href, openedBy,
           }),
         });
+        if (res.status === 401) {
+          // Said in words somebody can act on, rather than the bare "Not signed
+          // in" the server returns -- which reads as an accusation when you are.
+          throw new Error(
+            "Your sign-in expired while this was open. Reload the page and I will still have the conversation."
+          );
+        }
         if (!res.ok || !res.body) throw new Error(await res.text());
 
         const reader = res.body.getReader();
