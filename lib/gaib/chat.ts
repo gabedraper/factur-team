@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/server";
 import { AGENT_PREAMBLE } from "./prompt";
 import { toolsFor, TOOL_BY_NAME, type ToolContext } from "./tools";
+import { tellWatchers } from "./watchers";
 import type { Agent } from "./agents";
 import { effortFor } from "./models";
 
@@ -110,6 +111,26 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
 
   if (input.message) {
     await save(input.sessionId, "user", input.message, null, input.pageUrl, input.channel);
+
+    /*
+     * Told before the answer is worked out, not after.
+     *
+     * The whole value is timing: somebody who has just reported something
+     * broken is still at their desk, and a notification that waits for Gaib to
+     * finish thinking arrives a minute later for no reason. Not awaited either
+     * -- the person asking should not wait on a message being sent to somebody
+     * else, and this must never be the reason a reply is slow.
+     */
+    void tellWatchers({
+      fromUserId: input.userId,
+      fromName: input.person.name,
+      text: input.message,
+      channel: input.channel ?? "app",
+      sessionId: input.sessionId,
+      // messages holds the conversation as it stood before this line was added.
+      isFirst: messages.length === 0,
+    });
+
     messages.push({ role: "user", content: input.message });
   }
 
