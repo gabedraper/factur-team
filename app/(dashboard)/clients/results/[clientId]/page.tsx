@@ -49,13 +49,13 @@ function Tags({ label, items }: { label: string; items: string[] }) {
  * mean the same thing in both places.
  */
 const HINTS = {
-  month: "Month of the engagement. 1 is the client's first month.",
+  month: "Month of the engagement. Month 1 is the earlier of Client Since and the client's first result.",
   calendar: "The calendar month that month number fell in.",
   leads: "Opportunities handed to the client, counted in the month they were created.",
-  appts: "Opportunities that reached an appointment stage. Counted strictly.",
-  quotes: "Opportunities that reached a quoting stage, or were won. Excludes No Quote.",
-  pos: "Opportunities marked Closed Won.",
-  quoteValue: "Sum of Total Quote Amount, where Salesforce has it.",
+  appts: "Reached an explicit appointment stage. Never inferred from a later quote.",
+  quotes: "Reached a quoting stage, was won, or carries a quote amount \u2014 including quotes later lost or still on follow-up.",
+  pos: "Closed Won, or carrying a PO amount or PO date at another stage.",
+  quoteValue: "Sum of Total Quote Amount. Skewed by a handful of mistyped values \u2014 trust the count over this.",
   poValue: "Sum of PO Amount. Blank on most POs, so it is a floor, not the true total.",
 };
 

@@ -75,28 +75,36 @@ const HINTS: Record<string, string> = {
   size: "Headcount band from the employee count on the linked Salesforce Account.\n\n" +
     "Under 10, 10\u201349, 50\u2013249, 250+. Italic means it was estimated from the website.",
 
-  since: "Client Since in Salesforce. This is month 1, which is what makes one " +
-    "client's first quarter comparable to another's.",
+  since: "Month 1 of the engagement \u2014 the earlier of Client Since in Salesforce " +
+    "and the client's first actual result.\n\n" +
+    "Client Since is not always right, so results are never excluded for falling " +
+    "outside it. 29 clients start earlier than their recorded date, and 20 have no " +
+    "recorded date at all.",
 
   months: "Months that produced at least one result \u2014 not months since they started.\n\n" +
-    "A client averages about 5 quiet months that are not counted here, so this " +
-    "runs shorter than the calendar.",
+    "Quiet months are not counted, so this runs shorter than the calendar and " +
+    "Leads / mo reads higher than a calendar average would.",
 
   leads: "Every opportunity handed to the client, counted in the month it was created.\n\n" +
     "That is the month the lead was delivered. An opportunity that later became a " +
-    "quote or a PO still counts as a lead here, in its own month.",
+    "quote or a PO still counts as a lead here, in its own month.\n\n" +
+    "Includes work that carries a quote or PO but was left in a prospecting or " +
+    "follow-up stage \u2014 2,021 opportunities the stage alone would have missed.",
 
   appointments: "Opportunities that reached an appointment stage.\n\n" +
-    "Counted strictly: a quote with no recorded appointment stage is not counted, " +
-    "so this understates OSDR work rather than guessing.",
+    "Only an explicit appointment stage counts. An appointment is not inferred from " +
+    "a later quote, because quotes happen without one \u2014 so this understates " +
+    "rather than guesses.",
 
-  quotes: "Opportunities that reached a quoting stage, or that were won \u2014 " +
-    "you cannot win without quoting.\n\n" +
-    "Excludes anything closed as No Quote.",
+  quotes: "Opportunities that reached a quoting stage, that were won, or that carry " +
+    "a quote amount \u2014 wherever the record ended up.\n\n" +
+    "A quote still counts if it was later lost, left on long-term follow-up, or never " +
+    "had an appointment before it. Stage alone missed 3,904 of these.",
 
-  pos: "Opportunities marked Closed Won.",
+  pos: "Opportunities marked Closed Won, or carrying a PO amount or PO date at any " +
+    "other stage.",
 
-  poAmount: "Sum of PO Amount on won opportunities.\n\n" +
+  poAmount: "Sum of PO Amount, wherever it is recorded.\n\n" +
     "Salesforce leaves this blank on most POs, so it is a floor, not the true total. " +
     "A dash next to a PO count means the amount was never filled in.",
 
