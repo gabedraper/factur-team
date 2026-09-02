@@ -5,9 +5,11 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getConversation } from "@/actions/conversation";
 import { getBillingSummary } from "@/actions/billing";
 import { getClientNotes } from "@/actions/client-notes";
+import { getClientAgreement } from "@/actions/client-agreement";
 import { Conversation } from "@/components/clients/Conversation";
 import { BillingSummary } from "@/components/clients/BillingSummary";
 import { Notes } from "@/components/clients/Notes";
+import { AgreementPanel } from "@/components/clients/AgreementPanel";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 
@@ -33,10 +35,11 @@ export default async function ClientConversationPage({
 
   if (!client) notFound();
 
-  const [entries, billing, notes] = await Promise.all([
+  const [entries, billing, notes, agreement] = await Promise.all([
     getConversation(clientId),
     getBillingSummary(clientId),
     getClientNotes(clientId),
+    getClientAgreement(clientId),
   ]);
 
   return (
@@ -48,6 +51,7 @@ export default async function ClientConversationPage({
         <h1 className="mt-1 text-xl font-semibold">{(client as { name: string }).name}</h1>
       </div>
       {billing && <BillingSummary summary={billing} />}
+      <AgreementPanel clientId={clientId} agreement={agreement} />
       <Notes clientId={clientId} notes={notes} />
       <Conversation entries={entries} clientId={clientId} />
     </div>
