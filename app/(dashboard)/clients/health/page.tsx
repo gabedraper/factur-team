@@ -39,9 +39,10 @@ export default async function ClientHealthPage({
    * rank is a fact about the whole book, so it must not move because someone
    * switched to My Clients or typed in the search box.
    */
-  const perfBands = terciles(
-    clients.map((c) => c.inputs.find((i) => i.key === "engagement")?.score ?? null),
-  );
+  const bandsFor = (key: string) =>
+    terciles(clients.map((c) => c.inputs.find((i) => i.key === key)?.score ?? null));
+  const perfBands = bandsFor("engagement");
+  const actBands = bandsFor("activity");
 
   return (
     <div className="p-6 space-y-4">
@@ -68,7 +69,7 @@ export default async function ClientHealthPage({
           </div>
         )}
       </div>
-      <HealthTable clients={shown} perfBands={perfBands} />
+      <HealthTable clients={shown} perfBands={perfBands} actBands={actBands} />
     </div>
   );
 }

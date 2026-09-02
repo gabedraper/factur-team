@@ -22,7 +22,7 @@ export type HealthInput = {
    * as a sentence. Receivables has always done this with its ageing buckets;
    * Client Performance has five measures and the run-on line was unreadable.
    */
-  rows?: { label: string; value: string }[];
+  rows?: { label: string; value: string; href?: string }[];
 };
 
 /** The A/R ageing as the report splits it, for the card that shows it. */

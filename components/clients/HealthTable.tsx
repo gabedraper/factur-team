@@ -40,6 +40,23 @@ const AR_BLURB =
  * needs explaining: 70 is a good score against fixed thresholds but a poor one
  * if most clients are above it.
  */
+const ACTIVITY_BLURB =
+  "How much work went into this client, ranked against clients on the same " +
+  "service.\n\n" +
+  "The score is a percentile of average activities per month: 100 is the " +
+  "most-worked client on that service, 50 the median. OP is ranked against OP " +
+  "and OSDR against OSDR, because the services do not involve comparable " +
+  "amounts of work.\n\n" +
+  "It replaced a month-on-month ratio that scored 2 activities becoming 4 as " +
+  "100, and 200 becoming 190 as 71.\n\n" +
+  "Blank for LG, Precision Marketing, Website Maintenance, RG and Sales: those " +
+  "are not measured on activity, so they are left unscored rather than scored " +
+  "badly. Also blank where a service has fewer than five clients to rank " +
+  "against.\n\n" +
+  "The months listed on the card are what activity there is. raw_activities " +
+  "accumulates rather than rolling, so the run gets longer on its own \u2014 " +
+  "about ten weeks today, six months by the end of the year.";
+
 const PERFORMANCE_BLURB =
   "What the client does with what we send them, scored 0 to 100.\n\n" +
   "The average of five measures: how quickly they quote an RFQ we hand them, " +
@@ -137,6 +154,7 @@ function Score({ value }: { value: number | null }) {
 export function HealthTable({
   clients,
   perfBands,
+  actBands,
 }: {
   clients: ClientHealth[];
   /*
@@ -145,6 +163,7 @@ export function HealthTable({
    * from it would rank an account manager's clients against each other.
    */
   perfBands: [number, number] | null;
+  actBands: [number, number] | null;
 }) {
   const [filter, setFilter] = useState("");
   const [letter, setLetter] = useState("All");
@@ -294,7 +313,9 @@ export function HealthTable({
                   <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? "—"}</td>
                   <td className="px-3 py-2 text-right"><Score value={c.overall} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
-                  <td className="px-3 py-2 text-right"><Score value={at(c, "activity")} /></td>
+                  <td className="px-3 py-2 text-right">
+                    <RankedScore value={at(c, "activity")} bands={actBands} title={ACTIVITY_BLURB} />
+                  </td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "nps")} /></td>
                   <td className="px-3 py-2 text-right">
                     <RankedScore value={at(c, "engagement")} bands={perfBands} title={PERFORMANCE_BLURB} />
@@ -319,7 +340,13 @@ export function HealthTable({
                             <div className="flex items-center justify-between gap-2">
                               <span
                                 className="text-xs uppercase tracking-wide text-muted-foreground"
-                                title={i.key === "engagement" ? PERFORMANCE_BLURB : undefined}
+                                title={
+                                  i.key === "engagement"
+                                    ? PERFORMANCE_BLURB
+                                    : i.key === "activity"
+                                      ? ACTIVITY_BLURB
+                                      : undefined
+                                }
                               >
                                 {i.label}
                               </span>
@@ -341,11 +368,15 @@ export function HealthTable({
                                     ? AR_BLURB
                                     : i.key === "engagement"
                                       ? PERFORMANCE_BLURB
-                                      : undefined
+                                      : i.key === "activity"
+                                        ? ACTIVITY_BLURB
+                                        : undefined
                                 }
                               >
                                 {i.key === "engagement" ? (
                                   <RankedScore value={i.score} bands={perfBands} />
+                                ) : i.key === "activity" ? (
+                                  <RankedScore value={i.score} bands={actBands} />
                                 ) : (
                                   <Score value={i.score} />
                                 )}
@@ -370,7 +401,13 @@ export function HealthTable({
                               <div className="mt-2 space-y-0.5">
                                 {i.rows.map((r) => (
                                   <div key={r.label} className="flex justify-between gap-2 text-xs">
-                                    <span className="text-muted-foreground">{r.label}</span>
+                                    {r.href ? (
+                                      <Link href={r.href} className="text-muted-foreground underline">
+                                        {r.label}
+                                      </Link>
+                                    ) : (
+                                      <span className="text-muted-foreground">{r.label}</span>
+                                    )}
                                     <span className="tabular-nums">{r.value}</span>
                                   </div>
                                 ))}

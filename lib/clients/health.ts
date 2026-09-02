@@ -22,6 +22,7 @@ type Row = {
 };
 
 type NpsRow = { client_id: string; score: number; collected_on: string };
+type MonthRow = { client_id: string; month_start: string; activities: number };
 
 const npsMonth = new Intl.DateTimeFormat("en-US", {
   month: "short", year: "numeric", timeZone: "UTC",
@@ -88,7 +89,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   // with the service key there is no token to read, so it would answer "not a
   // Factur user" and return nothing at all.
   const supabase = await createClient();
-  const [{ data, error }, { data: perf }, { data: nps }] = await Promise.all([
+  const [{ data, error }, { data: perf }, { data: nps }, { data: months }] = await Promise.all([
     supabase.rpc("get_client_health"),
     /*
      * The Client Performance detail. Fetched apart rather than widening
@@ -103,6 +104,13 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      */
     supabase.from("client_nps").select("client_id,score,collected_on")
       .order("collected_on", { ascending: false }),
+    /*
+     * Activity by month. raw_activities accumulates rather than rolling, so
+     * this deepens on its own -- about ten weeks today.
+     */
+    supabase.from("client_activity_months_by_client")
+      .select("client_id,month_start,activities")
+      .order("month_start", { ascending: false }),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
 
@@ -116,6 +124,17 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
     rows.push({ label: npsMonth.format(new Date(`${n.collected_on}T00:00:00Z`)),
                 value: `${n.score}/10` });
     npsByClient.set(n.client_id, rows);
+  }
+
+  const monthsByClient = new Map<string, { label: string; value: string; href: string }[]>();
+  for (const m of (months ?? []) as MonthRow[]) {
+    const rows = monthsByClient.get(m.client_id) ?? [];
+    rows.push({
+      label: npsMonth.format(new Date(`${m.month_start}T00:00:00Z`)),
+      value: nf.format(m.activities),
+      href: `/clients/${m.client_id}/activities?month=${m.month_start.slice(0, 7)}`,
+    });
+    monthsByClient.set(m.client_id, rows);
   }
 
   return ((data ?? []) as Row[])
@@ -150,7 +169,8 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "activity",
           label: "AM activity",
           score: r.activity_score,
-          detail: movement(r.activities_30d, r.activities_prior_30d, "activities"),
+          detail: "",
+          rows: monthsByClient.get(r.client_id) ?? [],
         },
         {
           key: "nps",
