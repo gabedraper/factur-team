@@ -126,6 +126,16 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
   const [work, setWork] = useState("");
   const [size, setSize] = useState("");
   const [capability, setCapability] = useState("");
+  /*
+   * The dimensions that come from reading the client's own website. Kept as
+   * separate filters rather than one "attribute" box because a BDM looking for
+   * an AS9100 shop and one looking for somebody who sells into medical are
+   * asking different questions, and merging them makes both harder to ask.
+   */
+  const [certification, setCertification] = useState("");
+  const [market, setMarket] = useState("");
+  const [product, setProduct] = useState("");
+  const [material, setMaterial] = useState("");
   const [onlySwitched, setOnlySwitched] = useState(false);
 
   const options = useMemo(() => {
@@ -136,6 +146,10 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
       service: uniq(clients.flatMap((c) => c.servicesDelivered)),
       work: uniq(clients.map((c) => c.businessType)),
       capability: uniq(clients.flatMap((c) => c.capabilities)),
+      certification: uniq(clients.flatMap((c) => c.certifications)),
+      market: uniq(clients.flatMap((c) => c.marketsServed)),
+      product: uniq(clients.flatMap((c) => c.products)),
+      material: uniq(clients.flatMap((c) => c.materials)),
       size: SIZE_ORDER.filter((s) => clients.some((c) => c.sizeBand === s)),
     };
   }, [clients]);
@@ -149,13 +163,21 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
         (!work || c.businessType === work) &&
         (!size || c.sizeBand === size) &&
         (!capability || c.capabilities.includes(capability)) &&
+        (!certification || c.certifications.includes(certification)) &&
+        (!market || c.marketsServed.includes(market)) &&
+        (!product || c.products.includes(product)) &&
+        (!material || c.materials.includes(material)) &&
         (!onlySwitched || c.multiService) &&
         (!q ||
           c.name.toLowerCase().includes(q) ||
           (c.businessType ?? "").toLowerCase().includes(q) ||
-          c.capabilities.some((x) => x.toLowerCase().includes(q))),
+          c.capabilities.some((x) => x.toLowerCase().includes(q)) ||
+          c.certifications.some((x) => x.toLowerCase().includes(q)) ||
+          c.marketsServed.some((x) => x.toLowerCase().includes(q)) ||
+          c.products.some((x) => x.toLowerCase().includes(q))),
     );
-  }, [clients, term, status, service, work, size, capability, onlySwitched]);
+  }, [clients, term, status, service, work, size, capability,
+      certification, market, product, material, onlySwitched]);
 
   const { sorted, sortProps } = useSort(shown, {
     name: (c) => c.name,
@@ -210,13 +232,31 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
           options={options.size}
           all="All sizes"
         />
+        {/*
+          Each one appears only once there is something in it. A dropdown
+          offering "All certifications" over an empty list is a promise the
+          data has not kept yet, and these fill in gradually as the websites
+          are read.
+        */}
         {options.capability.length > 0 && (
-          <Select
-            value={capability}
-            onChange={setCapability}
-            options={options.capability}
-            all="All capabilities"
-          />
+          <Select value={capability} onChange={setCapability}
+                  options={options.capability} all="All capabilities" />
+        )}
+        {options.certification.length > 0 && (
+          <Select value={certification} onChange={setCertification}
+                  options={options.certification} all="All certifications" />
+        )}
+        {options.market.length > 0 && (
+          <Select value={market} onChange={setMarket}
+                  options={options.market} all="All markets" />
+        )}
+        {options.product.length > 0 && (
+          <Select value={product} onChange={setProduct}
+                  options={options.product} all="All products" />
+        )}
+        {options.material.length > 0 && (
+          <Select value={material} onChange={setMaterial}
+                  options={options.material} all="All materials" />
         )}
         <label className="flex items-center gap-1.5 text-sm">
           <input

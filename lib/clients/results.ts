@@ -20,6 +20,9 @@ function toClient(r: any): ClientResult {
     businessType: r.business_type,
     businessTypeInferred: Boolean(r.business_type_inferred),
     capabilities: r.capabilities ?? [],
+    products: [],
+    equipment: [],
+    extraServices: [],
     materials: r.materials ?? [],
     certifications: r.certifications ?? [],
     marketsServed: r.markets_served ?? [],
@@ -48,30 +51,75 @@ function toClient(r: any): ClientResult {
   };
 }
 
+/*
+ * What each client's website says they do, fetched alongside rather than joined
+ * into client_results_summary.
+ *
+ * That view is long and several pages depend on it; adding a filter was not a
+ * reason to rewrite it. Two queries and a merge is duller and cannot break the
+ * numbers.
+ */
+type AttributeLists = {
+  salesforce_client_id: string;
+  capabilities: string[] | null;
+  products: string[] | null;
+  certifications: string[] | null;
+  materials: string[] | null;
+  markets_served: string[] | null;
+  equipment: string[] | null;
+  extra_services: string[] | null;
+};
+
+async function attributeLists(): Promise<Map<string, AttributeLists>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("client_attribute_lists").select("*").range(0, 4999);
+  return new Map(
+    ((data ?? []) as AttributeLists[]).map((r) => [r.salesforce_client_id, r])
+  );
+}
+
+function withAttributes(client: ClientResult, lists: AttributeLists | undefined): ClientResult {
+  if (!lists) return client;
+  return {
+    ...client,
+    // The website reading wins where it has something. The old columns it
+    // replaces were never filled in, so this is not a contest -- but written
+    // as one so a half-populated client still shows whatever it has.
+    capabilities: lists.capabilities ?? client.capabilities,
+    certifications: lists.certifications ?? client.certifications,
+    materials: lists.materials ?? client.materials,
+    marketsServed: lists.markets_served ?? client.marketsServed,
+    products: lists.products ?? [],
+    equipment: lists.equipment ?? [],
+    extraServices: lists.extra_services ?? [],
+  };
+}
+
 export async function getClientResults(): Promise<ClientResult[]> {
   const supabase = await createClient();
   /*
    * The default PostgREST page is 1,000 rows and there are 987 clients, which
    * is close enough that a handful of new ones would silently truncate the list.
    */
-  const { data, error } = await supabase
-    .from("client_results_summary")
-    .select("*")
-    .order("name")
-    .range(0, 4999);
+  const [{ data, error }, lists] = await Promise.all([
+    supabase.from("client_results_summary").select("*").order("name").range(0, 4999),
+    attributeLists(),
+  ]);
   if (error) throw new Error(error.message);
-  return (data ?? []).map(toClient);
+  return (data ?? []).map((r) => withAttributes(toClient(r), lists.get(r.salesforce_client_id)));
 }
 
 export async function getClient(id: string): Promise<ClientResult | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("client_results_summary")
-    .select("*")
-    .eq("salesforce_client_id", id)
-    .maybeSingle();
+  const [{ data, error }, { data: lists }] = await Promise.all([
+    supabase.from("client_results_summary").select("*")
+      .eq("salesforce_client_id", id).maybeSingle(),
+    supabase.from("client_attribute_lists").select("*")
+      .eq("salesforce_client_id", id).maybeSingle(),
+  ]);
   if (error) throw new Error(error.message);
-  return data ? toClient(data) : null;
+  return data ? withAttributes(toClient(data), (lists as AttributeLists | null) ?? undefined) : null;
 }
 
 export async function getServicePeriods(id: string): Promise<ServicePeriod[]> {

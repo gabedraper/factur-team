@@ -37,6 +37,15 @@ export type ClientResult = {
   materials: string[];
   certifications: string[];
   marketsServed: string[];
+  /*
+   * Read from the client's own website, one fact per row in client_attributes.
+   * Separate from servicesDelivered, which is what *we* did for them -- these
+   * are what *they* do, and a BDM comparing one prospect to past clients wants
+   * the second.
+   */
+  products: string[];
+  equipment: string[];
+  extraServices: string[];
   employees: number | null;
   sizeBand: string | null;
   sizeInferred: boolean;
