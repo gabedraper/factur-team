@@ -114,12 +114,23 @@ export async function actAs(
       email: verified.user.email ?? email,
       db,
       release: async () => {
-        // Best effort. A session that outlives the request expires on its own;
-        // failing to tidy up is not worth losing the answer over.
+        /*
+         * scope: "local" and never the default.
+         *
+         * signOut() defaults to "global", which revokes every refresh token the
+         * person holds -- including the browser they are sitting in front of.
+         * Tidying up after a chat message would sign them out of the app, which
+         * is what happened: somebody asked Gaib a question and was thrown back
+         * to the login screen for their trouble.
+         *
+         * Local discards this borrowed session and leaves theirs alone, which
+         * is the whole intent.
+         */
         try {
-          await db.auth.signOut();
+          await db.auth.signOut({ scope: "local" });
         } catch {
-          /* nothing useful to do */
+          // Best effort. A borrowed session that outlives the request expires
+          // on its own; failing to tidy up is not worth losing the answer over.
         }
       },
     },
