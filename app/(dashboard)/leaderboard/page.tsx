@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/session";
 import { getRoleLabel } from "@/lib/roles";
 import { Trophy, Medal } from "lucide-react";
+import { Avatar } from "@/components/ui/thumbnail";
 
 export default async function LeaderboardPage() {
   const supabase = createServiceClient();
@@ -12,7 +13,7 @@ export default async function LeaderboardPage() {
   // Get all profiles
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, role");
+    .select("id, full_name, role, avatar_url");
 
   // Get lesson completion counts per user
   const { data: progress } = await supabase
@@ -84,9 +85,11 @@ export default async function LeaderboardPage() {
                 </div>
 
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                  {row.full_name?.[0]?.toUpperCase() || "?"}
-                </div>
+                <Avatar
+                  name={row.full_name ?? "?"}
+                  src={row.avatar_url}
+                  size={36}
+                />
 
                 {/* Name + role */}
                 <div className="flex-1 min-w-0">

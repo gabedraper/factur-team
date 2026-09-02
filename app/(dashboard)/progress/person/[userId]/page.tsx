@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getCourseProgress } from "@/lib/progress";
 import { ArrowLeft, Award, CheckCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/thumbnail";
 
 export default async function TeamMemberDetailPage({
   params,
@@ -66,9 +67,11 @@ export default async function TeamMemberDetailPage({
 
       {/* Member header */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-bold">
-          {member.full_name?.[0]?.toUpperCase() || "U"}
-        </div>
+        <Avatar
+          name={member.full_name ?? member.email ?? "Unknown"}
+          src={member.avatar_url}
+          size={64}
+        />
         <div>
           <h1 className="text-3xl font-bold">{member.full_name}</h1>
           <p className="text-muted-foreground capitalize">{member.role}</p>

@@ -203,6 +203,27 @@ export type TeamRow = {
   clients: { id: string; name: string }[];
 };
 
+/**
+ * Client id to email domain, for company logos.
+ *
+ * Fetched alongside a list rather than added to the queries that build it.
+ * Client health and the collections queue both come from SQL functions whose
+ * return types cannot be widened without dropping and recreating them, and a
+ * logo is not worth that risk to a function that decides who gets chased.
+ */
+export async function clientDomains(): Promise<Record<string, string>> {
+  const { data } = await createServiceClient()
+    .from("org_clients")
+    .select("id,email_domain")
+    .not("email_domain", "is", null);
+
+  const out: Record<string, string> = {};
+  for (const c of (data ?? []) as { id: string; email_domain: string }[]) {
+    out[c.id] = c.email_domain;
+  }
+  return out;
+}
+
 export type ClientRow = {
   id: string; salesforce_client_id: string | null; name: string;
   status: string | null;

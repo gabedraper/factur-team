@@ -3,7 +3,7 @@ import { getClientHealth } from "@/lib/clients/health";
 import { clientScope } from "@/lib/clients/scope";
 import { HealthTable } from "@/components/clients/HealthTable";
 import { terciles } from "@/lib/clients/health-score";
-import { myPermissions } from "@/lib/org";
+import { myPermissions, clientDomains } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +18,11 @@ export default async function ClientHealthPage({
     return <NoAccess section="Client health" need="View client health" />;
   }
 
-  const [clients, scope, params] = await Promise.all([
+  const [clients, scope, params, domains] = await Promise.all([
     getClientHealth(),
     clientScope(),
     searchParams,
+    clientDomains(),
   ]);
 
   /*
@@ -69,7 +70,7 @@ export default async function ClientHealthPage({
           </div>
         )}
       </div>
-      <HealthTable clients={shown} perfBands={perfBands} actBands={actBands} />
+      <HealthTable clients={shown} perfBands={perfBands} actBands={actBands} domains={domains} />
     </div>
   );
 }

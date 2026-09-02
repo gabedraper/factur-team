@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { band, type ClientHealth } from "@/lib/clients/health-score";
 import { AGEING_TONE } from "@/lib/ageing-colours";
+import { CompanyLogo } from "@/components/ui/thumbnail";
 
 const BAND_CLASS: Record<string, string> = {
   good: "text-emerald-600 dark:text-emerald-400",
@@ -170,8 +171,11 @@ export function HealthTable({
   clients,
   perfBands,
   actBands,
+  domains,
 }: {
   clients: ClientHealth[];
+  /** Client id to email domain, for the company logo. Absent ones show initials. */
+  domains?: Record<string, string>;
   /*
    * Worked out by the page over every client, not here over the ones passed
    * in: this component only ever receives the scope-filtered list, so ranking
@@ -323,7 +327,12 @@ export function HealthTable({
                   }`}
                   onClick={() => setOpen(open === c.clientId ? null : c.clientId)}
                 >
-                  <td className="px-3 py-2 font-medium">{c.name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    <span className="flex items-center gap-2">
+                      <CompanyLogo name={c.name} domain={domains?.[c.clientId]} size={20} />
+                      {c.name}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? ""}</td>
                   <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? ""}</td>
                   <td className="px-3 py-2 text-right"><Score value={c.overall} /></td>

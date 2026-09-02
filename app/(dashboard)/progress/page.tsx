@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Users, TrendingUp, CheckCircle2, AlertCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/thumbnail";
 
 export default async function ProgressDashboard() {
   const { users, totalUsers, avgProgress, fullyComplete, notStarted } =
@@ -85,9 +86,7 @@ export default async function ProgressDashboard() {
                   {/* User header row */}
                   <div className="flex items-center justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                        {user.name[0]?.toUpperCase() || "?"}
-                      </div>
+                      <Avatar name={user.name} src={user.avatarUrl} size={36} />
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{user.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{user.email}</p>

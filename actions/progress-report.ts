@@ -17,7 +17,7 @@ export async function getProgressReport() {
   // All non-admin profiles
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, role")
+    .select("id, full_name, role, avatar_url")
     .neq("role", "admin")
     .order("full_name");
 
@@ -99,6 +99,7 @@ export async function getProgressReport() {
     return {
       id: profile.id,
       name: profile.full_name || "Unknown",
+      avatarUrl: profile.avatar_url as string | null,
       email: emailMap[profile.id] || "",
       role: profile.role,
       roleLabel: getRoleLabel(profile.role),
