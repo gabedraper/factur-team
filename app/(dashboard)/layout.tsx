@@ -5,6 +5,7 @@ import { getAuthedUser, getProfile } from "@/lib/supabase/session";
 import { signOut } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Avatar } from "@/components/ui/thumbnail";
 import Image from "next/image";
 import {
   BookOpen,
@@ -266,9 +267,11 @@ export default async function DashboardLayout({
         profile={
           <div className="px-3 py-2">
             <div className="flex items-center gap-3 rounded-md bg-muted px-3 py-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-medium">
-                {profile?.full_name?.[0]?.toUpperCase() || "U"}
-              </div>
+              <Avatar
+                name={profile?.full_name ?? profile?.email ?? "You"}
+                src={profile?.avatar_url}
+                size={32}
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
                   {previewing?.full_name ?? previewing?.email ?? profile?.full_name ?? "User"}

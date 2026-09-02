@@ -6,6 +6,7 @@ import { setClientOwner } from "@/actions/org";
 import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
 import { effectiveTeamLeadId } from "@/lib/team-lead";
 import { useSort, SortHeader } from "@/components/ui/sortable";
+import { CompanyLogo } from "@/components/ui/thumbnail";
 
 export function ClientsScreen({
   clients, teams, members,
@@ -137,7 +138,8 @@ export function ClientsScreen({
               <tr key={c.id} className={`border-b last:border-0 ${!c.team_id && !c.member_id ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                 <td className="px-3 py-2">
                   <Link href={`/settings/clients/${c.id}`}
-                        className="font-medium hover:underline">
+                        className="flex items-center gap-2 font-medium hover:underline">
+                    <CompanyLogo name={c.name} domain={c.email_domain} size={20} />
                     {c.name}
                   </Link>
                 </td>
