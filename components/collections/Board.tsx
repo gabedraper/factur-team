@@ -58,8 +58,13 @@ const STAGE_TONE: Record<string, string> = {
   "Sent to Collections": "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
 };
 
+/*
+ * Only the two a person decides. The automatic choice is a third option built
+ * per row, because its label is whatever the balance currently says -- listing
+ * it here as well produced two options sharing one value, and the browser
+ * highlighted the wrong one.
+ */
 const SETTABLE = [
-  { value: "", label: "Follow the balance" },
   { value: "service_paused", label: "Service Paused" },
   { value: "sent_to_collections", label: "Sent to Collections" },
 ] as const;
@@ -314,11 +319,16 @@ export function Board({
                     title={r.stage}
                     className={`w-full rounded-full px-2 py-0.5 text-[11px] ${STAGE_TONE[r.stage] ?? ""}`}
                   >
-                    {/* What it reads as today, whether or not anybody chose it. */}
-                    {!r.stage_is_manual && <option value="">{r.stage}</option>}
+                    {/*
+                      * Reads as the stage when the balance is deciding, and as
+                      * the way back to it when somebody has overridden.
+                      */}
+                    <option value="">
+                      {r.stage_is_manual ? "Follow the balance" : r.stage}
+                    </option>
                     {SETTABLE.map((o) => (
                       <option key={o.value} value={o.value}>
-                        {o.value === "" ? "Follow the balance" : o.label}
+                        {o.label}
                       </option>
                     ))}
                   </select>
