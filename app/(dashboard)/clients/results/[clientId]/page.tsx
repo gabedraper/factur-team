@@ -55,7 +55,7 @@ const HINTS = {
   appts: "Reached an explicit appointment stage. Never inferred from a later quote.",
   quotes: "Reached a quoting stage, was won, or carries a quote amount \u2014 including quotes later lost or still on follow-up.",
   pos: "Closed Won, or carrying a PO amount or PO date at another stage.",
-  quoteValue: "Sum of Total Quote Amount. Skewed by a handful of mistyped values \u2014 trust the count over this.",
+  quoteValue: "Sum of Total Quote Amount \u2014 the value quoted, including quotes later lost or still on follow-up.",
   poValue: "Sum of PO Amount. Blank on most POs, so it is a floor, not the true total.",
 };
 
@@ -86,8 +86,10 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
           {" · "}
           {series.months.length} months · {nf.format(series.totals.leads)} leads ·{" "}
           {nf.format(series.totals.appointments)} appts ·{" "}
-          {nf.format(series.totals.quotes)} quotes · {nf.format(series.totals.pos)} POs
-          {series.totals.poAmount > 0 && ` · ${money.format(series.totals.poAmount)}`}
+          {nf.format(series.totals.quotes)} quotes
+          {series.totals.quoteAmount > 0 && ` (${money.format(series.totals.quoteAmount)})`}
+          {" · "}{nf.format(series.totals.pos)} POs
+          {series.totals.poAmount > 0 && ` (${money.format(series.totals.poAmount)})`}
         </span>
       </div>
 

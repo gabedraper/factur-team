@@ -73,7 +73,7 @@ export type ServiceSeries = {
   service: string;
   headline: HeadlineMetric | null;
   months: MonthRow[];
-  totals: { leads: number; appointments: number; quotes: number; pos: number; poAmount: number };
+  totals: { leads: number; appointments: number; quotes: number; quoteAmount: number; pos: number; poAmount: number };
 };
 
 export type MonthRow = {

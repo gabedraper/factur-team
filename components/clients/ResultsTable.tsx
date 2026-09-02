@@ -104,6 +104,10 @@ const HINTS: Record<string, string> = {
   pos: "Opportunities marked Closed Won, or carrying a PO amount or PO date at any " +
     "other stage.",
 
+  quoteAmount: "Sum of Total Quote Amount across every quote, wherever the record " +
+    "ended up.\n\nIncludes quotes later lost or still on follow-up \u2014 it is the " +
+    "value quoted, not the value won.",
+
   poAmount: "Sum of PO Amount, wherever it is recorded.\n\n" +
     "Salesforce leaves this blank on most POs, so it is a floor, not the true total. " +
     "A dash next to a PO count means the amount was never filled in.",
@@ -165,6 +169,7 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
     appointments: (c) => c.appointments,
     quotes: (c) => c.quotes,
     pos: (c) => c.pos,
+    quoteAmount: (c) => c.quoteAmount,
     poAmount: (c) => c.poAmount,
     perMonth: (c) => c.leadsPerMonth,
     first3: (c) => c.first3.leads,
@@ -178,10 +183,11 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
           leads: a.leads + c.leads,
           appointments: a.appointments + c.appointments,
           quotes: a.quotes + c.quotes,
+          quoteAmount: a.quoteAmount + c.quoteAmount,
           pos: a.pos + c.pos,
           poAmount: a.poAmount + c.poAmount,
         }),
-        { leads: 0, appointments: 0, quotes: 0, pos: 0, poAmount: 0 },
+        { leads: 0, appointments: 0, quotes: 0, quoteAmount: 0, pos: 0, poAmount: 0 },
       ),
     [shown],
   );
@@ -222,8 +228,9 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
         </label>
         <span className="ml-auto text-sm text-muted-foreground tabular-nums">
           {nf.format(shown.length)} clients · {nf.format(totals.leads)} leads ·{" "}
-          {nf.format(totals.appointments)} appts · {nf.format(totals.quotes)} quotes ·{" "}
-          {nf.format(totals.pos)} POs · {money.format(totals.poAmount)}
+          {nf.format(totals.appointments)} appts · {nf.format(totals.quotes)} quotes{" "}
+          ({money.format(totals.quoteAmount)}) · {nf.format(totals.pos)} POs{" "}
+          ({money.format(totals.poAmount)})
         </span>
       </div>
 
@@ -241,6 +248,7 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
               <SortHeader {...sortProps("leads")}><span title={HINTS.leads}>Leads</span></SortHeader>
               <SortHeader {...sortProps("appointments")}><span title={HINTS.appointments}>Appts</span></SortHeader>
               <SortHeader {...sortProps("quotes")}><span title={HINTS.quotes}>Quotes</span></SortHeader>
+              <SortHeader {...sortProps("quoteAmount")}><span title={HINTS.quoteAmount}>Quote value</span></SortHeader>
               <SortHeader {...sortProps("pos")}><span title={HINTS.pos}>POs</span></SortHeader>
               <SortHeader {...sortProps("poAmount")}><span title={HINTS.poAmount}>PO value</span></SortHeader>
               <SortHeader {...sortProps("perMonth")}><span title={HINTS.perMonth}>Leads / mo</span></SortHeader>
@@ -295,6 +303,9 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
                   {c.appointments ? nf.format(c.appointments) : "—"}
                 </td>
                 <td className="px-3 py-2 tabular-nums">{c.quotes ? nf.format(c.quotes) : "—"}</td>
+                <td className="px-3 py-2 tabular-nums">
+                  {c.quoteAmount ? money.format(c.quoteAmount) : "—"}
+                </td>
                 <td className="px-3 py-2 tabular-nums">{c.pos ? nf.format(c.pos) : "—"}</td>
                 <td className="px-3 py-2 tabular-nums">
                   {c.poAmount ? money.format(c.poAmount) : "—"}

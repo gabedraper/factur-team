@@ -34,13 +34,15 @@
  *   POs      4,530 ->  5,044
  *   clients    839 ->    860
  *
- * A WARNING ABOUT QUOTE VALUE. Total_Quote_Amount__c is unusable as a total:
- * 169 opportunities exceed $1m and account for $1.95bn of the $2.3bn, and the
- * largest is a single $723,900,000 row against a job shop. They are round-number
- * typing errors. The quote COUNT is sound; the quote VALUE is not, and nothing
- * here filters it, because deciding what is a real quote is the business's call
- * and not the loader's. PO value is unaffected and remains a floor, since
- * Salesforce leaves the amount blank on most POs.
+ * QUOTE VALUE. Total_Quote_Amount__c totals $2.3bn, of which $1.95bn sits in
+ * 169 opportunities above $1m -- the largest a single $723,900,000 row. Those
+ * were queried and confirmed as real by Gabe on 2026-09-02, so the figure is
+ * reported in full and nothing is filtered. It is the value quoted, not the
+ * value won: quotes later lost or still on follow-up are included, which is
+ * why it is an order of magnitude above PO value.
+ *
+ * PO value is unaffected and remains a floor, since Salesforce leaves the
+ * amount blank on most POs.
  *
  * Rebuilt by scripts/rebuild-client-results.py.
  */

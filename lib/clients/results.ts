@@ -167,10 +167,11 @@ export async function getServiceSeries(id: string): Promise<ServiceSeries[]> {
           leads: a.leads + m.leads,
           appointments: a.appointments + m.appointments,
           quotes: a.quotes + m.quotes,
+          quoteAmount: a.quoteAmount + m.quoteAmount,
           pos: a.pos + m.pos,
           poAmount: a.poAmount + m.poAmount,
         }),
-        { leads: 0, appointments: 0, quotes: 0, pos: 0, poAmount: 0 },
+        { leads: 0, appointments: 0, quotes: 0, quoteAmount: 0, pos: 0, poAmount: 0 },
       ),
     });
   }
