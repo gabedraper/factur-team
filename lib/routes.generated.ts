@@ -14,6 +14,7 @@ export const ROUTES: readonly string[] = [
   "/careers/[slug]",
   "/clients/[clientId]",
   "/clients/[clientId]/activities",
+  "/clients/[clientId]/leads",
   "/clients/health",
   "/clients/nps",
   "/clients/nps/send",
@@ -96,5 +97,7 @@ export const ROUTES: readonly string[] = [
   "/talent/tasks",
   "/timelines",
   "/timelines/[view]",
-  "/unauthorized"
+  "/unauthorized",
+  "/work",
+  "/work/[slug]"
 ] as const;

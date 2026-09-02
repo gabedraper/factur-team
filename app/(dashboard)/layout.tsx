@@ -10,6 +10,7 @@ import Image from "next/image";
 import {
   BookOpen,
   LayoutDashboard,
+  ListChecks,
   Users,
   Map,
   GraduationCap,
@@ -101,6 +102,19 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   learn.push({ href: "/progress", label: "Team Progress", icon: <BarChart2 className="h-4 w-4" /> });
 
   if (learn.length) groups.push({ label: "Learn", items: learn });
+
+  /*
+   * The ClickUp mirror. One link, because the whole point of it is that the
+   * work shows up beside the client, the invoice and the opportunity it is
+   * about -- this page is only for the part that is about none of them, which
+   * is your own queue.
+   */
+  if (perms.has("work.view") || perms.has("org.manage")) {
+    groups.push({
+      label: "Work",
+      items: [{ href: "/work", label: "My Work", icon: <ListChecks className="h-4 w-4" /> }],
+    });
+  }
 
   const scoreboard: NavItem[] = [];
   if (perms.has("scoreboard.view")) {

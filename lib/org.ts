@@ -28,6 +28,7 @@ export type Permission =
   | "finance.collections"
   | "nps.send"
   | "sequences.send"
+  | "work.view"
   | "talent.view" | "talent.recruit" | "talent.admin"
   // Reading conversations other people had with Gaib. Deliberately not folded
   // into org.manage: that is held by nineteen people across three roles, and a
