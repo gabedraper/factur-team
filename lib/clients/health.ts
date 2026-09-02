@@ -24,6 +24,7 @@ type Row = {
 
 type NpsRow = { client_id: string; score: number; collected_on: string };
 type MonthRow = { client_id: string; month_start: string; activities: number };
+type LeadMonthRow = { client_id: string; month_start: string; leads: number };
 
 const npsMonth = new Intl.DateTimeFormat("en-US", {
   month: "short", year: "numeric", timeZone: "UTC",
@@ -143,7 +144,8 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   // with the service key there is no token to read, so it would answer "not a
   // Factur user" and return nothing at all.
   const supabase = await createClient();
-  const [{ data, error }, { data: perf }, { data: nps }, { data: months }] = await Promise.all([
+  const [{ data, error }, { data: perf }, { data: nps }, { data: months }, { data: leadMonths }] =
+    await Promise.all([
     supabase.rpc("get_client_health"),
     /*
      * The Client Performance detail. Fetched apart rather than widening
@@ -164,6 +166,14 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      */
     supabase.from("client_activity_months_by_client")
       .select("client_id,month_start,activities")
+      .order("month_start", { ascending: false }),
+    /*
+     * Leads by calendar month. From client_monthly_results, which is the
+     * definition Client Results settled on -- delivered opportunities, plus
+     * anything carrying quote or PO evidence.
+     */
+    supabase.from("client_lead_months_by_client")
+      .select("client_id,month_start,leads")
       .order("month_start", { ascending: false }),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
@@ -190,6 +200,34 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
     rows.push({ label: npsMonth.format(new Date(`${n.collected_on}T00:00:00Z`)),
                 value: `${n.score}/10` });
     npsByClient.set(n.client_id, rows);
+  }
+
+  /*
+   * Each month ranked against the same month for every other client, so a
+   * quiet August is judged against everyone else's August rather than against
+   * a busy March.
+   */
+  const leadRows = (leadMonths ?? []) as LeadMonthRow[];
+  const leadBandsByMonth = new Map<string, [number, number] | null>();
+  for (const m of leadRows) {
+    if (!leadBandsByMonth.has(m.month_start)) {
+      leadBandsByMonth.set(
+        m.month_start,
+        terciles(leadRows.filter((x) => x.month_start === m.month_start).map((x) => x.leads)),
+      );
+    }
+  }
+
+  const leadsByClient = new Map<string, NonNullable<ClientHealth["inputs"][number]["rows"]>>();
+  for (const m of leadRows) {
+    const rows = leadsByClient.get(m.client_id) ?? [];
+    rows.push({
+      label: npsMonth.format(new Date(`${m.month_start}T00:00:00Z`)),
+      value: nf.format(m.leads),
+      href: `/clients/${m.client_id}/leads?month=${m.month_start.slice(0, 7)}`,
+      tone: toneFor(m.leads, leadBandsByMonth.get(m.month_start) ?? null),
+    });
+    leadsByClient.set(m.client_id, rows);
   }
 
   const monthsByClient = new Map<string, { label: string; value: string; href: string }[]>();
@@ -229,7 +267,8 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "lead_flow",
           label: "Lead flow",
           score: r.lead_flow_score,
-          detail: movement(r.leads_30d, r.leads_prior_30d, "leads"),
+          detail: "",
+          rows: leadsByClient.get(r.client_id) ?? [],
         },
         {
           key: "activity",
