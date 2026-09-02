@@ -33,3 +33,13 @@ alter view public.client_cohorts set (security_invoker = true);
 -- The two functions are recreated with the wider allowlist. Their bodies are
 -- otherwise unchanged; see the migrations that introduced them for why each
 -- guard is there.
+
+-- Corrected after the fact: the table is client_profile, singular. A name in
+-- the allowlist that does not exist grants nothing, so nothing was exposed --
+-- but an agent would have kept asking for a table that is not there and been
+-- told it was unavailable, which is a confusing way to say "misspelled".
+--
+-- Worth knowing about that table: it has one row per client of what their
+-- website says they do, and it is empty. 940 of 987 clients have a website
+-- address on file and none of them have been read. Until something fills it,
+-- an agent knows where a client's site is and nothing about what is on it.

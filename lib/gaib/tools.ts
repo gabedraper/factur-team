@@ -91,7 +91,7 @@ export const READABLE_TABLES: Record<string, string[]> = {
    * silently misses every client whose name does not announce their trade.
    */
   "What clients do, and their results": [
-    "client_roster", "client_monthly_results", "client_cohorts", "client_profiles",
+    "client_roster", "client_monthly_results", "client_cohorts", "client_profile",
   ],
   /*
    * No qb_ or sf_ tables here any more, and none in gaib_query either.
