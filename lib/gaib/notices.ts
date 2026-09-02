@@ -50,6 +50,18 @@ export function phrase(n: Notice): string {
   const thing = `"${n.title}"`;
 
   switch (n.toStatus) {
+    /*
+     * Nothing happened, and saying so is the whole point.
+     *
+     * A ticket that never reached the agent used to sit in the queue silently:
+     * the person who reported it heard nothing and reasonably assumed somebody
+     * was on it. Twice that went unnoticed for hours. An assistant that goes
+     * quiet when it fails teaches people not to bother reporting things, which
+     * costs far more than the bug did.
+     */
+    case "stuck":
+      return `I have not managed to get started on ${thing} — something went wrong at my end, not with what you told me. Gabe has been told. Nothing for you to do. (Gaib ${n.ref})`;
+
     case "shipped":
       return n.kind === "bug"
         ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. (Gaib ${n.ref})`

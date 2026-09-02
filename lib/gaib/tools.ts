@@ -105,6 +105,15 @@ export const READABLE_TABLES: Record<string, string[]> = {
    */
   Money: ["collections_client_state", "collections_steps", "collections_sent"],
   Performance: ["raw_activities", "deal_activities", "metric_snapshots", "timeline_summaries"],
+  /*
+   * How the scoreboard is scored. Somebody asked what a hustle point was worth
+   * and Gaib could not say -- not because the answer was buried in code, but
+   * because these were not on the list. An assistant that can report a number
+   * and cannot explain it is the less useful half of the job.
+   */
+  "How things are scored": [
+    "effort_weights", "deal_weights", "client_health_weights", "app_settings",
+  ],
   "Surveys and sequences": [
     "nps_campaigns", "nps_sends", "nps_send_team", "sequences", "sequence_runs",
   ],
