@@ -13,6 +13,7 @@ export const ROUTES: readonly string[] = [
   "/careers",
   "/careers/[slug]",
   "/clients/[clientId]",
+  "/clients/[clientId]/activities",
   "/clients/health",
   "/clients/nps",
   "/clients/nps/send",

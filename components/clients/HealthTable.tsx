@@ -40,6 +40,17 @@ const AR_BLURB =
  * needs explaining: 70 is a good score against fixed thresholds but a poor one
  * if most clients are above it.
  */
+/*
+ * A measure's colour on a card. Same three bands the scores use, so a green
+ * row and a green score mean the same thing: top third of the book.
+ */
+const ROW_TONE: Record<string, string> = {
+  good: "text-emerald-600 dark:text-emerald-400",
+  warning: "text-amber-600 dark:text-amber-400",
+  critical: "text-red-600 dark:text-red-400",
+  none: "",
+};
+
 const ACTIVITY_BLURB =
   "How much work went into this client, ranked against clients on the same " +
   "service.\n\n" +
@@ -72,6 +83,10 @@ const PERFORMANCE_BLURB =
   "Because it is a curve, a client's colour can change without the client " +
   "changing -- if others improve, they slide down. The score itself is " +
   "absolute; only the colour is relative.\n\n" +
+  "The five measures below the score are coloured the same way, each ranked " +
+  "on its own scale: fewer days is better for turnaround and replies, higher " +
+  "is better for quote and win rate. Decision maker is not a ranking \u2014 " +
+  "they are either in the correspondence or they are not.\n\n" +
   "A dash means nothing has happened yet that any of the five could measure.";
 
 /** The manual traffic light in Salesforce, as a rough 0-100 to compare against. */
@@ -408,7 +423,9 @@ export function HealthTable({
                                     ) : (
                                       <span className="text-muted-foreground">{r.label}</span>
                                     )}
-                                    <span className="tabular-nums">{r.value}</span>
+                                    <span className={`tabular-nums ${ROW_TONE[r.tone ?? "none"]}`}>
+                                      {r.value}
+                                    </span>
                                   </div>
                                 ))}
                               </div>

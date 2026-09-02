@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ClientHealth } from "./health-score";
+import { terciles } from "./health-score";
 
 export * from "./health-score";
 
@@ -45,6 +46,28 @@ function days(value: number | null): string | null {
 }
 
 /**
+ * Where one measure sits against every client that has it.
+ *
+ * Each measure is ranked on its own scale -- a 44% quote rate and a 12 day
+ * turnaround have nothing in common but their position in the book -- and the
+ * two speed measures are inverted, since fewer days is better.
+ */
+function toneFor(
+  value: number | null,
+  bands: [number, number] | null,
+  lowerIsBetter = false,
+): "good" | "warning" | "critical" | undefined {
+  if (value === null || !bands) return undefined;
+  const [lo, hi] = bands;
+  if (lowerIsBetter) {
+    if (value <= lo) return "good";
+    return value <= hi ? "warning" : "critical";
+  }
+  if (value > hi) return "good";
+  return value > lo ? "warning" : "critical";
+}
+
+/**
  * The five measures as rows, in the order they happen: we hand over an RFQ,
  * they quote it, they win it, and all the while they answer or they do not.
  *
@@ -52,24 +75,55 @@ function days(value: number | null): string | null {
  * should not read as though it quoted nothing, so a missing measure is left
  * out rather than shown as a dash.
  */
-function performanceRows(p: Perf | undefined): { label: string; value: string }[] {
+function performanceRows(
+  p: Perf | undefined,
+  bands: PerfBands,
+): NonNullable<ClientHealth["inputs"][number]["rows"]> {
   if (!p) return [];
-  const rows: { label: string; value: string }[] = [];
+  const rows: NonNullable<ClientHealth["inputs"][number]["rows"]> = [];
   const turn = days(p.turnaround_days);
-  if (turn) rows.push({ label: "Quote turnaround", value: turn });
+  if (turn) {
+    rows.push({
+      label: "Quote turnaround", value: turn,
+      tone: toneFor(p.turnaround_days, bands.turnaround, true),
+    });
+  }
   if (p.quote_rate !== null) {
-    rows.push({ label: "Quote rate", value: `${Math.round(p.quote_rate)}% of ${p.presented}` });
+    rows.push({
+      label: "Quote rate", value: `${Math.round(p.quote_rate)}% of ${p.presented}`,
+      tone: toneFor(p.quote_rate, bands.quoteRate),
+    });
   }
   if (p.win_rate !== null) {
-    rows.push({ label: "Win rate", value: `${Math.round(p.win_rate)}% of ${p.won + p.lost}` });
+    rows.push({
+      label: "Win rate", value: `${Math.round(p.win_rate)}% of ${p.won + p.lost}`,
+      tone: toneFor(p.win_rate, bands.winRate),
+    });
   }
   const resp = days(p.response_days);
-  if (resp) rows.push({ label: "Responds in", value: resp });
+  if (resp) {
+    rows.push({
+      label: "Responds in", value: resp,
+      tone: toneFor(p.response_days, bands.response, true),
+    });
+  }
   if (p.dm_involved !== null) {
-    rows.push({ label: "Decision maker", value: p.dm_involved ? "Engaged" : "Absent" });
+    // Not a ranking: the decision maker is either in the correspondence or not.
+    rows.push({
+      label: "Decision maker",
+      value: p.dm_involved ? "Engaged" : "Absent",
+      tone: p.dm_involved ? "good" : "critical",
+    });
   }
   return rows;
 }
+
+type PerfBands = {
+  turnaround: [number, number] | null;
+  quoteRate: [number, number] | null;
+  winRate: [number, number] | null;
+  response: [number, number] | null;
+};
 
 const nf = new Intl.NumberFormat("en-US");
 const money = new Intl.NumberFormat("en-US", {
@@ -114,8 +168,20 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
 
+  /*
+   * Bands per measure, over every client that has one -- not over the page,
+   * so a client's colour means the same wherever it is seen.
+   */
+  const allPerf = (perf ?? []) as Perf[];
+  const perfBands: PerfBands = {
+    turnaround: terciles(allPerf.map((p) => p.turnaround_days)),
+    quoteRate: terciles(allPerf.map((p) => p.quote_rate)),
+    winRate: terciles(allPerf.map((p) => p.win_rate)),
+    response: terciles(allPerf.map((p) => p.response_days)),
+  };
+
   const perfByClient = new Map<string, Perf>(
-    ((perf ?? []) as Perf[]).map((p) => [p.client_id, p]),
+    allPerf.map((p) => [p.client_id, p]),
   );
 
   const npsByClient = new Map<string, { label: string; value: string }[]>();
@@ -186,7 +252,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           label: "Client Performance",
           score: r.engagement_score,
           detail: "",
-          rows: performanceRows(perfByClient.get(r.client_id)),
+          rows: performanceRows(perfByClient.get(r.client_id), perfBands),
         },
         {
           key: "receivables",
