@@ -316,6 +316,12 @@ export function Board({
         const isOpen = open === key(r);
         const paused = r.paused_until !== null && new Date(r.paused_until) >= new Date();
         const due = Boolean(r.step_id);
+        /*
+         * In the sequence means a step is due or one is coming. Paused stops
+         * it, and so does a ladder that has run out -- in both cases the button
+         * offers to put them back rather than to stop something already stopped.
+         */
+        const inSequence = !paused && (due || r.next_step_on !== null);
         const w = wording(r);
 
         return (
@@ -414,13 +420,15 @@ export function Board({
                       </>
                     )}
                     <button
-                      onClick={() => pause(r, !paused)}
+                      onClick={() => pause(r, inSequence)}
                       disabled={pending}
                       className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
                     >
-                      {paused ? <PlayCircle className="h-3.5 w-3.5 shrink-0" /> : <PauseCircle className="h-3.5 w-3.5 shrink-0" />}
+                      {inSequence
+                        ? <PauseCircle className="h-3.5 w-3.5 shrink-0" />
+                        : <PlayCircle className="h-3.5 w-3.5 shrink-0" />}
                       <span className="truncate">
-                        {paused ? "Resume Collection Sequence" : "Pause Collection Sequence"}
+                        {inSequence ? "Pause Collection Sequence" : "Add to Collections Sequence"}
                       </span>
                     </button>
                   </>
