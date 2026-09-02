@@ -141,7 +141,7 @@ function RankedScore({
   if (value === null || !bands) {
     return (
       <span className="font-semibold tabular-nums text-muted-foreground" title={title}>
-        {value ?? "—"}
+        {value ?? ""}
       </span>
     );
   }
@@ -161,7 +161,7 @@ function RankedScore({
 function Score({ value }: { value: number | null }) {
   return (
     <span className={`font-semibold tabular-nums ${BAND_CLASS[band(value)]}`}>
-      {value === null ? "—" : value}
+      {value === null ? "" : value}
     </span>
   );
 }
@@ -324,8 +324,8 @@ export function HealthTable({
                   onClick={() => setOpen(open === c.clientId ? null : c.clientId)}
                 >
                   <td className="px-3 py-2 font-medium">{c.name}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? "—"}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? ""}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? ""}</td>
                   <td className="px-3 py-2 text-right"><Score value={c.overall} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
                   <td className="px-3 py-2 text-right">
@@ -341,7 +341,7 @@ export function HealthTable({
                   <td className="px-3 py-2 text-center text-muted-foreground tabular-nums">
                     {c.inputsMeasured} of 5
                   </td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.manualHealth ?? "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{c.manualHealth ?? ""}</td>
                 </tr>
 
                 {open === c.clientId && (
@@ -428,11 +428,6 @@ export function HealthTable({
                                     </span>
                                   </div>
                                 ))}
-                              </div>
-                            )}
-                            {i.key === "engagement" && !i.rows?.length && (
-                              <div className="mt-2 text-xs text-muted-foreground">
-                                Nothing measured yet
                               </div>
                             )}
                             {i.key === "receivables" && <Ageing c={c} />}
