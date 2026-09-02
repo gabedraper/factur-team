@@ -24,7 +24,14 @@ type Row = {
 
 type NpsRow = { client_id: string; score: number; collected_on: string };
 type MonthRow = { client_id: string; month_start: string; activities: number };
-type LeadMonthRow = { client_id: string; month_start: string; leads: number };
+type LeadMonthRow = {
+  client_id: string; month_start: string; leads: number;
+  source: "daily" | "backfill"; computed_at: string;
+};
+
+const asOfLabel = new Intl.DateTimeFormat("en-US", {
+  month: "short", day: "numeric", timeZone: "UTC",
+});
 
 const npsMonth = new Intl.DateTimeFormat("en-US", {
   month: "short", year: "numeric", timeZone: "UTC",
@@ -173,7 +180,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      * anything carrying quote or PO evidence.
      */
     supabase.from("client_lead_months_by_client")
-      .select("client_id,month_start,leads")
+      .select("client_id,month_start,leads,source,computed_at")
       .order("month_start", { ascending: false }),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
@@ -216,6 +223,22 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
         terciles(leadRows.filter((x) => x.month_start === m.month_start).map((x) => x.leads)),
       );
     }
+  }
+
+  /*
+   * When the numbers were last worked out. Daily for the clients Coupler
+   * syncs; for the rest it is whenever the Salesforce backfill last ran, which
+   * is worth saying rather than implying every number is from this morning.
+   */
+  const asOfByClient = new Map<string, string>();
+  for (const m of leadRows) {
+    if (asOfByClient.has(m.client_id)) continue;
+    asOfByClient.set(
+      m.client_id,
+      m.source === "daily"
+        ? `as of ${asOfLabel.format(new Date(m.computed_at))}`
+        : "as of the last backfill",
+    );
   }
 
   const leadsByClient = new Map<string, NonNullable<ClientHealth["inputs"][number]["rows"]>>();
@@ -267,7 +290,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "lead_flow",
           label: "Lead flow",
           score: r.lead_flow_score,
-          detail: "",
+          detail: asOfByClient.get(r.client_id) ?? "",
           rows: leadsByClient.get(r.client_id) ?? [],
         },
         {
