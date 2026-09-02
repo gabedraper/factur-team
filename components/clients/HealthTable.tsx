@@ -33,6 +33,41 @@ const AR_BLURB =
   "A dash means QuickBooks has no receivables record for them — not that they " +
   "owe nothing.";
 
+/**
+ * What the Client Performance score is, said where the number is.
+ *
+ * Unlike every other score on this page it is graded on a curve, so the colour
+ * needs explaining: 70 is a good score against fixed thresholds but a poor one
+ * if most clients are above it.
+ */
+const PERFORMANCE_BLURB =
+  "What the client does with what we send them, scored 0 to 100.\n\n" +
+  "The average of five measures: how quickly they quote an RFQ we hand them, " +
+  "how many of those RFQs they quote at all, how many of their quotes win, how " +
+  "quickly they answer our email, and whether the decision maker is in the " +
+  "correspondence.\n\n" +
+  "Only the measures a client has data for are averaged, so a client on a " +
+  "service that never quotes is judged on the rest rather than marked down.\n\n" +
+  "The colour is a ranking, not a threshold: green is the top third of clients " +
+  "on this page, amber the middle third, red the bottom third. It moves as the " +
+  "filter moves, and half the book being red would mean the book is uneven, " +
+  "not that half the clients are failing.\n\n" +
+  "A dash means nothing has happened yet that any of the five could measure.";
+
+/**
+ * Where a score sits against the others on screen.
+ *
+ * Terciles rather than fixed bands because the number is only meaningful
+ * relative to the rest of the book -- and because the five measures behind it
+ * do not share a natural scale.
+ */
+function terciles(scores: number[]): [number, number] | null {
+  const sorted = scores.filter((s) => s !== null).sort((a, b) => a - b);
+  if (sorted.length < 3) return null;
+  const at = (f: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * f))];
+  return [at(1 / 3), at(2 / 3)];
+}
+
 /** The manual traffic light in Salesforce, as a rough 0-100 to compare against. */
 const MANUAL_AS_SCORE: Record<string, number> = {
   Green: 85, Blue: 85, Yellow: 55, Red: 20, Black: 10,
@@ -71,6 +106,34 @@ function Ageing({ c }: { c: ClientHealth }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Client Performance, coloured by tercile rather than by fixed band. */
+function RankedScore({
+  value, bands, title,
+}: {
+  value: number | null;
+  bands: [number, number] | null;
+  title?: string;
+}) {
+  if (value === null || !bands) {
+    return (
+      <span className="font-semibold tabular-nums text-muted-foreground" title={title}>
+        {value ?? "—"}
+      </span>
+    );
+  }
+  const tone =
+    value > bands[1]
+      ? "text-emerald-600 dark:text-emerald-400"
+      : value > bands[0]
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-red-600 dark:text-red-400";
+  return (
+    <span className={`font-semibold tabular-nums ${tone}`} title={title}>
+      {value}
+    </span>
   );
 }
 
@@ -131,6 +194,15 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
 
   const at = (c: ClientHealth, key: string) =>
     c.inputs.find((i) => i.key === key)?.score ?? null;
+
+  /*
+   * Computed from the rows on screen rather than the whole book, so filtering
+   * to one account manager ranks that manager's clients against each other.
+   */
+  const perfBands = useMemo(
+    () => terciles(shown.map((c) => at(c, "engagement")).filter((v): v is number => v !== null)),
+    [shown],
+  );
 
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
@@ -198,7 +270,9 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
               <SortHeader className="px-3 py-2" align="right" {...sortProps("lead_flow")}>Leads</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("activity")}>Activity</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("nps")}>NPS</SortHeader>
-              <SortHeader className="px-3 py-2" align="right" {...sortProps("engagement")}>Engagement</SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("engagement")}>
+                <span title={PERFORMANCE_BLURB}>Client Performance</span>
+              </SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("receivables")}>
                 <span title={AR_BLURB}>AR</span>
               </SortHeader>
@@ -231,7 +305,9 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "activity")} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "nps")} /></td>
-                  <td className="px-3 py-2 text-right"><Score value={at(c, "engagement")} /></td>
+                  <td className="px-3 py-2 text-right">
+                    <RankedScore value={at(c, "engagement")} bands={perfBands} title={PERFORMANCE_BLURB} />
+                  </td>
                   <td className="px-3 py-2 text-right" title={AR_BLURB}>
                     <Score value={at(c, "receivables")} />
                   </td>
@@ -250,7 +326,10 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             {/* The label keeps the left; the way out of the card
                                 sits opposite it rather than below the numbers. */}
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                              <span
+                                className="text-xs uppercase tracking-wide text-muted-foreground"
+                                title={i.key === "engagement" ? PERFORMANCE_BLURB : undefined}
+                              >
                                 {i.label}
                               </span>
                               {i.key === "receivables" && (
@@ -266,9 +345,19 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             <div className="mt-1 flex items-center justify-between gap-2">
                               <span
                                 className="text-lg"
-                                title={i.key === "receivables" ? AR_BLURB : undefined}
+                                title={
+                                  i.key === "receivables"
+                                    ? AR_BLURB
+                                    : i.key === "engagement"
+                                      ? PERFORMANCE_BLURB
+                                      : undefined
+                                }
                               >
-                                <Score value={i.score} />
+                                {i.key === "engagement" ? (
+                                  <RankedScore value={i.score} bands={perfBands} />
+                                ) : (
+                                  <Score value={i.score} />
+                                )}
                               </span>
                               {i.key === "receivables" && c.collectionsStage && (
                                 <span
@@ -283,6 +372,23 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
 
                             {i.detail && (
                               <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
+                            )}
+                            {/* Same label-left, value-right shape the ageing
+                                buckets use, for any card that has rows. */}
+                            {i.rows && i.rows.length > 0 && (
+                              <div className="mt-2 space-y-0.5">
+                                {i.rows.map((r) => (
+                                  <div key={r.label} className="flex justify-between gap-2 text-xs">
+                                    <span className="text-muted-foreground">{r.label}</span>
+                                    <span className="tabular-nums">{r.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {i.key === "engagement" && !i.rows?.length && (
+                              <div className="mt-2 text-xs text-muted-foreground">
+                                Nothing measured yet
+                              </div>
                             )}
                             {i.key === "receivables" && <Ageing c={c} />}
                           </div>

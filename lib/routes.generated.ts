@@ -54,6 +54,7 @@ export const ROUTES: readonly string[] = [
   "/settings",
   "/settings/agents",
   "/settings/agents/coding",
+  "/settings/agreements",
   "/settings/clients",
   "/settings/clients/[clientId]",
   "/settings/collections",

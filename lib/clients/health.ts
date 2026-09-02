@@ -38,22 +38,30 @@ function days(value: number | null): string | null {
 }
 
 /**
- * The five measures as one line, in the order they happen: we hand over an
- * RFQ, they quote it, they win it, and all the while they answer or they do
- * not. Only what the client has data for -- a client on a service that never
- * quotes should not read as though it quoted nothing.
+ * The five measures as rows, in the order they happen: we hand over an RFQ,
+ * they quote it, they win it, and all the while they answer or they do not.
+ *
+ * Only what the client has data for -- a client on a service that never quotes
+ * should not read as though it quoted nothing, so a missing measure is left
+ * out rather than shown as a dash.
  */
-function performanceDetail(p: Perf | undefined): string {
-  if (!p) return "nothing to measure yet";
-  const parts: string[] = [];
+function performanceRows(p: Perf | undefined): { label: string; value: string }[] {
+  if (!p) return [];
+  const rows: { label: string; value: string }[] = [];
   const turn = days(p.turnaround_days);
-  if (turn) parts.push(`quotes in ${turn}`);
-  if (p.quote_rate !== null) parts.push(`${Math.round(p.quote_rate)}% of ${p.presented} RFQs quoted`);
-  if (p.win_rate !== null) parts.push(`${Math.round(p.win_rate)}% won`);
+  if (turn) rows.push({ label: "Quote turnaround", value: turn });
+  if (p.quote_rate !== null) {
+    rows.push({ label: "Quote rate", value: `${Math.round(p.quote_rate)}% of ${p.presented}` });
+  }
+  if (p.win_rate !== null) {
+    rows.push({ label: "Win rate", value: `${Math.round(p.win_rate)}% of ${p.won + p.lost}` });
+  }
   const resp = days(p.response_days);
-  if (resp) parts.push(`replies in ${resp}`);
-  if (p.dm_involved !== null) parts.push(p.dm_involved ? "DM engaged" : "DM absent");
-  return parts.length ? parts.join(" · ") : "nothing to measure yet";
+  if (resp) rows.push({ label: "Responds in", value: resp });
+  if (p.dm_involved !== null) {
+    rows.push({ label: "Decision maker", value: p.dm_involved ? "Engaged" : "Absent" });
+  }
+  return rows;
 }
 
 const nf = new Intl.NumberFormat("en-US");
@@ -137,7 +145,8 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "engagement",
           label: "Client Performance",
           score: r.engagement_score,
-          detail: performanceDetail(perfByClient.get(r.client_id)),
+          detail: "",
+          rows: performanceRows(perfByClient.get(r.client_id)),
         },
         {
           key: "receivables",

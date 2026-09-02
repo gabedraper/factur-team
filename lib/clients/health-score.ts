@@ -17,6 +17,12 @@ export type HealthInput = {
   label: string;
   score: number | null;
   detail: string;
+  /*
+   * Label-and-value pairs, where the card reads better as a small table than
+   * as a sentence. Receivables has always done this with its ageing buckets;
+   * Client Performance has five measures and the run-on line was unreadable.
+   */
+  rows?: { label: string; value: string }[];
 };
 
 /** The A/R ageing as the report splits it, for the card that shows it. */
