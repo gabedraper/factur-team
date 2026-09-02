@@ -16,6 +16,25 @@ function tone(value: number | null): string {
   return "";
 }
 
+/*
+ * What each column means, on hover.
+ *
+ * Timing columns invite the wrong reading -- an average hides the bad visits,
+ * and a percentile over ten views is one bad visit. Both traps are named here
+ * rather than left for someone to fall into.
+ */
+const HINTS = {
+  page: "The route, as the app knows it. A highlighted row is a path with views that the route list has never heard of \u2014 usually a page that was renamed or removed.",
+  views: "Times the page was opened in the period.",
+  people: "Distinct people who opened it. Two views by one person is a different problem from two views by two people.",
+  move: "Average time to move here from another page inside the app \u2014 a server round trip and nothing else.",
+  arrive: "Average time to arrive fresh: the document, the scripts and the first render as well as the server.\n\nAlways slower than Move. If it is far slower, the cost is in loading the page rather than in fetching its data.",
+  median: "The middle visit: half were faster, half slower.\n\nThis is what the page normally costs. Read it next to p95 \u2014 close together means uniformly slow, far apart means occasionally slow.",
+  p95: "95 out of 100 visits were faster than this; the slowest 5 were worse.\n\nNeeds roughly 20 views to mean anything. Below that it is close to the single slowest visit, so a page opened ten times with one cold start will show an alarming number that is not a trend.",
+  slow: "Visits that took three seconds or more \u2014 the count, not a percentage.\n\nThe table is sorted on this, because twenty-four people waiting is a bigger problem than one person waiting longer.",
+  last: "The most recent view.",
+};
+
 export function PageUsageTable() {
   const [report, setReport] = useState<PageUsageReport | null>(null);
   const [days, setDays] = useState(30);
@@ -77,13 +96,15 @@ export function PageUsageTable() {
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
-                <th className="px-3 py-2 font-medium">Page</th>
-                <th className="px-3 py-2 text-right font-medium">Views</th>
-                <th className="px-3 py-2 text-right font-medium">People</th>
-                <th className="px-3 py-2 text-right font-medium">Move</th>
-                <th className="px-3 py-2 text-right font-medium">Arrive</th>
-                <th className="px-3 py-2 text-right font-medium">p95</th>
-                <th className="px-3 py-2 font-medium">Last</th>
+                <th className="px-3 py-2 font-medium"><span title={HINTS.page}>Page</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.views}>Views</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.people}>People</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.move}>Move</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.arrive}>Arrive</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.median}>Median</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.p95}>p95</span></th>
+                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.slow}>Slow</span></th>
+                <th className="px-3 py-2 font-medium"><span title={HINTS.last}>Last</span></th>
               </tr>
             </thead>
             <tbody>
@@ -111,8 +132,19 @@ export function PageUsageTable() {
                   <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.loadMs)}`}>
                     {ms(p.loadMs)}
                   </td>
-                  <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.p95Ms)}`}>
+                  <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.medianMs)}`}>
+                    {ms(p.medianMs)}
+                  </td>
+                  <td
+                    className={`px-3 py-1.5 text-right tabular-nums ${tone(p.p95Ms)} ${
+                      p.views < 20 ? "opacity-50" : ""
+                    }`}
+                    title={p.views < 20 ? `Only ${p.views} views \u2014 close to the slowest single visit` : undefined}
+                  >
                     {ms(p.p95Ms)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {p.slowViews || "—"}
                   </td>
                   <td className="px-3 py-1.5 text-muted-foreground tabular-nums">
                     {p.lastSeen ? p.lastSeen.slice(0, 10) : "—"}

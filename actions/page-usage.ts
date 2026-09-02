@@ -25,8 +25,12 @@ export type PageUsage = {
   routeMs: number | null;
   /** Fresh arrivals: document, scripts and first render as well. */
   loadMs: number | null;
+  /** What a typical visit costs. */
+  medianMs: number | null;
   /** The slow tail, which is what people actually complain about. */
   p95Ms: number | null;
+  /** Visits over three seconds -- the count, not the percentile. */
+  slowViews: number;
   lastSeen: string | null;
   /** False for a path with views that the route list has never heard of. */
   known: boolean;
@@ -45,7 +49,9 @@ type Stat = {
   people: number;
   route_ms: number | null;
   load_ms: number | null;
+  median_ms: number | null;
   p95_ms: number | null;
+  slow_views: number | null;
   last_seen: string | null;
 };
 
@@ -77,21 +83,30 @@ export async function pageUsage(days = 30): Promise<PageUsageReport> {
       people: Number(s?.people ?? 0),
       routeMs: s?.route_ms ?? null,
       loadMs: s?.load_ms ?? null,
+      medianMs: s?.median_ms ?? null,
       p95Ms: s?.p95_ms ?? null,
+      slowViews: Number(s?.slow_views ?? 0),
       lastSeen: s?.last_seen ?? null,
       known: known.has(path),
     };
   });
 
   /*
-   * Slowest first, and unvisited pages last.
+   * Worst first, where worst means the most people kept waiting.
    *
-   * This gets opened because something feels slow, so the answer belongs at the
-   * top. A page with no views has no speed to rank on and would otherwise sort
-   * as though it were the fastest thing in the app.
+   * This used to rank on p95 alone, which put the noisiest rows on top: at ten
+   * views the 95th percentile is nearly the slowest single observation, so a
+   * page three people opened once -- one of them a cold start -- outranked a
+   * page fifteen people wait four seconds for every day.
+   *
+   * slowViews is a count of visits over three seconds, so it is weighted by
+   * traffic by construction. p95 breaks ties, and a page with no views has no
+   * speed to rank on and goes last rather than sorting as the fastest thing in
+   * the app.
    */
   pages.sort((a, b) => {
     if (!a.views !== !b.views) return a.views ? -1 : 1;
+    if (a.slowViews !== b.slowViews) return b.slowViews - a.slowViews;
     return (b.p95Ms ?? 0) - (a.p95Ms ?? 0);
   });
 
