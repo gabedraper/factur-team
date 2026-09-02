@@ -49,7 +49,7 @@ export default async function ClientConversationPage({
       </div>
       {billing && <BillingSummary summary={billing} />}
       <Notes clientId={clientId} notes={notes} />
-      <Conversation entries={entries} />
+      <Conversation entries={entries} clientId={clientId} />
     </div>
   );
 }

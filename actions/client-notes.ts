@@ -70,6 +70,28 @@ export async function setNotePinned(clientId: string, noteId: string, pinned: bo
 }
 
 /**
+ * Rewrite a note.
+ *
+ * updated_at moves and created_at does not: the trail should keep the note
+ * where it happened rather than jumping it to today because somebody fixed a
+ * typo. Only ours -- the QuickBooks note has a null id and never reaches here,
+ * which is right, since it lives on their customer record over there.
+ */
+export async function editClientNote(clientId: string, noteId: string, body: string) {
+  if (!(await mayRead())) return { success: false, error: "Not permitted." };
+  if (!body.trim()) return { success: false, error: "A note cannot be empty." };
+
+  const { error } = await createServiceClient()
+    .from("client_notes")
+    .update({ body: body.trim(), updated_at: new Date().toISOString() })
+    .eq("id", noteId);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath(`/clients/${clientId}`);
+  return { success: true };
+}
+
+/**
  * Deleting is offered because a note written on the wrong client is worse than
  * no note. Only ours -- the QuickBooks one has a null id and never reaches here.
  */

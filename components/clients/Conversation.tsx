@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
-import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote } from "lucide-react";
+import { editClientNote, setNotePinned, deleteClientNote } from "@/actions/client-notes";
+import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote, Pin } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -74,7 +76,16 @@ function MatchNote({ by }: { by: ConversationEntry["matched_by"] }) {
  * neither side. Invoices and payments sit centred as markers, which is what
  * turns the list into a story: raised, chased, silence, chased, paid.
  */
-export function Conversation({ entries }: { entries: ConversationEntry[] }) {
+export function Conversation({
+  entries, clientId,
+}: {
+  entries: ConversationEntry[];
+  clientId: string;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteProblem, setNoteProblem] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [body, setBody] = useState<{ text: string | null; problem: string | null } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -119,16 +130,110 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
 
         // A note somebody wrote here, inset like the rest of the internal talk.
         if (e.kind === "note") {
+          const noteId = e.external_id;
+          const isEditing = editing === noteId;
+
+          /*
+           * Rewriting keeps the note where it happened. Only the body changes,
+           * so a typo fixed today does not drag a note from March to the top of
+           * the trail.
+           */
+          const save = () => {
+            if (!noteId || !noteDraft.trim()) return;
+            setNoteProblem("");
+            startTransition(async () => {
+              const res = await editClientNote(clientId, noteId, noteDraft);
+              if (!res.success) {
+                setNoteProblem(res.error ?? "Couldn't save that.");
+                return;
+              }
+              setEditing(null);
+              router.refresh();
+            });
+          };
+
+          const act = (fn: () => Promise<{ success: boolean; error?: string }>) => {
+            setNoteProblem("");
+            startTransition(async () => {
+              const res = await fn();
+              if (!res.success) {
+                setNoteProblem(res.error ?? "Couldn't do that.");
+                return;
+              }
+              router.refresh();
+            });
+          };
+
           return (
             <div key={key} className="flex justify-center">
-              <div className="max-w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
+              <div className="w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
                 <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                   <Icon entry={e} />
                   <span className="font-medium text-foreground">{e.author}</span>
                   <span className="italic">note</span>
                   <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
+
+                  {noteId && !isEditing && (
+                    <span className="ml-auto flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditing(noteId);
+                          setNoteDraft(e.preview ?? "");
+                        }}
+                        className="hover:text-foreground"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => act(() => setNotePinned(clientId, noteId, true))}
+                        disabled={pending}
+                        className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+                      >
+                        <Pin className="h-3 w-3" /> Pin
+                      </button>
+                      <button
+                        onClick={() => act(() => deleteClientNote(clientId, noteId))}
+                        disabled={pending}
+                        className="hover:text-foreground disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </span>
+                  )}
                 </div>
-                <div className="mt-0.5 whitespace-pre-wrap text-sm">{e.preview}</div>
+
+                {isEditing ? (
+                  <div className="mt-1 space-y-2">
+                    <textarea
+                      autoFocus
+                      rows={3}
+                      value={noteDraft}
+                      onChange={(ev) => setNoteDraft(ev.target.value)}
+                      className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setEditing(null)}
+                        className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={save}
+                        disabled={pending || !noteDraft.trim()}
+                        className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-0.5 whitespace-pre-wrap text-sm">{e.preview}</div>
+                )}
+
+                {noteProblem && isEditing && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{noteProblem}</p>
+                )}
               </div>
             </div>
           );

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
-  addClientNote, setNotePinned, deleteClientNote, type ClientNote,
+  addClientNote, setNotePinned, deleteClientNote, editClientNote, type ClientNote,
 } from "@/actions/client-notes";
 import { FIELD } from "@/lib/field-class";
 import { Pin, PinOff, Trash2, Plus } from "lucide-react";
@@ -32,6 +32,8 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
   const [all, setAll] = useState(notes);
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   const [pinNew, setPinNew] = useState(false);
   const [problem, setProblem] = useState("");
   const [pending, startTransition] = useTransition();
@@ -79,6 +81,22 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
     });
   }
 
+  function save(note: ClientNote) {
+    if (!note.id || !editDraft.trim()) return;
+    const id = note.id;
+    const body = editDraft.trim();
+    setProblem("");
+    startTransition(async () => {
+      const res = await editClientNote(clientId, id, body);
+      if (!res.success) {
+        setProblem(res.error ?? "Couldn't save that.");
+        return;
+      }
+      setAll((n) => n.map((x) => (x.id === id ? { ...x, body } : x)));
+      setEditing(null);
+    });
+  }
+
   function remove(note: ClientNote) {
     if (!note.id) return;
     const id = note.id;
@@ -109,15 +127,48 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
           <div className="flex items-start gap-2">
             <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="min-w-0 flex-1">
-              <div className="whitespace-pre-wrap text-sm">{n.body}</div>
+              {editing === n.id ? (
+                <div className="space-y-2">
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    className={`${FIELD} w-full px-2 py-1 text-sm`}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setEditing(null)}
+                      className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => save(n)}
+                      disabled={pending || !editDraft.trim()}
+                      className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="whitespace-pre-wrap text-sm">{n.body}</div>
+              )}
               <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                 <span>
                   {n.source === "quickbooks"
                     ? "QuickBooks customer record"
                     : [n.author_email, when(n.created_at)].filter(Boolean).join(" · ")}
                 </span>
-                {n.id && (
+                {n.id && editing !== n.id && (
                   <>
+                    <button
+                      onClick={() => { setEditing(n.id); setEditDraft(n.body); }}
+                      className="hover:text-foreground"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => pin(n, false)}
                       disabled={pending}
