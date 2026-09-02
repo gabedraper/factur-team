@@ -103,6 +103,16 @@ async function fetchText(url: string): Promise<string | null> {
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
       .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+      /*
+       * Forms, and especially their dropdowns, are the single biggest source of
+       * false facts. An enquiry form asking "which best describes your
+       * industry?" lists twenty industries, and a model reading the page as
+       * prose takes them for markets this company serves. They are the
+       * industries of whoever is filling the form in.
+       */
+      .replace(/<select[\s\S]*?<\/select>/gi, " ")
+      .replace(/<form[\s\S]*?<\/form>/gi, " ")
+      .replace(/<option[\s\S]*?<\/option>/gi, " ")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/g, " ")
       .replace(/&amp;/g, "&")
@@ -161,6 +171,10 @@ Quote your evidence. Every attribute needs a short quote from the page that show
 Do not infer. A machine shop probably does deburring; unless the page says so, it is not a fact about this company. Do not add certifications because a market implies them.
 
 Canonical values. Write the value in Title Case, one to four words, as the industry generally names it — ISO 9001 rather than ISO9001:2015 Certified. Put what the page said in raw_value. Two companies described the same way must produce the same value, or filtering by it is pointless.
+
+Ignore anything that is a list of choices rather than a statement. Enquiry forms, industry dropdowns, "select your sector" menus and site navigation list options for the reader to pick from -- they describe the visitor, not the company. A market only counts if the page says this company serves it.
+
+Watch for a site that belongs to a different company than the one named. Rebrands and acquisitions mean the address on file sometimes leads somewhere else. If the site is plainly a different business, still describe what you find, but say so in the summary.
 
 If the site is a parked domain, a holding page, or plainly not an industrial company, set is_a_manufacturer false and return no attributes. That is a useful answer.
 
