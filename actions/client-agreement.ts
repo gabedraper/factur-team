@@ -6,6 +6,7 @@ import { myPermissions } from "@/lib/org";
 
 export type Terms = {
   service: string | null;
+  total_project_fee: number | null;
   billing_amount: number | null;
   billing_frequency: string | null;
   setup_fee: number | null;
@@ -17,6 +18,7 @@ export type Terms = {
   notice_days: number | null;
   billing_contact_name: string | null;
   billing_contact_email: string | null;
+  billing_contact_phone: string | null;
   opt_outs: string | null;
   other_terms: string | null;
   source: "manual" | "contract";

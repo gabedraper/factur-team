@@ -1,0 +1,27 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
+import { myPermissions } from "@/lib/org";
+import { agreementCounts } from "@/actions/pandadoc";
+import { AgreementImport } from "@/components/settings/AgreementImport";
+
+export const dynamic = "force-dynamic";
+
+export default async function AgreementsPage() {
+  const perms = await myPermissions();
+  if (!perms.has("org.manage")) redirect("/settings");
+
+  const counts = await agreementCounts();
+
+  return (
+    <div className="p-6 space-y-4 max-w-3xl">
+      <div>
+        <Link href="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" /> Settings
+        </Link>
+        <h1 className="mt-1 text-xl font-semibold">Signed agreements</h1>
+      </div>
+      <AgreementImport counts={counts} />
+    </div>
+  );
+}

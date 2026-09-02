@@ -31,6 +31,7 @@ function show(v: string | number | boolean | null | undefined, as?: "money" | "d
 
 const FIELDS: { key: keyof Terms; label: string; as?: "money" | "date"; type?: string }[] = [
   { key: "service", label: "Service" },
+  { key: "total_project_fee", label: "Total project fee", as: "money", type: "number" },
   { key: "billing_amount", label: "Billing amount", as: "money", type: "number" },
   { key: "billing_frequency", label: "Billing frequency" },
   { key: "setup_fee", label: "Setup fee", as: "money", type: "number" },
@@ -41,6 +42,7 @@ const FIELDS: { key: keyof Terms; label: string; as?: "money" | "date"; type?: s
   { key: "notice_days", label: "Notice (days)", type: "number" },
   { key: "billing_contact_name", label: "Billing contact" },
   { key: "billing_contact_email", label: "Billing email" },
+  { key: "billing_contact_phone", label: "Billing phone" },
 ];
 
 /**
@@ -120,18 +122,14 @@ export function AgreementPanel({
             Agreement
           </span>
           <span className="flex items-center gap-3 text-xs">
-            {agreement?.agreement_file_url && (
+            {agreement?.agreement_id && (
               <a
-                href={agreement.agreement_file_url}
+                href={`/api/agreements/${agreement.agreement_id}/pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 underline"
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
               >
-                <FileText className="h-3.5 w-3.5" />
-                {agreement.agreement_name ?? "Signed agreement"}
-                {agreement.agreement_signed_on && (
-                  <> · {onDay(agreement.agreement_signed_on)}</>
-                )}
+                <FileText className="h-3.5 w-3.5" /> Open full document
               </a>
             )}
             {!editing && (
@@ -144,6 +142,32 @@ export function AgreementPanel({
             )}
           </span>
         </div>
+
+        {agreement?.agreement_id && !editing && (
+          <div className="border-b px-3 py-3">
+            <div className="flex items-baseline justify-between gap-2 pb-2 text-xs">
+              <span className="truncate font-medium" title={agreement.agreement_name ?? ""}>
+                {agreement.agreement_name ?? "Signed agreement"}
+              </span>
+              {agreement.agreement_signed_on && (
+                <span className="shrink-0 text-muted-foreground">
+                  signed {onDay(agreement.agreement_signed_on)}
+                </span>
+              )}
+            </div>
+            {/*
+              * The first page, at the top of the document and scaled to width.
+              * A frame rather than a rendered image: the browser already has a
+              * PDF reader, and adding one to the bundle to redraw page one as a
+              * picture is a megabyte for a thumbnail.
+              */}
+            <iframe
+              src={`/api/agreements/${agreement.agreement_id}/pdf#page=1&view=FitH&toolbar=0&navpanes=0`}
+              title={agreement.agreement_name ?? "Signed agreement"}
+              className="h-72 w-full rounded-md border bg-white"
+            />
+          </div>
+        )}
 
         {editing ? (
           <div className="space-y-2 px-3 py-3">

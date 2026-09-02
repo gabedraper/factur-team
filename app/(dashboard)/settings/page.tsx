@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Users, ShieldCheck, Building2, Layers, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact, Bot, Plug, Phone } from "lucide-react";
+  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -162,6 +162,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Integrations</span>
                 <span className="block text-xs text-muted-foreground">
                   Where the data comes from, what each sync takes, and when it last ran.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/agreements"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Signed agreements</span>
+                <span className="block text-xs text-muted-foreground">
+                  Bring contracts in from PandaDoc and tie them to the right client.
                 </span>
               </span>
             </Link>
