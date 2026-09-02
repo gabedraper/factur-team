@@ -2,16 +2,21 @@ import Link from "next/link";
 import { getNpsByPerson, getNpsCampaigns, getNpsLeads, getNpsResponses, npsOf } from "@/lib/nps/reporting";
 import { NpsDashboard } from "@/components/nps/NpsDashboard";
 import { myPermissions } from "@/lib/org";
+import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
 
 export default async function NpsPage() {
-  const [campaigns, leads, people, responses, perms] = await Promise.all([
+  const perms = await myPermissions();
+  if (!perms.has("clients.health") && !perms.has("org.manage")) {
+    return <NoAccess section="Client health" need="View client health" />;
+  }
+
+  const [campaigns, leads, people, responses] = await Promise.all([
     getNpsCampaigns(),
     getNpsLeads(),
     getNpsByPerson(),
     getNpsResponses(),
-    myPermissions(),
   ]);
   const maySend = perms.has("nps.send") || perms.has("org.manage");
 

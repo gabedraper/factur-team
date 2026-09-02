@@ -24,6 +24,7 @@ export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
   | "timelines.view" | "timelines.view.all" | "clients.health"
+  | "clients.results"
   | "finance.collections"
   | "nps.send"
   | "sequences.send"

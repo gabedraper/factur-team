@@ -5,6 +5,8 @@ import {
   type ServiceSeries,
 } from "@/lib/clients/results";
 import { ServicePeriods } from "@/components/clients/ServicePeriods";
+import { myPermissions } from "@/lib/org";
+import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
 
@@ -145,6 +147,11 @@ export default async function ClientResultPage({
 }: {
   params: Promise<{ clientId: string }>;
 }) {
+  const perms = await myPermissions();
+  if (!perms.has("clients.results") && !perms.has("org.manage")) {
+    return <NoAccess section="Client results" need="View client results" />;
+  }
+
   const { clientId } = await params;
   const [client, series, periods] = await Promise.all([
     getClient(clientId),

@@ -6,6 +6,8 @@ import { getConversation } from "@/actions/conversation";
 import { getBillingSummary } from "@/actions/billing";
 import { Conversation } from "@/components/clients/Conversation";
 import { BillingSummary } from "@/components/clients/BillingSummary";
+import { myPermissions } from "@/lib/org";
+import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,11 @@ export default async function ClientConversationPage({
 }: {
   params: Promise<{ clientId: string }>;
 }) {
+  const perms = await myPermissions();
+  if (!perms.has("clients.health") && !perms.has("org.manage")) {
+    return <NoAccess section="Client health" need="View client health" />;
+  }
+
   const { clientId } = await params;
 
   const { data: client } = await createServiceClient()

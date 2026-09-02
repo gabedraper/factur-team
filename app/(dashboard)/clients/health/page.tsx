@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getClientHealth } from "@/lib/clients/health";
 import { clientScope } from "@/lib/clients/scope";
 import { HealthTable } from "@/components/clients/HealthTable";
+import { myPermissions } from "@/lib/org";
+import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,11 @@ export default async function ClientHealthPage({
 }: {
   searchParams: Promise<{ scope?: string }>;
 }) {
+  const perms = await myPermissions();
+  if (!perms.has("clients.health") && !perms.has("org.manage")) {
+    return <NoAccess section="Client health" need="View client health" />;
+  }
+
   const [clients, scope, params] = await Promise.all([
     getClientHealth(),
     clientScope(),

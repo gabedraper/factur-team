@@ -4,11 +4,15 @@ import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { getNpsQueue, getNpsSettings, getNpsSteps } from "@/actions/nps-sequence";
 import { NpsQueue } from "@/components/nps/NpsQueue";
+import { NoAccess } from "@/components/no-access";
 
 export const dynamic = "force-dynamic";
 
 export default async function NpsSendPage() {
   const perms = await myPermissions();
+  if (!perms.has("clients.health") && !perms.has("org.manage")) {
+    return <NoAccess section="Client health" need="View client health" />;
+  }
   if (!perms.has("nps.send") && !perms.has("org.manage")) redirect("/clients/nps");
 
   const [queue, settings, steps] = await Promise.all([
