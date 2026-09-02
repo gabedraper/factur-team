@@ -45,23 +45,25 @@ export async function POST(request: NextRequest) {
     // Counted before the work, not after. A client whose site hangs the request
     // would otherwise never have its attempt recorded and would be picked again
     // on every run for ever.
+    const attempts = await nextAttempt(client.salesforce_client_id);
     await db.from("client_profile").upsert({
       salesforce_client_id: client.salesforce_client_id,
-      attempts: await nextAttempt(client.salesforce_client_id),
+      attempts,
       website_used: client.website,
+      state: "pending",
     }, { onConflict: "salesforce_client_id" });
 
     const site = await readSite(client.website);
     if (!site.ok) {
       failed.push({ name: client.name, why: site.reason });
-      await note(client.salesforce_client_id, site.reason);
+      await note(client.salesforce_client_id, site.reason, attempts);
       continue;
     }
 
     const read = await extractFromSite({ name: client.name, url: site.url, text: site.text });
     if (!read.ok) {
       failed.push({ name: client.name, why: read.reason });
-      await note(client.salesforce_client_id, read.reason);
+      await note(client.salesforce_client_id, read.reason, attempts);
       continue;
     }
 
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
         model: ENRICH_MODEL,
         enriched_at: new Date().toISOString(),
         attribute_count: 0,
+        state: "no_company",
         error: null,
       }, { onConflict: "salesforce_client_id" });
       done.push({ name: client.name, attributes: 0 });
@@ -112,23 +115,29 @@ export async function POST(request: NextRequest) {
       model: ENRICH_MODEL,
       enriched_at: new Date().toISOString(),
       attribute_count: rows.length,
+      /*
+       * A real company that yielded nothing stays pending rather than done.
+       * It is usually a site that needs a page this does not fetch, and quietly
+       * calling it finished is how 112 clients came to look complete and empty.
+       */
+      state: rows.length > 0 ? "done" : "pending",
       error: null,
     }, { onConflict: "salesforce_client_id" });
 
     done.push({ name: client.name, attributes: rows.length });
   }
 
-  const { count: remaining } = await db
-    .from("client_roster")
+  const { count: finished } = await db
+    .from("client_profile")
     .select("salesforce_client_id", { count: "exact", head: true })
-    .not("website", "is", null);
+    .eq("state", "done");
 
   return NextResponse.json({
     read: done.length,
     failed: failed.length,
     attributesWritten: done.reduce((n, d) => n + d.attributes, 0),
     details: { done, failed },
-    ofAbout: remaining ?? null,
+    doneSoFar: finished ?? null,
   });
 }
 
@@ -139,9 +148,11 @@ async function nextAttempt(id: string): Promise<number> {
   return ((data as { attempts: number } | null)?.attempts ?? 0) + 1;
 }
 
-async function note(id: string, error: string) {
+/** Record a failure, and give up once it has failed enough times. */
+async function note(id: string, error: string, attempts: number) {
   await createServiceClient().from("client_profile").upsert({
     salesforce_client_id: id,
     error: error.slice(0, 300),
+    state: attempts >= 3 ? "failed" : "pending",
   }, { onConflict: "salesforce_client_id" });
 }
