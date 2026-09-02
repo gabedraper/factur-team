@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getClientHealth } from "@/lib/clients/health";
 import { clientScope } from "@/lib/clients/scope";
 import { HealthTable } from "@/components/clients/HealthTable";
+import { terciles } from "@/lib/clients/health-score";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 
@@ -33,6 +34,15 @@ export default async function ClientHealthPage({
   const showAll = scope.canSeeAll && (asked ?? scope.defaultAll);
   const shown = showAll ? clients : clients.filter((c) => scope.mine.has(c.clientId));
 
+  /*
+   * Over every client, before either filter. A client's Client Performance
+   * rank is a fact about the whole book, so it must not move because someone
+   * switched to My Clients or typed in the search box.
+   */
+  const perfBands = terciles(
+    clients.map((c) => c.inputs.find((i) => i.key === "engagement")?.score ?? null),
+  );
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap items-baseline gap-3">
@@ -58,7 +68,7 @@ export default async function ClientHealthPage({
           </div>
         )}
       </div>
-      <HealthTable clients={shown} />
+      <HealthTable clients={shown} perfBands={perfBands} />
     </div>
   );
 }

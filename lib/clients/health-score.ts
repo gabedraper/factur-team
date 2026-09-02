@@ -53,6 +53,20 @@ export type ClientHealth = {
 export const HEALTHY = 70;
 export const AT_RISK = 45;
 
+/**
+ * The two cut points that split scores into thirds.
+ *
+ * Always computed over every client, never over a filtered view: a client's
+ * rank is a fact about the book, and it should not change because someone
+ * narrowed the page to one account manager.
+ */
+export function terciles(scores: (number | null)[]): [number, number] | null {
+  const sorted = scores.filter((s): s is number => s !== null).sort((a, b) => a - b);
+  if (sorted.length < 3) return null;
+  const at = (f: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * f))];
+  return [at(1 / 3), at(2 / 3)];
+}
+
 export function band(score: number | null): "good" | "warning" | "critical" | "unknown" {
   if (score === null) return "unknown";
   if (score >= HEALTHY) return "good";

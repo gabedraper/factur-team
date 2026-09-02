@@ -48,25 +48,14 @@ const PERFORMANCE_BLURB =
   "correspondence.\n\n" +
   "Only the measures a client has data for are averaged, so a client on a " +
   "service that never quotes is judged on the rest rather than marked down.\n\n" +
-  "The colour is a ranking, not a threshold: green is the top third of clients " +
-  "on this page, amber the middle third, red the bottom third. It moves as the " +
-  "filter moves, and half the book being red would mean the book is uneven, " +
-  "not that half the clients are failing.\n\n" +
+  "The colour is a ranking, not a threshold: green is the top third of all " +
+  "clients, amber the middle third, red the bottom third. The ranking is over " +
+  "every client and does not move when you filter or switch to My Clients, so " +
+  "a client's colour means the same thing wherever you see it.\n\n" +
+  "Because it is a curve, a client's colour can change without the client " +
+  "changing -- if others improve, they slide down. The score itself is " +
+  "absolute; only the colour is relative.\n\n" +
   "A dash means nothing has happened yet that any of the five could measure.";
-
-/**
- * Where a score sits against the others on screen.
- *
- * Terciles rather than fixed bands because the number is only meaningful
- * relative to the rest of the book -- and because the five measures behind it
- * do not share a natural scale.
- */
-function terciles(scores: number[]): [number, number] | null {
-  const sorted = scores.filter((s) => s !== null).sort((a, b) => a - b);
-  if (sorted.length < 3) return null;
-  const at = (f: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * f))];
-  return [at(1 / 3), at(2 / 3)];
-}
 
 /** The manual traffic light in Salesforce, as a rough 0-100 to compare against. */
 const MANUAL_AS_SCORE: Record<string, number> = {
@@ -145,7 +134,18 @@ function Score({ value }: { value: number | null }) {
   );
 }
 
-export function HealthTable({ clients }: { clients: ClientHealth[] }) {
+export function HealthTable({
+  clients,
+  perfBands,
+}: {
+  clients: ClientHealth[];
+  /*
+   * Worked out by the page over every client, not here over the ones passed
+   * in: this component only ever receives the scope-filtered list, so ranking
+   * from it would rank an account manager's clients against each other.
+   */
+  perfBands: [number, number] | null;
+}) {
   const [filter, setFilter] = useState("");
   const [letter, setLetter] = useState("All");
   const [onlyDisagreements, setOnlyDisagreements] = useState(false);
@@ -194,15 +194,6 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
 
   const at = (c: ClientHealth, key: string) =>
     c.inputs.find((i) => i.key === key)?.score ?? null;
-
-  /*
-   * Computed from the rows on screen rather than the whole book, so filtering
-   * to one account manager ranks that manager's clients against each other.
-   */
-  const perfBands = useMemo(
-    () => terciles(shown.map((c) => at(c, "engagement")).filter((v): v is number => v !== null)),
-    [shown],
-  );
 
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
