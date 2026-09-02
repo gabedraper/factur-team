@@ -21,6 +21,12 @@ type Row = {
   inputs_measured: number; overall_score: number | null;
 };
 
+type NpsRow = { client_id: string; score: number; collected_on: string };
+
+const npsMonth = new Intl.DateTimeFormat("en-US", {
+  month: "short", year: "numeric", timeZone: "UTC",
+});
+
 type Perf = {
   client_id: string;
   turnaround_days: number | null; turnaround_n: number;
@@ -82,7 +88,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   // with the service key there is no token to read, so it would answer "not a
   // Factur user" and return nothing at all.
   const supabase = await createClient();
-  const [{ data, error }, { data: perf }] = await Promise.all([
+  const [{ data, error }, { data: perf }, { data: nps }] = await Promise.all([
     supabase.rpc("get_client_health"),
     /*
      * The Client Performance detail. Fetched apart rather than widening
@@ -90,12 +96,27 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      * kilobytes of scoring logic to add five display-only columns.
      */
     supabase.from("client_performance_by_client").select("*"),
+    /*
+     * Every NPS response, so the card can show the whole series rather than
+     * the latest and the one before it. Fifteen rows today; one survey per
+     * client so far, and this is what will show a trend once there are more.
+     */
+    supabase.from("client_nps").select("client_id,score,collected_on")
+      .order("collected_on", { ascending: false }),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
 
   const perfByClient = new Map<string, Perf>(
     ((perf ?? []) as Perf[]).map((p) => [p.client_id, p]),
   );
+
+  const npsByClient = new Map<string, { label: string; value: string }[]>();
+  for (const n of (nps ?? []) as NpsRow[]) {
+    const rows = npsByClient.get(n.client_id) ?? [];
+    rows.push({ label: npsMonth.format(new Date(`${n.collected_on}T00:00:00Z`)),
+                value: `${n.score}/10` });
+    npsByClient.set(n.client_id, rows);
+  }
 
   return ((data ?? []) as Row[])
     .map((r) => ({
@@ -135,11 +156,10 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
           key: "nps",
           label: "NPS",
           score: r.nps_score,
-          detail:
-            r.nps_latest === null
-              ? "not surveyed yet"
-              : `${r.nps_latest}/10` +
-                (r.nps_previous === null ? " (first)" : `, was ${r.nps_previous}`),
+          // Every survey, newest first. Blank rather than "not surveyed yet"
+          // when there are none -- an empty card says that already.
+          detail: "",
+          rows: npsByClient.get(r.client_id) ?? [],
         },
         {
           key: "engagement",
