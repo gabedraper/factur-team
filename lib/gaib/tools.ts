@@ -85,6 +85,15 @@ export const READABLE_TABLES: Record<string, string[]> = {
     "client_aliases", "client_nps", "client_quickbooks_links",
   ],
   /*
+   * What a client does, and how they then did. The team's own classification --
+   * 22 values kept by hand -- rather than anything inferred from a name, which
+   * is what an agent falls back on when it does not know this exists, and which
+   * silently misses every client whose name does not announce their trade.
+   */
+  "What clients do, and their results": [
+    "client_roster", "client_monthly_results", "client_cohorts", "client_profiles",
+  ],
+  /*
    * No qb_ or sf_ tables here any more, and none in gaib_query either.
    *
    * The sync drops and recreates them, which takes any policy attached to them
