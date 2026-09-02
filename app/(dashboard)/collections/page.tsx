@@ -3,6 +3,7 @@ import {
   getCollectionsBoard, getCollectionsSettings, getCollectionsVisibility,
 } from "@/actions/collections";
 import { Board } from "@/components/collections/Board";
+import { clientDomains } from "@/lib/org";
 
 export const dynamic = "force-dynamic";
 
@@ -38,15 +39,16 @@ export default async function CollectionsPage({
   const scope: "mine" | "all" =
     asked === "mine" ? "mine" : asked === "all" ? "all" : visibility.can_see_all ? "all" : "mine";
 
-  const [rows, settings] = await Promise.all([
+  const [rows, domains, settings] = await Promise.all([
     getCollectionsBoard(scope),
+    clientDomains(),
     getCollectionsSettings(),
   ]);
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
       <h1 className="text-xl font-semibold">Collections</h1>
-      <Board rows={rows} settings={settings} visibility={visibility} scope={scope} />
+      <Board rows={rows} settings={settings} visibility={visibility} scope={scope} domains={domains} />
     </div>
   );
 }

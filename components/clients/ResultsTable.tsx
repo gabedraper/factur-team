@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { HEADLINE_LABEL, type ClientResult } from "@/lib/clients/result-metrics";
+import { CompanyLogo } from "@/components/ui/thumbnail";
 
 const nf = new Intl.NumberFormat("en-US");
 const money = new Intl.NumberFormat("en-US", {
@@ -119,7 +120,14 @@ const HINTS: Record<string, string> = {
     "Blank for clients whose early months predate the opportunity data.",
 };
 
-export function ResultsTable({ clients }: { clients: ClientResult[] }) {
+export function ResultsTable({
+  clients,
+  domains,
+}: {
+  clients: ClientResult[];
+  /** Client id to email domain, for the company logo. */
+  domains?: Record<string, string>;
+}) {
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState("");
   const [service, setService] = useState("");
@@ -299,7 +307,11 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
             {sorted.map((c) => (
               <tr key={c.id} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2">
-                  <Link href={`/clients/results/${c.id}`} className="hover:underline">
+                  <Link
+                    href={`/clients/results/${c.id}`}
+                    className="flex items-center gap-2 hover:underline"
+                  >
+                    <CompanyLogo name={c.name} domain={domains?.[c.id]} size={20} />
                     {c.name}
                   </Link>
                 </td>

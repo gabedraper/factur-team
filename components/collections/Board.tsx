@@ -11,6 +11,7 @@ import { FIELD } from "@/lib/field-class";
 import { AGEING_TONE } from "@/lib/ageing-colours";
 import { PauseCircle, PlayCircle, Send, FileText, FlaskConical } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
+import { CompanyLogo } from "@/components/ui/thumbnail";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -70,12 +71,14 @@ const SETTABLE = [
 ] as const;
 
 export function Board({
-  rows, settings, visibility, scope,
+  rows, settings, visibility, scope, domains,
 }: {
   rows: BoardChase[];
   settings: Settings;
   visibility: Visibility;
   scope: "mine" | "all";
+  /** Client id to email domain, for the company logo. */
+  domains?: Record<string, string>;
 }) {
   const router = useRouter();
   const [board, setBoard] = useState(rows);
@@ -329,19 +332,26 @@ export function Board({
             <div className={`${COLS} px-3 py-2 text-sm`}>
               {/* Truncated rather than wrapped: a long name must not push the
                   money out of line with the row above it. */}
-              <div className="min-w-0 truncate" title={r.client_name}>
-                {r.client_id ? (
-                  <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
-                    {r.client_name}
-                  </Link>
-                ) : (
-                  <span className="font-medium">{r.client_name}</span>
-                )}
-                {r.matched && r.client_active === false && (
-                  <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    inactive client
-                  </span>
-                )}
+              <div className="flex min-w-0 items-center gap-2" title={r.client_name}>
+                <CompanyLogo
+                  name={r.client_name}
+                  domain={r.client_id ? domains?.[r.client_id] : null}
+                  size={20}
+                />
+                <span className="min-w-0 truncate">
+                  {r.client_id ? (
+                    <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
+                      {r.client_name}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{r.client_name}</span>
+                  )}
+                  {r.matched && r.client_active === false && (
+                    <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      inactive client
+                    </span>
+                  )}
+                </span>
                 {!r.matched && (
                   <Link
                     href="/settings/quickbooks"

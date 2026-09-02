@@ -108,25 +108,34 @@ export function logoSrcFor(domain: string, size: number): string {
 export function CompanyLogo({
   name,
   domain,
+  src,
   size = 24,
   className = "",
 }: {
   name: string;
   /** The company's email or web domain. Without one there is nothing to ask for. */
   domain?: string | null;
+  /*
+   * A logo somebody has actually put on the record.
+   *
+   * Wins over the domain lookup: a chosen logo is a decision, and a guessed
+   * favicon should never quietly override it.
+   */
+  src?: string | null;
   size?: number;
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
+  const chosen = src || (domain ? logoSrcFor(domain, size) : null);
 
-  if (!domain || broken) {
+  if (!chosen || broken) {
     return <Fallback label={name} size={size} rounded="rounded-md" />;
   }
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={logoSrcFor(domain, size)}
+      src={chosen}
       alt=""
       width={size}
       height={size}

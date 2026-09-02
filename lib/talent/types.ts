@@ -275,6 +275,8 @@ export type Company = {
   id: Id;
   name: string;
   domain: string | null;
+  /** A logo put on the record by hand; preferred over one guessed from the domain. */
+  logo_url: string | null;
   website: string | null;
   linkedin_url: string | null;
   description: string | null;

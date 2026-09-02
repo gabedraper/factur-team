@@ -260,13 +260,31 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
     leadsByClient.set(m.client_id, rows);
   }
 
-  const monthsByClient = new Map<string, { label: string; value: string; href: string }[]>();
-  for (const m of (months ?? []) as MonthRow[]) {
+  /*
+   * Activity ranked the same way leads are: each month against the same month
+   * for every other client, so a quiet August is judged against everyone
+   * else's August rather than against a busy March.
+   */
+  const activityRows = (months ?? []) as MonthRow[];
+  const activityBandsByMonth = new Map<string, [number, number] | null>();
+  for (const m of activityRows) {
+    if (activityBandsByMonth.has(m.month_start)) continue;
+    activityBandsByMonth.set(
+      m.month_start,
+      terciles(
+        activityRows.filter((x) => x.month_start === m.month_start).map((x) => x.activities),
+      ),
+    );
+  }
+
+  const monthsByClient = new Map<string, NonNullable<ClientHealth["inputs"][number]["rows"]>>();
+  for (const m of activityRows) {
     const rows = monthsByClient.get(m.client_id) ?? [];
     rows.push({
       label: npsMonth.format(new Date(`${m.month_start}T00:00:00Z`)),
       value: nf.format(m.activities),
       href: `/clients/${m.client_id}/activities?month=${m.month_start.slice(0, 7)}`,
+      tone: toneFor(m.activities, activityBandsByMonth.get(m.month_start) ?? null),
     });
     monthsByClient.set(m.client_id, rows);
   }

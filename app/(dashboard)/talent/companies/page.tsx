@@ -6,6 +6,7 @@ import { Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
 import { Button } from "@/components/ui/button";
 import { ago, place } from "@/lib/talent/format";
 import { COMPANY_KIND, label } from "@/lib/talent/types";
+import { CompanyLogo } from "@/components/ui/thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,11 @@ export default async function CompaniesPage({
               {companies.map((c) => (
                 <tr key={c.id} className="hover:bg-accent/40">
                   <td className="px-4 py-2.5">
-                    <Link href={`/talent/companies/${c.id}`} className="font-medium hover:underline">
+                    <Link
+                      href={`/talent/companies/${c.id}`}
+                      className="flex items-center gap-2 font-medium hover:underline"
+                    >
+                      <CompanyLogo name={c.name} domain={c.domain} src={c.logo_url} size={20} />
                       {c.name}
                     </Link>
                     <div className="mt-0.5 flex items-center gap-1.5">
