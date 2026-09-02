@@ -43,6 +43,22 @@ function Tags({ label, items }: { label: string; items: string[] }) {
   );
 }
 
+/*
+ * The same definitions the list page shows on hover, kept here too: this table
+ * is the one people screenshot for a client conversation, and "quotes" needs to
+ * mean the same thing in both places.
+ */
+const HINTS = {
+  month: "Month of the engagement. 1 is the client's first month.",
+  calendar: "The calendar month that month number fell in.",
+  leads: "Opportunities handed to the client, counted in the month they were created.",
+  appts: "Opportunities that reached an appointment stage. Counted strictly.",
+  quotes: "Opportunities that reached a quoting stage, or were won. Excludes No Quote.",
+  pos: "Opportunities marked Closed Won.",
+  quoteValue: "Sum of Total Quote Amount, where Salesforce has it.",
+  poValue: "Sum of PO Amount. Blank on most POs, so it is a floor, not the true total.",
+};
+
 /** One service's months. The headline column is tinted; the rest sit beside it. */
 function ServiceTable({ series }: { series: ServiceSeries }) {
   const headline = series.headline;
@@ -79,14 +95,14 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              <th className="px-3 py-2 font-medium">Month</th>
-              <th className="px-3 py-2 font-medium">Calendar</th>
-              <th className="px-3 py-2 font-medium">Leads</th>
-              <th className="px-3 py-2 font-medium">Appts</th>
-              <th className="px-3 py-2 font-medium">Quotes</th>
-              <th className="px-3 py-2 font-medium">POs</th>
-              <th className="px-3 py-2 font-medium">Quote value</th>
-              <th className="px-3 py-2 font-medium">PO value</th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.month}>Month</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.calendar}>Calendar</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.leads}>Leads</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.appts}>Appts</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.quotes}>Quotes</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.pos}>POs</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.quoteValue}>Quote value</span></th>
+              <th className="px-3 py-2 font-medium"><span title={HINTS.poValue}>PO value</span></th>
               <th className="w-28 px-3 py-2" />
             </tr>
           </thead>

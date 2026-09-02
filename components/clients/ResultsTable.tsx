@@ -52,6 +52,61 @@ function Select({
   );
 }
 
+/*
+ * What each column is, on hover.
+ *
+ * These numbers are derived from Salesforce opportunity stages rather than read
+ * off a field, so the definitions are judgement calls and nobody should have to
+ * find this file to learn what one means. Same `title` treatment the AR column
+ * on Client Health uses.
+ */
+const HINTS: Record<string, string> = {
+  client: "The client record in Salesforce. Click through for their month-by-month history.",
+
+  status: "Client Status in Salesforce: Active, Onboarding, Inactive, Hold or Financial Pause.",
+
+  service: "Which services we actually delivered, in the order they took them.\n\n" +
+    "Read from the Service tag on each opportunity, not from the client record \u2014 " +
+    "the client record holds one value and cannot show an upgrade.",
+
+  work: "Type of Work in Salesforce, a 22-value list your team maintains.\n\n" +
+    "Italic means it was read from the client's website because Salesforce had no value.",
+
+  size: "Headcount band from the employee count on the linked Salesforce Account.\n\n" +
+    "Under 10, 10\u201349, 50\u2013249, 250+. Italic means it was estimated from the website.",
+
+  since: "Client Since in Salesforce. This is month 1, which is what makes one " +
+    "client's first quarter comparable to another's.",
+
+  months: "Months that produced at least one result \u2014 not months since they started.\n\n" +
+    "A client averages about 5 quiet months that are not counted here, so this " +
+    "runs shorter than the calendar.",
+
+  leads: "Every opportunity handed to the client, counted in the month it was created.\n\n" +
+    "That is the month the lead was delivered. An opportunity that later became a " +
+    "quote or a PO still counts as a lead here, in its own month.",
+
+  appointments: "Opportunities that reached an appointment stage.\n\n" +
+    "Counted strictly: a quote with no recorded appointment stage is not counted, " +
+    "so this understates OSDR work rather than guessing.",
+
+  quotes: "Opportunities that reached a quoting stage, or that were won \u2014 " +
+    "you cannot win without quoting.\n\n" +
+    "Excludes anything closed as No Quote.",
+
+  pos: "Opportunities marked Closed Won.",
+
+  poAmount: "Sum of PO Amount on won opportunities.\n\n" +
+    "Salesforce leaves this blank on most POs, so it is a floor, not the true total. " +
+    "A dash next to a PO count means the amount was never filled in.",
+
+  perMonth: "Total leads divided by months that produced results.\n\n" +
+    "The one figure that compares a three-month client with a three-year one.",
+
+  first3: "Leads delivered in the client's first three months.\n\n" +
+    "Blank for clients whose early months predate the opportunity data.",
+};
+
 export function ResultsTable({ clients }: { clients: ClientResult[] }) {
   const [term, setTerm] = useState("");
   const [status, setStatus] = useState("");
@@ -168,20 +223,20 @@ export function ResultsTable({ clients }: { clients: ClientResult[] }) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              <SortHeader {...sortProps("name")}>Client</SortHeader>
-              <SortHeader {...sortProps("status")}>Status</SortHeader>
-              <SortHeader {...sortProps("service")}>Service</SortHeader>
-              <SortHeader {...sortProps("work")}>Type of work</SortHeader>
-              <SortHeader {...sortProps("size")}>Size</SortHeader>
-              <SortHeader {...sortProps("since")}>Started</SortHeader>
-              <SortHeader {...sortProps("months")}>Months</SortHeader>
-              <SortHeader {...sortProps("leads")}>Leads</SortHeader>
-              <SortHeader {...sortProps("appointments")}>Appts</SortHeader>
-              <SortHeader {...sortProps("quotes")}>Quotes</SortHeader>
-              <SortHeader {...sortProps("pos")}>POs</SortHeader>
-              <SortHeader {...sortProps("poAmount")}>PO value</SortHeader>
-              <SortHeader {...sortProps("perMonth")}>Leads / mo</SortHeader>
-              <SortHeader {...sortProps("first3")}>First 3 mo</SortHeader>
+              <SortHeader {...sortProps("name")}><span title={HINTS.client}>Client</span></SortHeader>
+              <SortHeader {...sortProps("status")}><span title={HINTS.status}>Status</span></SortHeader>
+              <SortHeader {...sortProps("service")}><span title={HINTS.service}>Service</span></SortHeader>
+              <SortHeader {...sortProps("work")}><span title={HINTS.work}>Type of work</span></SortHeader>
+              <SortHeader {...sortProps("size")}><span title={HINTS.size}>Size</span></SortHeader>
+              <SortHeader {...sortProps("since")}><span title={HINTS.since}>Started</span></SortHeader>
+              <SortHeader {...sortProps("months")}><span title={HINTS.months}>Months</span></SortHeader>
+              <SortHeader {...sortProps("leads")}><span title={HINTS.leads}>Leads</span></SortHeader>
+              <SortHeader {...sortProps("appointments")}><span title={HINTS.appointments}>Appts</span></SortHeader>
+              <SortHeader {...sortProps("quotes")}><span title={HINTS.quotes}>Quotes</span></SortHeader>
+              <SortHeader {...sortProps("pos")}><span title={HINTS.pos}>POs</span></SortHeader>
+              <SortHeader {...sortProps("poAmount")}><span title={HINTS.poAmount}>PO value</span></SortHeader>
+              <SortHeader {...sortProps("perMonth")}><span title={HINTS.perMonth}>Leads / mo</span></SortHeader>
+              <SortHeader {...sortProps("first3")}><span title={HINTS.first3}>First 3 mo</span></SortHeader>
             </tr>
           </thead>
           <tbody>
