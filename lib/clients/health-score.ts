@@ -19,6 +19,15 @@ export type HealthInput = {
   detail: string;
 };
 
+/** The A/R ageing as the report splits it, for the card that shows it. */
+export type Ageing = {
+  current: number;
+  b1_30: number;
+  b31_60: number;
+  b61_90: number;
+  b91_plus: number;
+};
+
 export type ClientHealth = {
   clientId: string;
   name: string;
@@ -29,6 +38,9 @@ export type ClientHealth = {
   overall: number | null;
   inputsMeasured: number;
   inputs: HealthInput[];
+  /** Null where QuickBooks has no receivables record for them. */
+  ageing: Ageing | null;
+  collectionsStage: string | null;
 };
 
 /** Green above this, amber above the next, red below. */

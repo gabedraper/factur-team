@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { band, type ClientHealth } from "@/lib/clients/health-score";
+import { AGEING_TONE } from "@/lib/ageing-colours";
 
 const BAND_CLASS: Record<string, string> = {
   good: "text-emerald-600 dark:text-emerald-400",
@@ -36,6 +37,53 @@ const AR_BLURB =
 const MANUAL_AS_SCORE: Record<string, number> = {
   Green: 85, Blue: 85, Yellow: 55, Red: 20, Black: 10,
 };
+
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency", currency: "USD", maximumFractionDigits: 0,
+});
+
+/** The same colours and the same five columns as the collections board. */
+const STAGE_TONE: Record<string, string> = {
+  Current: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  "Past Due": "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  "Service Paused": "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
+  "Sent to Collections": "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
+};
+
+function Ageing({ c }: { c: ClientHealth }) {
+  if (!c.ageing) return null;
+  const rows: [string, number, string][] = [
+    ["Current", c.ageing.current, AGEING_TONE.current],
+    ["1 – 30", c.ageing.b1_30, AGEING_TONE.b1_30],
+    ["31 – 60", c.ageing.b31_60, AGEING_TONE.b31_60],
+    ["61 – 90", c.ageing.b61_90, AGEING_TONE.b61_90],
+    ["91+", c.ageing.b91_plus, AGEING_TONE.b91_plus],
+  ];
+
+  return (
+    <div className="mt-2 space-y-1">
+      {c.collectionsStage && (
+        <span
+          className={`inline-block rounded-full px-2 py-0.5 text-[11px] ${
+            STAGE_TONE[c.collectionsStage] ?? ""
+          }`}
+        >
+          {c.collectionsStage}
+        </span>
+      )}
+      <div className="space-y-0.5">
+        {rows.map(([label, amount, tone]) => (
+          <div key={label} className="flex justify-between gap-2 text-xs">
+            <span className="text-muted-foreground">{label}</span>
+            <span className={`tabular-nums ${amount > 0 ? tone : "text-muted-foreground"}`}>
+              {money.format(amount)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Score({ value }: { value: number | null }) {
   return (
@@ -219,14 +267,19 @@ export function HealthTable({ clients }: { clients: ClientHealth[] }) {
                             >
                               <Score value={i.score} />
                             </div>
-                            <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
+                            {i.detail && (
+                              <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
+                            )}
                             {i.key === "receivables" && (
-                              <Link
-                                href={`/clients/${c.clientId}`}
-                                className="mt-2 inline-block text-xs underline"
-                              >
-                                Payment History
-                              </Link>
+                              <>
+                                <Ageing c={c} />
+                                <Link
+                                  href={`/clients/${c.clientId}`}
+                                  className="mt-2 inline-block text-xs underline"
+                                >
+                                  Payment History
+                                </Link>
+                              </>
                             )}
                           </div>
                         ))}
