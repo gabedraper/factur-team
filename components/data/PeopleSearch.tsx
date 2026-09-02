@@ -15,10 +15,15 @@ export function PeopleSearch({ clients }: { clients: ClientOption[] }) {
   const [query, setQuery] = useState("");
   const [letter, setLetter] = useState<string | null>(null);
   const [results, setResults] = useState<ContactMatch[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const [searching, start] = useTransition();
 
   function run(q: string, l: string | null) {
-    start(async () => setResults(await searchCrmContacts(q, l)));
+    start(async () => {
+      const { results, total } = await searchCrmContacts(q, l);
+      setResults(results);
+      setTotal(total);
+    });
   }
 
   useEffect(() => { run("", null); }, []);
@@ -32,6 +37,9 @@ export function PeopleSearch({ clients }: { clients: ClientOption[] }) {
         className="max-w-sm"
       />
       <AlphaFilter active={letter} onSelect={(l) => { setLetter(l); setQuery(""); run("", l); }} />
+      {total !== null && !searching && (
+        <p className="text-xs text-muted-foreground">{total} {total === 1 ? "person" : "people"} match</p>
+      )}
       <Panel>
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No one matches."}</Empty>

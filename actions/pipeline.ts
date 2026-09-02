@@ -167,7 +167,10 @@ export type ContactMatch = {
  * itself) and the /data/people directory, where an empty query means browse
  * rather than search.
  */
-export async function searchCrmContacts(query: string, letter?: string | null): Promise<ContactMatch[]> {
+export async function searchCrmContacts(
+  query: string,
+  letter?: string | null
+): Promise<{ results: ContactMatch[]; total: number }> {
   await assertPipeline("view");
   // PostgREST's .or() reads commas/parens as filter syntax, not literal text --
   // stripped here so a name typed as "Smith, John" searches instead of erroring.
@@ -176,16 +179,16 @@ export async function searchCrmContacts(query: string, letter?: string | null): 
   const supabase = await createClient();
   let sel = supabase
     .from("crm_contacts")
-    .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)");
+    .select("id,first_name,last_name,title,email,account_id,crm_accounts(name)", { count: "exact" });
   if (letter) {
     sel = sel.ilike("last_name", `${letter}%`);
   } else if (q.length >= 2) {
     sel = sel.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`);
   }
-  const { data, error } = await sel.order("last_name", { ascending: true, nullsFirst: false }).limit(50);
+  const { data, count, error } = await sel.order("last_name", { ascending: true, nullsFirst: false }).limit(50);
   if (error) throw new Error(`Could not search contacts: ${error.message}`);
 
-  return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+  const results = (data as unknown as Array<Record<string, unknown>>).map((r) => ({
     id: r.id as string,
     first_name: r.first_name as string | null,
     last_name: r.last_name as string | null,
@@ -194,6 +197,7 @@ export async function searchCrmContacts(query: string, letter?: string | null): 
     account_id: r.account_id as string | null,
     account_name: (r.crm_accounts as { name: string } | null)?.name ?? null,
   }));
+  return { results, total: count ?? results.length };
 }
 
 export type AccountMatch = {
@@ -206,21 +210,25 @@ export type AccountMatch = {
 };
 
 /** The /data/companies directory. Same empty-query-browses shape as searchCrmContacts. */
-export async function searchCrmAccounts(query: string, letter?: string | null): Promise<AccountMatch[]> {
+export async function searchCrmAccounts(
+  query: string,
+  letter?: string | null
+): Promise<{ results: AccountMatch[]; total: number }> {
   await assertPipeline("view");
   const q = query.trim().replace(/[,()]/g, " ").trim();
 
   const supabase = await createClient();
-  let sel = supabase.from("crm_accounts").select("id,name,domain,industry,city,state");
+  let sel = supabase.from("crm_accounts").select("id,name,domain,industry,city,state", { count: "exact" });
   if (letter) {
     sel = sel.ilike("name", `${letter}%`);
   } else if (q.length >= 2) {
     sel = sel.or(`name.ilike.%${q}%,domain.ilike.%${q}%`);
   }
-  const { data, error } = await sel.order("name").limit(50);
+  const { data, count, error } = await sel.order("name").limit(50);
   if (error) throw new Error(`Could not search companies: ${error.message}`);
 
-  return data as unknown as AccountMatch[];
+  const results = data as unknown as AccountMatch[];
+  return { results, total: count ?? results.length };
 }
 
 export async function logOpportunityActivity(input: {

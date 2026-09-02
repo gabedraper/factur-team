@@ -9,10 +9,15 @@ export function CompaniesSearch() {
   const [query, setQuery] = useState("");
   const [letter, setLetter] = useState<string | null>(null);
   const [results, setResults] = useState<AccountMatch[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const [searching, start] = useTransition();
 
   function run(q: string, l: string | null) {
-    start(async () => setResults(await searchCrmAccounts(q, l)));
+    start(async () => {
+      const { results, total } = await searchCrmAccounts(q, l);
+      setResults(results);
+      setTotal(total);
+    });
   }
 
   useEffect(() => { run("", null); }, []);
@@ -26,6 +31,9 @@ export function CompaniesSearch() {
         className="max-w-sm"
       />
       <AlphaFilter active={letter} onSelect={(l) => { setLetter(l); setQuery(""); run("", l); }} />
+      {total !== null && !searching && (
+        <p className="text-xs text-muted-foreground">{total} {total === 1 ? "company" : "companies"} match</p>
+      )}
       <Panel>
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No companies match."}</Empty>

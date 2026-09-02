@@ -53,7 +53,7 @@ export function NewOpportunityDialog({
     if (value.trim().length < 2) { setResults([]); return; }
     startSearch(async () => {
       try {
-        setResults(await searchCrmContacts(value));
+        setResults((await searchCrmContacts(value)).results);
       } catch {
         setResults([]);
       }

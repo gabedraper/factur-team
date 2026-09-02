@@ -16,6 +16,24 @@ const dayLabel = new Intl.DateTimeFormat("en-US", {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+/*
+ * The stages that count as a lead delivered to the client, matching
+ * refresh_client_lead_months() and the Client Results loader.
+ *
+ * Everything else on this page is a prospect still being worked -- LT Follow
+ * Up, Warm, Hot -- which is real prospecting but is not a lead handed over.
+ * They are listed rather than hidden, and marked, because "20 listed, 1
+ * counted" invites exactly the question this column answers.
+ */
+const DELIVERED = new Set([
+  "Lead Generated", "Lead Generated: Scheduled", "Pipeline Hot: Appointment set",
+  "Pipeline Hot: Quoting", "Pipeline Hot: Quote Follow up",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Supplier forms / NDA",
+  "Pipeline - Selling", "Closed: Closed Won", "Closed: Closed Lost",
+  "Closed: No Quote", "Sales Support", "Appointment Set", "Proposal",
+  "Needs Analysis",
+]);
+
 /**
  * The leads behind one month of the Lead Flow card.
  *
@@ -89,8 +107,8 @@ export default async function ClientLeadsPage({
           </span>
         </h1>
         <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-          {leads.length.toLocaleString()} listed
-          {expected !== null && expected !== leads.length && ` · ${expected} counted on the card`}
+          {leads.length.toLocaleString()} opportunities ·{" "}
+          {leads.filter((l) => DELIVERED.has(l.stagename)).length} counted as leads
         </p>
       </div>
 
@@ -103,6 +121,7 @@ export default async function ClientLeadsPage({
               <th className="px-3 py-2 font-medium">Company</th>
               <th className="px-3 py-2 font-medium">Contact</th>
               <th className="px-3 py-2 font-medium">Stage</th>
+              <th className="px-3 py-2 font-medium">Counted</th>
               <th className="px-3 py-2 font-medium">Owner</th>
             </tr>
           </thead>
@@ -113,22 +132,29 @@ export default async function ClientLeadsPage({
                   {dayLabel.format(new Date(l.createddate))}
                 </td>
                 <td className="max-w-xs truncate px-3 py-1.5" title={l.name ?? ""}>
-                  {l.name ?? "—"}
+                  {l.name ?? ""}
                 </td>
-                <td className="max-w-xs truncate px-3 py-1.5">{l.account_name ?? "—"}</td>
+                <td className="max-w-xs truncate px-3 py-1.5">{l.account_name ?? ""}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">
-                  {l.account_contact_name__c ?? "—"}
+                  {l.account_contact_name__c ?? ""}
                   {l.contact_title__c ? `, ${l.contact_title__c}` : ""}
                 </td>
-                <td className="whitespace-nowrap px-3 py-1.5">{l.stagename ?? "—"}</td>
+                <td className="whitespace-nowrap px-3 py-1.5">{l.stagename ?? ""}</td>
+                <td className="whitespace-nowrap px-3 py-1.5">
+                  {DELIVERED.has(l.stagename) ? (
+                    <span className="text-emerald-600 dark:text-emerald-400">Counted</span>
+                  ) : (
+                    <span className="text-muted-foreground">Still prospecting</span>
+                  )}
+                </td>
                 <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">
-                  {l.owner_name ?? "—"}
+                  {l.owner_name ?? ""}
                 </td>
               </tr>
             ))}
             {!leads.length && (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-muted-foreground">
+                <td colSpan={7} className="px-3 py-4 text-muted-foreground">
                   {expected
                     ? `${expected} leads are counted for this month, but the lead sync does not cover this client, so the individual records are not here.`
                     : "No leads recorded for this month."}
