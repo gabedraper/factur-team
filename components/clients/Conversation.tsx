@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
-import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning } from "lucide-react";
+import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -37,6 +37,7 @@ function Icon({ entry }: { entry: ConversationEntry }) {
   if (entry.kind === "invoice") return <FileText className={cls} />;
   if (entry.kind === "payment") return <CircleDollarSign className={cls} />;
   if (entry.kind === "gap") return <AlertTriangle className={cls} />;
+  if (entry.kind === "note") return <StickyNote className={cls} />;
   if (entry.kind === "collections" || entry.kind === "collections_upcoming")
     return <MailWarning className={cls} />;
   if (entry.source === "google_chat") return <MessageSquare className={cls} />;
@@ -111,6 +112,23 @@ export function Conversation({ entries }: { entries: ConversationEntry[] }) {
                   {e.service_month ? monthName(e.service_month) : "this month"}
                   {e.service_month && <> {e.service_month.slice(0, 4)}</>}
                 </span>
+              </div>
+            </div>
+          );
+        }
+
+        // A note somebody wrote here, inset like the rest of the internal talk.
+        if (e.kind === "note") {
+          return (
+            <div key={key} className="flex justify-center">
+              <div className="max-w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <Icon entry={e} />
+                  <span className="font-medium text-foreground">{e.author}</span>
+                  <span className="italic">note</span>
+                  <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
+                </div>
+                <div className="mt-0.5 whitespace-pre-wrap text-sm">{e.preview}</div>
               </div>
             </div>
           );

@@ -4,8 +4,10 @@ import { ChevronLeft } from "lucide-react";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getConversation } from "@/actions/conversation";
 import { getBillingSummary } from "@/actions/billing";
+import { getClientNotes } from "@/actions/client-notes";
 import { Conversation } from "@/components/clients/Conversation";
 import { BillingSummary } from "@/components/clients/BillingSummary";
+import { Notes } from "@/components/clients/Notes";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 
@@ -31,9 +33,10 @@ export default async function ClientConversationPage({
 
   if (!client) notFound();
 
-  const [entries, billing] = await Promise.all([
+  const [entries, billing, notes] = await Promise.all([
     getConversation(clientId),
     getBillingSummary(clientId),
+    getClientNotes(clientId),
   ]);
 
   return (
@@ -45,6 +48,7 @@ export default async function ClientConversationPage({
         <h1 className="mt-1 text-xl font-semibold">{(client as { name: string }).name}</h1>
       </div>
       {billing && <BillingSummary summary={billing} />}
+      <Notes clientId={clientId} notes={notes} />
       <Conversation entries={entries} />
     </div>
   );
