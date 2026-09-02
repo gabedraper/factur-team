@@ -24,6 +24,8 @@ import {
   emptyCounts,
   type Bucket,
 } from "@/lib/scoreboard/activity-buckets";
+import { Avatar } from "@/components/ui/thumbnail";
+import { repAvatars } from "@/lib/org";
 
 type RepAgg = {
   rep_id: string;
@@ -48,7 +50,7 @@ export default async function HustlePointsPage(
 
   const supabase = await createClient();
   const viewerRepId = await getViewerRepId(supabase);
-  const [{ data, error }, { data: weights }, { data: repsRows }] =
+  const [{ data, error }, { data: weights }, { data: repsRows }, avatars] =
     await Promise.all([
       supabase.rpc("get_hustle_leaderboard_by_source", { p_start: start, p_end: end }),
       supabase
@@ -58,6 +60,7 @@ export default async function HustlePointsPage(
         .from("reps")
         .select("id, display_name, salesforce_owner_id, manager_salesforce_id, manager_rep_id")
         .eq("active", true),
+      repAvatars(),
     ]);
   const sortedWeights = sortByEffortCategory(weights ?? []);
 
@@ -213,6 +216,15 @@ export default async function HustlePointsPage(
                 className="group relative flex items-center gap-4 py-3"
               >
                 <span className="w-6 text-sm text-slate-500">{i + 1}</span>
+                {/* Never on a masked row: a face names somebody just as well
+                    as their name does, and would undo the masking entirely. */}
+                {!maskRow && (
+                  <Avatar
+                    name={rep.display_name}
+                    src={avatars[rep.rep_id]}
+                    size={28}
+                  />
+                )}
                 <span className="flex-1 text-sm">
                   {maskRow ? (
                     <MaskedName />

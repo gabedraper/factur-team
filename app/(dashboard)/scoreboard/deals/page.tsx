@@ -12,6 +12,8 @@ import { MaskedName } from "@/components/scoreboard/MaskedName";
 import { MaskedBlurb } from "@/components/scoreboard/MaskedBlurb";
 import { BOARD_MASKING } from "@/lib/scoreboard/verification-mode";
 import { getViewerRepId } from "@/lib/scoreboard/viewer";
+import { Avatar } from "@/components/ui/thumbnail";
+import { repAvatars } from "@/lib/org";
 
 const DEAL_TYPES = ["New Client Deal", "New Customer PO"] as const;
 
@@ -38,7 +40,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
 
   const supabase = await createClient();
   const viewerRepId = await getViewerRepId(supabase);
-  const [{ data, error }, { data: detail }, { data: repsRows }] = await Promise.all([
+  const [{ data, error }, { data: detail }, { data: repsRows }, avatars] = await Promise.all([
     supabase
       .from("deals_leaderboard")
       .select("rep_id, display_name, deal_type, points")
@@ -56,6 +58,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
       .from("reps")
       .select("id, display_name, salesforce_owner_id, manager_salesforce_id, manager_rep_id")
       .eq("active", true),
+    repAvatars(),
   ]);
 
   const totals = new Map<string, RepAgg>();
@@ -180,6 +183,11 @@ export default async function DealsPage(props: ScoreboardPageProps) {
             )}
             <li className="group relative flex items-center gap-4 py-3">
               <span className="w-6 text-sm text-slate-500">{i + 1}</span>
+              {/* Never on a masked row -- a face names somebody as well as
+                  their name does. */}
+              {!maskRow && (
+                <Avatar name={rep.display_name} src={avatars[rep.rep_id]} size={28} />
+              )}
               <span className="flex-1 text-sm">
                 {maskRow ? (
                   <MaskedName />

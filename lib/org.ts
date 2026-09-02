@@ -224,6 +224,41 @@ export async function clientDomains(): Promise<Record<string, string>> {
   return out;
 }
 
+/**
+ * Scoreboard rep id to profile photo.
+ *
+ * The scoreboards key people on rep_id, which comes from Salesforce, while the
+ * photo hangs off the profile created when somebody signs in. org_members is
+ * the only thing joining the two, and only for the thirty-five reps who are
+ * also staff here -- the rest are Salesforce users with no login, and they
+ * show initials.
+ */
+export async function repAvatars(): Promise<Record<string, string>> {
+  const db = createServiceClient();
+
+  /*
+   * Two reads rather than an embedded join: org_members points at auth.users,
+   * and profiles points at auth.users, but nothing points org_members at
+   * profiles -- so there is no foreign key for PostgREST to travel along, and
+   * asking it to would return nothing at all rather than an error.
+   */
+  const [{ data: members }, { data: people }] = await Promise.all([
+    db.from("org_members").select("rep_id, auth_user_id").not("rep_id", "is", null),
+    db.from("profiles").select("id, avatar_url").not("avatar_url", "is", null),
+  ]);
+
+  const photoByUser = new Map(
+    ((people ?? []) as { id: string; avatar_url: string }[]).map((p) => [p.id, p.avatar_url])
+  );
+
+  const out: Record<string, string> = {};
+  for (const m of (members ?? []) as { rep_id: string; auth_user_id: string | null }[]) {
+    const photo = m.auth_user_id ? photoByUser.get(m.auth_user_id) : undefined;
+    if (photo) out[m.rep_id] = photo;
+  }
+  return out;
+}
+
 export type ClientRow = {
   id: string; salesforce_client_id: string | null; name: string;
   status: string | null;

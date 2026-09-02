@@ -17,6 +17,8 @@ import { MaskedBlurb } from "@/components/scoreboard/MaskedBlurb";
 import { BOARD_MASKING } from "@/lib/scoreboard/verification-mode";
 import { getViewerRepId } from "@/lib/scoreboard/viewer";
 import { companyAverageSplit } from "@/lib/scoreboard/leaderboard-average";
+import { Avatar } from "@/components/ui/thumbnail";
+import { repAvatars } from "@/lib/org";
 
 const MIN_OPPORTUNITIES_TO_RANK = 5;
 const RETENTION_DEAL_TYPES = ["Renewed Client", "Lost Client", "Early Terminated Client"] as const;
@@ -36,9 +38,22 @@ type RepStats = {
   team?: { display_name: string; renewalPct: number | null; total: number }[];
 };
 
-function StatsRow({ rep, maskRow }: { rep: RepStats; maskRow: boolean }) {
+function StatsRow({
+  rep,
+  maskRow,
+  avatars,
+}: {
+  rep: RepStats;
+  maskRow: boolean;
+  avatars: Record<string, string>;
+}) {
   return (
     <div className="group relative flex items-center gap-4 py-3">
+      {/* Never on a masked row -- a face names somebody as well as their
+          name does. */}
+      {!maskRow && (
+        <Avatar name={rep.display_name} src={avatars[rep.rep_id]} size={28} />
+      )}
       <span className="flex-1 text-sm">
         {maskRow ? (
           <MaskedName />
@@ -86,7 +101,7 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
 
   const supabase = await createClient();
   const viewerRepId = await getViewerRepId(supabase);
-  const [{ data, error }, { data: detail }, { data: repsRows }] = await Promise.all([
+  const [{ data, error }, { data: detail }, { data: repsRows }, avatars] = await Promise.all([
     supabase
       .from("retention_stats")
       .select("rep_id, display_name, deal_type")
@@ -103,6 +118,7 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
       .from("reps")
       .select("id, display_name, salesforce_owner_id, manager_salesforce_id, manager_rep_id")
       .eq("active", true),
+    repAvatars(),
   ]);
 
   const stats = new Map<string, Omit<RepStats, "total" | "renewalPct">>();
@@ -261,7 +277,7 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
                 <span className="h-px flex-1 bg-slate-800" />
               </div>
             )}
-            <StatsRow rep={rep} maskRow={masking && rep.rep_id !== viewerRepId} />
+            <StatsRow rep={rep} maskRow={masking && rep.rep_id !== viewerRepId} avatars={avatars} />
           </Fragment>
         ))}
         {avgSplit && avgSplit.insertAt === ranked.length && (
@@ -285,7 +301,7 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
               Retention Ranking begins after {MIN_OPPORTUNITIES_TO_RANK} opportunities
             </div>
             {unranked.map((rep) => (
-              <StatsRow key={rep.rep_id} rep={rep} maskRow={masking && rep.rep_id !== viewerRepId} />
+              <StatsRow key={rep.rep_id} rep={rep} maskRow={masking && rep.rep_id !== viewerRepId} avatars={avatars} />
             ))}
           </>
         )}
