@@ -79,6 +79,20 @@ export function Board({
 }) {
   const router = useRouter();
   const [board, setBoard] = useState(rows);
+
+  /*
+   * Fresh server data wins.
+   *
+   * This holds a copy so a click can show its result before the round trip
+   * finishes -- but a copy taken at mount ignores every later render, so
+   * router.refresh() fetched the new stage and the screen kept showing the old
+   * one until somebody reloaded the page.
+   */
+  const [lastRows, setLastRows] = useState(rows);
+  if (lastRows !== rows) {
+    setLastRows(rows);
+    setBoard(rows);
+  }
   const [open, setOpen] = useState<string | null>(null);
   const [edited, setEdited] = useState<Record<string, { subject: string; body: string }>>({});
   const [note, setNote] = useState<{ kind: "ok" | "bad"; text: string } | null>(null);
@@ -158,10 +172,34 @@ export function Board({
     if (!clientId) return;
     const value = next === "" ? null : (next as "service_paused" | "sent_to_collections");
     setNote(null);
+    const was = { stage: r.stage, manual: r.stage_is_manual };
+    // Shown at once; the refresh behind it replaces this with the real answer.
+    setBoard((b) =>
+      b.map((x) =>
+        x.qb_customer_id === r.qb_customer_id
+          ? {
+              ...x,
+              stage:
+                value === "service_paused" ? "Service Paused"
+                : value === "sent_to_collections" ? "Sent to Collections"
+                : Number(x.past_due_total ?? 0) > 0 ? "Past Due" : "Current",
+              stage_is_manual: value !== null,
+            }
+          : x
+      )
+    );
+
     startTransition(async () => {
       const res = await setCollectionsStage(clientId, value);
       if (!res.success) {
         setNote({ kind: "bad", text: res.error ?? "Couldn't change that." });
+        setBoard((b) =>
+          b.map((x) =>
+            x.qb_customer_id === r.qb_customer_id
+              ? { ...x, stage: was.stage, stage_is_manual: was.manual }
+              : x
+          )
+        );
         return;
       }
       router.refresh();
