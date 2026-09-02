@@ -1,37 +1,45 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import twilio from "twilio";
 import { createClient } from "@/lib/supabase/server";
 import { currentMemberId, myPermissions } from "@/lib/org";
 import { assertPipeline } from "@/lib/pipeline/access";
 
+export type VoiceProvider = "dialpad" | "twilio";
+
 /**
- * The dialer's own server-side surface.
+ * The dialer's own server-side surface, shared across whichever voice
+ * provider is actually wired up.
  *
- * Placing and hanging up a call happens entirely client-side, by posting
- * messages straight into the embedded Dialpad Mini Dialer iframe -- see
- * components/pipeline/DialWidget.tsx. Nothing here talks to Dialpad. What's
- * here is the one thing that's genuinely ours: picking which reserved
- * number a call goes out from, and provisioning that pool.
+ * Dialpad: placing and hanging up a call happens entirely client-side, by
+ * posting messages into the embedded Mini Dialer iframe -- nothing here
+ * talks to Dialpad for that. Twilio: the browser holds a real WebRTC call
+ * via the Voice SDK, authenticated with the access token this file issues;
+ * the actual dial-out happens when Twilio's servers hit
+ * app/api/twilio/voice, not here either. What's genuinely ours either way is
+ * picking which reserved number a call goes out from, and provisioning that
+ * pool -- see voice_numbers / claim_voice_number.
  */
 
-export async function claimOutboundNumber(): Promise<string | null> {
+export async function claimOutboundNumber(provider: VoiceProvider): Promise<string | null> {
   await assertPipeline("view");
   const supabase = await createClient();
   const me = await currentMemberId();
   if (!me) throw new Error("Not signed in as a Factur member.");
 
-  const { data, error } = await supabase.rpc("claim_dialpad_number", { p_member_id: me });
+  const { data, error } = await supabase.rpc("claim_voice_number", { p_member_id: me, p_provider: provider });
   if (error) throw new Error(`Could not claim an outbound number: ${error.message}`);
 
   const row = (data as { e164: string }[] | null)?.[0];
   return row?.e164 ?? null;
 }
 
-export type DialpadNumberRow = {
+export type VoiceNumberRow = {
   id: string;
   e164: string;
   label: string | null;
+  provider: VoiceProvider;
   assigned_member_id: string | null;
   assigned_member_name: string | null;
   status: "active" | "paused" | "flagged";
@@ -44,12 +52,12 @@ async function assertManage() {
   if (!perms.has("org.manage")) throw new Error("Forbidden: org.manage required");
 }
 
-export async function listDialpadNumbers(): Promise<DialpadNumberRow[]> {
+export async function listVoiceNumbers(): Promise<VoiceNumberRow[]> {
   await assertManage();
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("dialpad_numbers")
-    .select("id,e164,label,assigned_member_id,status,last_used_at,calls_placed,org_members(full_name)")
+    .from("voice_numbers")
+    .select("id,e164,label,provider,assigned_member_id,status,last_used_at,calls_placed,org_members(full_name)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Could not load the number pool: ${error.message}`);
 
@@ -57,21 +65,25 @@ export async function listDialpadNumbers(): Promise<DialpadNumberRow[]> {
     id: r.id as string,
     e164: r.e164 as string,
     label: r.label as string | null,
+    provider: r.provider as VoiceProvider,
     assigned_member_id: r.assigned_member_id as string | null,
     assigned_member_name: (r.org_members as { full_name: string | null } | null)?.full_name ?? null,
-    status: r.status as DialpadNumberRow["status"],
+    status: r.status as VoiceNumberRow["status"],
     last_used_at: r.last_used_at as string | null,
     calls_placed: r.calls_placed as number,
   }));
 }
 
-export async function addDialpadNumber(input: { e164: string; label?: string | null; assigned_member_id?: string | null }) {
+export async function addVoiceNumber(input: {
+  e164: string; provider: VoiceProvider; label?: string | null; assigned_member_id?: string | null;
+}) {
   await assertManage();
   const supabase = await createClient();
   const me = await currentMemberId();
 
-  const { error } = await supabase.from("dialpad_numbers").insert({
+  const { error } = await supabase.from("voice_numbers").insert({
     e164: input.e164,
+    provider: input.provider,
     label: input.label ?? null,
     assigned_member_id: input.assigned_member_id ?? null,
     created_by: me,
@@ -80,10 +92,36 @@ export async function addDialpadNumber(input: { e164: string; label?: string | n
   revalidatePath("/settings/dialpad");
 }
 
-export async function setDialpadNumberStatus(id: string, status: "active" | "paused" | "flagged") {
+export async function setVoiceNumberStatus(id: string, status: "active" | "paused" | "flagged") {
   await assertManage();
   const supabase = await createClient();
-  const { error } = await supabase.from("dialpad_numbers").update({ status }).eq("id", id);
+  const { error } = await supabase.from("voice_numbers").update({ status }).eq("id", id);
   if (error) throw new Error(`Could not update that number: ${error.message}`);
   revalidatePath("/settings/dialpad");
+}
+
+/**
+ * A short-lived token authenticating the current rep's browser to Twilio's
+ * Voice SDK. Identity is their member id, not name/email -- Twilio uses it
+ * to route inbound calls and shows up in call logs, and a member id is
+ * stable across a name change in a way "Jane Doe" isn't.
+ *
+ * Requires TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET and
+ * TWILIO_TWIML_APP_SID. Returns null (rather than throwing) when they're not
+ * set, so the widget can render its own "not connected" state.
+ */
+export async function getTwilioVoiceToken(): Promise<string | null> {
+  await assertPipeline("view");
+  const { TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID } = process.env;
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) return null;
+
+  const me = await currentMemberId();
+  if (!me) throw new Error("Not signed in as a Factur member.");
+
+  const AccessToken = twilio.jwt.AccessToken;
+  const VoiceGrant = AccessToken.VoiceGrant;
+
+  const token = new AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: me });
+  token.addGrant(new VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
+  return token.toJwt();
 }

@@ -6,6 +6,7 @@ import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { DialWidget } from "@/components/pipeline/DialWidget";
+import { TwilioDialWidget } from "@/components/pipeline/TwilioDialWidget";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,15 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const o = opp as unknown as Opportunity;
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
+  // Twilio first while the Dialpad Mini Dialer Client ID is still pending --
+  // whichever is actually configured wins; if neither is, DialWidget still
+  // renders (and shows its own NotConnected) so this fails toward the
+  // primary provider's setup instructions rather than picking silently.
+  const twilioConfigured = Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
+    process.env.TWILIO_API_KEY_SECRET && process.env.TWILIO_TWIML_APP_SID
+  );
+
   return (
     <div className="p-6 space-y-4 max-w-6xl">
       <div>
@@ -91,12 +101,21 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           from there. */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
-          <DialWidget
-            opportunityId={o.id}
-            phoneNumber={o.crm_contacts?.phone ?? null}
-            contactName={contactName}
-            canAdmin={perms.has("org.manage")}
-          />
+          {twilioConfigured ? (
+            <TwilioDialWidget
+              opportunityId={o.id}
+              phoneNumber={o.crm_contacts?.phone ?? null}
+              contactName={contactName}
+              canAdmin={perms.has("org.manage")}
+            />
+          ) : (
+            <DialWidget
+              opportunityId={o.id}
+              phoneNumber={o.crm_contacts?.phone ?? null}
+              contactName={contactName}
+              canAdmin={perms.has("org.manage")}
+            />
+          )}
 
           <OpportunityEditor
             opportunity={{

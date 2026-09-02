@@ -189,31 +189,36 @@ export const INTEGRATIONS: Integration[] = [
     ownedBy: "RevOps",
   },
   {
-    key: "dialpad",
-    name: "Dialpad — Mini Dialer",
+    key: "dialer",
+    name: "Dialer — Twilio Voice SDK / Dialpad Mini Dialer",
     what:
-      "Click-to-dial on a pipeline pursuit. The call itself never touches this app's " +
-      "server — a rep's browser posts messages straight into Dialpad's own iframe, " +
-      "which places the call using whoever is logged into it.",
+      "Click-to-dial on an Opportunity. Twilio is the primary path — a real WebRTC call " +
+      "held in the rep's browser, authenticated by a token this app issues per rep. " +
+      "Dialpad's Mini Dialer is the fallback: a rep's browser posts messages straight " +
+      "into Dialpad's own iframe, which places the call using whoever is logged into it. " +
+      "Whichever provider has its env vars set wins — see app/(dashboard)/opportunities/" +
+      "[opportunityId]/page.tsx.",
     direction: "out",
     transport:
-      "An embedded iframe (Dialpad's Mini Dialer/CTI), driven client-side with " +
-      "window.postMessage. No Dialpad API key is held server-side for this. The one " +
-      "thing that is ours is outbound_caller_id — which reserved number presents as " +
-      "caller ID — picked from dialpad_numbers before each call.",
-    tables: ["dialpad_numbers"],
+      "Twilio: app/api/twilio/voice is the one server-side piece — Twilio's servers call " +
+      "it (signature-verified against TWILIO_AUTH_TOKEN) when a rep's browser starts a " +
+      "call, and it returns the TwiML that bridges to the destination number. Dialpad: " +
+      "an embedded iframe (Mini Dialer/CTI), driven client-side with window.postMessage, " +
+      "no server involved. Either way, the one thing that's ours is which reserved " +
+      "number presents as caller ID, picked from voice_numbers before each call.",
+    tables: ["voice_numbers"],
     excluded: [
-      "No server-side call API, no recordings, no call-duration webhook yet — a call's " +
-      "outcome is whatever the rep dispositions by hand into opp_activities.",
-      "Numbers aren't purchased or reserved here — that still happens in Dialpad's own " +
-      "admin. This only tracks the pool already bought, for rotation.",
+      "No call-duration/recording webhook yet for either provider — a call's outcome is " +
+      "whatever the rep dispositions by hand into opp_activities.",
+      "Numbers aren't purchased or reserved here — that still happens on the provider's " +
+      "own console (Twilio or Dialpad). This only tracks the pool already bought, for rotation.",
     ],
     feeds: ["Opportunity activity timeline"],
     ownedBy: "RevOps",
     configure: {
       href: "/settings/dialpad",
-      label: "Dialpad",
-      what: "The outbound number pool, and whether the Mini Dialer's Client ID is set.",
+      label: "Dialer",
+      what: "The outbound number pool, and whether Twilio or the Dialpad Mini Dialer is wired up.",
     },
   },
 ];

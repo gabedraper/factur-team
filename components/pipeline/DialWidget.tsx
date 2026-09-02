@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
 import { Panel, NotConnected, Chip } from "@/components/pipeline/bits";
+import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber } from "@/actions/dialer";
-import { logOpportunityActivity } from "@/actions/pipeline";
 
 /*
  * Click-to-dial, embedded.
@@ -35,15 +31,6 @@ const CTI_CLIENT_ID = process.env.NEXT_PUBLIC_DIALPAD_CTI_CLIENT_ID || null;
 
 type CallState = "idle" | "dialing" | "ringing" | "ended";
 
-const OUTCOMES = [
-  "Connected — moved forward",
-  "Connected — not interested",
-  "Voicemail",
-  "No answer",
-  "Wrong number",
-  "Callback requested",
-] as const;
-
 function postToDialer(frame: HTMLIFrameElement | null, method: string, payload: Record<string, unknown> = {}) {
   frame?.contentWindow?.postMessage(
     { api: "opencti_dialpad", version: "1.0", method, payload },
@@ -64,10 +51,7 @@ export function DialWidget({
   const [callState, setCallState] = useState<CallState>("idle");
   const [claiming, setClaiming] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
-  const [outcome, setOutcome] = useState<string>(OUTCOMES[0]);
-  const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [, startSaving] = useTransition();
 
   useEffect(() => {
     if (!CTI_CLIENT_ID) return;
@@ -103,9 +87,9 @@ export function DialWidget({
     setError(null);
     setClaiming(true);
     try {
-      const outboundCallerId = await claimOutboundNumber();
+      const outboundCallerId = await claimOutboundNumber("dialpad");
       if (!outboundCallerId) {
-        setError("No active outbound numbers in the pool — add one in Dialpad settings.");
+        setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
       setCallState("dialing");
@@ -125,25 +109,6 @@ export function DialWidget({
     postToDialer(frameRef.current, "hang_up_all_calls");
     setDispositionOpen(true);
     setCallState("ended");
-  }
-
-  function saveDisposition() {
-    startSaving(async () => {
-      try {
-        await logOpportunityActivity({
-          opportunity_id: opportunityId,
-          activity_type: "call",
-          direction: "outbound",
-          outcome,
-          body: notes || null,
-        });
-        setDispositionOpen(false);
-        setNotes("");
-        setCallState("idle");
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that disposition.");
-      }
-    });
   }
 
   if (!CTI_CLIENT_ID) {
@@ -212,39 +177,13 @@ export function DialWidget({
         />
       </div>
 
-      <Dialog open={dispositionOpen} onOpenChange={setDispositionOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>How did the call with {contactName} go?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              {OUTCOMES.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  onClick={() => setOutcome(o)}
-                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
-                    outcome === o ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted"
-                  }`}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-            <Textarea
-              placeholder="Notes (optional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDispositionOpen(false)}>Cancel</Button>
-            <Button onClick={saveDisposition}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CallDispositionDialog
+        open={dispositionOpen}
+        onOpenChange={setDispositionOpen}
+        opportunityId={opportunityId}
+        contactName={contactName}
+        onSaved={() => setCallState("idle")}
+      />
     </Panel>
   );
 }
