@@ -67,11 +67,13 @@ export async function POST(request: NextRequest) {
 
     const { extracted } = read;
 
-    if (!extracted.is_a_manufacturer) {
+    if (!extracted.is_a_real_company) {
       /*
        * A real answer, not a failure. Marking it enriched stops it being tried
        * again -- a parked domain will still be parked next week, and retrying
-       * it is the queue eating itself.
+       * it is the queue eating itself. This is only reached when there is no
+       * company at the address at all; a company that merely does not
+       * manufacture is described like any other.
        */
       await db.from("client_profile").upsert({
         salesforce_client_id: client.salesforce_client_id,
