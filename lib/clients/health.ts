@@ -247,7 +247,14 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
     rows.push({
       label: npsMonth.format(new Date(`${m.month_start}T00:00:00Z`)),
       value: nf.format(m.leads),
-      href: `/clients/${m.client_id}/leads?month=${m.month_start.slice(0, 7)}`,
+      /*
+       * Only where the records exist to show. A backfilled month has a count
+       * from Salesforce but no individual rows in Coupler's mirror, and a link
+       * to an empty page is worse than no link.
+       */
+      href: m.source === "daily"
+        ? `/clients/${m.client_id}/leads?month=${m.month_start.slice(0, 7)}`
+        : undefined,
       tone: toneFor(m.leads, leadBandsByMonth.get(m.month_start) ?? null),
     });
     leadsByClient.set(m.client_id, rows);
