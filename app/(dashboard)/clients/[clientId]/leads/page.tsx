@@ -20,10 +20,10 @@ const dayLabel = new Intl.DateTimeFormat("en-US", {
 /**
  * The leads behind one month of the Lead Flow card.
  *
- * Every opportunity raised for the client that month, with no stage filter --
- * the same rule the count uses, so the rows here add up to the number on the
- * card. Where each one ended up is a question for funnel conversion tracking,
- * not for this list.
+ * Every lead generated for the client that month -- long-term follow up and
+ * all -- less the Prospecting: family, which is sourcing rather than a lead.
+ * Same rule the count uses, so the rows here add up to the number on the card.
+ * Where each one ended up is a question for funnel conversion tracking.
  */
 export default async function ClientLeadsPage({
   params,
@@ -57,6 +57,8 @@ export default async function ClientLeadsPage({
           .from("sf_opp_leads_raw")
           .select("name,stagename,createddate,account_name,account_contact_name__c,contact_title__c,owner_name")
           .eq("client__c", salesforceId)
+          // Same rule the count uses, so the rows here add up to the card.
+          .not("stagename", "like", "Prospecting:%")
           .gte("createddate", start)
           .lt("createddate", nextMonth(start))
           .order("createddate", { ascending: false })

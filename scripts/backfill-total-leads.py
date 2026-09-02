@@ -34,9 +34,14 @@ import json, glob, sys, urllib.request, collections
 
 TR = ("/Users/gabedraper/.claude/projects/-Users-gabedraper/"
       "3cd72243-f08a-4fa9-bb7a-84816bd37c17/tool-results")
+# Stages previously excluded from leads that Gabe wants counted.
 CHUNKS = ["1788386598765", "1788386609927", "1788386618893", "1788386621710",
           "1788386623568", "1788386625752", "1788386656072", "1788386659255",
           "1788386662552", "1788386674730", "1788386642254"]
+# Of those, the Prospecting: family, which he does not. Subtracted from the
+# same client-months so the net is what gets added.
+PROSPECTING = ["1788387512948", "1788387514708", "1788387522721",
+               "1788387525998", "1788387528136"]
 
 env = dict(l.split("=", 1) for l in open("/Users/gabedraper/factur-team/.env.local")
            if "=" in l and not l.strip().startswith("#"))
@@ -94,10 +99,21 @@ for r in existing:
     anchor = (y * 12 + m) - (idx - 1)
     first_month.setdefault(cid, anchor)
 
-updates, added, skipped = {}, 0, collections.Counter()
+# Net extra leads per client-month: the added stages less the Prospecting ones.
+net = collections.Counter()
 for c in CHUNKS:
     for g in json.load(open(glob.glob(f"{TR}/*soqlQuery-{c}.txt")[0]))["records"]:
-        cid, n = g["Client__c"], g["n"]
+        net[(g["Client__c"], g["y"], g["m"])] += g["n"]
+for c in PROSPECTING:
+    for g in json.load(open(glob.glob(f"{TR}/*soqlQuery-{c}.txt")[0]))["records"]:
+        net[(g["Client__c"], g["y"], g["m"])] -= g["n"]
+
+updates, added, skipped = {}, 0, collections.Counter()
+if True:
+    for (cid, gy, gm), n in net.items():
+        if n <= 0:
+            continue
+        g = {"Client__c": cid, "y": gy, "m": gm, "n": n}
         month_start = f"{g['y']:04d}-{g['m']:02d}-01"
         rows = by_month.get((cid, month_start))
         if not rows:

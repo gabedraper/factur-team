@@ -5,6 +5,9 @@ import json, glob, sys, urllib.request, datetime
 TR = ("/Users/gabedraper/.claude/projects/-Users-gabedraper/"
       "3cd72243-f08a-4fa9-bb7a-84816bd37c17/tool-results")
 FILES = ["1788385331235", "1788385536131"]
+# The Prospecting: family, which is sourcing rather than lead generation, and
+# is not counted. Subtracted from the same client-months.
+PROSPECTING_FILES = ["1788387528136"]
 
 env = dict(l.split("=", 1) for l in open("/Users/gabedraper/factur-team/.env.local")
            if "=" in l and not l.strip().startswith("#"))
@@ -38,18 +41,28 @@ while True:
         break
     off += 1000
 
-rows, skipped = [], 0
+import collections
+net = collections.Counter()
+skipped = 0
 for i in FILES:
     for g in json.load(open(glob.glob(f"{TR}/*soqlQuery-{i}.txt")[0]))["records"]:
-        cid = g["Client__c"]
-        if cid not in known:
-            skipped += 1
-            continue
-        rows.append({
-            "salesforce_client_id": cid,
-            "month_start": datetime.date(g["y"], g["m"], 1).isoformat(),
-            "leads": g["n"],
-        })
+        net[(g["Client__c"], g["y"], g["m"])] += g["n"]
+for i in PROSPECTING_FILES:
+    for g in json.load(open(glob.glob(f"{TR}/*soqlQuery-{i}.txt")[0]))["records"]:
+        net[(g["Client__c"], g["y"], g["m"])] -= g["n"]
+
+rows = []
+for (cid, y, m), n in net.items():
+    if cid not in known:
+        skipped += 1
+        continue
+    if n <= 0:
+        continue
+    rows.append({
+        "salesforce_client_id": cid,
+        "month_start": datetime.date(y, m, 1).isoformat(),
+        "leads": n,
+    })
 
 print(f"rows {len(rows)}  clients {len({r['salesforce_client_id'] for r in rows})}"
       f"  months {len({r['month_start'] for r in rows})}  skipped {skipped}")
