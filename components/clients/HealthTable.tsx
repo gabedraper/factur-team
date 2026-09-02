@@ -52,6 +52,41 @@ const ROW_TONE: Record<string, string> = {
   none: "",
 };
 
+/**
+ * The overall score, said where it is.
+ *
+ * It behaves unlike the two ranked scores beside it -- fixed bands, not a
+ * curve -- and it re-weights around missing inputs, which is why two clients
+ * can both score 80 on a different number of measures.
+ */
+const HEALTH_BLURB =
+  "The overall score, 0 to 100: a weighted average of the five measures on " +
+  "this row.\n\n" +
+  "Leads 25%, AM activity 20%, Client Performance 20%, NPS 20%, " +
+  "Receivables 15%.\n\n" +
+  "Only measures the client actually has are counted, and the rest are " +
+  "re-weighted to fill the gap -- so a client scored on three of five is not " +
+  "penalised for the two nobody could measure. The Inputs column says how many " +
+  "went in.\n\n" +
+  "Unlike Leads and Client Performance beside it, this is a fixed scale rather " +
+  "than a ranking: green at 70 and above, amber 45 to 69, red below 45. A book " +
+  "where everyone is green means everyone is doing well, not that a third of " +
+  "them are.\n\n" +
+  "Blank where none of the five could be measured.";
+
+const LEADS_BLURB =
+  "Sales leads generated for the client, by month.\n\n" +
+  "Every opportunity raised for them, whatever became of it -- including the " +
+  "ones sitting on long-term follow up, which is what gets reported to " +
+  "clients. Where each one ends up is a separate question, and stage-to-stage " +
+  "conversion will answer it.\n\n" +
+  "Not counted: the Prospecting stages, which are sourcing rather than a lead " +
+  "generated, along with cold call lists and disqualified records.\n\n" +
+  "Each month is coloured against the same month for every other client, so a " +
+  "quiet August is judged against everyone else's August rather than against a " +
+  "busy March. Green is the top third, red the bottom.\n\n" +
+  "Counted fresh each morning. The month name links to the leads behind it.";
+
 const ACTIVITY_BLURB =
   "How much work went into this client, ranked against clients on the same " +
   "service.\n\n" +
@@ -295,8 +330,12 @@ export function HealthTable({
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("am")}>Account manager</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
-              <SortHeader className="px-3 py-2" align="right" {...sortProps("overall")}>Health</SortHeader>
-              <SortHeader className="px-3 py-2" align="right" {...sortProps("lead_flow")}>Leads</SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("overall")}>
+                <span title={HEALTH_BLURB}>Health</span>
+              </SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("lead_flow")}>
+                <span title={LEADS_BLURB}>Leads</span>
+              </SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("activity")}>Activity</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("nps")}>NPS</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("engagement")}>
@@ -335,7 +374,7 @@ export function HealthTable({
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? ""}</td>
                   <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? ""}</td>
-                  <td className="px-3 py-2 text-right"><Score value={c.overall} /></td>
+                  <td className="px-3 py-2 text-right" title={HEALTH_BLURB}><Score value={c.overall} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
                   <td className="px-3 py-2 text-right">
                     <RankedScore value={at(c, "activity")} bands={actBands} title={ACTIVITY_BLURB} />
@@ -369,7 +408,9 @@ export function HealthTable({
                                     ? PERFORMANCE_BLURB
                                     : i.key === "activity"
                                       ? ACTIVITY_BLURB
-                                      : undefined
+                                      : i.key === "lead_flow"
+                                        ? LEADS_BLURB
+                                        : undefined
                                 }
                               >
                                 {i.label}
@@ -394,7 +435,9 @@ export function HealthTable({
                                       ? PERFORMANCE_BLURB
                                       : i.key === "activity"
                                         ? ACTIVITY_BLURB
-                                        : undefined
+                                        : i.key === "lead_flow"
+                                          ? LEADS_BLURB
+                                          : undefined
                                 }
                               >
                                 {i.key === "engagement" ? (

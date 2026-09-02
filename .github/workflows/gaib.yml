@@ -61,7 +61,23 @@ jobs:
 
       - name: Install
         run: |
-          npm ci
+          # npm ci, and a fallback that is not laziness.
+          #
+          # Adding a dependency on a Mac writes a lock file missing the packages
+          # Linux needs -- npm resolves optional dependencies for the machine it
+          # is run on. The lock file then looks fine, the app builds fine, and
+          # npm ci refuses on the runner. That has now blocked the agent twice,
+          # and both times the first anybody knew was a ticket going nowhere.
+          #
+          # The lock file is still regenerated properly when this happens; this
+          # only stops one person's laptop deciding whether somebody's bug gets
+          # fixed today. If it falls through, the run says so loudly enough to
+          # be seen.
+          if ! npm ci; then
+            echo "::warning::npm ci refused the lock file -- falling back to npm install."
+            echo "::warning::The lock file needs regenerating: rm -rf node_modules package-lock.json && npm install"
+            npm install --no-audit --no-fund
+          fi
           npm install -g @anthropic-ai/claude-code
 
       # A tiny helper so every later step patches the ticket the same way.
