@@ -104,6 +104,48 @@ function working(toolName: string): string {
   }
 }
 
+/*
+ * What to say when the model itself is unavailable.
+ *
+ * These arrive as a status code and a lump of JSON, and that is exactly what
+ * was being shown to whoever was mid-sentence with Gaib. Somebody in sales
+ * reading a 529 and a stack of braces learns two things: that it is broken, and
+ * that it was not built for them.
+ *
+ * Each of these says what happened, whose end it is at, and whether waiting
+ * will help -- because the only useful question in the moment is whether to try
+ * again or go and do something else.
+ */
+function inPlainWords(e: unknown): string {
+  if (!(e instanceof Anthropic.APIError)) {
+    return "Something went wrong at my end. Try again in a moment.";
+  }
+
+  switch (e.status) {
+    case 429:
+      return "I am being asked more at once than I am allowed to answer. Give me a minute and ask again.";
+    case 529:
+    case 503:
+      return "The service I think with is busy — that is at their end, not yours. Try again in a minute and it will most likely just work.";
+    case 500:
+    case 502:
+      return "Something broke at the far end while I was thinking. Ask again; it usually goes through the second time.";
+    case 401:
+    case 403:
+      return "I cannot reach the service I think with. That is a setup problem here rather than anything you did, and Gabe has what he needs to fix it.";
+    case 400:
+      return "I could not make sense of this conversation well enough to answer. Starting a new chat usually clears it.";
+    default:
+      return "Something went wrong at my end. Try again in a moment.";
+  }
+}
+
+/** Worth waiting out rather than giving up on. */
+function worthRetrying(e: unknown): boolean {
+  return e instanceof Anthropic.APIError
+    && [429, 500, 502, 503, 529].includes(e.status ?? 0);
+}
+
 export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const client = new Anthropic();
   const messages = await history(input.sessionId);
@@ -174,7 +216,19 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   for (let step = 0; step < MAX_STEPS; step++) {
     let message: Anthropic.Message;
 
-    try {
+    /*
+     * Two more goes before giving up, and only while nothing has been said yet.
+     *
+     * Most of these clear within seconds, and somebody watching a blank panel
+     * has no way of knowing that waiting would have worked. Retrying after text
+     * has already streamed would repeat half a sentence, so once words are on
+     * screen the attempt stands however it ended.
+     */
+    let attempt = 0;
+    let saidAnything = false;
+
+    for (;;) {
+      try {
       // Omitted entirely for a model that does not take it, rather than sent
       // and ignored -- Haiku returns an error instead of shrugging.
       const effort = effortFor(input.agent.model, input.agent.effort);
@@ -193,16 +247,24 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
       // cannot yield out of the generator it was registered inside.
       for await (const event of stream) {
         if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          saidAnything = true;
           yield { type: "text", text: event.delta.text };
         }
       }
       message = await stream.finalMessage();
-    } catch (e) {
-      const why = e instanceof Anthropic.APIError
-        ? `${e.status ?? ""} ${e.message}`.trim()
-        : e instanceof Error ? e.message : "unknown error";
-      yield { type: "error", message: why };
-      return;
+      break;
+      } catch (e) {
+        if (!saidAnything && attempt < 2 && worthRetrying(e)) {
+          attempt++;
+          await new Promise((r) => setTimeout(r, attempt * 1500));
+          continue;
+        }
+        // Logged in full, said in plain words. The detail belongs where
+        // somebody can act on it, not in front of whoever asked the question.
+        console.error("gaib turn failed", e);
+        yield { type: "error", message: inPlainWords(e) };
+        return;
+      }
     }
 
     messages.push({ role: "assistant", content: message.content });
