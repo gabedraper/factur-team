@@ -8,7 +8,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function signInWithGoogle() {
+  /*
+   * Each pill signs in and sets the theme it stands for.
+   *
+   * Written as a cookie because that is what the app reads: the root layout
+   * puts the dark class on the html element from it, on the server, before
+   * the browser paints. Its first-visit fallback to the operating system is
+   * guarded on the cookie being absent, so a choice made here is not
+   * overwritten on the way back from Google.
+   */
+  async function signInWithGoogle(theme: "light" | "dark") {
+    document.cookie = `factur-theme=${theme}; path=/; max-age=31536000; samesite=lax`;
     setLoading(true);
     setError("");
 
@@ -54,48 +64,60 @@ export default function LoginPage() {
       style={{ backgroundImage: "url('/login-background.jpg')" }}
     >
       {/* Sitting on the three-quarter line, so the artwork keeps the middle. */}
-      <div className="absolute left-1/2 top-3/4 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3">
-        {/*
-          * Black at the button's edge, gone half an inch out.
-          *
-          * A blurred shape fades from solid to nothing over roughly one and a
-          * half times its blur radius either side of its own edge. To be
-          * opaque where the button starts and clear 48px later, the black
-          * begins 24px outside the button and blurs by 16: the 24 covers the
-          * button edge, and 24 + 24 lands the falloff at 48.
-          *
-          * Twice the quarter inch it started at, because on artwork this dark
-          * a tight halo has almost nothing to separate itself from -- the
-          * shape only reads once it is wide enough to darken ground the
-          * photograph had left bright.
-          *
-          * Solid black rather than a translucent wash: the point is to give
-          * the button its own ground, not to tint the picture.
-          */}
+      <div className="absolute left-1/2 top-3/4 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-6">
+        {/* One pool of dark under both, so they read as a pair on one ground
+            rather than two objects each carrying their own shadow. */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute bg-black"
-          style={{ inset: "-24px", borderRadius: 30, filter: "blur(16px)" }}
+          style={{ inset: "-28px -32px", borderRadius: 40, filter: "blur(18px)" }}
         />
 
-        {/*
-          * White, and stated outright rather than taken from the theme.
-          *
-          * This screen is the photograph in both themes -- there is no light
-          * version of it -- so a button coloured by the theme would be picked
-          * for a background that is never behind it. Signed out, there is no
-          * preference to read anyway.
-          */}
-        <Button
-          onClick={signInWithGoogle}
-          disabled={loading}
-          size="lg"
-          className="relative bg-white px-8 text-black hover:bg-white/90 focus-visible:ring-white/60"
-        >
-          {/* One word, whatever it is doing. The disabled state carries the
-              waiting, so the label never changes under the cursor. */}
-          Enter
-        </Button>
+        <div className="relative flex items-center gap-8">
+          {[
+            /*
+             * The pills now do different things, which is the point of them.
+             * Two buttons with one behaviour was the joke wearing thin: a
+             * screen reader announced the same option twice and neither
+             * answered why there were two.
+             */
+            {
+              key: "red",
+              theme: "light" as const,
+              label: "Sign in with Google, in the light theme",
+              face: "linear-gradient(160deg,#ff5a5f 0%,#e11d2e 45%,#8c0d18 100%)",
+              glow: "rgba(225,29,46,0.55)",
+            },
+            {
+              key: "blue",
+              theme: "dark" as const,
+              label: "Sign in with Google, in the dark theme",
+              face: "linear-gradient(160deg,#6f7bff 0%,#323cd0 45%,#161c78 100%)",
+              glow: "rgba(50,60,208,0.55)",
+            },
+          ].map((pill) => (
+            <button
+              key={pill.key}
+              onClick={() => signInWithGoogle(pill.theme)}
+              disabled={loading}
+              aria-label={pill.label}
+              // Hovering says what it does, without printing it on the page.
+              title={pill.label}
+              className="group relative h-14 w-28 rounded-full transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-60"
+              style={{
+                background: pill.face,
+                boxShadow: `0 0 28px ${pill.glow}, inset 0 1px 0 rgba(255,255,255,0.45)`,
+              }}
+            >
+              {/* The gloss along the top edge is what makes a capsule read as
+                  a pill rather than a lozenge of flat colour. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-3 top-1.5 h-3 rounded-full bg-white/35 blur-[2px]"
+              />
+            </button>
+          ))}
+        </div>
 
         {/* Kept: it only appears when sign-in has failed, and a screen that
             fails silently gives somebody nothing to act on. */}
