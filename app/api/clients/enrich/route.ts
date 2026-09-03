@@ -20,7 +20,29 @@ export const maxDuration = 300;
 /** Per invocation. Small enough to finish inside the time limit. */
 const BATCH = 8;
 
+/*
+ * Switched off at the door.
+ *
+ * On 3 September the database ran out of connections: a pre-existing job on a
+ * one-minute schedule was taking up to eight minutes, stacking on itself until
+ * nothing else could get in. This job is not what did it -- but it is eight
+ * websites and thirty-odd writes every three minutes on a database that was
+ * evidently closer to its limit than anybody knew, and it should not be the
+ * thing competing for the first connections that come back.
+ *
+ * Set ENRICH_ENABLED=true in Vercel to start it again, once the every-minute
+ * job is fixed and there is headroom to spend.
+ */
+const ENABLED = process.env.ENRICH_ENABLED === "true";
+
 export async function POST(request: NextRequest) {
+  if (!ENABLED) {
+    return NextResponse.json({
+      paused: true,
+      why: "Paused after the connection exhaustion on 3 September. Set ENRICH_ENABLED=true to resume.",
+    });
+  }
+
   const offered = request.headers.get("x-gaib-secret");
   if (!offered) return new NextResponse("Unauthorized", { status: 401 });
 
