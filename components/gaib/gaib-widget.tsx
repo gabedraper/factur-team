@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   nudgeState, recordNudge, recordAnswered, hasUpdates,
   openingState, recentSessions, openSession, closeSession,
+  myOpenTickets, type OpenTicket,
 } from "@/actions/gaib";
 
 type Line =
@@ -26,6 +27,15 @@ type Event =
   | { type: "ticket"; ref: number; title: string; lane: string }
   | { type: "error"; message: string }
   | { type: "done" };
+
+/* Said the way somebody who does not work in software would say it. */
+const TICKET_STATE: Record<string, string> = {
+  new: "just in",
+  queued: "queued",
+  running: "being worked on",
+  awaiting_review: "with Gabe",
+  failed: "stuck",
+};
 
 const LANE_LABEL: Record<string, string> = {
   auto: "fixing now",
@@ -80,6 +90,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
   const [answered, setAnswered] = useState(false);
   const [title, setTitle] = useState<string | null>(null);
   const [past, setPast] = useState<{ id: string; title: string | null; at: string }[] | null>(null);
+  const [tickets, setTickets] = useState<OpenTicket[] | null>(null);
   // Null until the first open, so a page load costs one small query for the
   // badge rather than replaying a conversation nobody has asked to see.
   const [restored, setRestored] = useState(false);
@@ -291,8 +302,11 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
   }
 
   function showHistory() {
-    if (past) return setPast(null);
+    if (past) { setPast(null); setTickets(null); return; }
+    // Both at once: the list is one answer to "what is going on", and fetching
+    // them separately would make half of it appear late.
     void recentSessions().then(setPast);
+    void myOpenTickets().then(setTickets);
   }
 
   function resume(id: string) {
@@ -335,7 +349,17 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
         <span className="relative flex">
           <MessageCircle className="h-4 w-4" />
           {asking && !open && (
-            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-sky-500" />
+            /*
+             * A ring that pulses out from a solid dot. A static dot in a
+             * sidebar becomes part of the furniture within a day; movement is
+             * what makes it read as new rather than as decoration -- and a ping
+             * rather than a hard blink, which is legible without being a
+             * demand.
+             */
+            <span className="absolute -right-1 -top-1 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+            </span>
           )}
         </span>
         {!collapsed && "Gaib"}
@@ -385,6 +409,32 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
 
           {past && (
             <div className="max-h-56 overflow-y-auto border-b">
+              {tickets && tickets.length > 0 && (
+                <div className="border-b">
+                  <p className="px-4 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Open
+                  </p>
+                  {tickets.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => (t.sessionId ? resume(t.sessionId) : setPast(null))}
+                      className="flex w-full items-baseline gap-2 px-4 py-2 text-left hover:bg-accent"
+                    >
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                        {t.ref}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs">{t.title}</span>
+                      <span
+                        className={`shrink-0 text-[10px] ${
+                          t.waitingOnYou ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                        }`}
+                      >
+                        {t.waitingOnYou ? "needs you" : TICKET_STATE[t.status] ?? t.status}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {past.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-muted-foreground">Nothing yet</p>
               ) : (

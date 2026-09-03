@@ -530,3 +530,53 @@ export async function ticketConversation(ticketId: string) {
     asked_at: string; answered_at: string | null; closed_at: string | null;
   }[];
 }
+
+/*
+ * What is still open, for the panel.
+ *
+ * Two different questions wearing one shape. Whoever decides on tickets wants
+ * the ones waiting on them; everybody else wants the ones they reported and has
+ * not heard back about. Both are "what is outstanding for me", and neither is
+ * worth a trip to another screen to find out.
+ */
+export type OpenTicket = {
+  id: string;
+  ref: number;
+  title: string;
+  status: string;
+  sessionId: string | null;
+  waitingOnYou: boolean;
+};
+
+export async function myOpenTickets(): Promise<OpenTicket[]> {
+  const user = await getAuthedUser();
+  if (!user) return [];
+
+  const db = createServiceClient();
+  const decides = (await myPermissions()).has("org.manage");
+
+  const live = ["new", "queued", "running", "awaiting_review", "failed"];
+
+  const query = db
+    .from("gaib_tickets")
+    .select("id,ref,title,status,session_id,raised_by")
+    .in("status", live)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  // Whoever decides sees everything outstanding; everybody else sees their own.
+  const { data } = decides ? await query : await query.eq("raised_by", user.id);
+
+  return ((data ?? []) as {
+    id: string; ref: number; title: string; status: string;
+    session_id: string | null; raised_by: string | null;
+  }[]).map((t) => ({
+    id: t.id,
+    ref: t.ref,
+    title: t.title,
+    status: t.status,
+    sessionId: t.session_id,
+    // The distinction that decides whether this is a nag or an update.
+    waitingOnYou: decides && (t.status === "awaiting_review" || t.status === "failed"),
+  }));
+}
