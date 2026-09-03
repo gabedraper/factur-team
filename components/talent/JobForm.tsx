@@ -80,18 +80,16 @@ export function JobForm({
   function save() {
     setError(null);
     start(async () => {
-      try {
-        if (job?.id) {
-          await updateJob(job.id, form);
-          router.push(`/talent/jobs/${job.id}`);
-        } else {
-          const id = await createJob(form);
-          router.push(`/talent/jobs/${id}`);
-        }
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that");
+      if (job?.id) {
+        const result = await updateJob(job.id, form);
+        if (!result.ok) { setError(result.error); return; }
+        router.push(`/talent/jobs/${job.id}`);
+      } else {
+        const result = await createJob(form);
+        if (!result.ok) { setError(result.error); return; }
+        router.push(`/talent/jobs/${result.id}`);
       }
+      router.refresh();
     });
   }
 

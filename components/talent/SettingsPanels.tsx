@@ -99,12 +99,12 @@ export function WorkflowSettings({ workflows }: { workflows: Workflow[] }) {
                     className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                     aria-label={`Remove ${s.name}`}
                     onClick={() => start(async () => {
-                      try {
-                        await deleteStage(s.id);
-                        router.refresh();
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "Could not remove that stage");
+                      const res = await deleteStage(s.id);
+                      if (!res.ok) {
+                        setError(res.error);
+                        return;
                       }
+                      router.refresh();
                     })}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-600" />
@@ -229,16 +229,16 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
                     value={i.status}
                     disabled={pending}
                     onChange={(e) => start(async () => {
-                      try {
-                        await setIntegrationStatus(
-                          i.slug,
-                          e.target.value as Integration["status"],
-                          i.config
-                        );
-                        router.refresh();
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : "Could not update that");
+                      const res = await setIntegrationStatus(
+                        i.slug,
+                        e.target.value as Integration["status"],
+                        i.config
+                      );
+                      if (!res.ok) {
+                        setError(res.error);
+                        return;
                       }
+                      router.refresh();
                     })}
                   >
                     <option value="not_connected">Not connected</option>
@@ -499,13 +499,13 @@ export function MailSettings({
               disabled={pending}
               onClick={() => start(async () => {
                 setError(null);
-                try {
-                  await saveMailAccounts(list, days);
-                  setNote("Saved");
-                  router.refresh();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Could not save that");
+                const res = await saveMailAccounts(list, days);
+                if (!res.ok) {
+                  setError(res.error);
+                  return;
                 }
+                setNote("Saved");
+                router.refresh();
               })}
             >
               Save
@@ -518,18 +518,18 @@ export function MailSettings({
               onClick={() => start(async () => {
                 setError(null);
                 setReports([]);
-                try {
-                  const res = await syncMailNow();
-                  setReports(res.reports);
-                  setNote(
-                    res.repliesStopped
-                      ? `${res.repliesStopped} campaign${res.repliesStopped === 1 ? "" : "s"} stopped on a reply`
-                      : "Sync finished"
-                  );
-                  router.refresh();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Sync failed");
+                const res = await syncMailNow();
+                if (!res.ok) {
+                  setError(res.error);
+                  return;
                 }
+                setReports(res.reports);
+                setNote(
+                  res.repliesStopped
+                    ? `${res.repliesStopped} campaign${res.repliesStopped === 1 ? "" : "s"} stopped on a reply`
+                    : "Sync finished"
+                );
+                router.refresh();
               })}
             >
               {pending ? "Syncing…" : "Sync now"}

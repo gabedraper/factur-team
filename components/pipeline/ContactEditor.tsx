@@ -29,13 +29,13 @@ export function ContactEditor({
   function save() {
     setError(null);
     start(async () => {
-      try {
-        await updateContact(contactId, { phone: state.phone || null, email: state.email || null });
-        setSaved(true);
-        setTimeout(() => setSaved(false), 1500);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that change.");
+      const result = await updateContact(contactId, { phone: state.phone || null, email: state.email || null });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
     });
   }
 

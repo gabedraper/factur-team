@@ -58,7 +58,7 @@ export function Documents({
         .upload(path, chosen, { contentType: chosen.type || undefined, upsert: false });
       if (upErr) throw new Error(upErr.message);
 
-      await recordDocument({
+      const result = await recordDocument({
         person_id: personId ?? null,
         job_id: jobId ?? null,
         name: chosen.name,
@@ -68,6 +68,7 @@ export function Documents({
         size_bytes: chosen.size,
         makePrimary: kind === "resume" && !documents.some((d) => d.kind === "resume" && d.is_primary),
       });
+      if (!result.ok) throw new Error(result.error);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not upload that file");
@@ -80,12 +81,12 @@ export function Documents({
   async function open(doc: Doc) {
     if (!doc.storage_path) return;
     setError(null);
-    try {
-      const url = await documentUrl(doc.storage_path);
-      window.open(url, "_blank", "noopener");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not open that file");
+    const result = await documentUrl(doc.storage_path);
+    if (!result.ok) {
+      setError(result.error);
+      return;
     }
+    window.open(result.url, "_blank", "noopener");
   }
 
   return (

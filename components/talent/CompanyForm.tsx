@@ -58,17 +58,22 @@ export function CompanyForm({
   function submit() {
     setError(null);
     start(async () => {
-      try {
-        if (company?.id) await updateCompany(company.id, form);
-        else {
-          const id = await createCompany(form);
-          router.push(`/talent/companies/${id}`);
+      if (company?.id) {
+        const result = await updateCompany(company.id, form);
+        if (!result.ok) {
+          setError(result.error);
+          return;
         }
-        setOpen(false);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that company");
+      } else {
+        const result = await createCompany(form);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        router.push(`/talent/companies/${result.id}`);
       }
+      setOpen(false);
+      router.refresh();
     });
   }
 

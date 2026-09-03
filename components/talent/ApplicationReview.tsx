@@ -32,11 +32,12 @@ export function ApplicationReview({ applications }: { applications: App[] }) {
   const [, start] = useTransition();
 
   async function openResume(path: string) {
-    try {
-      window.open(await documentUrl(path), "_blank", "noopener");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not open that file");
+    const result = await documentUrl(path);
+    if (!result.ok) {
+      setError(result.error);
+      return;
     }
+    window.open(result.url, "_blank", "noopener");
   }
 
   if (!applications.length) {
@@ -96,13 +97,13 @@ export function ApplicationReview({ applications }: { applications: App[] }) {
                   onClick={() => {
                     setBusy(a.id); setError(null);
                     start(async () => {
-                      try {
-                        const res = await acceptApplication(a.id);
-                        router.push(`/talent/people/${res.personId}`);
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "Could not accept that");
+                      const res = await acceptApplication(a.id);
+                      if (!res.ok) {
+                        setError(res.error);
                         setBusy(null);
+                        return;
                       }
+                      router.push(`/talent/people/${res.personId}`);
                     });
                   }}
                 >

@@ -128,22 +128,28 @@ export async function findPossibleDuplicates(input: { emails?: string | null; fu
   return (data ?? []) as { id: string; name: string; title: string | null; company: string | null; primary_email: string | null; last_activity_at: string | null }[];
 }
 
-export async function createPerson(input: PersonInput) {
-  const { supabase, me } = await ctx();
-  const row = personRow(input, me);
-  if (!row.first_name && !row.last_name) throw new Error("A name is required");
+export async function createPerson(
+  input: PersonInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    const row = personRow(input, me);
+    if (!row.first_name && !row.last_name) throw new Error("A name is required");
 
-  const { data, error } = await supabase
-    .from("tal_people")
-    .insert({ ...row, created_by: me })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not add that person: ${error.message}`);
+    const { data, error } = await supabase
+      .from("tal_people")
+      .insert({ ...row, created_by: me })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Could not add that person: ${error.message}`);
 
-  const id = (data as { id: string }).id;
-  await scoreReadiness(id);
-  revalidatePath("/talent/people");
-  return id;
+    const id = (data as { id: string }).id;
+    await scoreReadiness(id);
+    revalidatePath("/talent/people");
+    return { ok: true, id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add that person." };
+  }
 }
 
 export async function updatePerson(personId: string, input: PersonInput) {
@@ -210,13 +216,21 @@ export async function refreshAllReadiness() {
   return (data as number) ?? 0;
 }
 
-export async function mergePeople(keepId: string, mergeId: string) {
-  await assertTalent("recruit");
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("tal_merge_people", { p_keep: keepId, p_merge: mergeId });
-  if (error) throw new Error(`Could not merge: ${error.message}`);
-  revalidatePath("/talent/people");
-  revalidatePath("/talent/duplicates");
+export async function mergePeople(
+  keepId: string,
+  mergeId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertTalent("recruit");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("tal_merge_people", { p_keep: keepId, p_merge: mergeId });
+    if (error) throw new Error(`Could not merge: ${error.message}`);
+    revalidatePath("/talent/people");
+    revalidatePath("/talent/duplicates");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not merge." };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -333,29 +347,43 @@ function companyRow(input: CompanyInput, me: string | null) {
   };
 }
 
-export async function createCompany(input: CompanyInput) {
-  const { supabase, me } = await ctx();
-  if (!input.name?.trim()) throw new Error("A company name is required");
+export async function createCompany(
+  input: CompanyInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    if (!input.name?.trim()) throw new Error("A company name is required");
 
-  const { data, error } = await supabase
-    .from("tal_companies")
-    .insert({ ...companyRow(input, me), created_by: me })
-    .select("id")
-    .single();
-  if (error) {
-    if (error.code === "23505") throw new Error("A company with that domain is already here");
-    throw new Error(`Could not add that company: ${error.message}`);
+    const { data, error } = await supabase
+      .from("tal_companies")
+      .insert({ ...companyRow(input, me), created_by: me })
+      .select("id")
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error("A company with that domain is already here");
+      throw new Error(`Could not add that company: ${error.message}`);
+    }
+    revalidatePath("/talent/companies");
+    return { ok: true, id: (data as { id: string }).id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add that company." };
   }
-  revalidatePath("/talent/companies");
-  return (data as { id: string }).id;
 }
 
-export async function updateCompany(companyId: string, input: CompanyInput) {
-  const { supabase, me } = await ctx();
-  const { error } = await supabase.from("tal_companies").update(companyRow(input, me)).eq("id", companyId);
-  if (error) throw new Error(`Could not save that company: ${error.message}`);
-  revalidatePath(`/talent/companies/${companyId}`);
-  revalidatePath("/talent/companies");
+export async function updateCompany(
+  companyId: string,
+  input: CompanyInput
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    const { error } = await supabase.from("tal_companies").update(companyRow(input, me)).eq("id", companyId);
+    if (error) throw new Error(`Could not save that company: ${error.message}`);
+    revalidatePath(`/talent/companies/${companyId}`);
+    revalidatePath("/talent/companies");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that company." };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -384,37 +412,43 @@ export type ActivityInput = {
  * from a person page and one logged by an automation land on the same type and
  * count the same way in the activity report.
  */
-export async function logActivity(input: ActivityInput) {
-  const { supabase, me } = await ctx();
+export async function logActivity(
+  input: ActivityInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { data: type } = await supabase
-    .from("tal_activity_types").select("id").eq("slug", input.typeSlug).maybeSingle();
+    const { data: type } = await supabase
+      .from("tal_activity_types").select("id").eq("slug", input.typeSlug).maybeSingle();
 
-  const { data, error } = await supabase
-    .from("tal_activities")
-    .insert({
-      activity_type_id: (type as { id: string } | null)?.id ?? null,
-      person_id: input.person_id || null,
-      company_id: input.company_id || null,
-      job_id: input.job_id || null,
-      candidate_id: input.candidate_id || null,
-      deal_id: input.deal_id || null,
-      subject: input.subject ?? null,
-      body: input.body ?? null,
-      direction: input.direction ?? null,
-      outcome: input.outcome ?? null,
-      occurred_at: input.occurred_at || new Date().toISOString(),
-      metadata: input.metadata ?? {},
-      created_by: me,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not log that: ${error.message}`);
+    const { data, error } = await supabase
+      .from("tal_activities")
+      .insert({
+        activity_type_id: (type as { id: string } | null)?.id ?? null,
+        person_id: input.person_id || null,
+        company_id: input.company_id || null,
+        job_id: input.job_id || null,
+        candidate_id: input.candidate_id || null,
+        deal_id: input.deal_id || null,
+        subject: input.subject ?? null,
+        body: input.body ?? null,
+        direction: input.direction ?? null,
+        outcome: input.outcome ?? null,
+        occurred_at: input.occurred_at || new Date().toISOString(),
+        metadata: input.metadata ?? {},
+        created_by: me,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Could not log that: ${error.message}`);
 
-  if (input.person_id) revalidatePath(`/talent/people/${input.person_id}`);
-  if (input.job_id) revalidatePath(`/talent/jobs/${input.job_id}`);
-  if (input.company_id) revalidatePath(`/talent/companies/${input.company_id}`);
-  return (data as { id: string }).id;
+    if (input.person_id) revalidatePath(`/talent/people/${input.person_id}`);
+    if (input.job_id) revalidatePath(`/talent/jobs/${input.job_id}`);
+    if (input.company_id) revalidatePath(`/talent/companies/${input.company_id}`);
+    return { ok: true, id: (data as { id: string }).id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not log that." };
+  }
 }
 
 export async function pinActivity(activityId: string, pinned: boolean, personId?: string) {
@@ -487,36 +521,42 @@ export async function recordDocument(input: {
   mime_type?: string | null;
   size_bytes?: number | null;
   makePrimary?: boolean;
-}) {
-  const { supabase, me } = await ctx();
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  if (input.makePrimary && input.person_id) {
-    await supabase.from("tal_documents")
-      .update({ is_primary: false })
-      .eq("person_id", input.person_id).eq("kind", "resume");
-  }
+    if (input.makePrimary && input.person_id) {
+      await supabase.from("tal_documents")
+        .update({ is_primary: false })
+        .eq("person_id", input.person_id).eq("kind", "resume");
+    }
 
-  const { error } = await supabase.from("tal_documents").insert({
-    person_id: input.person_id || null,
-    job_id: input.job_id || null,
-    company_id: input.company_id || null,
-    name: input.name,
-    kind: input.kind,
-    storage_path: input.storage_path,
-    mime_type: input.mime_type ?? null,
-    size_bytes: input.size_bytes ?? null,
-    is_primary: !!input.makePrimary && input.kind === "resume",
-    uploaded_by: me,
-  });
-  if (error) throw new Error(`Could not save that file: ${error.message}`);
-
-  if (input.person_id) {
-    await logActivity({
-      typeSlug: "document", person_id: input.person_id, job_id: input.job_id,
-      subject: `Added ${input.name}`,
+    const { error } = await supabase.from("tal_documents").insert({
+      person_id: input.person_id || null,
+      job_id: input.job_id || null,
+      company_id: input.company_id || null,
+      name: input.name,
+      kind: input.kind,
+      storage_path: input.storage_path,
+      mime_type: input.mime_type ?? null,
+      size_bytes: input.size_bytes ?? null,
+      is_primary: !!input.makePrimary && input.kind === "resume",
+      uploaded_by: me,
     });
-    await scoreReadiness(input.person_id);
-    revalidatePath(`/talent/people/${input.person_id}`);
+    if (error) throw new Error(`Could not save that file: ${error.message}`);
+
+    if (input.person_id) {
+      const activity = await logActivity({
+        typeSlug: "document", person_id: input.person_id, job_id: input.job_id,
+        subject: `Added ${input.name}`,
+      });
+      if (!activity.ok) throw new Error(activity.error);
+      await scoreReadiness(input.person_id);
+      revalidatePath(`/talent/people/${input.person_id}`);
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that file." };
   }
 }
 
@@ -525,13 +565,19 @@ export async function recordDocument(input: {
  * public, so this is the only way to open one -- and the link stops working an
  * hour later, which is the point.
  */
-export async function documentUrl(storagePath: string) {
-  await assertTalent("view");
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage
-    .from("talent-documents").createSignedUrl(storagePath, 3600);
-  if (error) throw new Error(`Could not open that file: ${error.message}`);
-  return data.signedUrl;
+export async function documentUrl(
+  storagePath: string
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  try {
+    await assertTalent("view");
+    const supabase = await createClient();
+    const { data, error } = await supabase.storage
+      .from("talent-documents").createSignedUrl(storagePath, 3600);
+    if (error) throw new Error(`Could not open that file: ${error.message}`);
+    return { ok: true, url: data.signedUrl };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not open that file." };
+  }
 }
 
 export async function deleteDocument(documentId: string, personId?: string) {

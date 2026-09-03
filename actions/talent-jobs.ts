@@ -85,56 +85,70 @@ function jobRow(input: JobInput, me: string | null) {
   };
 }
 
-export async function createJob(input: JobInput) {
-  const { supabase, me } = await ctx();
-  if (!input.title?.trim()) throw new Error("A job title is required");
+export async function createJob(
+  input: JobInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    if (!input.title?.trim()) return { ok: false, error: "A job title is required" };
 
-  // A job with no workflow has no board, so the default is applied here rather
-  // than left to the person filling in the form.
-  let workflowId = input.workflow_id;
-  if (!workflowId) {
-    const { data } = await supabase
-      .from("tal_settings").select("default_workflow_id").maybeSingle();
-    workflowId = (data as { default_workflow_id: string | null } | null)?.default_workflow_id ?? null;
+    // A job with no workflow has no board, so the default is applied here rather
+    // than left to the person filling in the form.
+    let workflowId = input.workflow_id;
+    if (!workflowId) {
+      const { data } = await supabase
+        .from("tal_settings").select("default_workflow_id").maybeSingle();
+      workflowId = (data as { default_workflow_id: string | null } | null)?.default_workflow_id ?? null;
+    }
+    if (!workflowId) {
+      const { data } = await supabase
+        .from("tal_workflows").select("id").eq("is_default", true).maybeSingle();
+      workflowId = (data as { id: string } | null)?.id ?? null;
+    }
+
+    const { data, error } = await supabase
+      .from("tal_jobs")
+      .insert({
+        ...jobRow({ ...input, workflow_id: workflowId }, me),
+        created_by: me,
+        opened_on: input.opened_on || new Date().toISOString().slice(0, 10),
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: `Could not create that job: ${error.message}` };
+
+    const id = (data as { id: string }).id;
+    if (me) await supabase.from("tal_job_team").insert({ job_id: id, member_id: me, role: "owner" });
+    revalidatePath("/talent/jobs");
+    return { ok: true, id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create that job" };
   }
-  if (!workflowId) {
-    const { data } = await supabase
-      .from("tal_workflows").select("id").eq("is_default", true).maybeSingle();
-    workflowId = (data as { id: string } | null)?.id ?? null;
-  }
-
-  const { data, error } = await supabase
-    .from("tal_jobs")
-    .insert({
-      ...jobRow({ ...input, workflow_id: workflowId }, me),
-      created_by: me,
-      opened_on: input.opened_on || new Date().toISOString().slice(0, 10),
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not create that job: ${error.message}`);
-
-  const id = (data as { id: string }).id;
-  if (me) await supabase.from("tal_job_team").insert({ job_id: id, member_id: me, role: "owner" });
-  revalidatePath("/talent/jobs");
-  return id;
 }
 
-export async function updateJob(jobId: string, input: JobInput) {
-  const { supabase, me } = await ctx();
-  const row = jobRow(input, me);
-  if (input.owner_member_id === undefined) delete (row as Record<string, unknown>).owner_member_id;
+export async function updateJob(
+  jobId: string,
+  input: JobInput
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    const row = jobRow(input, me);
+    if (input.owner_member_id === undefined) delete (row as Record<string, unknown>).owner_member_id;
 
-  // Closing a job stamps the date; reopening one clears it, so "how long was
-  // this search open" is answerable without reading the history.
-  const closing = ["filled", "closed", "cancelled"].includes(row.status);
-  const { error } = await supabase
-    .from("tal_jobs")
-    .update({ ...row, closed_at: closing ? new Date().toISOString() : null })
-    .eq("id", jobId);
-  if (error) throw new Error(`Could not save that job: ${error.message}`);
-  revalidatePath(`/talent/jobs/${jobId}`);
-  revalidatePath("/talent/jobs");
+    // Closing a job stamps the date; reopening one clears it, so "how long was
+    // this search open" is answerable without reading the history.
+    const closing = ["filled", "closed", "cancelled"].includes(row.status);
+    const { error } = await supabase
+      .from("tal_jobs")
+      .update({ ...row, closed_at: closing ? new Date().toISOString() : null })
+      .eq("id", jobId);
+    if (error) return { ok: false, error: `Could not save that job: ${error.message}` };
+    revalidatePath(`/talent/jobs/${jobId}`);
+    revalidatePath("/talent/jobs");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that job" };
+  }
 }
 
 /**
@@ -144,29 +158,37 @@ export async function updateJob(jobId: string, input: JobInput) {
  * in the database function, because a confidential job appearing on a public
  * page is the kind of mistake that ends a client relationship.
  */
-export async function publishJob(jobId: string, published: boolean) {
-  const { supabase } = await ctx();
+export async function publishJob(
+  jobId: string,
+  published: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
 
-  const { data: job } = await supabase
-    .from("tal_jobs").select("title,confidential,public_slug,status").eq("id", jobId).maybeSingle();
-  const row = job as { title: string; confidential: boolean; public_slug: string | null; status: string } | null;
-  if (!row) throw new Error("That job no longer exists");
-  if (published && row.confidential) throw new Error("A confidential job cannot be published");
-  if (published && row.status !== "active") {
-    throw new Error("Only an active job can be published — set the status to Active first");
+    const { data: job } = await supabase
+      .from("tal_jobs").select("title,confidential,public_slug,status").eq("id", jobId).maybeSingle();
+    const row = job as { title: string; confidential: boolean; public_slug: string | null; status: string } | null;
+    if (!row) return { ok: false, error: "That job no longer exists" };
+    if (published && row.confidential) return { ok: false, error: "A confidential job cannot be published" };
+    if (published && row.status !== "active") {
+      return { ok: false, error: "Only an active job can be published — set the status to Active first" };
+    }
+
+    const { error } = await supabase
+      .from("tal_jobs")
+      .update({
+        published,
+        published_at: published ? new Date().toISOString() : null,
+        public_slug: row.public_slug ?? jobSlug(row.title),
+      })
+      .eq("id", jobId);
+    if (error) return { ok: false, error: `Could not change that: ${error.message}` };
+    revalidatePath(`/talent/jobs/${jobId}`);
+    revalidatePath("/careers");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not change that" };
   }
-
-  const { error } = await supabase
-    .from("tal_jobs")
-    .update({
-      published,
-      published_at: published ? new Date().toISOString() : null,
-      public_slug: row.public_slug ?? jobSlug(row.title),
-    })
-    .eq("id", jobId);
-  if (error) throw new Error(`Could not change that: ${error.message}`);
-  revalidatePath(`/talent/jobs/${jobId}`);
-  revalidatePath("/careers");
 }
 
 export async function setJobTeamMember(jobId: string, memberId: string, role: string, on: boolean) {
@@ -204,41 +226,47 @@ export async function addCandidate(
   jobId: string,
   personId: string,
   opts: { source?: string; source_detail?: string; stageId?: string } = {}
-) {
-  const { supabase, me } = await ctx();
+): Promise<
+  { ok: true; id: string; alreadyThere: boolean } | { ok: false; error: string }
+> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { data: existing } = await supabase
-    .from("tal_candidates").select("id").eq("job_id", jobId).eq("person_id", personId).maybeSingle();
-  if (existing) return { id: (existing as { id: string }).id, alreadyThere: true };
+    const { data: existing } = await supabase
+      .from("tal_candidates").select("id").eq("job_id", jobId).eq("person_id", personId).maybeSingle();
+    if (existing) return { ok: true, id: (existing as { id: string }).id, alreadyThere: true };
 
-  let stageId = opts.stageId;
-  if (!stageId) {
-    const { data: job } = await supabase
-      .from("tal_jobs").select("workflow_id").eq("id", jobId).maybeSingle();
-    const workflowId = (job as { workflow_id: string | null } | null)?.workflow_id;
-    if (workflowId) {
-      const { data: stage } = await supabase
-        .from("tal_workflow_stages").select("id").eq("workflow_id", workflowId)
-        .order("position").limit(1).maybeSingle();
-      stageId = (stage as { id: string } | null)?.id;
+    let stageId = opts.stageId;
+    if (!stageId) {
+      const { data: job } = await supabase
+        .from("tal_jobs").select("workflow_id").eq("id", jobId).maybeSingle();
+      const workflowId = (job as { workflow_id: string | null } | null)?.workflow_id;
+      if (workflowId) {
+        const { data: stage } = await supabase
+          .from("tal_workflow_stages").select("id").eq("workflow_id", workflowId)
+          .order("position").limit(1).maybeSingle();
+        stageId = (stage as { id: string } | null)?.id;
+      }
     }
+
+    const { data, error } = await supabase
+      .from("tal_candidates")
+      .insert({
+        job_id: jobId, person_id: personId, stage_id: stageId ?? null,
+        source: opts.source ?? "sourced", source_detail: opts.source_detail ?? null,
+        owner_member_id: me, added_by: me,
+        position: Date.now(),
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: `Could not add them to this job: ${error.message}` };
+
+    revalidatePath(`/talent/jobs/${jobId}`);
+    revalidatePath(`/talent/people/${personId}`);
+    return { ok: true, id: (data as { id: string }).id, alreadyThere: false };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add them to this job" };
   }
-
-  const { data, error } = await supabase
-    .from("tal_candidates")
-    .insert({
-      job_id: jobId, person_id: personId, stage_id: stageId ?? null,
-      source: opts.source ?? "sourced", source_detail: opts.source_detail ?? null,
-      owner_member_id: me, added_by: me,
-      position: Date.now(),
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not add them to this job: ${error.message}`);
-
-  revalidatePath(`/talent/jobs/${jobId}`);
-  revalidatePath(`/talent/people/${personId}`);
-  return { id: (data as { id: string }).id, alreadyThere: false };
 }
 
 /**
@@ -248,50 +276,59 @@ export async function addCandidate(
  * note to the timeline, and moving into a stage marked `placed` sets the
  * candidate to hired so the two can never disagree.
  */
-export async function moveCandidate(candidateId: string, stageId: string, position?: number) {
-  const { supabase } = await ctx();
+export async function moveCandidate(
+  candidateId: string,
+  stageId: string,
+  position?: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
 
-  const { data: before } = await supabase
-    .from("tal_candidates")
-    .select("job_id, person_id, stage_id, status, tal_workflow_stages(name)")
-    .eq("id", candidateId).maybeSingle();
-  const prior = before as {
-    job_id: string; person_id: string; stage_id: string | null; status: string;
-    tal_workflow_stages: { name: string } | null;
-  } | null;
-  if (!prior) throw new Error("That candidate is no longer on this job");
+    const { data: before } = await supabase
+      .from("tal_candidates")
+      .select("job_id, person_id, stage_id, status, tal_workflow_stages(name)")
+      .eq("id", candidateId).maybeSingle();
+    const prior = before as {
+      job_id: string; person_id: string; stage_id: string | null; status: string;
+      tal_workflow_stages: { name: string } | null;
+    } | null;
+    if (!prior) return { ok: false, error: "That candidate is no longer on this job" };
 
-  const { data: target } = await supabase
-    .from("tal_workflow_stages").select("name,kind").eq("id", stageId).maybeSingle();
-  const stage = target as { name: string; kind: string } | null;
+    const { data: target } = await supabase
+      .from("tal_workflow_stages").select("name,kind").eq("id", stageId).maybeSingle();
+    const stage = target as { name: string; kind: string } | null;
 
-  const status =
-    stage?.kind === "placed" ? "hired" :
-    stage?.kind === "rejected" ? "rejected" :
-    prior.status === "hired" || prior.status === "rejected" ? "active" : prior.status;
+    const status =
+      stage?.kind === "placed" ? "hired" :
+      stage?.kind === "rejected" ? "rejected" :
+      prior.status === "hired" || prior.status === "rejected" ? "active" : prior.status;
 
-  const { error } = await supabase
-    .from("tal_candidates")
-    .update({
-      stage_id: stageId,
-      status,
-      position: position ?? Date.now(),
-      rejected_at: stage?.kind === "rejected" ? new Date().toISOString() : null,
-    })
-    .eq("id", candidateId);
-  if (error) throw new Error(`Could not move them: ${error.message}`);
+    const { error } = await supabase
+      .from("tal_candidates")
+      .update({
+        stage_id: stageId,
+        status,
+        position: position ?? Date.now(),
+        rejected_at: stage?.kind === "rejected" ? new Date().toISOString() : null,
+      })
+      .eq("id", candidateId);
+    if (error) return { ok: false, error: `Could not move them: ${error.message}` };
 
-  await logActivity({
-    typeSlug: "stage-change",
-    person_id: prior.person_id,
-    job_id: prior.job_id,
-    candidate_id: candidateId,
-    subject: `${prior.tal_workflow_stages?.name ?? "Added"} → ${stage?.name ?? "?"}`,
-  });
+    await logActivity({
+      typeSlug: "stage-change",
+      person_id: prior.person_id,
+      job_id: prior.job_id,
+      candidate_id: candidateId,
+      subject: `${prior.tal_workflow_stages?.name ?? "Added"} → ${stage?.name ?? "?"}`,
+    });
 
-  revalidatePath(`/talent/jobs/${prior.job_id}`);
-  revalidatePath(`/talent/people/${prior.person_id}`);
-  revalidatePath("/talent/pipeline");
+    revalidatePath(`/talent/jobs/${prior.job_id}`);
+    revalidatePath(`/talent/people/${prior.person_id}`);
+    revalidatePath("/talent/pipeline");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not move them" };
+  }
 }
 
 /** Only the order inside a stage, for a board dragged into priority. */
@@ -305,27 +342,32 @@ export async function setCandidateStatus(
   candidateId: string,
   status: string,
   reason?: string | null
-) {
-  const { supabase } = await ctx();
-  const { data: row } = await supabase
-    .from("tal_candidates").select("job_id,person_id").eq("id", candidateId).maybeSingle();
-  const c = row as { job_id: string; person_id: string } | null;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
+    const { data: row } = await supabase
+      .from("tal_candidates").select("job_id,person_id").eq("id", candidateId).maybeSingle();
+    const c = row as { job_id: string; person_id: string } | null;
 
-  const { error } = await supabase
-    .from("tal_candidates")
-    .update({
-      status,
-      rejection_reason: status === "rejected" ? reason ?? null : null,
-      rejected_at: status === "rejected" ? new Date().toISOString() : null,
-    })
-    .eq("id", candidateId);
-  if (error) throw new Error(`Could not change that: ${error.message}`);
+    const { error } = await supabase
+      .from("tal_candidates")
+      .update({
+        status,
+        rejection_reason: status === "rejected" ? reason ?? null : null,
+        rejected_at: status === "rejected" ? new Date().toISOString() : null,
+      })
+      .eq("id", candidateId);
+    if (error) return { ok: false, error: `Could not change that: ${error.message}` };
 
-  if (c) {
-    revalidatePath(`/talent/jobs/${c.job_id}`);
-    revalidatePath(`/talent/people/${c.person_id}`);
+    if (c) {
+      revalidatePath(`/talent/jobs/${c.job_id}`);
+      revalidatePath(`/talent/people/${c.person_id}`);
+    }
+    revalidatePath("/talent/pipeline");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not change that" };
   }
-  revalidatePath("/talent/pipeline");
 }
 
 export async function rateCandidate(candidateId: string, rating: number | null, jobId: string) {
@@ -505,16 +547,24 @@ export async function saveDeal(input: {
   return (data as { id: string }).id;
 }
 
-export async function setDealStage(dealId: string, stage: string) {
-  const { supabase } = await ctx();
-  const { error } = await supabase
-    .from("tal_deals")
-    .update({
-      stage,
-      status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open",
-      closed_at: stage === "won" || stage === "lost" ? new Date().toISOString() : null,
-    })
-    .eq("id", dealId);
-  if (error) throw new Error(`Could not move that deal: ${error.message}`);
-  revalidatePath("/talent/deals");
+export async function setDealStage(
+  dealId: string,
+  stage: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
+    const { error } = await supabase
+      .from("tal_deals")
+      .update({
+        stage,
+        status: stage === "won" ? "won" : stage === "lost" ? "lost" : "open",
+        closed_at: stage === "won" || stage === "lost" ? new Date().toISOString() : null,
+      })
+      .eq("id", dealId);
+    if (error) return { ok: false, error: `Could not move that deal: ${error.message}` };
+    revalidatePath("/talent/deals");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not move that deal" };
+  }
 }

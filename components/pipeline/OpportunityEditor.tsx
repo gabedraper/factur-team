@@ -43,14 +43,14 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
     setState(next);
     setError(null);
     start(async () => {
-      try {
-        await updateOpportunity(opportunity.id, patch);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 1500);
-      } catch (e) {
+      const result = await updateOpportunity(opportunity.id, patch);
+      if (!result.ok) {
         setState(state);
-        setError(e instanceof Error ? e.message : "Could not save that change.");
+        setError(result.error);
+        return;
       }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
     });
   }
 

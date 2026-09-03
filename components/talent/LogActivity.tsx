@@ -41,21 +41,21 @@ export function LogActivity({
     if (!subject.trim() && !body.trim()) return;
     setError(null);
     start(async () => {
-      try {
-        await logActivity({
-          typeSlug: slug,
-          subject: subject.trim() || null,
-          body: body.trim() || null,
-          outcome: outcome.trim() || null,
-          direction: type?.category === "email" ? (slug === "email-in" ? "inbound" : "outbound") : null,
-          person_id: personId, company_id: companyId, job_id: jobId,
-          candidate_id: candidateId, deal_id: dealId,
-        });
-        setSubject(""); setBody(""); setOutcome(""); setOpen(false);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not log that");
+      const result = await logActivity({
+        typeSlug: slug,
+        subject: subject.trim() || null,
+        body: body.trim() || null,
+        outcome: outcome.trim() || null,
+        direction: type?.category === "email" ? (slug === "email-in" ? "inbound" : "outbound") : null,
+        person_id: personId, company_id: companyId, job_id: jobId,
+        candidate_id: candidateId, deal_id: dealId,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setSubject(""); setBody(""); setOutcome(""); setOpen(false);
+      router.refresh();
     });
   }
 

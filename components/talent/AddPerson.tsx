@@ -48,17 +48,17 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
   function submit() {
     setError(null);
     start(async () => {
-      try {
-        const id = await createPerson(form);
-        setOpen(false);
-        setForm({ full_name: "", emails: "", person_types: ["candidate"] });
-        setDupes([]);
-        onAdded?.(id);
-        router.push(`/talent/people/${id}`);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add that person");
+      const result = await createPerson(form);
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setOpen(false);
+      setForm({ full_name: "", emails: "", person_types: ["candidate"] });
+      setDupes([]);
+      onAdded?.(result.id);
+      router.push(`/talent/people/${result.id}`);
+      router.refresh();
     });
   }
 

@@ -43,17 +43,19 @@ export function TwilioDialWidget() {
     let cancelled = false;
 
     async function init() {
-      const token = await getTwilioVoiceToken();
-      if (!token) { if (!cancelled) setUnavailable(true); return; }
+      const result = await getTwilioVoiceToken();
+      if (!result.ok) { if (!cancelled) setError(result.error); return; }
+      if (!result.token) { if (!cancelled) setUnavailable(true); return; }
 
       const { Device } = await import("@twilio/voice-sdk");
-      const device = new Device(token, { logLevel: "warn" });
+      const device = new Device(result.token, { logLevel: "warn" });
 
       device.on("registered", () => { if (!cancelled) setReady(true); });
       device.on("error", (e) => { if (!cancelled) setError(e.message ?? "Twilio device error."); });
       device.on("tokenWillExpire", async () => {
         const fresh = await getTwilioVoiceToken();
-        if (fresh) device.updateToken(fresh);
+        if (!fresh.ok) { if (!cancelled) setError(fresh.error); return; }
+        if (fresh.token) device.updateToken(fresh.token);
       });
 
       deviceRef.current = device;
@@ -77,7 +79,12 @@ export function TwilioDialWidget() {
     setError(null);
     setClaiming(true);
     try {
-      const outboundCallerId = await claimOutboundNumber("twilio");
+      const claimed = await claimOutboundNumber("twilio");
+      if (!claimed.ok) {
+        setError(claimed.error);
+        return;
+      }
+      const outboundCallerId = claimed.e164;
       if (!outboundCallerId) {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;

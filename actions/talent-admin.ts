@@ -122,16 +122,29 @@ export async function reorderStages(workflowId: string, orderedIds: string[]) {
  * Removing a stage is refused while anyone is standing in it. Deleting it
  * anyway would set those candidates' stage to null and drop them off every
  * board without saying so.
+ *
+ * Returns a result rather than throwing -- Next redacts a thrown Server
+ * Action error's message in production (the client gets a generic "Minified
+ * React error" and a digest; the real text only reaches the server log), so a
+ * thrown error here would never actually reach the settings panel.
+ * Everything is caught and turned into { ok: false }.
  */
-export async function deleteStage(stageId: string) {
-  const { supabase } = await ctx();
-  const { count } = await supabase
-    .from("tal_candidates").select("id", { count: "exact", head: true }).eq("stage_id", stageId);
-  if (count) {
-    throw new Error(`${count} candidate${count === 1 ? " is" : "s are"} in that stage — move them first`);
+export async function deleteStage(
+  stageId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
+    const { count } = await supabase
+      .from("tal_candidates").select("id", { count: "exact", head: true }).eq("stage_id", stageId);
+    if (count) {
+      throw new Error(`${count} candidate${count === 1 ? " is" : "s are"} in that stage — move them first`);
+    }
+    await supabase.from("tal_workflow_stages").delete().eq("id", stageId);
+    revalidatePath("/settings/talent");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not remove that stage" };
   }
-  await supabase.from("tal_workflow_stages").delete().eq("id", stageId);
-  revalidatePath("/settings/talent");
 }
 
 // ---------------------------------------------------------------------------
@@ -307,30 +320,35 @@ export async function setIntegrationStatus(
   status: "not_connected" | "connected" | "error" | "disabled",
   config?: Record<string, unknown>,
   note?: string | null
-) {
-  const { supabase, me } = await ctx();
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const forbidden = ["key", "secret", "token", "password", "credential"];
-  for (const k of Object.keys(config ?? {})) {
-    if (forbidden.some((f) => k.toLowerCase().includes(f))) {
-      throw new Error(`${k} looks like a secret — those belong in an environment variable, not here`);
+    const forbidden = ["key", "secret", "token", "password", "credential"];
+    for (const k of Object.keys(config ?? {})) {
+      if (forbidden.some((f) => k.toLowerCase().includes(f))) {
+        throw new Error(`${k} looks like a secret — those belong in an environment variable, not here`);
+      }
     }
-  }
 
-  const { error } = await supabase
-    .from("tal_integrations")
-    .update({
-      status,
-      config: config ?? {},
-      last_error: note ?? null,
-      connected_at: status === "connected" ? new Date().toISOString() : null,
-      connected_by: status === "connected" ? me : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("slug", slug);
-  if (error) throw new Error(`Could not update that: ${error.message}`);
-  revalidatePath("/settings/talent");
-  revalidatePath("/talent");
+    const { error } = await supabase
+      .from("tal_integrations")
+      .update({
+        status,
+        config: config ?? {},
+        last_error: note ?? null,
+        connected_at: status === "connected" ? new Date().toISOString() : null,
+        connected_by: status === "connected" ? me : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("slug", slug);
+    if (error) throw new Error(`Could not update that: ${error.message}`);
+    revalidatePath("/settings/talent");
+    revalidatePath("/talent");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update that" };
+  }
 }
 
 /**

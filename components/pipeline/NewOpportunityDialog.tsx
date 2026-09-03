@@ -72,24 +72,24 @@ export function NewOpportunityDialog({
     }
     setError(null);
     startSave(async () => {
-      try {
-        const result = await createOpportunity({
-          client_id: clientId,
-          contact_id: contact.id,
-          account_id: contact.account_id,
-          notes: notes || null,
-        });
-        if (result.collision) {
-          setCollisionNote(
-            `Heads up: the same account manager already has ${contact.first_name ?? "this contact"} open under another client.`
-          );
-        }
-        setOpen(false);
-        reset();
-        router.push(`/opportunities/${result.id}`);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not create that opportunity.");
+      const result = await createOpportunity({
+        client_id: clientId,
+        contact_id: contact.id,
+        account_id: contact.account_id,
+        notes: notes || null,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      if (result.collision) {
+        setCollisionNote(
+          `Heads up: the same account manager already has ${contact.first_name ?? "this contact"} open under another client.`
+        );
+      }
+      setOpen(false);
+      reset();
+      router.push(`/opportunities/${result.id}`);
     });
   }
 

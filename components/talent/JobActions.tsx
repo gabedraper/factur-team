@@ -24,13 +24,10 @@ export function AddCandidate({ jobId }: { jobId: string }) {
   function pick(p: PickedPerson) {
     setError(null);
     start(async () => {
-      try {
-        const res = await addCandidate(jobId, p.id);
-        setAdded((a) => [{ name: p.name, already: res.alreadyThere }, ...a]);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add them");
-      }
+      const res = await addCandidate(jobId, p.id);
+      if (!res.ok) { setError(res.error); return; }
+      setAdded((a) => [{ name: p.name, already: res.alreadyThere }, ...a]);
+      router.refresh();
     });
   }
 
@@ -106,12 +103,9 @@ export function PublishToggle({
   function toggle() {
     setError(null);
     start(async () => {
-      try {
-        await publishJob(jobId, !published);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not change that");
-      }
+      const result = await publishJob(jobId, !published);
+      if (!result.ok) { setError(result.error); return; }
+      router.refresh();
     });
   }
 

@@ -40,6 +40,7 @@ export function AddToJob({ personId }: { personId: string }) {
               className="w-full px-2 py-2 text-left text-sm hover:bg-accent"
               onClick={() => start(async () => {
                 const res = await addCandidate(j.id, personId);
+                if (!res.ok) { setNote(res.error); return; }
                 setNote(res.alreadyThere ? `Already on ${j.title}` : `Added to ${j.title}`);
                 router.refresh();
               })}

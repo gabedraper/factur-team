@@ -16,7 +16,11 @@ async function requireOrgManage() {
  * someone may see rather than what job they do, and are granted separately.
  */
 export async function setMemberRole(memberId: string, roleId: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   // Someone holds one job at a time, so setting a role replaces whatever job
@@ -54,7 +58,11 @@ export async function setMemberRole(memberId: string, roleId: string | null) {
 
 /** Grant or revoke a role that is not tied to a service: manager, app-admin. */
 export async function toggleStandaloneRole(memberId: string, roleSlug: StandaloneRoleSlug, on: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const { data: role } = await db.from("org_roles").select("id").eq("slug", roleSlug).single();
@@ -73,7 +81,11 @@ export async function toggleStandaloneRole(memberId: string, roleSlug: Standalon
 }
 
 export async function setMemberManager(memberId: string, managerId: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   if (managerId === memberId) return { success: false, error: "Someone cannot manage themselves." };
   const db = createServiceClient();
 
@@ -95,7 +107,11 @@ export async function setMemberManager(memberId: string, managerId: string | nul
 }
 
 export async function setMemberActive(memberId: string, active: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_members").update({ active }).eq("id", memberId);
   if (error) return { success: false, error: error.message };
@@ -104,7 +120,11 @@ export async function setMemberActive(memberId: string, active: boolean) {
 }
 
 export async function createTeam(name: string, kind: "pod" | "group") {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const trimmed = name.trim();
   if (!trimmed) return { success: false, error: "A pod needs a name." };
   const db = createServiceClient();
@@ -126,7 +146,11 @@ export async function createTeam(name: string, kind: "pod" | "group") {
 }
 
 export async function renameTeam(teamId: string, name: string) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   if (!name.trim()) return { success: false, error: "A pod needs a name." };
   const db = createServiceClient();
   const { error } = await db.from("org_teams").update({ name: name.trim() }).eq("id", teamId);
@@ -136,7 +160,11 @@ export async function renameTeam(teamId: string, name: string) {
 }
 
 export async function setTeamActive(teamId: string, active: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_teams").update({ active }).eq("id", teamId);
   if (error) return { success: false, error: error.message };
@@ -150,7 +178,11 @@ export async function setTeamActive(teamId: string, active: boolean) {
  * each role they hold.
  */
 export async function setMemberTeam(memberId: string, teamId: string, inTeam: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const { data: team } = await db.from("org_teams").select("service_id").eq("id", teamId).single();
@@ -178,7 +210,11 @@ export async function setMemberTeam(memberId: string, teamId: string, inTeam: bo
 }
 
 export async function setPodManager(teamId: string, memberId: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_teams")
     .update({ manager_member_id: memberId }).eq("id", teamId);
@@ -212,7 +248,11 @@ export async function setClientOwner(
   clientId: string,
   owner: { teamId: string } | { memberId: string } | null
 ) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_clients").update({
     team_id: owner && "teamId" in owner ? owner.teamId : null,
@@ -228,7 +268,11 @@ export async function setClientOwner(
 // --- people -----------------------------------------------------------------
 
 export async function createMember(email: string, fullName: string) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const address = email.trim().toLowerCase();
   const domain = address.split("@")[1];
   if (domain !== "bethefactur.com" && domain !== "facturmfg.com") {
@@ -260,7 +304,11 @@ export async function createMember(email: string, fullName: string) {
 }
 
 export async function updateMember(memberId: string, fields: { full_name?: string; email?: string }) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const patch: Record<string, string> = {};
   if (fields.full_name !== undefined) patch.full_name = fields.full_name.trim();
   if (fields.email !== undefined) {
@@ -290,7 +338,11 @@ export async function updateMember(memberId: string, fields: { full_name?: strin
  * attached. Deletion is refused while anything still points at them.
  */
 export async function deleteMember(memberId: string) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const [{ count: reports }, { count: coverage }] = await Promise.all([
@@ -316,7 +368,11 @@ export async function deleteMember(memberId: string) {
 }
 
 export async function linkSalesforceUser(memberId: string, salesforceUserId: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_members")
     .update({ salesforce_user_id: salesforceUserId }).eq("id", memberId);
@@ -328,7 +384,11 @@ export async function linkSalesforceUser(memberId: string, salesforceUserId: str
 // --- roles ------------------------------------------------------------------
 
 export async function createRole(name: string, serviceId: string | null, description: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const trimmed = name.trim();
   if (!trimmed) return { success: false, error: "A role needs a name." };
   const db = createServiceClient();
@@ -350,7 +410,11 @@ export async function updateRole(
   roleId: string,
   fields: { name?: string; service_id?: string | null; description?: string | null; active?: boolean }
 ) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_roles").update(fields).eq("id", roleId);
   if (error) return { success: false, error: error.message };
@@ -360,7 +424,11 @@ export async function updateRole(
 
 /** Refused while anyone holds it: deleting would silently strip their access. */
 export async function deleteRole(roleId: string) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const { data: role } = await db.from("org_roles").select("slug").eq("id", roleId).maybeSingle();
@@ -380,7 +448,11 @@ export async function deleteRole(roleId: string) {
 }
 
 export async function setRolePermission(roleId: string, permissionKey: string, on: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   if (on) {
     const { error } = await db.from("org_role_permissions")
@@ -406,7 +478,11 @@ export async function setClientRole(
   roleId: string,
   memberId: string | null
 ) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const { error } = memberId
@@ -431,7 +507,11 @@ export async function setClientRole(
 
 /** Show or hide a role as an assignment field on every client. */
 export async function setRoleClientAssignable(roleId: string, on: boolean) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db
     .from("org_roles").update({ client_assignable: on }).eq("id", roleId);
@@ -450,7 +530,11 @@ export async function setClientLead(
   field: "team_lead_id" | "data_team_lead_id",
   memberId: string | null
 ) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
   const { error } = await db.from("org_clients").update({ [field]: memberId }).eq("id", clientId);
   if (error) return { success: false, error: error.message };
@@ -474,7 +558,11 @@ export async function setClientLead(
  */
 
 export async function createService(name: string, description: string | null) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const trimmed = name.trim();
   if (!trimmed) return { success: false, error: "A service needs a name." };
   const db = createServiceClient();
@@ -506,7 +594,11 @@ export async function updateService(
   serviceId: string,
   fields: { name?: string; description?: string | null; active?: boolean }
 ) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   if (fields.name !== undefined && !fields.name.trim()) {
     return { success: false, error: "A service needs a name." };
   }
@@ -537,7 +629,11 @@ export async function updateService(
  * meant: it drops out of the dropdown for new work and leaves history intact.
  */
 export async function deleteService(serviceId: string) {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const [roles, teams] = await Promise.all([
@@ -566,7 +662,11 @@ export async function deleteService(serviceId: string) {
 
 /** Swaps a service with its neighbour, which is what the arrows in the UI do. */
 export async function moveService(serviceId: string, direction: "up" | "down") {
-  await requireOrgManage();
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
   const db = createServiceClient();
 
   const { data: rows } = await db.from("org_services").select("id,position").order("position");
@@ -623,7 +723,11 @@ export async function addServicePeriod(
     monthly_rate: number | null; tier: string | null; note: string | null;
   }
 ) {
-  await requireClientEdit();
+  try {
+    await requireClientEdit();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: clients.health or org.manage required" };
+  }
   if (!fields.service.trim()) return { success: false, error: "A period needs a service." };
   const bad = badDates(fields.started_on, fields.ended_on);
   if (bad) return { success: false, error: bad };
@@ -651,7 +755,11 @@ export async function updateServicePeriod(
     monthly_rate?: number | null; tier?: string | null; note?: string | null;
   }
 ) {
-  await requireClientEdit();
+  try {
+    await requireClientEdit();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: clients.health or org.manage required" };
+  }
   const db = createServiceClient();
 
   const { data: current } = await db.from("client_service_periods")
@@ -680,7 +788,11 @@ export async function updateServicePeriod(
 }
 
 export async function deleteServicePeriod(periodId: string, clientId: string) {
-  await requireClientEdit();
+  try {
+    await requireClientEdit();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: clients.health or org.manage required" };
+  }
   const { error } = await createServiceClient()
     .from("client_service_periods").delete().eq("id", periodId);
   if (error) return { success: false, error: error.message };
@@ -702,7 +814,11 @@ export async function switchService(
   onDate: string,
   monthlyRate: number | null
 ) {
-  await requireClientEdit();
+  try {
+    await requireClientEdit();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: clients.health or org.manage required" };
+  }
   if (!toService.trim()) return { success: false, error: "Pick a service to switch to." };
   if (!onDate) return { success: false, error: "Pick the date the change took effect." };
   const db = createServiceClient();

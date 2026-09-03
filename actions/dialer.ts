@@ -22,17 +22,23 @@ export type VoiceProvider = "dialpad" | "twilio" | "telnyx";
  * pool -- see voice_numbers / claim_voice_number.
  */
 
-export async function claimOutboundNumber(provider: VoiceProvider): Promise<string | null> {
-  await assertPipeline("view");
-  const supabase = await createClient();
-  const me = await currentMemberId();
-  if (!me) throw new Error("Not signed in as a Factur member.");
+export async function claimOutboundNumber(
+  provider: VoiceProvider
+): Promise<{ ok: true; e164: string | null } | { ok: false; error: string }> {
+  try {
+    await assertPipeline("view");
+    const supabase = await createClient();
+    const me = await currentMemberId();
+    if (!me) return { ok: false, error: "Not signed in as a Factur member." };
 
-  const { data, error } = await supabase.rpc("claim_voice_number", { p_member_id: me, p_provider: provider });
-  if (error) throw new Error(`Could not claim an outbound number: ${error.message}`);
+    const { data, error } = await supabase.rpc("claim_voice_number", { p_member_id: me, p_provider: provider });
+    if (error) return { ok: false, error: `Could not claim an outbound number: ${error.message}` };
 
-  const row = (data as { e164: string }[] | null)?.[0];
-  return row?.e164 ?? null;
+    const row = (data as { e164: string }[] | null)?.[0];
+    return { ok: true, e164: row?.e164 ?? null };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not claim an outbound number." };
+  }
 }
 
 export type VoiceNumberRow = {
@@ -76,20 +82,25 @@ export async function listVoiceNumbers(): Promise<VoiceNumberRow[]> {
 
 export async function addVoiceNumber(input: {
   e164: string; provider: VoiceProvider; label?: string | null; assigned_member_id?: string | null;
-}) {
-  await assertManage();
-  const supabase = await createClient();
-  const me = await currentMemberId();
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertManage();
+    const supabase = await createClient();
+    const me = await currentMemberId();
 
-  const { error } = await supabase.from("voice_numbers").insert({
-    e164: input.e164,
-    provider: input.provider,
-    label: input.label ?? null,
-    assigned_member_id: input.assigned_member_id ?? null,
-    created_by: me,
-  });
-  if (error) throw new Error(`Could not add that number: ${error.message}`);
-  revalidatePath("/settings/dialpad");
+    const { error } = await supabase.from("voice_numbers").insert({
+      e164: input.e164,
+      provider: input.provider,
+      label: input.label ?? null,
+      assigned_member_id: input.assigned_member_id ?? null,
+      created_by: me,
+    });
+    if (error) return { ok: false, error: `Could not add that number: ${error.message}` };
+    revalidatePath("/settings/dialpad");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add that number." };
+  }
 }
 
 export async function setVoiceNumberStatus(id: string, status: "active" | "paused" | "flagged") {
@@ -110,20 +121,28 @@ export async function setVoiceNumberStatus(id: string, status: "active" | "pause
  * TWILIO_TWIML_APP_SID. Returns null (rather than throwing) when they're not
  * set, so the widget can render its own "not connected" state.
  */
-export async function getTwilioVoiceToken(): Promise<string | null> {
-  await assertPipeline("view");
-  const { TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID } = process.env;
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) return null;
+export async function getTwilioVoiceToken(): Promise<
+  { ok: true; token: string | null } | { ok: false; error: string }
+> {
+  try {
+    await assertPipeline("view");
+    const { TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID } = process.env;
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) {
+      return { ok: true, token: null };
+    }
 
-  const me = await currentMemberId();
-  if (!me) throw new Error("Not signed in as a Factur member.");
+    const me = await currentMemberId();
+    if (!me) return { ok: false, error: "Not signed in as a Factur member." };
 
-  const AccessToken = twilio.jwt.AccessToken;
-  const VoiceGrant = AccessToken.VoiceGrant;
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
 
-  const token = new AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: me });
-  token.addGrant(new VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
-  return token.toJwt();
+    const token = new AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: me });
+    token.addGrant(new VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
+    return { ok: true, token: token.toJwt() };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not get a Twilio voice token." };
+  }
 }
 
 /**
@@ -142,28 +161,34 @@ export async function getTwilioVoiceToken(): Promise<string | null> {
  * envelope) -- handled defensively below rather than assumed, and worth
  * confirming against the real response the first time this actually runs.
  */
-export async function getTelnyxVoiceToken(): Promise<string | null> {
-  await assertPipeline("view");
-  const { TELNYX_API_KEY, TELNYX_CREDENTIAL_ID } = process.env;
-  if (!TELNYX_API_KEY || !TELNYX_CREDENTIAL_ID) return null;
-
-  const res = await fetch(`https://api.telnyx.com/v2/telephony_credentials/${TELNYX_CREDENTIAL_ID}/token`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!res.ok) throw new Error(`Could not get a Telnyx token: ${res.status} ${await res.text()}`);
-
-  const text = await res.text();
+export async function getTelnyxVoiceToken(): Promise<
+  { ok: true; token: string | null } | { ok: false; error: string }
+> {
   try {
-    const parsed = JSON.parse(text) as { data?: { token?: string } | string; token?: string };
-    if (typeof parsed.data === "string") return parsed.data;
-    if (typeof parsed.data === "object" && parsed.data?.token) return parsed.data.token;
-    if (typeof parsed.token === "string") return parsed.token;
-  } catch {
-    // Not JSON -- the bare-JWT-string response shape.
+    await assertPipeline("view");
+    const { TELNYX_API_KEY, TELNYX_CREDENTIAL_ID } = process.env;
+    if (!TELNYX_API_KEY || !TELNYX_CREDENTIAL_ID) return { ok: true, token: null };
+
+    const res = await fetch(`https://api.telnyx.com/v2/telephony_credentials/${TELNYX_CREDENTIAL_ID}/token`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) return { ok: false, error: `Could not get a Telnyx token: ${res.status} ${await res.text()}` };
+
+    const text = await res.text();
+    try {
+      const parsed = JSON.parse(text) as { data?: { token?: string } | string; token?: string };
+      if (typeof parsed.data === "string") return { ok: true, token: parsed.data };
+      if (typeof parsed.data === "object" && parsed.data?.token) return { ok: true, token: parsed.data.token };
+      if (typeof parsed.token === "string") return { ok: true, token: parsed.token };
+    } catch {
+      // Not JSON -- the bare-JWT-string response shape.
+    }
+    return { ok: true, token: text.trim() || null };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not get a Telnyx token." };
   }
-  return text.trim() || null;
 }
 
 /**
@@ -189,7 +214,9 @@ export async function sendSms(to: string, body: string): Promise<{ ok: true } | 
       return { ok: false, error: "Texting isn't configured yet — needs TELNYX_MESSAGING_PROFILE_ID." };
     }
 
-    const from = await claimOutboundNumber("telnyx");
+    const claimed = await claimOutboundNumber("telnyx");
+    if (!claimed.ok) return { ok: false, error: claimed.error };
+    const from = claimed.e164;
     if (!from) return { ok: false, error: "No active outbound numbers in the pool — add one in Dialer settings." };
 
     const res = await fetch("https://api.telnyx.com/v2/messages", {

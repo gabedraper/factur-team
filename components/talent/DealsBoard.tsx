@@ -42,13 +42,13 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
     setBoard((rows) => rows.map((d) => (d.id === id ? { ...d, stage } : d)));
     setError(null);
     start(async () => {
-      try {
-        await setDealStage(id, stage);
-        router.refresh();
-      } catch (e) {
+      const result = await setDealStage(id, stage);
+      if (!result.ok) {
         setBoard(before);
-        setError(e instanceof Error ? e.message : "Could not move that deal");
+        setError(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 

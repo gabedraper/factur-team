@@ -33,13 +33,13 @@ export function DuplicateList({ pairs, canEdit }: { pairs: Pair[]; canEdit: bool
   function merge(keep: string, drop: string, key: string) {
     setError(null);
     start(async () => {
-      try {
-        await mergePeople(keep, drop);
-        setDone((d) => [...d, key]);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not merge those");
+      const result = await mergePeople(keep, drop);
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setDone((d) => [...d, key]);
+      router.refresh();
     });
   }
 

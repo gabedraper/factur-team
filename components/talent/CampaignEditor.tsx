@@ -51,16 +51,16 @@ export function CampaignEditor({
   function persist(s: Step) {
     const v = value(s);
     start(async () => {
-      try {
-        await saveCampaignStep({
-          id: s.id, campaign_id: campaignId, position: v.position ?? s.position,
-          channel: v.channel, delay_days: v.delay_days, subject: v.subject, body: v.body,
-        });
-        setDraft((d) => { const next = { ...d }; delete next[s.id]; return next; });
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that step");
+      const result = await saveCampaignStep({
+        id: s.id, campaign_id: campaignId, position: v.position ?? s.position,
+        channel: v.channel, delay_days: v.delay_days, subject: v.subject, body: v.body,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setDraft((d) => { const next = { ...d }; delete next[s.id]; return next; });
+      router.refresh();
     });
   }
 
@@ -77,12 +77,16 @@ export function CampaignEditor({
             variant="ghost"
             disabled={pending}
             onClick={() => start(async () => {
-              await saveCampaignStep({
+              const result = await saveCampaignStep({
                 campaign_id: campaignId,
                 position: (steps.at(-1)?.position ?? -1) + 1,
                 delay_days: steps.length ? 3 : 0,
                 body: "",
               });
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
               setAdding(false);
               router.refresh();
             })}

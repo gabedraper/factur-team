@@ -171,7 +171,12 @@ export async function getNpsSteps(): Promise<Step[]> {
 export async function draftSurveyToMe(sendId: string, stepId: string) {
   if (!(await mayRun())) return { success: false, error: "Not permitted." };
 
-  const queue = await getNpsQueue();
+  let queue: Invitation[];
+  try {
+    queue = await getNpsQueue();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "NPS queue failed." };
+  }
   const row = queue.find((q) => q.send_id === sendId && q.step_id === stepId);
   if (!row) return { success: false, error: "That step is no longer due." };
 
@@ -211,7 +216,12 @@ export async function placeSurvey(
   if (!(await mayRun())) return { success: false, error: "Not permitted." };
   if (!subject.trim() || !body.trim()) return { success: false, error: "Nothing to send." };
 
-  const queue = await getNpsQueue();
+  let queue: Invitation[];
+  try {
+    queue = await getNpsQueue();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "NPS queue failed." };
+  }
   const row = queue.find((q) => q.send_id === sendId && q.step_id === stepId);
   if (!row) {
     return { success: false, error: "That step is no longer due — the queue has moved on." };

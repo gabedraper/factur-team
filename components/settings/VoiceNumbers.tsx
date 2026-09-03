@@ -39,32 +39,32 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
     }
     setError(null);
     start(async () => {
-      try {
-        await addVoiceNumber({
+      const result = await addVoiceNumber({
+        e164: e164.trim(),
+        provider,
+        label: label.trim() || null,
+        assigned_member_id: assignee === "shared" ? null : assignee,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setRows((r) => [
+        {
+          id: crypto.randomUUID(),
           e164: e164.trim(),
           provider,
           label: label.trim() || null,
           assigned_member_id: assignee === "shared" ? null : assignee,
-        });
-        setRows((r) => [
-          {
-            id: crypto.randomUUID(),
-            e164: e164.trim(),
-            provider,
-            label: label.trim() || null,
-            assigned_member_id: assignee === "shared" ? null : assignee,
-            assigned_member_name: assignee === "shared" ? null : members.find((m) => m.id === assignee)?.full_name ?? null,
-            status: "active",
-            last_used_at: null,
-            calls_placed: 0,
-          },
-          ...r,
-        ]);
-        setE164("");
-        setLabel("");
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add that number.");
-      }
+          assigned_member_name: assignee === "shared" ? null : members.find((m) => m.id === assignee)?.full_name ?? null,
+          status: "active",
+          last_used_at: null,
+          calls_placed: 0,
+        },
+        ...r,
+      ]);
+      setE164("");
+      setLabel("");
     });
   }
 

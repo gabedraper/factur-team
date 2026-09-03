@@ -75,48 +75,58 @@ async function checkRepCollision(
   return { account_manager_id: accountManagerId, other_client_id: row.client_id, other_opportunity_id: row.id };
 }
 
-export async function createOpportunity(input: OpportunityInput) {
-  const { supabase, me } = await ctx();
+export async function createOpportunity(
+  input: OpportunityInput
+): Promise<
+  { ok: true; id: string; collision: RepCollision | null } | { ok: false; error: string }
+> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { data: existing } = await supabase
-    .from("opportunities")
-    .select("id")
-    .eq("client_id", input.client_id)
-    .eq("contact_id", input.contact_id)
-    .maybeSingle();
-  if (existing) throw new Error("This client already has a pursuit open against that contact.");
+    const { data: existing } = await supabase
+      .from("opportunities")
+      .select("id")
+      .eq("client_id", input.client_id)
+      .eq("contact_id", input.contact_id)
+      .maybeSingle();
+    if (existing) {
+      return { ok: false, error: "This client already has a pursuit open against that contact." };
+    }
 
-  const collision = await checkRepCollision(supabase, input.client_id, input.contact_id);
+    const collision = await checkRepCollision(supabase, input.client_id, input.contact_id);
 
-  const [{ data: client }, { data: contact }, { data: account }] = await Promise.all([
-    supabase.from("org_clients").select("name").eq("id", input.client_id).single(),
-    supabase.from("crm_contacts").select("first_name, last_name").eq("id", input.contact_id).single(),
-    input.account_id
-      ? supabase.from("crm_accounts").select("name").eq("id", input.account_id).single()
-      : Promise.resolve({ data: null }),
-  ]);
-  const clientName = (client as { name: string } | null)?.name ?? "";
-  const contactRow = contact as { first_name: string | null; last_name: string | null } | null;
-  const contactName = [contactRow?.first_name, contactRow?.last_name].filter(Boolean).join(" ");
-  const accountName = (account as { name: string } | null)?.name ?? null;
+    const [{ data: client }, { data: contact }, { data: account }] = await Promise.all([
+      supabase.from("org_clients").select("name").eq("id", input.client_id).single(),
+      supabase.from("crm_contacts").select("first_name, last_name").eq("id", input.contact_id).single(),
+      input.account_id
+        ? supabase.from("crm_accounts").select("name").eq("id", input.account_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
+    const clientName = (client as { name: string } | null)?.name ?? "";
+    const contactRow = contact as { first_name: string | null; last_name: string | null } | null;
+    const contactName = [contactRow?.first_name, contactRow?.last_name].filter(Boolean).join(" ");
+    const accountName = (account as { name: string } | null)?.name ?? null;
 
-  const { data, error } = await supabase
-    .from("opportunities")
-    .insert({
-      ...input,
-      name: computeOpportunityName(accountName, clientName, contactName),
-      close_date: new Date().toISOString().slice(0, 10),
-      created_by: me,
-      updated_by: me,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`Could not create that opportunity: ${error.message}`);
+    const { data, error } = await supabase
+      .from("opportunities")
+      .insert({
+        ...input,
+        name: computeOpportunityName(accountName, clientName, contactName),
+        close_date: new Date().toISOString().slice(0, 10),
+        created_by: me,
+        updated_by: me,
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: `Could not create that opportunity: ${error.message}` };
 
-  await supabase.rpc("record_opportunity_history", { p_source: "manual" });
-  revalidatePath("/opportunities", "layout");
+    await supabase.rpc("record_opportunity_history", { p_source: "manual" });
+    revalidatePath("/opportunities", "layout");
 
-  return { id: (data as { id: string }).id, collision };
+    return { ok: true, id: (data as { id: string }).id, collision };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create that opportunity." };
+  }
 }
 
 export type OpportunityUpdate = Partial<
@@ -139,17 +149,25 @@ export type OpportunityUpdate = Partial<
   }
 >;
 
-export async function updateOpportunity(id: string, patch: OpportunityUpdate) {
-  const { supabase, me } = await ctx();
+export async function updateOpportunity(
+  id: string,
+  patch: OpportunityUpdate
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { error } = await supabase
-    .from("opportunities")
-    .update({ ...patch, updated_by: me })
-    .eq("id", id);
-  if (error) throw new Error(`Could not update that opportunity: ${error.message}`);
+    const { error } = await supabase
+      .from("opportunities")
+      .update({ ...patch, updated_by: me })
+      .eq("id", id);
+    if (error) return { ok: false, error: `Could not update that opportunity: ${error.message}` };
 
-  await supabase.rpc("record_opportunity_history", { p_source: "manual" });
-  revalidatePath("/opportunities", "layout");
+    await supabase.rpc("record_opportunity_history", { p_source: "manual" });
+    revalidatePath("/opportunities", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update that opportunity." };
+  }
 }
 
 export type ContactMatch = {
@@ -241,14 +259,22 @@ export async function searchCrmAccounts(
  * already existed rather than adding a new one. Name and account stay
  * untouched -- those are the identity fields, not operational ones.
  */
-export async function updateContact(id: string, patch: { phone?: string | null; email?: string | null }) {
-  const perms = await myPermissions();
-  if (!perms.has("org.manage")) throw new Error("Forbidden: org.manage required");
+export async function updateContact(
+  id: string,
+  patch: { phone?: string | null; email?: string | null }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const perms = await myPermissions();
+    if (!perms.has("org.manage")) return { ok: false, error: "Forbidden: org.manage required" };
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("crm_contacts").update(patch).eq("id", id);
-  if (error) throw new Error(`Could not update that contact: ${error.message}`);
-  revalidatePath("/opportunities", "layout");
+    const supabase = await createClient();
+    const { error } = await supabase.from("crm_contacts").update(patch).eq("id", id);
+    if (error) return { ok: false, error: `Could not update that contact: ${error.message}` };
+    revalidatePath("/opportunities", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update that contact." };
+  }
 }
 
 export async function logOpportunityActivity(input: {
@@ -258,11 +284,16 @@ export async function logOpportunityActivity(input: {
   body?: string | null;
   direction?: "inbound" | "outbound" | null;
   outcome?: string | null;
-}) {
-  const { supabase, me } = await ctx();
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { error } = await supabase.from("opp_activities").insert({ ...input, created_by: me });
-  if (error) throw new Error(`Could not log that activity: ${error.message}`);
+    const { error } = await supabase.from("opp_activities").insert({ ...input, created_by: me });
+    if (error) return { ok: false, error: `Could not log that activity: ${error.message}` };
 
-  revalidatePath("/opportunities", "layout");
+    revalidatePath("/opportunities", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not log that activity." };
+  }
 }

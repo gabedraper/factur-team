@@ -45,21 +45,21 @@ export function EmailPerson({
     setError(null);
     setResult(null);
     start(async () => {
-      try {
-        const res = await sendTalentEmail({
-          personId, to: address, subject, body, mode, jobId, candidateId,
-        });
-        setResult(
-          res.placed === "sent"
-            ? `Sent to ${address}`
-            : `Drafted in your Gmail — open Drafts to send it`
-        );
-        setSubject("");
-        setBody("");
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not place that message");
+      const res = await sendTalentEmail({
+        personId, to: address, subject, body, mode, jobId, candidateId,
+      });
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      setResult(
+        res.placed === "sent"
+          ? `Sent to ${address}`
+          : `Drafted in your Gmail — open Drafts to send it`
+      );
+      setSubject("");
+      setBody("");
+      router.refresh();
     });
   }
 

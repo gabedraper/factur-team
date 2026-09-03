@@ -60,11 +60,12 @@ export function TelnyxDialWidget() {
     let cancelled = false;
 
     async function init() {
-      const token = await getTelnyxVoiceToken();
-      if (!token) { if (!cancelled) setUnavailable(true); return; }
+      const result = await getTelnyxVoiceToken();
+      if (!result.ok) { if (!cancelled) setError(result.error); return; }
+      if (!result.token) { if (!cancelled) setUnavailable(true); return; }
 
       const { TelnyxRTC } = await import("@telnyx/webrtc");
-      const client = new TelnyxRTC({ login_token: token });
+      const client = new TelnyxRTC({ login_token: result.token });
 
       client.on("telnyx.ready", () => { if (!cancelled) setReady(true); });
       client.on("telnyx.error", (e: unknown) => {
@@ -125,7 +126,12 @@ export function TelnyxDialWidget() {
     setError(null);
     setClaiming(true);
     try {
-      const outboundCallerId = await claimOutboundNumber("telnyx");
+      const claimed = await claimOutboundNumber("telnyx");
+      if (!claimed.ok) {
+        setError(claimed.error);
+        return;
+      }
+      const outboundCallerId = claimed.e164;
       if (!outboundCallerId) {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;

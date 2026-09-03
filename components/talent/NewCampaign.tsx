@@ -68,13 +68,13 @@ export function NewCampaign({ jobs }: { jobs: { id: string; title: string }[] })
             size="sm"
             disabled={pending || !name.trim()}
             onClick={() => start(async () => {
-              try {
-                const id = await saveCampaign({ name, job_id: jobId || null, audience });
-                router.push(`/talent/campaigns/${id}`);
-                router.refresh();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Could not create that");
+              const result = await saveCampaign({ name, job_id: jobId || null, audience });
+              if (!result.ok) {
+                setError(result.error);
+                return;
               }
+              router.push(`/talent/campaigns/${result.id}`);
+              router.refresh();
             })}
           >
             Create

@@ -318,29 +318,33 @@ export async function saveCampaign(input: {
   status?: string;
   stop_on_reply?: boolean;
   send_weekdays_only?: boolean;
-}) {
-  const { supabase, me } = await ctx();
-  if (!input.name?.trim()) throw new Error("A campaign needs a name");
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+    if (!input.name?.trim()) throw new Error("A campaign needs a name");
 
-  const row = {
-    name: input.name.trim(),
-    job_id: input.job_id || null,
-    audience: input.audience ?? "candidate",
-    mode: input.mode ?? "semi",
-    from_email: input.from_email ?? null,
-    status: input.status ?? "draft",
-    stop_on_reply: input.stop_on_reply ?? true,
-    send_weekdays_only: input.send_weekdays_only ?? true,
-    owner_member_id: me,
-  };
+    const row = {
+      name: input.name.trim(),
+      job_id: input.job_id || null,
+      audience: input.audience ?? "candidate",
+      mode: input.mode ?? "semi",
+      from_email: input.from_email ?? null,
+      status: input.status ?? "draft",
+      stop_on_reply: input.stop_on_reply ?? true,
+      send_weekdays_only: input.send_weekdays_only ?? true,
+      owner_member_id: me,
+    };
 
-  const { data, error } = input.id
-    ? await supabase.from("tal_campaigns").update(row).eq("id", input.id).select("id").single()
-    : await supabase.from("tal_campaigns").insert({ ...row, created_by: me }).select("id").single();
-  if (error) throw new Error(`Could not save that campaign: ${error.message}`);
+    const { data, error } = input.id
+      ? await supabase.from("tal_campaigns").update(row).eq("id", input.id).select("id").single()
+      : await supabase.from("tal_campaigns").insert({ ...row, created_by: me }).select("id").single();
+    if (error) throw new Error(`Could not save that campaign: ${error.message}`);
 
-  revalidatePath("/talent/campaigns");
-  return (data as { id: string }).id;
+    revalidatePath("/talent/campaigns");
+    return { ok: true, id: (data as { id: string }).id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that campaign." };
+  }
 }
 
 /** Pausing and resuming, which is a different act from editing the campaign. */
@@ -360,21 +364,26 @@ export async function saveCampaignStep(input: {
   delay_days?: number;
   subject?: string | null;
   body?: string;
-}) {
-  const { supabase } = await ctx();
-  const row = {
-    campaign_id: input.campaign_id,
-    position: input.position,
-    channel: input.channel ?? "email",
-    delay_days: input.delay_days ?? 0,
-    subject: input.subject ?? null,
-    body: input.body ?? "",
-  };
-  const { error } = input.id
-    ? await supabase.from("tal_campaign_steps").update(row).eq("id", input.id)
-    : await supabase.from("tal_campaign_steps").insert(row);
-  if (error) throw new Error(`Could not save that step: ${error.message}`);
-  revalidatePath(`/talent/campaigns/${input.campaign_id}`);
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { supabase } = await ctx();
+    const row = {
+      campaign_id: input.campaign_id,
+      position: input.position,
+      channel: input.channel ?? "email",
+      delay_days: input.delay_days ?? 0,
+      subject: input.subject ?? null,
+      body: input.body ?? "",
+    };
+    const { error } = input.id
+      ? await supabase.from("tal_campaign_steps").update(row).eq("id", input.id)
+      : await supabase.from("tal_campaign_steps").insert(row);
+    if (error) throw new Error(`Could not save that step: ${error.message}`);
+    revalidatePath(`/talent/campaigns/${input.campaign_id}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that step." };
+  }
 }
 
 export async function deleteCampaignStep(stepId: string, campaignId: string) {
@@ -510,75 +519,83 @@ export async function prepareCampaignSends(campaignId: string) {
  * applied for one role last year and another one today is one person, and this
  * is the moment that stays true or stops being true.
  */
-export async function acceptApplication(applicationId: string) {
-  const { supabase, me } = await ctx();
+export async function acceptApplication(
+  applicationId: string
+): Promise<{ ok: true; personId: string; candidateId: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
 
-  const { data: app } = await supabase
-    .from("tal_applications").select("*").eq("id", applicationId).maybeSingle();
-  const a = app as {
-    id: string; job_id: string; first_name: string | null; last_name: string | null;
-    email: string | null; phone: string | null; linkedin_url: string | null;
-    location: string | null; cover_note: string | null; resume_path: string | null;
-    resume_name: string | null; status: string;
-  } | null;
-  if (!a) throw new Error("That application no longer exists");
-  if (a.status !== "new") throw new Error("That application has already been dealt with");
+    const { data: app } = await supabase
+      .from("tal_applications").select("*").eq("id", applicationId).maybeSingle();
+    const a = app as {
+      id: string; job_id: string; first_name: string | null; last_name: string | null;
+      email: string | null; phone: string | null; linkedin_url: string | null;
+      location: string | null; cover_note: string | null; resume_path: string | null;
+      resume_name: string | null; status: string;
+    } | null;
+    if (!a) throw new Error("That application no longer exists");
+    if (a.status !== "new") throw new Error("That application has already been dealt with");
 
-  let personId: string | null = null;
-  if (a.email) {
-    const { data: existing } = await supabase
-      .from("tal_people").select("id").eq("primary_email", a.email.toLowerCase())
-      .is("merged_into_id", null).maybeSingle();
-    personId = (existing as { id: string } | null)?.id ?? null;
-  }
+    let personId: string | null = null;
+    if (a.email) {
+      const { data: existing } = await supabase
+        .from("tal_people").select("id").eq("primary_email", a.email.toLowerCase())
+        .is("merged_into_id", null).maybeSingle();
+      personId = (existing as { id: string } | null)?.id ?? null;
+    }
 
-  if (!personId) {
-    const { data: created, error } = await supabase
-      .from("tal_people")
-      .insert({
-        first_name: a.first_name, last_name: a.last_name,
-        emails: a.email ? [{ value: a.email, type: "personal", primary: true }] : [],
-        phones: a.phone ? [{ value: a.phone, type: "mobile", primary: true }] : [],
-        linkedin_url: a.linkedin_url,
-        city: a.location,
-        source: "applied", source_detail: "Careers page",
-        created_by: me, owner_member_id: me,
+    if (!personId) {
+      const { data: created, error } = await supabase
+        .from("tal_people")
+        .insert({
+          first_name: a.first_name, last_name: a.last_name,
+          emails: a.email ? [{ value: a.email, type: "personal", primary: true }] : [],
+          phones: a.phone ? [{ value: a.phone, type: "mobile", primary: true }] : [],
+          linkedin_url: a.linkedin_url,
+          city: a.location,
+          source: "applied", source_detail: "Careers page",
+          created_by: me, owner_member_id: me,
+        })
+        .select("id").single();
+      if (error) throw new Error(`Could not create that person: ${error.message}`);
+      personId = (created as { id: string }).id;
+    }
+
+    if (a.resume_path) {
+      await supabase.from("tal_documents").insert({
+        person_id: personId, job_id: a.job_id,
+        name: a.resume_name ?? "Resume", kind: "resume",
+        storage_path: a.resume_path, is_primary: true, uploaded_by: me,
+      });
+    }
+
+    const candidate = await addCandidate(a.job_id, personId, {
+      source: "applied", source_detail: "Careers page",
+    });
+    if (!candidate.ok) throw new Error(candidate.error);
+
+    if (a.cover_note) {
+      const activity = await logActivity({
+        typeSlug: "note", person_id: personId, job_id: a.job_id,
+        candidate_id: candidate.id, subject: "Cover note from the application",
+        body: a.cover_note,
+      });
+      if (!activity.ok) throw new Error(activity.error);
+    }
+
+    await supabase.from("tal_applications")
+      .update({
+        status: "accepted", person_id: personId, candidate_id: candidate.id,
+        reviewed_by: me, reviewed_at: new Date().toISOString(),
       })
-      .select("id").single();
-    if (error) throw new Error(`Could not create that person: ${error.message}`);
-    personId = (created as { id: string }).id;
+      .eq("id", applicationId);
+
+    revalidatePath("/talent/applications");
+    revalidatePath(`/talent/jobs/${a.job_id}`);
+    return { ok: true, personId, candidateId: candidate.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not accept that application." };
   }
-
-  if (a.resume_path) {
-    await supabase.from("tal_documents").insert({
-      person_id: personId, job_id: a.job_id,
-      name: a.resume_name ?? "Resume", kind: "resume",
-      storage_path: a.resume_path, is_primary: true, uploaded_by: me,
-    });
-  }
-
-  const candidate = await addCandidate(a.job_id, personId, {
-    source: "applied", source_detail: "Careers page",
-  });
-
-  if (a.cover_note) {
-    await logActivity({
-      typeSlug: "note", person_id: personId, job_id: a.job_id,
-      candidate_id: candidate.id, subject: "Cover note from the application",
-      body: a.cover_note,
-    });
-  }
-
-  await supabase.from("tal_applications")
-    .update({
-      status: "accepted", person_id: personId, candidate_id: candidate.id,
-      reviewed_by: me, reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", applicationId);
-
-  revalidatePath("/talent/applications");
-  revalidatePath(`/talent/jobs/${a.job_id}`);
-  return { personId, candidateId: candidate.id };
 }
 
 export async function rejectApplication(applicationId: string, status: "rejected" | "spam" | "duplicate") {

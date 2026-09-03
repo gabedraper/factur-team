@@ -77,6 +77,12 @@ export type SendResult = {
  * them to read and send, full sends it there and then. Semi is the default
  * everywhere in this app and it is the right default here too -- the first
  * message to a candidate is the one that decides whether they reply.
+ *
+ * Returns a result rather than throwing -- Next redacts a thrown Server
+ * Action error's message in production (the client gets a generic "Minified
+ * React error" and a digest; the real text only reaches the server log), so a
+ * thrown error here would never actually reach the composer. Everything that
+ * can fail is caught and turned into { ok: false }.
  */
 export async function sendTalentEmail(input: {
   personId: string;
@@ -86,68 +92,73 @@ export async function sendTalentEmail(input: {
   mode?: "semi" | "full";
   jobId?: string | null;
   candidateId?: string | null;
-}): Promise<SendResult> {
-  const { supabase, memberId, from, fromName } = await me();
+}): Promise<({ ok: true } & SendResult) | { ok: false; error: string }> {
+  try {
+    const { supabase, memberId, from, fromName } = await me();
 
-  if (!input.to?.includes("@")) throw new Error("That is not an email address");
-  if (!input.subject?.trim()) throw new Error("A subject is required");
+    if (!input.to?.includes("@")) throw new Error("That is not an email address");
+    if (!input.subject?.trim()) throw new Error("A subject is required");
 
-  // Do-not-contact is checked here rather than only in the UI: this action is a
-  // public endpoint, and it is the last place the rule can actually be enforced.
-  const { data: person } = await supabase
-    .from("tal_people")
-    .select("do_not_contact,unsubscribed_at")
-    .eq("id", input.personId).maybeSingle();
-  const p = person as { do_not_contact: boolean; unsubscribed_at: string | null } | null;
-  if (p?.do_not_contact) throw new Error("That person is marked do not contact");
-  if (p?.unsubscribed_at) throw new Error("That person has unsubscribed");
+    // Do-not-contact is checked here rather than only in the UI: this action is a
+    // public endpoint, and it is the last place the rule can actually be enforced.
+    const { data: person } = await supabase
+      .from("tal_people")
+      .select("do_not_contact,unsubscribed_at")
+      .eq("id", input.personId).maybeSingle();
+    const p = person as { do_not_contact: boolean; unsubscribed_at: string | null } | null;
+    if (p?.do_not_contact) throw new Error("That person is marked do not contact");
+    if (p?.unsubscribed_at) throw new Error("That person has unsubscribed");
 
-  const subject = await fillMergeFields(input.personId, input.subject);
-  const body = await fillMergeFields(input.personId, input.body);
+    const subject = await fillMergeFields(input.personId, input.subject);
+    const body = await fillMergeFields(input.personId, input.body);
 
-  const outgoing = {
-    from, fromName, to: input.to.trim(), subject,
-    body: htmlToText(body),
-    html: /<[a-z][\s\S]*>/i.test(body) ? body : null,
-  };
+    const outgoing = {
+      from, fromName, to: input.to.trim(), subject,
+      body: htmlToText(body),
+      html: /<[a-z][\s\S]*>/i.test(body) ? body : null,
+    };
 
-  const placed = (input.mode ?? "semi") === "full"
-    ? await sendAs(outgoing)
-    : await draftAs(outgoing);
+    const placed = (input.mode ?? "semi") === "full"
+      ? await sendAs(outgoing)
+      : await draftAs(outgoing);
 
-  /*
-   * The activity carries the Message-ID the mail went out with, which is the
-   * same id the inbound sync will see on the reply's thread. Without it the
-   * send and the answer to it are two unrelated rows on the timeline.
-   */
-  const { data: type } = await supabase
-    .from("tal_activity_types").select("id").eq("slug", "email-out").maybeSingle();
+    /*
+     * The activity carries the Message-ID the mail went out with, which is the
+     * same id the inbound sync will see on the reply's thread. Without it the
+     * send and the answer to it are two unrelated rows on the timeline.
+     */
+    const { data: type } = await supabase
+      .from("tal_activity_types").select("id").eq("slug", "email-out").maybeSingle();
 
-  await supabase.from("tal_activities").insert({
-    activity_type_id: (type as { id: string } | null)?.id ?? null,
-    person_id: input.personId,
-    job_id: input.jobId || null,
-    candidate_id: input.candidateId || null,
-    subject,
-    body: htmlToText(body).slice(0, 2000),
-    direction: "outbound",
-    external_source: "gmail",
-    external_id: placed.rfcMessageId,
-    created_by: memberId,
-    metadata: {
-      mailbox: from,
-      draft: placed.draftId ? true : false,
-      to: outgoing.to,
-    },
-  });
+    await supabase.from("tal_activities").insert({
+      activity_type_id: (type as { id: string } | null)?.id ?? null,
+      person_id: input.personId,
+      job_id: input.jobId || null,
+      candidate_id: input.candidateId || null,
+      subject,
+      body: htmlToText(body).slice(0, 2000),
+      direction: "outbound",
+      external_source: "gmail",
+      external_id: placed.rfcMessageId,
+      created_by: memberId,
+      metadata: {
+        mailbox: from,
+        draft: placed.draftId ? true : false,
+        to: outgoing.to,
+      },
+    });
 
-  revalidatePath(`/talent/people/${input.personId}`);
-  if (input.jobId) revalidatePath(`/talent/jobs/${input.jobId}`);
+    revalidatePath(`/talent/people/${input.personId}`);
+    if (input.jobId) revalidatePath(`/talent/jobs/${input.jobId}`);
 
-  return {
-    placed: placed.draftId ? "drafted" : "sent",
-    gmailId: placed.gmailId,
-  };
+    return {
+      ok: true,
+      placed: placed.draftId ? "drafted" : "sent",
+      gmailId: placed.gmailId,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not place that message" };
+  }
 }
 
 /**
@@ -185,7 +196,7 @@ export async function placeCampaignSend(sendId: string): Promise<SendResult> {
   const personId = send.tal_campaign_members?.person_id;
   if (!personId) throw new Error("That message is not attached to anybody");
 
-  const result = await sendTalentEmail({
+  const sent = await sendTalentEmail({
     personId,
     to: send.to_address,
     subject: send.subject ?? campaign?.name ?? "",
@@ -193,6 +204,8 @@ export async function placeCampaignSend(sendId: string): Promise<SendResult> {
     mode: (campaign?.mode as "semi" | "full") ?? "semi",
     jobId: campaign?.job_id ?? null,
   });
+  if (!sent.ok) throw new Error(sent.error);
+  const result: SendResult = sent;
 
   await supabase
     .from("tal_campaign_sends")
@@ -245,54 +258,78 @@ export async function placeAllCampaignSends(campaignId: string) {
  *
  * Needs `talent.admin` rather than `talent.recruit`: this reads other people's
  * mail, and that is an administrative act however narrow the matching is.
+ *
+ * Returns a result rather than throwing -- Next redacts a thrown Server
+ * Action error's message in production (the client gets a generic "Minified
+ * React error" and a digest; the real text only reaches the server log), so a
+ * thrown error here -- including the one `syncTalentMail` itself throws --
+ * would never actually reach the settings panel. Everything is caught and
+ * turned into { ok: false }.
  */
-export async function syncMailNow(sinceDays?: number): Promise<{
-  reports: MailSyncReport[];
-  repliesStopped: number;
-}> {
-  await assertTalent("admin");
+export async function syncMailNow(sinceDays?: number): Promise<
+  | { ok: true; reports: MailSyncReport[]; repliesStopped: number }
+  | { ok: false; error: string }
+> {
+  try {
+    await assertTalent("admin");
 
-  const reports = await syncTalentMail(sinceDays);
+    let reports: MailSyncReport[];
+    try {
+      reports = await syncTalentMail(sinceDays);
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Sync failed" };
+    }
 
-  // A reply ends a sequence, and that has to be decided after the whole sync
-  // rather than per message -- otherwise somebody who wrote back on Friday
-  // still gets Monday's follow-up because the rows arrived out of order.
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("tal_mark_campaign_replies");
+    // A reply ends a sequence, and that has to be decided after the whole sync
+    // rather than per message -- otherwise somebody who wrote back on Friday
+    // still gets Monday's follow-up because the rows arrived out of order.
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("tal_mark_campaign_replies");
 
-  revalidatePath("/settings/talent");
-  revalidatePath("/talent");
-  return { reports, repliesStopped: (data as number) ?? 0 };
+    revalidatePath("/settings/talent");
+    revalidatePath("/talent");
+    return { ok: true, reports, repliesStopped: (data as number) ?? 0 };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sync failed" };
+  }
 }
 
-export async function saveMailAccounts(accounts: string[], days: number) {
-  await assertTalent("admin");
-  const supabase = await createClient();
-  const memberId = await currentMemberId();
+export async function saveMailAccounts(
+  accounts: string[],
+  days: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertTalent("admin");
+    const supabase = await createClient();
+    const memberId = await currentMemberId();
 
-  const clean = [...new Set(
-    accounts.map((a) => a.trim().toLowerCase()).filter((a) => a.includes("@"))
-  )];
+    const clean = [...new Set(
+      accounts.map((a) => a.trim().toLowerCase()).filter((a) => a.includes("@"))
+    )];
 
-  // Only Factur addresses. The delegation would hand this app a token for
-  // anyone in the domain, so the list of whose mail gets read is the restraint,
-  // and it should not be possible to point it at a stranger by typo.
-  const outside = clean.filter(
-    (a) => !["facturmfg.com", "bethefactur.com"].includes(a.split("@")[1] ?? "")
-  );
-  if (outside.length) {
-    throw new Error(`Only Factur mailboxes can be synced — ${outside.join(", ")} is not one`);
+    // Only Factur addresses. The delegation would hand this app a token for
+    // anyone in the domain, so the list of whose mail gets read is the restraint,
+    // and it should not be possible to point it at a stranger by typo.
+    const outside = clean.filter(
+      (a) => !["facturmfg.com", "bethefactur.com"].includes(a.split("@")[1] ?? "")
+    );
+    if (outside.length) {
+      throw new Error(`Only Factur mailboxes can be synced — ${outside.join(", ")} is not one`);
+    }
+
+    const { error } = await supabase
+      .from("tal_settings")
+      .update({
+        mail_accounts: clean,
+        mail_sync_days: Math.min(Math.max(days, 1), 365),
+        updated_by: memberId,
+      })
+      .eq("id", true);
+    if (error) throw new Error(`Could not save that: ${error.message}`);
+
+    revalidatePath("/settings/talent");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save that" };
   }
-
-  const { error } = await supabase
-    .from("tal_settings")
-    .update({
-      mail_accounts: clean,
-      mail_sync_days: Math.min(Math.max(days, 1), 365),
-      updated_by: memberId,
-    })
-    .eq("id", true);
-  if (error) throw new Error(`Could not save that: ${error.message}`);
-
-  revalidatePath("/settings/talent");
 }

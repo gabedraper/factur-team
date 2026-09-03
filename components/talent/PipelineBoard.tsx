@@ -73,13 +73,13 @@ export function PipelineBoard({
 
     setError(null);
     start(async () => {
-      try {
-        await moveCandidate(id, stageId);
-        router.refresh();
-      } catch (e) {
+      const result = await moveCandidate(id, stageId);
+      if (!result.ok) {
         setBoard(before);
-        setError(e instanceof Error ? e.message : "Could not move that candidate");
+        setError(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 
@@ -100,13 +100,13 @@ export function PipelineBoard({
     setBoard((rows) =>
       rows.map((c) => (c.candidate_id === candidateId ? { ...c, status: "rejected" } : c)));
     start(async () => {
-      try {
-        await setCandidateStatus(candidateId, "rejected");
-        router.refresh();
-      } catch (e) {
+      const result = await setCandidateStatus(candidateId, "rejected");
+      if (!result.ok) {
         setBoard(before);
-        setError(e instanceof Error ? e.message : "Could not do that");
+        setError(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 

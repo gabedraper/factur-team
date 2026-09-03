@@ -37,20 +37,20 @@ export function CallDispositionDialog({
 
   function save() {
     startSaving(async () => {
-      try {
-        await logOpportunityActivity({
-          opportunity_id: opportunityId,
-          activity_type: "call",
-          direction: "outbound",
-          outcome,
-          body: notes || null,
-        });
-        setNotes("");
-        onOpenChange(false);
-        onSaved?.();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not save that disposition.");
+      const result = await logOpportunityActivity({
+        opportunity_id: opportunityId,
+        activity_type: "call",
+        direction: "outbound",
+        outcome,
+        body: notes || null,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+      setNotes("");
+      onOpenChange(false);
+      onSaved?.();
     });
   }
 

@@ -86,7 +86,12 @@ export function DialWidget() {
     setError(null);
     setClaiming(true);
     try {
-      const outboundCallerId = await claimOutboundNumber("dialpad");
+      const claimed = await claimOutboundNumber("dialpad");
+      if (!claimed.ok) {
+        setError(claimed.error);
+        return;
+      }
+      const outboundCallerId = claimed.e164;
       if (!outboundCallerId) {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
