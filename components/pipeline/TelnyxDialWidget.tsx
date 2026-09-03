@@ -54,19 +54,29 @@ export function TelnyxDialWidget() {
       client.on("telnyx.error", (e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "Telnyx connection error.");
       });
-      client.on("telnyx.notification", (notification: { type: string; call?: { state: string } }) => {
-        if (cancelled || notification.type !== "callUpdate" || !notification.call) return;
-        const state = notification.call.state;
-        if (state === "ringing" || state === "active" || state === "trying" || state === "early") {
-          setCallState("ringing");
-        } else if (state === "hangup" || state === "destroy") {
-          setCallState((prev) => {
-            if (prev === "idle") return prev;
-            setDispositionOpen(true);
-            return "ended";
-          });
+      client.on(
+        "telnyx.notification",
+        (notification: { type: string; call?: { state: string; cause?: string; causeCode?: number } }) => {
+          if (cancelled || notification.type !== "callUpdate" || !notification.call) return;
+          const { state, cause } = notification.call;
+          if (state === "ringing" || state === "active" || state === "trying" || state === "early") {
+            setCallState("ringing");
+          } else if (state === "hangup" || state === "destroy") {
+            setCallState((prev) => {
+              if (prev === "idle") return prev;
+              // A cause other than a normal clearing means the far end never
+              // actually rang -- e.g. Telnyx declining the call outright
+              // (SIP 603) while the account is still Pretrial. Surface it
+              // instead of silently dropping into "how'd the call go?".
+              if (cause && cause !== "NORMAL_CLEARING" && cause !== "ORIGINATOR_CANCEL") {
+                setError(`Call did not connect: ${cause.replaceAll("_", " ").toLowerCase()}.`);
+              }
+              setDispositionOpen(true);
+              return "ended";
+            });
+          }
         }
-      });
+      );
 
       clientRef.current = client;
       client.connect();

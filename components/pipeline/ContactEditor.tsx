@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/pipeline/bits";
 import { updateContact } from "@/actions/pipeline";
 
@@ -14,18 +15,22 @@ export function ContactEditor({
   email: string | null;
   industry: string | null;
 }) {
-  const [state, setState] = useState({ phone: phone ?? "", email: email ?? "" });
+  const initial = { phone: phone ?? "", email: email ?? "" };
+  const [state, setState] = useState(initial);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const [pending, start] = useTransition();
 
-  function save(patch: Partial<typeof state>) {
-    const next = { ...state, ...patch };
-    setState(next);
+  // Explicit Save rather than auto-save-on-blur: these fields double as the
+  // number a click-to-dial affordance would read from, and a click meant to
+  // dial shouldn't also fire a blur-triggered save.
+  const dirty = state.phone !== initial.phone || state.email !== initial.email;
+
+  function save() {
     setError(null);
     start(async () => {
       try {
-        await updateContact(contactId, { phone: next.phone || null, email: next.email || null });
+        await updateContact(contactId, { phone: state.phone || null, email: state.email || null });
         setSaved(true);
         setTimeout(() => setSaved(false), 1500);
       } catch (e) {
@@ -43,7 +48,6 @@ export function ContactEditor({
           <Input
             value={state.phone}
             onChange={(e) => setState((s) => ({ ...s, phone: e.target.value }))}
-            onBlur={(e) => save({ phone: e.target.value })}
             placeholder="+14155551234"
             className="tabular-nums"
           />
@@ -54,13 +58,15 @@ export function ContactEditor({
             type="email"
             value={state.email}
             onChange={(e) => setState((s) => ({ ...s, email: e.target.value }))}
-            onBlur={(e) => save({ email: e.target.value })}
           />
         </div>
         <div className="flex justify-between gap-2">
           <span className="text-xs text-muted-foreground">Industry</span>
           <span>{industry ?? "—"}</span>
         </div>
+        <Button size="sm" onClick={save} disabled={!dirty || pending}>
+          Save
+        </Button>
       </div>
     </Panel>
   );
