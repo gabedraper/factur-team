@@ -11,7 +11,7 @@ import { Chip } from "@/components/pipeline/bits";
 import { addVoiceNumber, setVoiceNumberStatus, type VoiceNumberRow, type VoiceProvider } from "@/actions/dialer";
 
 const STATUS_COLOUR = { active: "emerald", paused: "slate", flagged: "rose" } as const;
-const PROVIDER_LABEL: Record<VoiceProvider, string> = { dialpad: "Dialpad", twilio: "Twilio" };
+const PROVIDER_LABEL: Record<VoiceProvider, string> = { dialpad: "Dialpad", twilio: "Twilio", telnyx: "Telnyx" };
 
 /**
  * The pool click-to-dial rotates through, provisioned by hand, for
@@ -26,7 +26,7 @@ const PROVIDER_LABEL: Record<VoiceProvider, string> = { dialpad: "Dialpad", twil
 export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; members: { id: string; full_name: string | null; email: string }[] }) {
   const [rows, setRows] = useState(numbers);
   const [e164, setE164] = useState("");
-  const [provider, setProvider] = useState<VoiceProvider>("twilio");
+  const [provider, setProvider] = useState<VoiceProvider>("telnyx");
   const [label, setLabel] = useState("");
   const [assignee, setAssignee] = useState<string>("shared");
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +90,7 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
           <Select value={provider} onValueChange={(v) => setProvider(v as VoiceProvider)}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="telnyx">Telnyx</SelectItem>
               <SelectItem value="twilio">Twilio</SelectItem>
               <SelectItem value="dialpad">Dialpad</SelectItem>
             </SelectContent>

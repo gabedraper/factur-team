@@ -190,28 +190,31 @@ export const INTEGRATIONS: Integration[] = [
   },
   {
     key: "dialer",
-    name: "Dialer — Twilio Voice SDK / Dialpad Mini Dialer",
+    name: "Dialer — Telnyx / Twilio / Dialpad Mini Dialer",
     what:
-      "Click-to-dial on an Opportunity. Twilio is the primary path — a real WebRTC call " +
-      "held in the rep's browser, authenticated by a token this app issues per rep. " +
-      "Dialpad's Mini Dialer is the fallback: a rep's browser posts messages straight " +
-      "into Dialpad's own iframe, which places the call using whoever is logged into it. " +
-      "Whichever provider has its env vars set wins — see app/(dashboard)/opportunities/" +
+      "Click-to-dial on an Opportunity. Three providers exist because the first two hit " +
+      "external walls: Dialpad's Mini Dialer needs an approval that's still pending, and " +
+      "Twilio's own account signup couldn't deliver a 2FA code after repeated tries. " +
+      "Telnyx and Twilio both hold a real WebRTC call in the rep's browser, authenticated " +
+      "by a token this app issues per call/rep; Dialpad's Mini Dialer instead posts " +
+      "messages into Dialpad's own iframe, using whoever is logged into it. Whichever " +
+      "provider has its env vars set wins — see app/(dashboard)/opportunities/" +
       "[opportunityId]/page.tsx.",
     direction: "out",
     transport:
-      "Twilio: app/api/twilio/voice is the one server-side piece — Twilio's servers call " +
-      "it (signature-verified against TWILIO_AUTH_TOKEN) when a rep's browser starts a " +
-      "call, and it returns the TwiML that bridges to the destination number. Dialpad: " +
+      "Telnyx: app/api/telnyx/voice, TeXML, Ed25519-signature-verified (TELNYX_PUBLIC_KEY). " +
+      "Twilio: app/api/twilio/voice, TwiML, HMAC-signature-verified (TWILIO_AUTH_TOKEN). Both " +
+      "are the one server-side piece each provider's servers call when a rep's browser " +
+      "starts a call, returning the XML that bridges to the destination number. Dialpad: " +
       "an embedded iframe (Mini Dialer/CTI), driven client-side with window.postMessage, " +
-      "no server involved. Either way, the one thing that's ours is which reserved " +
+      "no server involved. Across all three, the one thing that's ours is which reserved " +
       "number presents as caller ID, picked from voice_numbers before each call.",
     tables: ["voice_numbers"],
     excluded: [
-      "No call-duration/recording webhook yet for either provider — a call's outcome is " +
+      "No call-duration/recording webhook yet for any provider — a call's outcome is " +
       "whatever the rep dispositions by hand into opp_activities.",
       "Numbers aren't purchased or reserved here — that still happens on the provider's " +
-      "own console (Twilio or Dialpad). This only tracks the pool already bought, for rotation.",
+      "own console. This only tracks the pool already bought, for rotation.",
     ],
     feeds: ["Opportunity activity timeline"],
     ownedBy: "RevOps",

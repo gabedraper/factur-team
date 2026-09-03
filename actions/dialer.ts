@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { currentMemberId, myPermissions } from "@/lib/org";
 import { assertPipeline } from "@/lib/pipeline/access";
 
-export type VoiceProvider = "dialpad" | "twilio";
+export type VoiceProvider = "dialpad" | "twilio" | "telnyx";
 
 /**
  * The dialer's own server-side surface, shared across whichever voice
@@ -124,4 +124,44 @@ export async function getTwilioVoiceToken(): Promise<string | null> {
   const token = new AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: me });
   token.addGrant(new VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
   return token.toJwt();
+}
+
+/**
+ * Same job as getTwilioVoiceToken, for Telnyx -- but Telnyx has no
+ * in-process JWT signing helper, this is a real REST call to their API
+ * (POST /v2/telephony_credentials/{id}/token) using TELNYX_API_KEY, scoped
+ * to a credential you create once in the Telnyx portal or API
+ * (TELNYX_CREDENTIAL_ID). The credential is the identity the token proves --
+ * unlike Twilio, there's no per-rep `identity` param here, so every rep
+ * currently authenticates as the same credential. Fine for now; if per-rep
+ * call attribution in Telnyx's own logs ever matters, that needs one
+ * credential per rep instead of one shared one.
+ *
+ * Response shape is documented inconsistently (a bare JWT string in some
+ * examples, {"data":{"token":...}} in others going by Telnyx's usual v2
+ * envelope) -- handled defensively below rather than assumed, and worth
+ * confirming against the real response the first time this actually runs.
+ */
+export async function getTelnyxVoiceToken(): Promise<string | null> {
+  await assertPipeline("view");
+  const { TELNYX_API_KEY, TELNYX_CREDENTIAL_ID } = process.env;
+  if (!TELNYX_API_KEY || !TELNYX_CREDENTIAL_ID) return null;
+
+  const res = await fetch(`https://api.telnyx.com/v2/telephony_credentials/${TELNYX_CREDENTIAL_ID}/token`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok) throw new Error(`Could not get a Telnyx token: ${res.status} ${await res.text()}`);
+
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text) as { data?: { token?: string } | string; token?: string };
+    if (typeof parsed.data === "string") return parsed.data;
+    if (typeof parsed.data === "object" && parsed.data?.token) return parsed.data.token;
+    if (typeof parsed.token === "string") return parsed.token;
+  } catch {
+    // Not JSON -- the bare-JWT-string response shape.
+  }
+  return text.trim() || null;
 }

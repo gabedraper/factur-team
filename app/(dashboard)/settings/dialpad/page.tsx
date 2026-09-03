@@ -18,6 +18,9 @@ export default async function DialerSettingsPage() {
     process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
     process.env.TWILIO_API_KEY_SECRET && process.env.TWILIO_TWIML_APP_SID && process.env.TWILIO_AUTH_TOKEN
   );
+  const telnyxConfigured = Boolean(
+    process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID && process.env.TELNYX_PUBLIC_KEY
+  );
 
   return (
     <div className="p-6 space-y-4 max-w-4xl">
@@ -28,12 +31,23 @@ export default async function DialerSettingsPage() {
         <h1 className="mt-1 text-xl font-semibold">Dialer</h1>
         <p className="text-sm text-muted-foreground">
           The click-to-dial widget on an Opportunity uses whichever provider below is configured
-          &mdash; Twilio first, Dialpad as the fallback once its Mini Dialer is wired up. Either way,
-          what&apos;s below is the outbound number pool the widget rotates through.
+          &mdash; Telnyx first, then Twilio, then Dialpad&apos;s Mini Dialer once it&apos;s wired up.
+          Either way, what&apos;s below is the outbound number pool the widget rotates through.
         </p>
       </div>
 
       <div className="space-y-2">
+        <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+          <span>Telnyx WebRTC SDK</span>
+          <Chip colour={telnyxConfigured ? "emerald" : "amber"}>{telnyxConfigured ? "Configured" : "Not set"}</Chip>
+          {!telnyxConfigured && (
+            <span className="text-muted-foreground">
+              Needs <code className="rounded bg-muted px-1">TELNYX_API_KEY</code>, <code className="rounded bg-muted px-1">TELNYX_CREDENTIAL_ID</code> and
+              <code className="rounded bg-muted px-1">TELNYX_PUBLIC_KEY</code>, plus a TeXML Application pointed at
+              <code className="rounded bg-muted px-1">/api/telnyx/voice</code>.
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
           <span>Twilio Voice SDK</span>
           <Chip colour={twilioConfigured ? "emerald" : "amber"}>{twilioConfigured ? "Configured" : "Not set"}</Chip>
