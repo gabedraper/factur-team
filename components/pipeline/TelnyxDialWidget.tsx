@@ -234,7 +234,7 @@ export function TelnyxDialWidget() {
             type="tel"
             value={manualNumber}
             onChange={(e) => setManualNumber(e.target.value)}
-            placeholder="+14155551234"
+            placeholder="(555) 867-5309"
             className="tabular-nums"
           />
           <Keypad onPress={(d) => setManualNumber((n) => n + d)} />
