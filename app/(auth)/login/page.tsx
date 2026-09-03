@@ -45,11 +45,12 @@ export default function LoginPage() {
      * and signed out there is no preference to read in the first place.
      *
      * A background image rather than an <img>: if the file is not there the
-     * brand black underneath simply shows through, where a broken <img> would
-     * put a torn-page icon in the middle of the sign-in screen.
+     * flat colour underneath simply shows through, where a broken <img> would
+     * put a torn-page icon in the middle of the sign-in screen. That colour
+     * is the artwork's own navy, so a failure looks plain rather than wrong.
      */
     <div
-      className="relative min-h-screen overflow-hidden bg-[#000807] bg-cover bg-center p-4"
+      className="relative min-h-screen overflow-hidden bg-[#0b1020] bg-cover bg-center p-4"
       style={{ backgroundImage: "url('/login-background.jpg')" }}
     >
       {/* Sitting on the three-quarter line, so the artwork keeps the middle. */}
