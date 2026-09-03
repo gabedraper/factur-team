@@ -94,7 +94,15 @@ export default async function ClientPage({
         >
           <ChevronLeft className="h-4 w-4" /> Client Health
         </Link>
-        <h1 className="mt-1 text-xl font-semibold">{(client as { name: string }).name}</h1>
+        <div className="mt-1 flex flex-wrap items-baseline gap-3">
+          <h1 className="text-xl font-semibold">{(client as { name: string }).name}</h1>
+          <Link
+            href={`/clients/${clientId}/market`}
+            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Market
+          </Link>
+        </div>
       </div>
 
       {billing && <BillingSummary summary={billing} />}
