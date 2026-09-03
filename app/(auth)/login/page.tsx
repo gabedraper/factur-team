@@ -55,21 +55,26 @@ export default function LoginPage() {
       {/* Sitting on the three-quarter line, so the artwork keeps the middle. */}
       <div className="absolute left-1/2 top-3/4 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3">
         {/*
-          * Black at the button's edge, gone a quarter inch out.
+          * Black at the button's edge, gone half an inch out.
           *
           * A blurred shape fades from solid to nothing over roughly one and a
-          * half times its blur radius either side of its own edge. So to be
-          * opaque where the button starts and clear 24px later, the black has
-          * to begin 12px outside the button and blur by 8: 12 covers the
-          * button edge, and 12 + 12 lands the falloff at 24.
+          * half times its blur radius either side of its own edge. To be
+          * opaque where the button starts and clear 48px later, the black
+          * begins 24px outside the button and blurs by 16: the 24 covers the
+          * button edge, and 24 + 24 lands the falloff at 48.
           *
-          * Solid black rather than a translucent wash -- the point is to give
-          * the button its own ground, not to tint the photograph.
+          * Twice the quarter inch it started at, because on artwork this dark
+          * a tight halo has almost nothing to separate itself from -- the
+          * shape only reads once it is wide enough to darken ground the
+          * photograph had left bright.
+          *
+          * Solid black rather than a translucent wash: the point is to give
+          * the button its own ground, not to tint the picture.
           */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute bg-black"
-          style={{ inset: "-12px", borderRadius: 18, filter: "blur(8px)" }}
+          style={{ inset: "-24px", borderRadius: 30, filter: "blur(16px)" }}
         />
 
         {/*
@@ -86,7 +91,9 @@ export default function LoginPage() {
           size="lg"
           className="relative bg-white px-8 text-black hover:bg-white/90 focus-visible:ring-white/60"
         >
-          {loading ? "Redirecting…" : "Sign in with Google"}
+          {/* One word, whatever it is doing. The disabled state carries the
+              waiting, so the label never changes under the cursor. */}
+          Enter
         </Button>
 
         {/* Kept: it only appears when sign-in has failed, and a screen that
