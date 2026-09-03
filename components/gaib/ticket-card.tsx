@@ -4,9 +4,24 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, ExternalLink, GitPullRequest } from "lucide-react";
+import { AlertTriangle, ExternalLink, GitPullRequest, MessageCircleQuestion } from "lucide-react";
 import type { Ticket } from "@/lib/gaib/tickets";
-import { approveTicket, rejectTicket, closeTicket, retryTicket } from "@/actions/gaib";
+import { approveTicket, rejectTicket, closeTicket, retryTicket, askAboutTicket, ticketConversation } from "@/actions/gaib";
+
+/*
+ * What the severity words mean, said on the card.
+ *
+ * "annoying" on its own is a word, not a scale -- somebody reading the card has
+ * no way to know whether it sits above or below "painful", or what either is
+ * measuring. The label says what it cost the person, which is the thing being
+ * ranked.
+ */
+const SEVERITY_MEANS: Record<string, string> = {
+  blocking: "stopped them working",
+  painful: "cost them real time",
+  annoying: "irritating, not costly",
+  cosmetic: "looks wrong, still works",
+};
 
 const SEVERITY: Record<string, string> = {
   blocking: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
@@ -27,13 +42,21 @@ const STATUS: Record<string, string> = {
 };
 
 export function TicketCard({
-  ticket, decidable = false,
+  ticket, raisedByName, decidable = false,
 }: {
   ticket: Ticket;
+  /** Who reported it. The first thing worth knowing before deciding anything. */
+  raisedByName?: string | null;
   decidable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [why, setWhy] = useState("");
+  const [question, setQuestion] = useState("");
+  const [asked, setAsked] = useState(false);
+  const [thread, setThread] = useState<
+    { id: string; question: string; answer: string | null;
+      asked_at: string; answered_at: string | null; closed_at: string | null }[] | null
+  >(null);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
 
@@ -59,9 +82,14 @@ export function TicketCard({
             {ticket.title}
           </button>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {raisedByName && (
+              <span className="text-xs font-medium text-muted-foreground">
+                {raisedByName}
+              </span>
+            )}
             <Badge variant="outline">{ticket.kind}</Badge>
             <Badge className={SEVERITY[ticket.severity]} variant="secondary">
-              {ticket.severity}
+              {ticket.severity} — {SEVERITY_MEANS[ticket.severity] ?? ""}
             </Badge>
             <Badge variant="outline">{ticket.lane}</Badge>
             <span className="text-xs text-muted-foreground">
@@ -108,6 +136,36 @@ export function TicketCard({
       {open && (
         <div className="mt-4 space-y-4 border-t pt-4">
           <div className="whitespace-pre-wrap text-sm">{ticket.body}</div>
+
+          {/*
+            What has already been asked, so the same question is not put twice
+            and an answer is read next to the request it explains.
+          */}
+          {thread === null ? (
+            <button
+              onClick={() => void ticketConversation(ticket.id).then(setThread)}
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              Show questions
+            </button>
+          ) : thread.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nothing asked yet</p>
+          ) : (
+            <div className="space-y-2">
+              {thread.map((q) => (
+                <div key={q.id} className="rounded-md border-l-2 border-muted-foreground/30 pl-3">
+                  <p className="text-sm">{q.question}</p>
+                  {q.answer ? (
+                    <p className="mt-1 text-sm text-muted-foreground">{q.answer}</p>
+                  ) : (
+                    <p className="mt-1 text-xs italic text-muted-foreground">
+                      {q.closed_at ? "closed without an answer" : "waiting on them"}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {ticket.page_url && (
             <a
@@ -173,6 +231,42 @@ export function TicketCard({
             placeholder="Reason"
             className="resize-none text-sm"
           />
+
+          {/*
+            Asking is separate from deciding, and sits below it, because the
+            usual reason to ask is that neither button is obviously right yet.
+          */}
+          <div className="flex items-start gap-2 pt-1">
+            <Textarea
+              value={question}
+              onChange={(e) => { setQuestion(e.target.value); setAsked(false); }}
+              rows={1}
+              placeholder={`Ask ${raisedByName ?? "them"} something`}
+              className="min-h-0 resize-none text-sm"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5"
+              disabled={pending || !question.trim()}
+              onClick={() =>
+                run(async () => {
+                  const r = await askAboutTicket(ticket.id, question);
+                  if (r.ok) { setQuestion(""); setAsked(true); setThread(null); }
+                  return r;
+                })
+              }
+            >
+              <MessageCircleQuestion className="h-3.5 w-3.5" />
+              Ask
+            </Button>
+          </div>
+          {asked && (
+            <p className="text-xs text-muted-foreground">
+              Gaib will put that to them and bring the answer back here.
+            </p>
+          )}
+
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}

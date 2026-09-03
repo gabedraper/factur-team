@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/server";
 import { createTicket, searchTickets, type Lane, type Severity, type TicketKind } from "./tickets";
 import { fetchMail, fetchBody } from "@/lib/google/gmail";
 import { fetchChat } from "@/lib/google/chat";
@@ -362,6 +363,50 @@ const clientBillingTool: GaibTool = {
   },
 };
 
+const answerQuestionTool: GaibTool = {
+  name: "answer_ticket_question",
+  label: "Pass back an answer",
+  blurb: "Records the person's answer to a question asked about their ticket.",
+  definition: {
+    name: "answer_ticket_question",
+    description:
+      "Record this person's answer to a question that was asked about something " +
+      "they reported. Only call this once they have actually answered it, in " +
+      "their words rather than your summary of what you think they meant. If " +
+      "they change the subject or say they will come back to it, leave it open.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        question_id: { type: "string", description: "The id given to you with the question." },
+        answer: { type: "string", description: "What they said, in their own words." },
+      },
+      required: ["question_id", "answer"],
+      additionalProperties: false,
+    },
+  },
+  async run(ctx, input) {
+    const db = createServiceClient();
+    /*
+     * Scoped to this person on purpose. The id arrives through a model, and a
+     * model that muddles two ids should record nothing rather than put one
+     * colleague's words on another colleague's ticket.
+     */
+    const { data, error } = await db
+      .from("gaib_ticket_questions")
+      .update({ answer: String(input.answer), answered_at: new Date().toISOString() })
+      .eq("id", String(input.question_id))
+      .eq("asked_of", ctx.userId)
+      .is("answer", null)
+      .select("id")
+      .maybeSingle();
+
+    if (error) return `Could not record that: ${error.message}`;
+    if (!data) return "That question is not open for this person — do not try again.";
+    return "Answer recorded and passed back. Thank them and carry on.";
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Google, always as the person asking
 // ---------------------------------------------------------------------------
@@ -519,6 +564,7 @@ const searchMyDriveTool: GaibTool = {
 export const TOOLS: GaibTool[] = [
   searchTicketsTool,
   raiseTicketTool,
+  answerQuestionTool,
   describeDataTool,
   queryDataTool,
   clientBillingTool,

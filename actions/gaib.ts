@@ -7,6 +7,7 @@ import { myPermissions } from "@/lib/org";
 import { NUDGE_OPENERS } from "@/lib/gaib/prompt";
 import { dispatchAgent } from "@/lib/gaib/dispatch";
 import { logEvent } from "@/lib/gaib/tickets";
+import { postToSpace, spaceFor, canPost } from "@/lib/gaib/chat-post";
 import { phrase, type Notice } from "@/lib/gaib/notices";
 import { embedded } from "@/lib/gaib/embedded";
 
@@ -466,4 +467,66 @@ export async function retryTicket(ticketId: string) {
   await logEvent(ticketId, "person", "retried");
   revalidatePath("/gaib");
   return { ok: true };
+}
+
+/**
+ * Put a question to whoever raised a ticket, through their own Gaib.
+ *
+ * Not an email and not a separate thread. It waits in their conversation and
+ * gets asked at a natural moment, because the question is nearly always "what
+ * were you actually trying to do" -- and that gets a better answer in a chat
+ * than in a form somebody has to go and find.
+ */
+export async function askAboutTicket(ticketId: string, question: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
+
+  const text = question.trim();
+  if (!text) return { ok: false, error: "Type the question first" };
+
+  const me = await getAuthedUser();
+  if (!me) return { ok: false, error: "Not allowed" };
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_tickets").select("id,ref,title,raised_by").eq("id", ticketId).maybeSingle();
+  const t = data as { id: string; ref: number; title: string; raised_by: string | null } | null;
+
+  if (!t?.raised_by) return { ok: false, error: "Nobody is recorded as having raised this one" };
+
+  const { error } = await db.from("gaib_ticket_questions").insert({
+    ticket_id: t.id, asked_by: me.id, asked_of: t.raised_by, question: text,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  await logEvent(t.id, "person", "asked the reporter", text.slice(0, 200));
+
+  /*
+   * Nudged in Chat if they are reachable there, so the question does not wait
+   * until they happen to open the app. Best effort: it is already saved, and
+   * will be asked the moment they next talk to Gaib either way.
+   */
+  if (canPost()) {
+    const space = await spaceFor(t.raised_by);
+    if (space) {
+      await postToSpace(space, `Quick one about "${t.title}" — ask me and I will explain.`);
+    }
+  }
+
+  revalidatePath("/gaib");
+  return { ok: true };
+}
+
+/** The questions and answers on a ticket, for the card. */
+export async function ticketConversation(ticketId: string) {
+  if (!(await mayDecide())) return [];
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_ticket_questions")
+    .select("id,question,answer,asked_at,answered_at,closed_at")
+    .eq("ticket_id", ticketId)
+    .order("asked_at");
+  return (data ?? []) as {
+    id: string; question: string; answer: string | null;
+    asked_at: string; answered_at: string | null; closed_at: string | null;
+  }[];
 }

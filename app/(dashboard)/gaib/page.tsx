@@ -27,6 +27,16 @@ export default async function GaibPage() {
     .limit(200);
 
   const tickets = (data ?? []) as Ticket[];
+
+  // Names in one lookup rather than one per card.
+  const { data: people } = await db
+    .from("profiles")
+    .select("id,full_name")
+    .in("id", [...new Set(tickets.map((t) => t.raised_by).filter(Boolean))] as string[]);
+  const names = new Map(
+    ((people ?? []) as { id: string; full_name: string | null }[])
+      .map((p) => [p.id, p.full_name])
+  );
   const waiting = tickets.filter((t) => t.status === "awaiting_review");
   const broken = tickets.filter((t) => t.status === "failed");
   const moving = tickets.filter((t) => ["new", "queued", "running"].includes(t.status));
@@ -39,21 +49,21 @@ export default async function GaibPage() {
       <h1 className="text-xl font-semibold">Gaib</h1>
 
       <Section title="Waiting on you" count={waiting.length}>
-        {waiting.map((t) => <TicketCard key={t.id} ticket={t} decidable />)}
+        {waiting.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} decidable />)}
       </Section>
 
       {broken.length > 0 && (
         <Section title="Failed" count={broken.length}>
-          {broken.map((t) => <TicketCard key={t.id} ticket={t} decidable />)}
+          {broken.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} decidable />)}
         </Section>
       )}
 
       <Section title="In flight" count={moving.length}>
-        {moving.map((t) => <TicketCard key={t.id} ticket={t} />)}
+        {moving.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} />)}
       </Section>
 
       <Section title="Closed" count={done.length}>
-        {done.map((t) => <TicketCard key={t.id} ticket={t} />)}
+        {done.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} />)}
       </Section>
     </div>
   );

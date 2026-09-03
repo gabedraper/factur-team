@@ -146,6 +146,34 @@ function worthRetrying(e: unknown): boolean {
     && [429, 500, 502, 503, 529].includes(e.status ?? 0);
 }
 
+/*
+ * Anything somebody has been asked about their own ticket.
+ *
+ * Put in front of the agent at the start of their next turn rather than pushed
+ * at them as a message. The difference matters: a question that arrives as a
+ * notification interrupts whatever they were doing, and one that arrives in the
+ * conversation gets asked when there is a natural moment -- which for "why did
+ * you want this" is nearly always a better answer.
+ */
+async function pendingQuestions(userId: string): Promise<string> {
+  const db = createServiceClient();
+  const { data } = await db.rpc("gaib_open_questions_for", { p_user: userId });
+  const open = (data ?? []) as {
+    id: string; ticket_ref: number; ticket_title: string; question: string;
+  }[];
+  if (!open.length) return "";
+
+  return [
+    "Somebody is looking at something this person reported and needs one more thing from them.",
+    "Ask it in your own words, once, at a natural point -- not as the first thing you say if they",
+    "have opened with something else, and never twice in one conversation. When they answer, call",
+    "answer_ticket_question with the id below. If they would rather not say, leave it and move on.",
+    ...open.map((q) =>
+      `- id ${q.id} — about "${q.ticket_title}" (Gaib ${q.ticket_ref}): ${q.question}`
+    ),
+  ].join(" ");
+}
+
 export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const client = new Anthropic();
   const messages = await history(input.sessionId);
@@ -205,6 +233,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
       type: "text",
       text: [
         `You are ${input.agent.name}.`,
+        await pendingQuestions(input.userId),
         `You are speaking with ${input.person.name}${input.person.role ? `, ${input.person.role}` : ""}.`,
         `Their email address, for anything that needs to match a person to a record, is ${input.email}.`,
         input.pageUrl ? `They are on ${input.pageUrl}.` : "",
