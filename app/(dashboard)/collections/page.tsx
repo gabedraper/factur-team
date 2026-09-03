@@ -33,11 +33,19 @@ export default async function CollectionsPage({
   // On no client and entitled to see nothing: this page is not theirs at all.
   if (!visibility.can_see_all && !visibility.attached) redirect("/");
 
-  // Somebody who can see everything gets everything to start with; somebody
-  // who cannot has only their own either way.
+  /*
+   * Your own clients first, wherever there are any.
+   *
+   * Everyone who leads a team may see the whole company's debtors, and opening
+   * them on it reads as "these are yours" -- the only thing saying otherwise is
+   * which pill is lit. What that earned was a team lead reporting somebody
+   * else's inactive client as sitting under his own. Whoever is named on no
+   * client at all, which is who chases this money for a living, still opens on
+   * everything, and All clients is still one click away for anyone entitled.
+   */
   const asked = (await searchParams).scope;
   const scope: "mine" | "all" =
-    asked === "mine" ? "mine" : asked === "all" ? "all" : visibility.can_see_all ? "all" : "mine";
+    asked === "mine" ? "mine" : asked === "all" ? "all" : visibility.attached ? "mine" : "all";
 
   const [rows, domains, settings] = await Promise.all([
     getCollectionsBoard(scope),
