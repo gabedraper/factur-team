@@ -84,27 +84,6 @@
   }
 }
 
-/*
- * A surface that stays light whatever the theme is.
- *
- * The sign-in circle is white on purpose, in both themes -- it is the brand
- * mark, not a card. But the dark theme's tokens were still in force inside it,
- * so the primary button rendered in the lifted blue meant for a dark ground
- * and sat on white as a washed-out lavender. This restates the few tokens that
- * decide contrast, for anything deliberately pinned to a light surface.
- */
-@layer base {
-  .on-light {
-    --foreground: 173 100% 2%;
-    --muted-foreground: 0 0% 36%;
-    --primary: 236 63% 51%;
-    --primary-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --ring: 236 63% 51%;
-  }
-}
-
 @layer base {
   * {
     @apply border-border;

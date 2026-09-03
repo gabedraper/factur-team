@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BrandMesh } from "@/components/BrandMesh";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -37,41 +35,46 @@ export default function LoginPage() {
   }
 
   return (
-    /* Brand black (#000807), not the slate it borrowed before. The
-       supergraphic rising out of the bottom-left corner and running off the
-       edges, the way the artwork does. This is the one screen that is pure
-       brand -- nothing on it competes with the graphic. */
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#000807] p-4">
-      {/* A band along the bottom rather than a full-bleed fill. The artwork is
-          wide and rises out of one corner; stretched over a tall viewport it
-          crops to its own left edge and the shape disappears. */}
-      <BrandMesh className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full opacity-40" />
-      {/* One white circle holding everything. A circle wastes its corners, so
-          the content sits in a narrower column than the width suggests --
-          hence the heavy horizontal padding. Capped against the viewport so it
-          cannot overflow a short window. */}
-      <div className="on-light relative flex aspect-square w-[26rem] max-w-[min(90vw,80vh)] flex-col items-center justify-center gap-5 rounded-full bg-white px-14 text-center shadow-2xl">
-        <Image
-          src="https://facturmfg.com/wp-content/uploads/2022/11/Factur-Logo-300x94.png"
-          alt="Factur"
-          width={180}
-          height={56}
-          priority
-          className="h-auto w-40 object-contain"
+    /*
+     * The photograph is the page. No card, no heading, no explanation -- there
+     * is one thing to do here and the button says what it is.
+     *
+     * A background image rather than an <img>: if the file is not there the
+     * brand black underneath simply shows through, where a broken <img> would
+     * put a torn-page icon in the middle of the sign-in screen.
+     */
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#000807] p-4 bg-cover bg-center"
+      style={{ backgroundImage: "url('/login-background.jpg')" }}
+    >
+      <div className="relative flex flex-col items-center gap-3">
+        {/*
+          * A pool of dark behind the button.
+          *
+          * Blurred and inset well past the button's own edges so it reads as
+          * shadow on the photograph rather than a second shape sitting on it.
+          * Without it the button has to survive whatever is behind it, and a
+          * light patch of sky would swallow it.
+          */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-x-24 -inset-y-16 rounded-[50%] bg-black/75 blur-3xl"
         />
 
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Factur Team</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in with your Factur Google account
-          </p>
-        </div>
-
-        <Button onClick={signInWithGoogle} disabled={loading} className="w-full">
+        <Button
+          onClick={signInWithGoogle}
+          disabled={loading}
+          size="lg"
+          className="relative px-8"
+        >
           {loading ? "Redirecting…" : "Sign in with Google"}
         </Button>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {/* Kept: it only appears when sign-in has failed, and a screen that
+            fails silently gives somebody nothing to act on. */}
+        {error && (
+          <p className="relative max-w-xs text-center text-sm text-red-300">{error}</p>
+        )}
       </div>
     </div>
   );
