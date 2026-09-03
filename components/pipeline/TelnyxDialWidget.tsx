@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Phone, PhoneOff, Loader2 } from "lucide-react";
+import { Phone, PhoneOff, Loader2, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
+import { Keypad } from "@/components/pipeline/Keypad";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
-import { claimOutboundNumber, getTelnyxVoiceToken } from "@/actions/dialer";
+import { claimOutboundNumber, getTelnyxVoiceToken, sendSms } from "@/actions/dialer";
 import { useCallTarget } from "@/components/work-panel/dialer-context";
 
 /*
@@ -40,6 +43,19 @@ export function TelnyxDialWidget() {
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // A call the keypad below placed, to an arbitrary number rather than the
+  // Opportunity currently open -- it isn't attached to a CRM record, so it
+  // skips commit()/the disposition dialog entirely. adHocRef (not state)
+  // because the notification handler below is wired up once and would
+  // otherwise read a stale value.
+  const [manualNumber, setManualNumber] = useState("");
+  const [dialedNumber, setDialedNumber] = useState<string | null>(null);
+  const adHocRef = useRef(false);
+  const [texting, setTexting] = useState(false);
+  const [smsBody, setSmsBody] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -71,6 +87,11 @@ export function TelnyxDialWidget() {
               if (cause && cause !== "NORMAL_CLEARING" && cause !== "ORIGINATOR_CANCEL") {
                 setError(`Call did not connect: ${cause.replaceAll("_", " ").toLowerCase()}.`);
               }
+              if (adHocRef.current) {
+                adHocRef.current = false;
+                setDialedNumber(null);
+                return "idle";
+              }
               setDispositionOpen(true);
               return "ended";
             });
@@ -94,8 +115,10 @@ export function TelnyxDialWidget() {
     };
   }, []);
 
-  async function placeCall() {
-    if (!target?.phoneNumber) { setError("This contact has no phone number on file."); return; }
+  /** overrideNumber comes from the keypad; omitted, this calls the Opportunity's own contact. */
+  async function placeCall(overrideNumber?: string) {
+    const number = overrideNumber ?? target?.phoneNumber;
+    if (!number) { setError("This contact has no phone number on file."); return; }
     const client = clientRef.current;
     if (!client) return;
 
@@ -107,12 +130,17 @@ export function TelnyxDialWidget() {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
-      commit();
+      adHocRef.current = Boolean(overrideNumber);
+      if (adHocRef.current) {
+        setDialedNumber(number);
+      } else {
+        commit();
+      }
       setCallState("dialing");
       client.newCall({
-        destinationNumber: target.phoneNumber,
+        destinationNumber: number,
         callerNumber: outboundCallerId,
-        customHeaders: [{ name: "X-Opportunity-Id", value: target.opportunityId }],
+        ...(adHocRef.current ? {} : { customHeaders: [{ name: "X-Opportunity-Id", value: target!.opportunityId }] }),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not place that call.");
@@ -124,6 +152,26 @@ export function TelnyxDialWidget() {
 
   function hangUp() {
     clientRef.current?.getActiveCalls().forEach((c) => c.hangup());
+  }
+
+  async function sendText() {
+    const to = manualNumber.trim();
+    const text = smsBody.trim();
+    if (!to || !text) return;
+
+    setError(null);
+    setSmsSent(false);
+    setSendingSms(true);
+    try {
+      await sendSms(to, text);
+      setSmsSent(true);
+      setSmsBody("");
+      setTimeout(() => setSmsSent(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send that text.");
+    } finally {
+      setSendingSms(false);
+    }
   }
 
   if (unavailable) {
@@ -166,7 +214,7 @@ export function TelnyxDialWidget() {
                 <PhoneOff className="h-4 w-4" /> Hang up
               </Button>
             ) : (
-              <Button size="sm" onClick={placeCall} disabled={!ready || claiming || !target.phoneNumber} className="gap-2">
+              <Button size="sm" onClick={() => placeCall()} disabled={!ready || claiming || !target.phoneNumber} className="gap-2">
                 {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
                 Call
               </Button>
@@ -177,6 +225,67 @@ export function TelnyxDialWidget() {
             {!target.phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
           </div>
         )}
+
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            {dialedNumber ? `Calling ${dialedNumber}` : "Dial a number"}
+          </p>
+          <Input
+            type="tel"
+            value={manualNumber}
+            onChange={(e) => setManualNumber(e.target.value)}
+            placeholder="+14155551234"
+            className="tabular-nums"
+          />
+          <Keypad onPress={(d) => setManualNumber((n) => n + d)} />
+          <div className="flex gap-2">
+            {callState === "ringing" || callState === "dialing" ? (
+              <Button variant="destructive" size="sm" onClick={hangUp} className="flex-1 gap-2">
+                <PhoneOff className="h-4 w-4" /> Hang up
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => placeCall(manualNumber.trim())}
+                disabled={!ready || claiming || !manualNumber.trim()}
+                className="flex-1 gap-2"
+              >
+                {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                Call
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTexting((t) => !t)}
+              disabled={!manualNumber.trim()}
+              className="flex-1 gap-2"
+            >
+              <MessageSquareText className="h-4 w-4" /> Text
+            </Button>
+          </div>
+
+          {texting && (
+            <div className="space-y-2 rounded-md border p-2">
+              <Textarea
+                value={smsBody}
+                onChange={(e) => setSmsBody(e.target.value)}
+                placeholder="Message"
+                rows={2}
+                className="min-h-0 resize-none text-sm"
+              />
+              <div className="flex items-center justify-end gap-2">
+                {smsSent && <span className="mr-auto text-xs text-emerald-600">Sent.</span>}
+                <Button variant="ghost" size="sm" onClick={() => { setTexting(false); setSmsBody(""); }}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={sendText} disabled={sendingSms || !smsBody.trim()}>
+                  {sendingSms ? "Sending…" : "Send"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {target && (

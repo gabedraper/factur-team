@@ -69,7 +69,7 @@ async function refreshSignIn(): Promise<void> {
   }
 }
 
-export function GaibWidget() {
+export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState("");
@@ -329,7 +329,8 @@ export function GaibWidget() {
           e.currentTarget.blur();
           toggle();
         }}
-        className="w-full justify-start gap-2 text-muted-foreground"
+        title={collapsed ? "Gaib" : undefined}
+        className={collapsed ? "w-full justify-center px-0 text-muted-foreground" : "w-full justify-start gap-2 text-muted-foreground"}
       >
         <span className="relative flex">
           <MessageCircle className="h-4 w-4" />
@@ -337,7 +338,7 @@ export function GaibWidget() {
             <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-sky-500" />
           )}
         </span>
-        Gaib
+        {!collapsed && "Gaib"}
       </Button>
 
       {/*

@@ -44,7 +44,6 @@ import {
   PhoneCall,
 } from "lucide-react";
 import { getRoleLabel } from "@/lib/roles";
-import { GaibWidget } from "@/components/gaib/gaib-widget";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
@@ -179,7 +178,7 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
    * the ticket queue, the conversation log, and where the data comes from --
    * so they live under Settings with the rest of the administration, and the
    * pages themselves check the permission. Everyone still reaches Gaib
-   * through the button in the footer.
+   * through the work panel on the right, not the sidebar.
    */
 
   // Data and Opportunities share the timelines.view audience -- browsing
@@ -313,7 +312,6 @@ export default async function DashboardLayout({
           <>
             <div className="p-3 pb-0">
               <Separator className="mb-3" />
-              <GaibWidget />
               <form action={signOut}>
                 <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground" size="sm" type="submit">
                   <LogOut className="h-4 w-4" />
@@ -350,9 +348,14 @@ export default async function DashboardLayout({
           )}
           <div className="flex-1">{children}</div>
         </main>
-        {showWorkPanel && (
-          <WorkPanel telnyxConfigured={telnyxConfigured} twilioConfigured={twilioConfigured} />
-        )}
+        {/* Always mounted, even for someone without timelines.view -- Gaib
+            lives in here now, and everyone needs to be able to reach it. The
+            Calls section itself is still gated. */}
+        <WorkPanel
+          showCalls={showWorkPanel}
+          telnyxConfigured={telnyxConfigured}
+          twilioConfigured={twilioConfigured}
+        />
       </DialerProvider>
     </div>
   );

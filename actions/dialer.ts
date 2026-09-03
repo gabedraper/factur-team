@@ -165,3 +165,30 @@ export async function getTelnyxVoiceToken(): Promise<string | null> {
   }
   return text.trim() || null;
 }
+
+/**
+ * Sends one SMS via Telnyx's Messages API, from a number claimed out of the
+ * same pool a call would use.
+ *
+ * Requires TELNYX_MESSAGING_PROFILE_ID -- the pool's numbers are provisioned
+ * for voice, and Telnyx also needs each one attached to a Messaging Profile
+ * (set up once in the portal) before it can send. Throws a plain "not
+ * configured" message rather than the raw Telnyx error until that's done.
+ */
+export async function sendSms(to: string, body: string): Promise<void> {
+  await assertPipeline("view");
+  const { TELNYX_API_KEY, TELNYX_MESSAGING_PROFILE_ID } = process.env;
+  if (!TELNYX_API_KEY || !TELNYX_MESSAGING_PROFILE_ID) {
+    throw new Error("Texting isn't configured yet — needs TELNYX_MESSAGING_PROFILE_ID.");
+  }
+
+  const from = await claimOutboundNumber("telnyx");
+  if (!from) throw new Error("No active outbound numbers in the pool — add one in Dialer settings.");
+
+  const res = await fetch("https://api.telnyx.com/v2/messages", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to, text: body, messaging_profile_id: TELNYX_MESSAGING_PROFILE_ID }),
+  });
+  if (!res.ok) throw new Error(`Could not send that text: ${res.status} ${await res.text()}`);
+}
