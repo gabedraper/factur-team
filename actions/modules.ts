@@ -46,6 +46,25 @@ export async function updateModule(
   return { success: true };
 }
 
+export async function reorderModules(courseId: string, moduleIds: string[]) {
+  const supabase = await createClient();
+
+  // Positions are rewritten from scratch off the order handed in, so gaps left
+  // by earlier deletes close up and every module lands on its own number.
+  for (let i = 0; i < moduleIds.length; i++) {
+    const { error } = await supabase
+      .from("modules")
+      .update({ position: i })
+      .eq("id", moduleIds[i])
+      .eq("course_id", courseId);
+
+    if (error) return { success: false, error: error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  return { success: true };
+}
+
 export async function deleteModule(moduleId: string, courseId: string) {
   const supabase = await createClient();
 
