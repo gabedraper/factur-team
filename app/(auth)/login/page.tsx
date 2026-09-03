@@ -39,33 +39,52 @@ export default function LoginPage() {
      * The photograph is the page. No card, no heading, no explanation -- there
      * is one thing to do here and the button says what it is.
      *
+     * Dark always. Every colour here is written down rather than read from a
+     * theme token: the artwork is dark in both themes, so a light palette
+     * would be choosing colours for a background that is never behind them --
+     * and signed out there is no preference to read in the first place.
+     *
      * A background image rather than an <img>: if the file is not there the
      * brand black underneath simply shows through, where a broken <img> would
      * put a torn-page icon in the middle of the sign-in screen.
      */
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#000807] p-4 bg-cover bg-center"
+      className="relative min-h-screen overflow-hidden bg-[#000807] bg-cover bg-center p-4"
       style={{ backgroundImage: "url('/login-background.jpg')" }}
     >
-      <div className="relative flex flex-col items-center gap-3">
+      {/* Sitting on the three-quarter line, so the artwork keeps the middle. */}
+      <div className="absolute left-1/2 top-3/4 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3">
         {/*
-          * A pool of dark behind the button.
+          * Black at the button's edge, gone a quarter inch out.
           *
-          * Blurred and inset well past the button's own edges so it reads as
-          * shadow on the photograph rather than a second shape sitting on it.
-          * Without it the button has to survive whatever is behind it, and a
-          * light patch of sky would swallow it.
+          * A blurred shape fades from solid to nothing over roughly one and a
+          * half times its blur radius either side of its own edge. So to be
+          * opaque where the button starts and clear 24px later, the black has
+          * to begin 12px outside the button and blur by 8: 12 covers the
+          * button edge, and 12 + 12 lands the falloff at 24.
+          *
+          * Solid black rather than a translucent wash -- the point is to give
+          * the button its own ground, not to tint the photograph.
           */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -inset-x-24 -inset-y-16 rounded-[50%] bg-black/75 blur-3xl"
+          className="pointer-events-none absolute bg-black"
+          style={{ inset: "-12px", borderRadius: 18, filter: "blur(8px)" }}
         />
 
+        {/*
+          * White, and stated outright rather than taken from the theme.
+          *
+          * This screen is the photograph in both themes -- there is no light
+          * version of it -- so a button coloured by the theme would be picked
+          * for a background that is never behind it. Signed out, there is no
+          * preference to read anyway.
+          */}
         <Button
           onClick={signInWithGoogle}
           disabled={loading}
           size="lg"
-          className="relative px-8"
+          className="relative bg-white px-8 text-black hover:bg-white/90 focus-visible:ring-white/60"
         >
           {loading ? "Redirecting…" : "Sign in with Google"}
         </Button>
