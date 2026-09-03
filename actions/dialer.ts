@@ -172,23 +172,34 @@ export async function getTelnyxVoiceToken(): Promise<string | null> {
  *
  * Requires TELNYX_MESSAGING_PROFILE_ID -- the pool's numbers are provisioned
  * for voice, and Telnyx also needs each one attached to a Messaging Profile
- * (set up once in the portal) before it can send. Throws a plain "not
- * configured" message rather than the raw Telnyx error until that's done.
+ * (set up once in the portal) before it can send.
+ *
+ * Returns a result rather than throwing -- Next redacts a thrown Server
+ * Action error's message in production (the client gets a generic
+ * "Minified React error" and a digest; the real text only reaches the
+ * server log), so a thrown error here would never actually reach the
+ * widget. Everything that can fail, including assertPipeline/
+ * claimOutboundNumber below, is caught and turned into { ok: false }.
  */
-export async function sendSms(to: string, body: string): Promise<void> {
-  await assertPipeline("view");
-  const { TELNYX_API_KEY, TELNYX_MESSAGING_PROFILE_ID } = process.env;
-  if (!TELNYX_API_KEY || !TELNYX_MESSAGING_PROFILE_ID) {
-    throw new Error("Texting isn't configured yet — needs TELNYX_MESSAGING_PROFILE_ID.");
+export async function sendSms(to: string, body: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertPipeline("view");
+    const { TELNYX_API_KEY, TELNYX_MESSAGING_PROFILE_ID } = process.env;
+    if (!TELNYX_API_KEY || !TELNYX_MESSAGING_PROFILE_ID) {
+      return { ok: false, error: "Texting isn't configured yet — needs TELNYX_MESSAGING_PROFILE_ID." };
+    }
+
+    const from = await claimOutboundNumber("telnyx");
+    if (!from) return { ok: false, error: "No active outbound numbers in the pool — add one in Dialer settings." };
+
+    const res = await fetch("https://api.telnyx.com/v2/messages", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, text: body, messaging_profile_id: TELNYX_MESSAGING_PROFILE_ID }),
+    });
+    if (!res.ok) return { ok: false, error: `Could not send that text: ${res.status} ${await res.text()}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not send that text." };
   }
-
-  const from = await claimOutboundNumber("telnyx");
-  if (!from) throw new Error("No active outbound numbers in the pool — add one in Dialer settings.");
-
-  const res = await fetch("https://api.telnyx.com/v2/messages", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to, text: body, messaging_profile_id: TELNYX_MESSAGING_PROFILE_ID }),
-  });
-  if (!res.ok) throw new Error(`Could not send that text: ${res.status} ${await res.text()}`);
 }

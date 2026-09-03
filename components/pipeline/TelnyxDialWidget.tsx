@@ -162,16 +162,15 @@ export function TelnyxDialWidget() {
     setError(null);
     setSmsSent(false);
     setSendingSms(true);
-    try {
-      await sendSms(to, text);
+    const result = await sendSms(to, text);
+    if (result.ok) {
       setSmsSent(true);
       setSmsBody("");
       setTimeout(() => setSmsSent(false), 3000);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not send that text.");
-    } finally {
-      setSendingSms(false);
+    } else {
+      setError(result.error);
     }
+    setSendingSms(false);
   }
 
   if (unavailable) {
