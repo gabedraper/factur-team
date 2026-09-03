@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, NotConnected, Chip } from "@/components/pipeline/bits";
+import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber } from "@/actions/dialer";
+import { useCallTarget } from "@/components/work-panel/dialer-context";
 
 /*
  * Click-to-dial, embedded.
@@ -17,6 +18,10 @@ import { claimOutboundNumber } from "@/actions/dialer";
  * outbound_caller_id (the rotated number) is picked *before* the message is
  * sent, from our own pool via claimOutboundNumber(), rather than anything
  * Dialpad decides.
+ *
+ * Lives in the work panel, not on the Opportunity page -- see
+ * TelnyxDialWidget for why (useCallTarget instead of props is what lets the
+ * iframe and an in-progress call survive navigation).
  *
  * Message shape is Dialpad's `opencti_dialpad` protocol -- see
  * developers.dialpad.com/docs/dialpad-mini-dialer. call_ringing firing with
@@ -38,14 +43,8 @@ function postToDialer(frame: HTMLIFrameElement | null, method: string, payload: 
   );
 }
 
-export function DialWidget({
-  opportunityId, phoneNumber, contactName, canAdmin,
-}: {
-  opportunityId: string;
-  phoneNumber: string | null;
-  contactName: string;
-  canAdmin: boolean;
-}) {
+export function DialWidget() {
+  const { target, canAdmin, commit, release } = useCallTarget();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [callState, setCallState] = useState<CallState>("idle");
@@ -80,7 +79,7 @@ export function DialWidget({
   }, []);
 
   async function placeCall() {
-    if (!phoneNumber) {
+    if (!target?.phoneNumber) {
       setError("This contact has no phone number on file.");
       return;
     }
@@ -92,11 +91,12 @@ export function DialWidget({
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
+      commit();
       setCallState("dialing");
       postToDialer(frameRef.current, "initiate_call", {
-        phone_number: phoneNumber,
+        phone_number: target.phoneNumber,
         outbound_caller_id: outboundCallerId,
-        custom_data: JSON.stringify({ opportunity_id: opportunityId }),
+        custom_data: JSON.stringify({ opportunity_id: target.opportunityId }),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not place that call.");
@@ -141,31 +141,36 @@ export function DialWidget({
           </p>
         )}
 
-        <div className="flex items-center gap-2">
-          {callState === "ringing" || callState === "dialing" ? (
-            <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
-              <PhoneOff className="h-4 w-4" /> Hang up
-            </Button>
-          ) : (
+        {!target ? (
+          <Empty>Open an Opportunity to call.</Empty>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-full truncate text-sm font-medium">{target.contactName}</span>
+            {callState === "ringing" || callState === "dialing" ? (
+              <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
+                <PhoneOff className="h-4 w-4" /> Hang up
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={placeCall}
+                disabled={!authenticated || claiming || !target.phoneNumber}
+                className="gap-2"
+              >
+                {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                Call
+              </Button>
+            )}
             <Button
+              variant="outline"
               size="sm"
-              onClick={placeCall}
-              disabled={!authenticated || claiming || !phoneNumber}
-              className="gap-2"
+              onClick={() => { setCallState("idle"); setDispositionOpen(true); }}
             >
-              {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
-              Call {contactName}
+              Log a call
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setCallState("idle"); setDispositionOpen(true); }}
-          >
-            Log a call
-          </Button>
-          {!phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
-        </div>
+            {!target.phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
+          </div>
+        )}
 
         <iframe
           ref={frameRef}
@@ -177,13 +182,15 @@ export function DialWidget({
         />
       </div>
 
-      <CallDispositionDialog
-        open={dispositionOpen}
-        onOpenChange={setDispositionOpen}
-        opportunityId={opportunityId}
-        contactName={contactName}
-        onSaved={() => setCallState("idle")}
-      />
+      {target && (
+        <CallDispositionDialog
+          open={dispositionOpen}
+          onOpenChange={setDispositionOpen}
+          opportunityId={target.opportunityId}
+          contactName={target.contactName}
+          onSaved={() => { setCallState("idle"); release(); }}
+        />
+      )}
     </Panel>
   );
 }

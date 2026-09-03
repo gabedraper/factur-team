@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, NotConnected, Chip } from "@/components/pipeline/bits";
+import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber, getTwilioVoiceToken } from "@/actions/dialer";
+import { useCallTarget } from "@/components/work-panel/dialer-context";
 
 /*
  * Click-to-dial via Twilio's Voice SDK -- Plan B while the Dialpad Mini
@@ -16,6 +17,10 @@ import { claimOutboundNumber, getTwilioVoiceToken } from "@/actions/dialer";
  * itself happens when Twilio's servers hit app/api/twilio/voice with the
  * phone number and rotated caller ID passed through device.connect(params).
  *
+ * Lives in the work panel, not on the Opportunity page -- see
+ * TelnyxDialWidget for why (useCallTarget instead of props is what lets the
+ * Device connection and an in-progress call survive navigation).
+ *
  * Call/Device types come from @twilio/voice-sdk but are loaded dynamically
  * (see the import inside the effect) -- it touches WebRTC/AudioContext at
  * module load in a way that doesn't tolerate SSR.
@@ -23,14 +28,8 @@ import { claimOutboundNumber, getTwilioVoiceToken } from "@/actions/dialer";
 
 type CallState = "idle" | "dialing" | "ringing" | "ended";
 
-export function TwilioDialWidget({
-  opportunityId, phoneNumber, contactName, canAdmin,
-}: {
-  opportunityId: string;
-  phoneNumber: string | null;
-  contactName: string;
-  canAdmin: boolean;
-}) {
+export function TwilioDialWidget() {
+  const { target, canAdmin, commit, release } = useCallTarget();
   const deviceRef = useRef<import("@twilio/voice-sdk").Device | null>(null);
   const callRef = useRef<import("@twilio/voice-sdk").Call | null>(null);
   const [ready, setReady] = useState(false);
@@ -71,7 +70,7 @@ export function TwilioDialWidget({
   }, []);
 
   async function placeCall() {
-    if (!phoneNumber) { setError("This contact has no phone number on file."); return; }
+    if (!target?.phoneNumber) { setError("This contact has no phone number on file."); return; }
     const device = deviceRef.current;
     if (!device) return;
 
@@ -83,9 +82,10 @@ export function TwilioDialWidget({
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
+      commit();
       setCallState("dialing");
       const call = await device.connect({
-        params: { To: phoneNumber, CallerId: outboundCallerId, OpportunityId: opportunityId },
+        params: { To: target.phoneNumber, CallerId: outboundCallerId, OpportunityId: target.opportunityId },
       });
       callRef.current = call;
       call.on("accept", () => setCallState("ringing"));
@@ -134,31 +134,38 @@ export function TwilioDialWidget({
           </p>
         )}
 
-        <div className="flex items-center gap-2">
-          {callState === "ringing" || callState === "dialing" ? (
-            <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
-              <PhoneOff className="h-4 w-4" /> Hang up
+        {!target ? (
+          <Empty>Open an Opportunity to call.</Empty>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="w-full truncate text-sm font-medium">{target.contactName}</span>
+            {callState === "ringing" || callState === "dialing" ? (
+              <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
+                <PhoneOff className="h-4 w-4" /> Hang up
+              </Button>
+            ) : (
+              <Button size="sm" onClick={placeCall} disabled={!ready || claiming || !target.phoneNumber} className="gap-2">
+                {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                Call
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => { setCallState("idle"); setDispositionOpen(true); }}>
+              Log a call
             </Button>
-          ) : (
-            <Button size="sm" onClick={placeCall} disabled={!ready || claiming || !phoneNumber} className="gap-2">
-              {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
-              Call {contactName}
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => { setCallState("idle"); setDispositionOpen(true); }}>
-            Log a call
-          </Button>
-          {!phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
-        </div>
+            {!target.phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
+          </div>
+        )}
       </div>
 
-      <CallDispositionDialog
-        open={dispositionOpen}
-        onOpenChange={setDispositionOpen}
-        opportunityId={opportunityId}
-        contactName={contactName}
-        onSaved={() => setCallState("idle")}
-      />
+      {target && (
+        <CallDispositionDialog
+          open={dispositionOpen}
+          onOpenChange={setDispositionOpen}
+          opportunityId={target.opportunityId}
+          contactName={target.contactName}
+          onSaved={() => { setCallState("idle"); release(); }}
+        />
+      )}
     </Panel>
   );
 }

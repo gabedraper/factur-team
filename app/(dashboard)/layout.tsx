@@ -52,6 +52,8 @@ import { OnlineUsers } from "@/components/online-users";
 import { previewedMember, myPermissions, myRealPermissions, myRoleLabel } from "@/lib/org";
 import { getCollectionsVisibility } from "@/actions/collections";
 import { PageTiming } from "@/components/PageTiming";
+import { DialerProvider } from "@/components/work-panel/dialer-context";
+import { WorkPanel } from "@/components/work-panel/WorkPanel";
 
 /*
  * The talent sections Factur actually works in.
@@ -261,6 +263,12 @@ export default async function DashboardLayout({
     collectionsVisibility.can_see_all || collectionsVisibility.attached
   );
   const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
+  const showWorkPanel = perms.has("timelines.view");
+  const telnyxConfigured = Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID);
+  const twilioConfigured = Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
+    process.env.TWILIO_API_KEY_SECRET && process.env.TWILIO_TWIML_APP_SID
+  );
 
   return (
     <div className="flex h-screen bg-background">
@@ -317,28 +325,35 @@ export default async function DashboardLayout({
         }
       />
 
-      {/* Main content */}
-      <main className="flex flex-1 flex-col overflow-auto">
-        {/* Presence is the real signed-in person, not the previewed one -- the
-            point of it is who is actually at a keyboard. */}
-        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-end border-b bg-card px-4">
-          <OnlineUsers
-            me={{
-              id: user.id,
-              name: profile.full_name ?? user.email ?? "User",
-              avatarUrl: profile.avatar_url ?? null,
-            }}
-          />
-        </header>
-        <MaintenanceAlert canSee={perms.has("org.manage")} />
-        {(previewing || previewRole) && (
-          <PreviewBanner
-            as={previewing ? (previewing.full_name ?? previewing.email) : getRoleLabel(previewRole!)}
-            kind={previewing ? "person" : "role"}
-          />
+      {/* Main content, plus the persistent right-hand work panel -- both live
+          inside one DialerProvider so a call started on an Opportunity page
+          survives navigating anywhere else in this layout. */}
+      <DialerProvider canAdmin={perms.has("org.manage")}>
+        <main className="flex flex-1 flex-col overflow-auto">
+          {/* Presence is the real signed-in person, not the previewed one -- the
+              point of it is who is actually at a keyboard. */}
+          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-end border-b bg-card px-4">
+            <OnlineUsers
+              me={{
+                id: user.id,
+                name: profile.full_name ?? user.email ?? "User",
+                avatarUrl: profile.avatar_url ?? null,
+              }}
+            />
+          </header>
+          <MaintenanceAlert canSee={perms.has("org.manage")} />
+          {(previewing || previewRole) && (
+            <PreviewBanner
+              as={previewing ? (previewing.full_name ?? previewing.email) : getRoleLabel(previewRole!)}
+              kind={previewing ? "person" : "role"}
+            />
+          )}
+          <div className="flex-1">{children}</div>
+        </main>
+        {showWorkPanel && (
+          <WorkPanel telnyxConfigured={telnyxConfigured} twilioConfigured={twilioConfigured} />
         )}
-        <div className="flex-1">{children}</div>
-      </main>
+      </DialerProvider>
     </div>
   );
 }

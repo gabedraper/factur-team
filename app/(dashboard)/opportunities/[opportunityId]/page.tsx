@@ -5,10 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
-import { DialWidget } from "@/components/pipeline/DialWidget";
-import { TwilioDialWidget } from "@/components/pipeline/TwilioDialWidget";
-import { TelnyxDialWidget } from "@/components/pipeline/TelnyxDialWidget";
+import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
+import { ContactEditor } from "@/components/pipeline/ContactEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +19,7 @@ type Opportunity = {
   notes: string | null;
   next_action_date: string | null;
   updates: string | null;
+  contact_id: string;
   reached_lead: boolean;
   reached_eval_call_scheduled: boolean;
   reached_selling: boolean;
@@ -53,7 +53,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates," +
+        "id,name,stage,lead_status,notes,next_action_date,updates,contact_id," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
         "org_clients(name),crm_accounts(name,industry),crm_contacts(first_name,last_name,title,email,phone)"
       )
@@ -71,20 +71,13 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const o = opp as unknown as Opportunity;
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
-  // Telnyx, then Twilio, then Dialpad -- whichever is actually configured
-  // wins. Telnyx first since it's the one currently being set up (Twilio's
-  // own signup couldn't deliver a 2FA code; Dialpad's Mini Dialer approval
-  // is still pending). If none are, DialWidget still renders and shows its
-  // own NotConnected, so this fails toward Dialpad's setup instructions
-  // rather than picking silently.
-  const telnyxConfigured = Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID);
-  const twilioConfigured = Boolean(
-    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
-    process.env.TWILIO_API_KEY_SECRET && process.env.TWILIO_TWIML_APP_SID
-  );
-
   return (
     <div className="p-6 space-y-4 max-w-6xl">
+      <RegisterActiveOpportunity
+        opportunityId={o.id}
+        phoneNumber={o.crm_contacts?.phone ?? null}
+        contactName={contactName}
+      />
       <div>
         <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" /> My Opportunities
@@ -105,29 +98,6 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           from there. */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
-          {telnyxConfigured ? (
-            <TelnyxDialWidget
-              opportunityId={o.id}
-              phoneNumber={o.crm_contacts?.phone ?? null}
-              contactName={contactName}
-              canAdmin={perms.has("org.manage")}
-            />
-          ) : twilioConfigured ? (
-            <TwilioDialWidget
-              opportunityId={o.id}
-              phoneNumber={o.crm_contacts?.phone ?? null}
-              contactName={contactName}
-              canAdmin={perms.has("org.manage")}
-            />
-          ) : (
-            <DialWidget
-              opportunityId={o.id}
-              phoneNumber={o.crm_contacts?.phone ?? null}
-              contactName={contactName}
-              canAdmin={perms.has("org.manage")}
-            />
-          )}
-
           <OpportunityEditor
             opportunity={{
               id: o.id,
@@ -145,22 +115,31 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
             }}
           />
 
-          <Panel title="Contact">
-            <dl className="space-y-2 p-4 text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Phone</dt>
-                <dd className="tabular-nums">{o.crm_contacts?.phone ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Email</dt>
-                <dd className="truncate">{o.crm_contacts?.email ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt className="text-muted-foreground">Industry</dt>
-                <dd>{o.crm_accounts?.industry ?? "—"}</dd>
-              </div>
-            </dl>
-          </Panel>
+          {perms.has("org.manage") ? (
+            <ContactEditor
+              contactId={o.contact_id}
+              phone={o.crm_contacts?.phone ?? null}
+              email={o.crm_contacts?.email ?? null}
+              industry={o.crm_accounts?.industry ?? null}
+            />
+          ) : (
+            <Panel title="Contact">
+              <dl className="space-y-2 p-4 text-sm">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Phone</dt>
+                  <dd className="tabular-nums">{o.crm_contacts?.phone ?? "—"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd className="truncate">{o.crm_contacts?.email ?? "—"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Industry</dt>
+                  <dd>{o.crm_accounts?.industry ?? "—"}</dd>
+                </div>
+              </dl>
+            </Panel>
+          )}
         </div>
 
         <div className="space-y-4">
