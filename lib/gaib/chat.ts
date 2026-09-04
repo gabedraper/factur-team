@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/server";
 import { AGENT_PREAMBLE } from "./prompt";
 import { toolsFor, TOOL_BY_NAME, type ToolContext } from "./tools";
+import { repairDanglingToolCalls } from "./repair";
 import { tellWatchers } from "./watchers";
 import type { Agent } from "./agents";
 import { effortFor } from "./models";
@@ -43,12 +44,14 @@ async function history(sessionId: string): Promise<Anthropic.MessageParam[]> {
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
 
-  return ((data ?? []) as Row[]).map((m) => ({
+  const replayed = ((data ?? []) as Row[]).map((m) => ({
     role: m.role,
     // Blocks win when present -- they carry the tool calls that plain text
     // cannot. Text is the fallback for ordinary typed messages.
     content: (m.blocks as Anthropic.ContentBlockParam[] | null) ?? m.content,
   }));
+
+  return repairDanglingToolCalls(replayed);
 }
 
 async function save(
@@ -69,6 +72,7 @@ async function save(
     .eq("id", sessionId);
 }
 
+/**
 /** The readable text of an assistant turn, for the transcript and for lists. */
 function textOf(blocks: Anthropic.ContentBlock[]): string {
   return blocks.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
