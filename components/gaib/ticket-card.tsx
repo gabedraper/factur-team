@@ -69,7 +69,12 @@ export function TicketCard({
   }
 
   return (
-    <div className="rounded-lg border p-4">
+    /*
+     * Addressable, so a link from the panel lands on the right card. The scroll
+     * margin keeps it clear of the top of the window rather than jammed against
+     * it, which otherwise looks like the page has failed to move.
+     */
+    <div id={`gaib-${ticket.ref}`} className="scroll-mt-6 rounded-lg border p-4">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 shrink-0 text-sm tabular-nums text-muted-foreground">
           {ticket.ref}

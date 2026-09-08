@@ -546,6 +546,13 @@ export type OpenTicket = {
   status: string;
   sessionId: string | null;
   waitingOnYou: boolean;
+  /*
+   * Whether this is their own. Decides where a click goes: your own
+   * conversation reopens in the panel, somebody else's ticket goes to the queue
+   * screen -- and only whoever runs the queue can open that, so a person's own
+   * ticket must never send them there.
+   */
+  mine: boolean;
 };
 
 export async function myOpenTickets(): Promise<OpenTicket[]> {
@@ -578,5 +585,6 @@ export async function myOpenTickets(): Promise<OpenTicket[]> {
     sessionId: t.session_id,
     // The distinction that decides whether this is a nag or an update.
     waitingOnYou: decides && (t.status === "awaiting_review" || t.status === "failed"),
+    mine: t.raised_by === user.id,
   }));
 }

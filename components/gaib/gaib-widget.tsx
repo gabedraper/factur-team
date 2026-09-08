@@ -312,12 +312,41 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
   function resume(id: string) {
     setPast(null);
     void openSession(id).then((s) => {
-      if (!s) return;
+      if (!s) {
+        /*
+         * Said rather than swallowed. This returns nothing when the
+         * conversation belongs to somebody else, and a click that silently does
+         * nothing reads as a broken button -- which is exactly how it was
+         * reported.
+         */
+        setLines((l) => [
+          ...l,
+          { kind: "error", text: "I cannot open that one here — it is somebody else's conversation." },
+        ]);
+        return;
+      }
       setSessionId(s.id);
       setTitle(s.title);
       setLines(s.lines);
       setAnswered(true);
     });
+  }
+
+  /*
+   * A ticket opens the ticket, not the chat it came out of.
+   *
+   * Most tickets in this list were raised by other people, so trying to resume
+   * their conversation was always going to fail -- and the queue screen is where
+   * the decision buttons are anyway, which is what somebody clicking a ticket
+   * is actually after.
+   */
+  function openTicket(t: OpenTicket) {
+    // Your own reopens here, where you can carry on talking about it. Somebody
+    // else's goes to the queue screen, which is where the decision buttons are
+    // and which only whoever runs the queue can open anyway.
+    if (t.mine && t.sessionId) return resume(t.sessionId);
+    setOpen(false);
+    window.location.href = `/gaib#gaib-${t.ref}`;
   }
 
   function submit() {
@@ -417,7 +446,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                   {tickets.map((t) => (
                     <button
                       key={t.id}
-                      onClick={() => (t.sessionId ? resume(t.sessionId) : setPast(null))}
+                      onClick={() => openTicket(t)}
                       className="flex w-full items-baseline gap-2 px-4 py-2 text-left hover:bg-accent"
                     >
                       <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
