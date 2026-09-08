@@ -493,10 +493,13 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                 return (
                   <div
                     key={i}
+                    // break-words so a long web address wraps inside the bubble
+                    // rather than running off the side of the panel, where it
+                    // can be neither read nor copied.
                     className={
                       line.who === "you"
-                        ? "ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-                        : "w-fit max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
+                        ? "ml-auto w-fit max-w-[85%] break-words rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
+                        : "w-fit max-w-[85%] break-words rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
                     }
                   >
                     {line.text}
