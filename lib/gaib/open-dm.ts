@@ -81,8 +81,21 @@ export async function openDmAs(email: string): Promise<OpenResult> {
 
     if (!res.ok) {
       const body = (await res.text()).slice(0, 300);
-      if (res.status === 403) {
-        return { ok: false, reason: `Chat refused it (403). Usually the missing scope: ${body}` };
+      /*
+       * A 403 here is almost never the scope -- a missing scope fails earlier,
+       * at the token. It is the Chat app's own audience: the app is published
+       * to a named group rather than the whole domain, and this person is not
+       * in it. Worth saying outright, because the raw wording ("Developer
+       * permission settings do not support this action") sends you looking at
+       * the code, which is the one place the problem is not.
+       */
+      if (res.status === 403 && /permission/i.test(body)) {
+        return {
+          ok: false,
+          reason:
+            "the Chat app is not shared with them -- add them to the group it is " +
+            "published to, in the Chat API's Visibility setting",
+        };
       }
       return { ok: false, reason: `Chat ${res.status}: ${body}` };
     }
