@@ -19,9 +19,10 @@ const STORAGE_KEY = "factur-work-panel-collapsed";
  * everything else in this panel: it's work you reach for from any page.
  */
 export function WorkPanel({
-  showCalls, telnyxConfigured, twilioConfigured,
+  showCalls, dialpadConfigured, telnyxConfigured, twilioConfigured,
 }: {
   showCalls: boolean;
+  dialpadConfigured: boolean;
   telnyxConfigured: boolean;
   twilioConfigured: boolean;
 }) {
@@ -64,7 +65,12 @@ export function WorkPanel({
           </div>
           {!collapsed && (
             <div className="p-3">
-              {telnyxConfigured ? (
+              {/* Dialpad first: it's the provider that's actually cleared for
+                  outbound calling. Telnyx and Twilio stay wired up underneath
+                  in case that changes. */}
+              {dialpadConfigured ? (
+                <DialWidget />
+              ) : telnyxConfigured ? (
                 <TelnyxDialWidget />
               ) : twilioConfigured ? (
                 <TwilioDialWidget />

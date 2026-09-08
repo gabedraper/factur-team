@@ -15,11 +15,25 @@ import { openChatWith, type ChatReach } from "@/actions/gaib-admin";
 export function ChatReachPanel({ people }: { people: ChatReach[] }) {
   const closed = people.filter((p) => !p.open);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  /*
+   * Nothing sends on the first press.
+   *
+   * The list scrolls and the button does not, so the thing under your cursor
+   * when you click is not always the thing you were looking at when you
+   * decided to. That is survivable while it costs you a stray tick; it is not
+   * survivable one press later, when the cost is an unsolicited message in
+   * thirty-six people's Chat and no way to take it back. So the press arms,
+   * the names appear, and a second press sends.
+   */
+  const [armed, setArmed] = useState(false);
   const [said, setSaid] = useState("");
   const [failures, setFailures] = useState<{ name: string; why: string }[]>([]);
   const [pending, start] = useTransition();
 
+  const chosen = people.filter((p) => picked.has(p.userId));
+
   function toggle(id: string) {
+    setArmed(false);
     setPicked((s) => {
       const next = new Set(s);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -67,35 +81,73 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
             ))}
           </div>
 
+          {/*
+            Who is about to be messaged, spelled out. The tick boxes above
+            scroll; this does not, and it is the last thing read before the
+            send.
+          */}
+          {armed && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+              <p className="mb-1.5 text-xs font-medium">
+                Gaib messages {chosen.length}:
+              </p>
+              <p className="text-sm">
+                {chosen.map((p) => p.name).join(", ")}
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              disabled={pending || picked.size === 0}
-              onClick={() =>
-                start(async () => {
-                  setSaid("");
-                  setFailures([]);
-                  const r = await openChatWith([...picked]);
-                  if (!r.ok) return setSaid(r.error ?? "That didn't work");
-                  setPicked(new Set());
-                  setFailures(r.failures ?? []);
-                  setSaid(
-                    `Opened ${r.opened}, said hello to ${r.greeted}.` +
-                      (r.failures?.length ? "" : " Reload to see the list update.")
-                  );
-                })
-              }
-            >
-              {pending ? "Opening…" : `Start a conversation with ${picked.size || "…"}`}
-            </Button>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:underline"
-              disabled={pending}
-              onClick={() => setPicked(new Set(closed.map((p) => p.userId)))}
-            >
-              Select all {closed.length}
-            </button>
+            {armed ? (
+              <>
+                <Button
+                  size="sm"
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      setSaid("");
+                      setFailures([]);
+                      const r = await openChatWith([...picked]);
+                      if (!r.ok) return setSaid(r.error ?? "That didn't work");
+                      setArmed(false);
+                      setPicked(new Set());
+                      setFailures(r.failures ?? []);
+                      setSaid(
+                        `Opened ${r.opened}, said hello to ${r.greeted}.` +
+                          (r.failures?.length ? "" : " Reload to see the list update.")
+                      );
+                    })
+                  }
+                >
+                  {pending ? "Sending…" : `Send to ${chosen.length}`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => setArmed(false)}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  disabled={picked.size === 0}
+                  onClick={() => setArmed(true)}
+                >
+                  Start a conversation with {picked.size || "…"}
+                </Button>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:underline"
+                  onClick={() => setPicked(new Set(closed.map((p) => p.userId)))}
+                >
+                  Select all {closed.length}
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

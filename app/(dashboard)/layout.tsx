@@ -259,6 +259,7 @@ export default async function DashboardLayout({
   );
   const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
   const showWorkPanel = perms.has("timelines.view");
+  const dialpadConfigured = Boolean(process.env.NEXT_PUBLIC_DIALPAD_CTI_CLIENT_ID);
   const telnyxConfigured = Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID);
   const twilioConfigured = Boolean(
     process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
@@ -342,6 +343,7 @@ export default async function DashboardLayout({
             Calls section itself is still gated. */}
         <WorkPanel
           showCalls={showWorkPanel}
+          dialpadConfigured={dialpadConfigured}
           telnyxConfigured={telnyxConfigured}
           twilioConfigured={twilioConfigured}
         />
