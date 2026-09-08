@@ -26,7 +26,7 @@ import { postToSpace } from "./chat-post";
 const SETUP_SCOPE = "https://www.googleapis.com/auth/chat.spaces.create";
 
 export type OpenResult =
-  | { ok: true; spaceName: string; alreadyOpen: boolean }
+  | { ok: true; spaceName: string }
   | { ok: false; reason: string };
 
 /**
@@ -87,16 +87,10 @@ export async function openDmAs(email: string): Promise<OpenResult> {
       return { ok: false, reason: `Chat ${res.status}: ${body}` };
     }
 
-    const space = (await res.json()) as { name?: string; createTime?: string };
+    const space = (await res.json()) as { name?: string };
     if (!space.name) return { ok: false, reason: "Chat returned a space with no name" };
 
-    // A space created seconds ago is a new conversation; anything older was
-    // already there, and the person should not be introduced to Gaib twice.
-    const fresh = space.createTime
-      ? Date.now() - new Date(space.createTime).getTime() < 60_000
-      : false;
-
-    return { ok: true, spaceName: space.name, alreadyOpen: !fresh };
+    return { ok: true, spaceName: space.name };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "unknown error" };
   }
@@ -137,6 +131,21 @@ export async function openDmsFor(
   const out: OpenedFor[] = [];
 
   for (const person of people) {
+    /*
+     * Whether to say hello is decided here, from our own records, rather than
+     * from anything Chat says about the space.
+     *
+     * The first version of this read the space's createTime and greeted anyone
+     * whose space was seconds old. Chat does not return that field on setup, so
+     * every space looked old, and the first person this ran for got a
+     * conversation opened and nothing said in it. Our own table is the honest
+     * signal anyway: a row means Gaib has talked to them, which is exactly the
+     * question being asked.
+     */
+    const { data: known } = await db
+      .from("gaib_chat_spaces").select("user_id").eq("user_id", person.userId).maybeSingle();
+    const isNew = !known;
+
     const result = await openDmAs(person.email);
     let introduced = false;
 
@@ -150,7 +159,7 @@ export async function openDmsFor(
       // Written down first, then greeted. If the greeting fails Gaib can still
       // reach them later; if the order were reversed a failed write would mean
       // a person who has been introduced and cannot be found again.
-      if (!result.alreadyOpen) {
+      if (isNew) {
         const said = await postToSpace(
           result.spaceName,
           intro(person.name.split(/\s+/)[0] || "there")
