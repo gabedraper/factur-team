@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { TOOL_BY_NAME } from "@/lib/gaib/tools";
 import { AUTO_MAX_FILES, AUTO_MAX_LINES } from "@/lib/gaib/danger";
+import { openDmsFor } from "@/lib/gaib/open-dm";
 
 /*
  * Running the agent hub.
@@ -205,4 +206,85 @@ export async function updateCodingSettings(next: {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/settings/agents/coding");
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Reaching people in Google Chat
+// ---------------------------------------------------------------------------
+
+export type ChatReach = {
+  userId: string;
+  memberId: string;
+  name: string;
+  email: string;
+  /** Whether Gaib can already speak to them without being spoken to first. */
+  open: boolean;
+};
+
+/**
+ * Who Gaib can and cannot reach.
+ *
+ * Worth having on screen rather than inferring from silence: until a direct
+ * message space exists, every notification aimed at somebody simply does not
+ * arrive, and nothing anywhere says so.
+ */
+export async function chatReach(): Promise<ChatReach[]> {
+  if (!(await mayManage())) return [];
+  const db = createServiceClient();
+
+  const { data: members } = await db
+    .from("org_members")
+    .select("id,full_name,email,auth_user_id")
+    .eq("active", true)
+    .not("auth_user_id", "is", null)
+    .order("full_name");
+
+  const rows = (members ?? []) as {
+    id: string; full_name: string | null; email: string | null; auth_user_id: string;
+  }[];
+
+  const { data: spaces } = await db.from("gaib_chat_spaces").select("user_id");
+  const open = new Set(((spaces ?? []) as { user_id: string }[]).map((s) => s.user_id));
+
+  return rows
+    .filter((r) => r.email)
+    .map((r) => ({
+      userId: r.auth_user_id,
+      memberId: r.id,
+      name: r.full_name ?? r.email!,
+      email: r.email!,
+      open: open.has(r.auth_user_id),
+    }));
+}
+
+/**
+ * Open the conversation with the people named, and introduce Gaib once.
+ *
+ * Takes an explicit list rather than doing everybody, because the first run of
+ * this puts an unsolicited message in real people's Chat and the sensible way
+ * to do that is two of you first, then the rest.
+ */
+export async function openChatWith(
+  userIds: string[]
+): Promise<Ok & { opened?: number; greeted?: number; failures?: { name: string; why: string }[] }> {
+  if (!(await mayManage())) return DENIED;
+  if (!userIds.length) return { ok: false, error: "Nobody selected" };
+
+  const wanted = new Set(userIds);
+  const people = (await chatReach()).filter((p) => wanted.has(p.userId));
+  if (!people.length) return { ok: false, error: "Nobody selected" };
+
+  const results = await openDmsFor(
+    people.map((p) => ({ userId: p.userId, email: p.email, name: p.name }))
+  );
+
+  revalidatePath("/settings/agents");
+  return {
+    ok: true,
+    opened: results.filter((r) => r.result.ok).length,
+    greeted: results.filter((r) => r.introduced).length,
+    failures: results
+      .filter((r) => !r.result.ok)
+      .map((r) => ({ name: r.name, why: (r.result as { reason: string }).reason })),
+  };
 }

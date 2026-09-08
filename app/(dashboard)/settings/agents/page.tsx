@@ -5,6 +5,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { listAgents } from "@/lib/gaib/agents";
 import { TOOLS } from "@/lib/gaib/tools";
+import { chatReach } from "@/actions/gaib-admin";
+import { ChatReachPanel } from "@/components/gaib/chat-reach";
 import { AgentsHub } from "@/components/settings/AgentsHub";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export default async function AgentsPage() {
     .from("org_roles").select("id,name").order("name");
 
   const agents = await listAgents();
+  const reach = await chatReach();
   const roles = (roleRows ?? []) as { id: string; name: string }[];
 
   // The registry is the source of truth for what a tool is; the hub only picks
@@ -66,6 +69,8 @@ export default async function AgentsPage() {
           </Link>
         </div>
       </div>
+
+      <ChatReachPanel people={reach} />
 
       <AgentsHub agents={agents} roles={roles} tools={tools} />
     </div>

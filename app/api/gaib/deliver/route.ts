@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { postToSpace, spaceFor, canPost } from "@/lib/gaib/chat-post";
 import { phrase, type Notice } from "@/lib/gaib/notices";
 import { embedded } from "@/lib/gaib/embedded";
+import { openDmsFor } from "@/lib/gaib/open-dm";
 
 /*
  * Delivering the updates people are owed, without waiting for them to look.
@@ -24,6 +25,57 @@ export const maxDuration = 60;
 
 /** Never more than this in one run. A backlog is a queue, not an avalanche. */
 const PER_RUN = 40;
+
+/*
+ * New starters, so nobody joins into silence.
+ *
+ * Deliberately narrow. It only runs once these conversations have been opened
+ * deliberately from the agent hub -- with no spaces on record the feature has
+ * not been switched on, and a scheduled job is not the right thing to decide
+ * that the whole company should hear from Gaib for the first time. It only
+ * looks at people who joined in the last fortnight, so somebody who closed the
+ * conversation on purpose is not chased, and it opens a few at a time.
+ */
+const NEW_WITHIN_DAYS = 14;
+const OPEN_PER_RUN = 5;
+
+async function greetNewStarters(): Promise<{ opened: number; greeted: number }> {
+  const db = createServiceClient();
+
+  const { count } = await db
+    .from("gaib_chat_spaces").select("user_id", { count: "exact", head: true });
+  if (!count) return { opened: 0, greeted: 0 };
+
+  const since = new Date(Date.now() - NEW_WITHIN_DAYS * 86_400_000).toISOString();
+  const { data: members } = await db
+    .from("org_members")
+    .select("full_name,email,auth_user_id")
+    .eq("active", true)
+    .not("auth_user_id", "is", null)
+    .gte("created_at", since);
+
+  const rows = (members ?? []) as {
+    full_name: string | null; email: string | null; auth_user_id: string;
+  }[];
+  if (!rows.length) return { opened: 0, greeted: 0 };
+
+  const { data: spaces } = await db
+    .from("gaib_chat_spaces").select("user_id")
+    .in("user_id", rows.map((r) => r.auth_user_id));
+  const have = new Set(((spaces ?? []) as { user_id: string }[]).map((s) => s.user_id));
+
+  const missing = rows
+    .filter((r) => r.email && !have.has(r.auth_user_id))
+    .slice(0, OPEN_PER_RUN)
+    .map((r) => ({ userId: r.auth_user_id, email: r.email!, name: r.full_name ?? r.email! }));
+  if (!missing.length) return { opened: 0, greeted: 0 };
+
+  const results = await openDmsFor(missing);
+  return {
+    opened: results.filter((r) => r.result.ok).length,
+    greeted: results.filter((r) => r.introduced).length,
+  };
+}
 
 export async function POST(request: NextRequest) {
   /*
@@ -121,8 +173,12 @@ export async function POST(request: NextRequest) {
       .in("id", delivered);
   }
 
+  // Last, and never allowed to take the deliveries down with it.
+  const starters = await greetNewStarters().catch(() => ({ opened: 0, greeted: 0 }));
+
   return NextResponse.json({
     considered: rows.length,
+    newStarters: starters,
     delivered: delivered.length,
     waitingOnSomebodyToSayHelloFirst: skipped.length,
     ticketMissing: orphaned.length,
