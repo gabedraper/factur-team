@@ -588,3 +588,99 @@ export async function myOpenTickets(): Promise<OpenTicket[]> {
     mine: t.raised_by === user.id,
   }));
 }
+
+/**
+ * Merge the pull request a ticket is waiting on, and let it ship.
+ *
+ * Approve used to send every ticket back to the agent, including ones that
+ * already had a finished pull request sitting there -- so the button that looked
+ * like "yes, do it" quietly meant "throw that away and do it again". Work that
+ * was already reviewed, rebuilt from scratch, for nothing.
+ *
+ * Where there is a pull request, approving means merging it. The ticket is
+ * marked shipped by the workflow that watches for merges, so the status still
+ * comes from what actually happened rather than from what was clicked.
+ */
+export async function mergeTicket(ticketId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_tickets").select("id,ref,pr_url").eq("id", ticketId).maybeSingle();
+  const ticket = data as { id: string; ref: number; pr_url: string | null } | null;
+
+  if (!ticket?.pr_url) {
+    return { ok: false, error: "There is no pull request on this one to merge" };
+  }
+
+  const token = process.env.GAIB_GITHUB_TOKEN;
+  if (!token) return { ok: false, error: "No GitHub token is configured" };
+
+  // .../owner/repo/pull/123
+  const parts = ticket.pr_url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  if (!parts) return { ok: false, error: `Could not read the pull request address: ${ticket.pr_url}` };
+  const [, owner, repo, number] = parts;
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${number}/merge`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          merge_method: "squash",
+          commit_title: `Gaib ${ticket.ref}: approved and merged`,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const why = (await res.text()).slice(0, 200);
+      /*
+       * A merge can be refused for perfectly ordinary reasons -- a conflict, a
+       * check still running, the branch behind. Passed through as-is, because
+       * "could not merge" without the reason sends somebody to GitHub to find
+       * out what this already knows.
+       */
+      await logEvent(ticket.id, "person", "merge refused", why);
+      return { ok: false, error: `GitHub would not merge it: ${why}` };
+    }
+
+    await logEvent(ticket.id, "person", "merged", `pull request ${number}`);
+    /*
+     * The status is deliberately not set here. The workflow that watches for a
+     * merge sets it, so shipped means the code is on main rather than that a
+     * button was pressed -- and the two are not always the same thing.
+     */
+    revalidatePath("/gaib");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "could not reach GitHub" };
+  }
+}
+
+/**
+ * The conversation a ticket came out of.
+ *
+ * Behind the same permission as the transcripts page rather than the one that
+ * runs the queue. Deciding on a ticket and reading what somebody said in a
+ * private conversation are different rights, and putting the second on a card
+ * that several people can open would have quietly undone the narrowing that was
+ * done deliberately.
+ */
+export async function ticketChat(ticketId: string): Promise<ReplayLine[] | null> {
+  if (!(await myPermissions()).has("gaib.transcripts")) return null;
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_tickets").select("session_id").eq("id", ticketId).maybeSingle();
+  const sessionId = (data as { session_id: string | null } | null)?.session_id;
+  if (!sessionId) return [];
+
+  return replay(sessionId);
+}

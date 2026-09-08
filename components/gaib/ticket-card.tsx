@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, ExternalLink, GitPullRequest, MessageCircleQuestion } from "lucide-react";
+import { AlertTriangle, ExternalLink, GitPullRequest, MessageCircleQuestion, MessagesSquare } from "lucide-react";
 import type { Ticket } from "@/lib/gaib/tickets";
-import { approveTicket, rejectTicket, closeTicket, retryTicket, askAboutTicket, ticketConversation } from "@/actions/gaib";
+import { approveTicket, rejectTicket, closeTicket, retryTicket, askAboutTicket, ticketConversation, mergeTicket, ticketChat } from "@/actions/gaib";
 
 /*
  * What the severity words mean, said on the card.
@@ -53,6 +53,10 @@ export function TicketCard({
   const [why, setWhy] = useState("");
   const [question, setQuestion] = useState("");
   const [asked, setAsked] = useState(false);
+  const [chat, setChat] = useState<
+    { kind: string; who?: string; text?: string; ref?: number; title?: string }[] | null
+  >(null);
+  const [chatDenied, setChatDenied] = useState(false);
   const [thread, setThread] = useState<
     { id: string; question: string; answer: string | null;
       asked_at: string; answered_at: string | null; closed_at: string | null }[] | null
@@ -185,6 +189,63 @@ export function TicketCard({
             <p className="text-xs text-muted-foreground">{ticket.lane_reason}</p>
           )}
 
+          {/*
+            What was actually said. A ticket is Gaib's summary of a conversation,
+            and the summary is what gets decided on -- so the conversation itself
+            has to be one click away, not a different screen.
+          */}
+          {chat === null ? (
+            <button
+              onClick={() =>
+                void ticketChat(ticket.id).then((c) =>
+                  c === null ? setChatDenied(true) : setChat(c)
+                )
+              }
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
+            >
+              <MessagesSquare className="h-3 w-3" />
+              Show the conversation
+            </button>
+          ) : chat.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No conversation recorded — this one was raised another way.
+            </p>
+          ) : (
+            <div className="max-h-80 space-y-2 overflow-y-auto rounded-md bg-muted/40 p-3">
+              {/*
+                Whose conversation this is, said once at the top. The bubbles on
+                the right are theirs, not the reader's, and without a name that
+                reads as your own chat with Gaib.
+              */}
+              <p className="pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {raisedByName ?? "They"} and Gaib
+              </p>
+              {chat.map((line, i) =>
+                line.kind === "ticket" ? (
+                  <p key={i} className="text-xs italic text-muted-foreground">
+                    raised Gaib {line.ref}
+                  </p>
+                ) : (
+                  <div
+                    key={i}
+                    className={
+                      line.who === "you"
+                        ? "ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-2.5 py-1.5 text-xs text-primary-foreground"
+                        : "w-fit max-w-[85%] rounded-lg bg-background px-2.5 py-1.5 text-xs whitespace-pre-wrap"
+                    }
+                  >
+                    {line.text}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+          {chatDenied && (
+            <p className="text-xs text-muted-foreground">
+              Reading conversations needs the transcripts permission.
+            </p>
+          )}
+
           {ticket.brief && (
             <div className="rounded-md bg-muted p-3 whitespace-pre-wrap text-sm">
               {ticket.brief}
@@ -196,9 +257,22 @@ export function TicketCard({
       {decidable && (
         <div className="mt-4 space-y-2 border-t pt-4">
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={pending} onClick={() => run(() => approveTicket(ticket.id))}>
-              {ticket.kind === "idea" ? "Build it" : "Approve"}
-            </Button>
+            {/*
+              Three different things, not one button with three labels. A ticket
+              with a finished pull request needs merging; one that has only been
+              scoped needs building; one that has neither needs handing to the
+              agent. Approve used to mean the last of those in all three cases,
+              which threw away finished work on the first.
+            */}
+            {ticket.pr_url ? (
+              <Button size="sm" disabled={pending} onClick={() => run(() => mergeTicket(ticket.id))}>
+                Merge and ship
+              </Button>
+            ) : (
+              <Button size="sm" disabled={pending} onClick={() => run(() => approveTicket(ticket.id))}>
+                {ticket.kind === "idea" ? "Build it" : "Hand to the agent"}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
