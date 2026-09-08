@@ -225,6 +225,36 @@ export async function clientDomains(): Promise<Record<string, string>> {
 }
 
 /**
+ * Client id to the marketing strategist's name.
+ *
+ * Fetched alongside the list for the same reason the domains are, and read from
+ * the client record rather than the per-client role assignments in Settings:
+ * the strategist has always lived in the column Salesforce's Marketing Analyst
+ * syncs into, which is also what the drift report and client history compare.
+ */
+export async function clientStrategists(): Promise<Record<string, string>> {
+  const db = createServiceClient();
+
+  const [{ data: clients }, { data: members }] = await Promise.all([
+    db.from("org_clients").select("id,marketing_strategist_id")
+      .not("marketing_strategist_id", "is", null),
+    db.from("org_members").select("id,full_name"),
+  ]);
+
+  const nameById = new Map(
+    ((members ?? []) as { id: string; full_name: string | null }[])
+      .map((m) => [m.id, m.full_name])
+  );
+
+  const out: Record<string, string> = {};
+  for (const c of (clients ?? []) as { id: string; marketing_strategist_id: string }[]) {
+    const name = nameById.get(c.marketing_strategist_id);
+    if (name) out[c.id] = name;
+  }
+  return out;
+}
+
+/**
  * Scoreboard rep id to profile photo.
  *
  * The scoreboards key people on rep_id, which comes from Salesforce, while the

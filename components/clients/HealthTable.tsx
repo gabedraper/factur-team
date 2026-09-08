@@ -207,10 +207,17 @@ export function HealthTable({
   perfBands,
   actBands,
   domains,
+  strategists,
 }: {
   clients: ClientHealth[];
   /** Client id to email domain, for the company logo. Absent ones show initials. */
   domains?: Record<string, string>;
+  /*
+   * Client id to the marketing strategist's name, fetched by the page rather
+   * than carried on the health row: the SQL function behind it cannot have its
+   * return type widened without being dropped and recreated.
+   */
+  strategists?: Record<string, string>;
   /*
    * Worked out by the page over every client, not here over the ones passed
    * in: this component only ever receives the scope-filtered list, so ranking
@@ -271,6 +278,7 @@ export function HealthTable({
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
     am: (c) => c.accountManager,
+    strategist: (c) => strategists?.[c.clientId] ?? null,
     lead: (c) => c.teamLead,
     overall: (c) => c.overall,
     lead_flow: (c) => at(c, "lead_flow"),
@@ -329,6 +337,7 @@ export function HealthTable({
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("am")}>Account manager</SortHeader>
+              <SortHeader className="px-3 py-2" {...sortProps("strategist")}>Marketing strategist</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
               <SortHeader className="px-3 py-2" align="right" {...sortProps("overall")}>
                 <span title={HEALTH_BLURB}>Health</span>
@@ -352,7 +361,7 @@ export function HealthTable({
             {/* An empty list is an answer, not a page still loading. */}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
                   No clients to show.
                 </td>
               </tr>
@@ -373,6 +382,7 @@ export function HealthTable({
                     </span>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? ""}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{strategists?.[c.clientId] ?? ""}</td>
                   <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? ""}</td>
                   <td className="px-3 py-2 text-right" title={HEALTH_BLURB}><Score value={c.overall} /></td>
                   <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
@@ -394,7 +404,7 @@ export function HealthTable({
 
                 {open === c.clientId && (
                   <tr key={`${c.clientId}-detail`} className="border-b bg-muted/30 last:border-0">
-                    <td colSpan={11} className="px-3 py-3">
+                    <td colSpan={12} className="px-3 py-3">
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         {c.inputs.map((i) => (
                           <div key={i.key} className="rounded-md border bg-card p-3">
