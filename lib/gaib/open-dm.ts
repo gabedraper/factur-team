@@ -53,12 +53,18 @@ export async function openDmAs(email: string): Promise<OpenResult> {
     access = access_token;
   } catch (e) {
     const m = e instanceof Error ? e.message : "unknown error";
-    // The one failure worth naming, because the fix is a click in Admin and
-    // the raw message does not say so.
+    /*
+     * The one failure worth naming, because the fix is a click in Admin and
+     * the raw message does not say so. The account is named because there is
+     * more than one service account in this domain and the grant has to go on
+     * this one -- putting it on the ingest account instead produces exactly
+     * this error, with nothing to suggest which account was meant.
+     */
     return {
       ok: false,
       reason: /unauthorized_client|invalid_grant/i.test(m)
-        ? "Google Admin has not granted the chat.spaces.create scope to this service account"
+        ? `Google Admin has not granted chat.spaces.create to ${key.client_email} ` +
+          "(the grant is keyed on that account's OAuth client ID, not the project number)"
         : m,
     };
   }
