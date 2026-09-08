@@ -2,6 +2,7 @@
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getRoleLabel } from "@/lib/roles";
+import { isLessonEmpty } from "@/lib/progress";
 
 export async function getProgressReport() {
   // A server action is reachable over HTTP by anyone who can reach the app, and
@@ -43,7 +44,7 @@ export async function getProgressReport() {
 
   const { data: allLessons } = await supabase
     .from("lessons")
-    .select("id, module_id");
+    .select("id, module_id, type, content");
 
   // Build lookup: courseId → lessonIds
   const modulesByCourse: Record<string, string[]> = {};
@@ -52,8 +53,12 @@ export async function getProgressReport() {
     modulesByCourse[m.course_id].push(m.id);
   });
 
+  // Lessons with nothing in them are not work anyone was asked to do, so they
+  // stay out of the totals here too -- otherwise a learner who has finished
+  // everything real still reads as short of the course.
   const lessonsByModule: Record<string, string[]> = {};
   (allLessons || []).forEach((l) => {
+    if (isLessonEmpty(l)) return;
     if (!lessonsByModule[l.module_id]) lessonsByModule[l.module_id] = [];
     lessonsByModule[l.module_id].push(l.id);
   });

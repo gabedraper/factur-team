@@ -24,6 +24,7 @@ import {
   Eye,
 } from "lucide-react";
 import { getCourseGradientStyle, extractFirstImage } from "@/lib/course-colors";
+import { isLessonEmpty } from "@/lib/progress";
 
 interface QuizQuestion {
   question: string;
@@ -121,17 +122,24 @@ export default function LessonViewerPage() {
     // Load navigation: get all lessons in course ordered
     const { data: modulesData } = await supabase
       .from("modules")
-      .select("id, lessons(id, position)")
+      .select("id, lessons(id, position, type, content)")
       .eq("course_id", courseId)
       .order("position");
 
     if (modulesData) {
       const allLessons: string[] = [];
       for (const mod of modulesData) {
-        const sorted = (mod.lessons as { id: string; position: number }[]).sort(
-          (a, b) => a.position - b.position
+        const sorted = (
+          mod.lessons as {
+            id: string;
+            position: number;
+            type: string;
+            content: unknown;
+          }[]
+        ).sort((a, b) => a.position - b.position);
+        allLessons.push(
+          ...sorted.filter((l) => !isLessonEmpty(l)).map((l) => l.id)
         );
-        allLessons.push(...sorted.map((l) => l.id));
       }
       const idx = allLessons.indexOf(lessonId);
       setPrevLessonId(idx > 0 ? allLessons[idx - 1] : null);
@@ -180,6 +188,38 @@ export default function LessonViewerPage() {
 
   const isYouTube = (url: string) =>
     url.includes("youtube.com") || url.includes("youtu.be");
+
+  const isLoom = (url: string) => url.includes("loom.com");
+
+  const isVidyard = (url: string) => url.includes("vidyard.com");
+
+  // Share links from any of these hosts only play inside their own player
+  const isEmbeddedPlayer = (url: string) =>
+    isYouTube(url) || isLoom(url) || isVidyard(url);
+
+  function toEmbedUrl(url: string): string {
+    if (isLoom(url)) return toLoomEmbed(url);
+    if (isVidyard(url)) return toVidyardEmbed(url);
+    return toYouTubeEmbed(url);
+  }
+
+  function toLoomEmbed(url: string): string {
+    // Already an embed URL
+    if (url.includes("loom.com/embed/")) return url;
+    // loom.com/share/VIDEO_ID
+    const shareMatch = url.match(/loom\.com\/share\/([^?&/]+)/);
+    if (shareMatch) return `https://www.loom.com/embed/${shareMatch[1]}`;
+    return url;
+  }
+
+  function toVidyardEmbed(url: string): string {
+    // Already a player URL
+    if (url.includes("play.vidyard.com/")) return url;
+    // share.vidyard.com/watch/VIDEO_ID
+    const watchMatch = url.match(/vidyard\.com\/watch\/([^?&/]+)/);
+    if (watchMatch) return `https://play.vidyard.com/${watchMatch[1]}.html`;
+    return url;
+  }
 
   function toYouTubeEmbed(url: string): string {
     // Already an embed URL
@@ -290,11 +330,22 @@ export default function LessonViewerPage() {
 
       {/* Lesson content */}
       <div className="mb-6">
+        {isLessonEmpty(lesson) && (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground">
+                This lesson has no content yet, so there is nothing to complete
+                here. Your course progress does not depend on it.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {lesson.type === "video" && content?.url && (
           <div className="rounded-lg overflow-hidden bg-black aspect-video">
-            {isYouTube(content.url) ? (
+            {isEmbeddedPlayer(content.url) ? (
               <iframe
-                src={toYouTubeEmbed(content.url)}
+                src={toEmbedUrl(content.url)}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -319,7 +370,7 @@ export default function LessonViewerPage() {
           </Card>
         )}
 
-        {lesson.type === "file" && (
+        {lesson.type === "file" && !isLessonEmpty(lesson) && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">File Resource</CardTitle>
@@ -346,7 +397,7 @@ export default function LessonViewerPage() {
           </Card>
         )}
 
-        {lesson.type === "quiz" && (
+        {lesson.type === "quiz" && !isLessonEmpty(lesson) && (
           <Card>
             <CardHeader>
               <CardTitle>Quiz</CardTitle>
@@ -486,7 +537,7 @@ export default function LessonViewerPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {!isCompleted && lesson.type !== "quiz" && !isPreview && (
+          {!isCompleted && lesson.type !== "quiz" && !isPreview && !isLessonEmpty(lesson) && (
             <Button onClick={() => handleMarkComplete()} disabled={marking}>
               <CheckCircle className="h-4 w-4 mr-2" />
               {lesson.type === "file" ? "Mark as Downloaded" : "Mark Complete"}

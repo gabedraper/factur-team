@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getCourseProgress } from "@/lib/progress";
+import { getCourseProgress, isLessonEmpty } from "@/lib/progress";
 import { getCourseGradientStyle } from "@/lib/course-colors";
 import {
   ArrowLeft,
@@ -38,6 +38,7 @@ interface Lesson {
   type: string;
   position: number;
   duration_minutes: number | null;
+  content: Record<string, unknown> | null;
 }
 
 interface Module {
@@ -92,6 +93,18 @@ export default async function CourseOutlinePage({
     ),
   }));
 
+  // Lessons with nothing in them, and the modules left holding only those, are
+  // not work anyone can do -- keep them out of the outline, the counts and the
+  // progress. Numbering still follows the module's place in the whole course, so
+  // "Module 6" means the same thing here as it does in the editor.
+  const visibleModules = modules
+    .map((m, mIdx) => ({
+      ...m,
+      number: mIdx + 1,
+      lessons: m.lessons.filter((l) => !isLessonEmpty(l)),
+    }))
+    .filter((m) => m.lessons.length > 0);
+
   // Check enrollment
   const { data: enrollment } = await supabase
     .from("enrollments")
@@ -103,7 +116,7 @@ export default async function CourseOutlinePage({
   const isEnrolled = !!enrollment;
 
   // Get completed lessons
-  const allLessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id));
+  const allLessonIds = visibleModules.flatMap((m) => m.lessons.map((l) => l.id));
   const { data: completedLessons } = isEnrolled
     ? await supabase
         .from("lesson_progress")
@@ -117,13 +130,13 @@ export default async function CourseOutlinePage({
     ? await getCourseProgress(supabase, user.id, courseId)
     : 0;
 
-  const totalDuration = modules
+  const totalDuration = visibleModules
     .flatMap((m) => m.lessons)
     .reduce((sum, l) => sum + (l.duration_minutes || 0), 0);
 
   // Find first incomplete lesson for "continue" button
   let firstIncompleteLessonId: string | null = null;
-  for (const mod of modules) {
+  for (const mod of visibleModules) {
     for (const lesson of mod.lessons) {
       if (!completedIds.has(lesson.id)) {
         firstIncompleteLessonId = lesson.id;
@@ -212,11 +225,11 @@ export default async function CourseOutlinePage({
       {/* Course outline */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Course Content</h2>
-        {modules.map((mod, mIdx) => (
+        {visibleModules.map((mod) => (
           <Card key={mod.id}>
             <CardHeader className="py-3">
               <CardTitle className="text-base">
-                Module {mIdx + 1}: {mod.title}
+                Module {mod.number}: {mod.title}
               </CardTitle>
               <CardDescription>
                 {mod.lessons.length} lesson{mod.lessons.length !== 1 ? "s" : ""}
@@ -268,7 +281,7 @@ export default async function CourseOutlinePage({
             </CardContent>
           </Card>
         ))}
-        {modules.length === 0 && (
+        {visibleModules.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             No content available yet.
           </div>
