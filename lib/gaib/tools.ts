@@ -124,6 +124,14 @@ export const READABLE_TABLES: Record<string, string[]> = {
     "tal_workflow_stages", "tal_workflows", "tal_lists", "tal_list_members",
   ],
   Learning: ["courses", "modules", "lessons", "enrollments", "lesson_progress", "certificates"],
+  /*
+   * What has been reported and what became of it. Scoped by the same row rules
+   * as the screens: your own, or everything if you run the queue.
+   */
+  "Reported problems and ideas": [
+    "gaib_tickets", "gaib_ticket_events", "gaib_ticket_questions",
+    "gaib_ticket_notices", "gaib_sessions", "gaib_messages",
+  ],
 };
 
 const ALL_READABLE = Object.values(READABLE_TABLES).flat();
@@ -407,6 +415,70 @@ const answerQuestionTool: GaibTool = {
   },
 };
 
+const askReporterTool: GaibTool = {
+  name: "ask_reporter",
+  label: "Ask whoever reported it",
+  blurb: "Puts a question to the person who raised a ticket, through their own Gaib.",
+  reads: "Messages another member of staff",
+  definition: {
+    name: "ask_reporter",
+    description:
+      "Put a question to whoever reported a ticket. It waits in their own " +
+      "conversation with you and is asked at a natural moment, and their answer " +
+      "comes back onto the ticket. Use this when deciding what to do needs one " +
+      "more thing from them -- what they were trying to do, how often it happens, " +
+      "whether something else would solve it. Only for people who decide on " +
+      "tickets; if you are told you may not, say so rather than trying again.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        ticket_ref: { type: "integer", description: "The ticket number, as in 'Gaib 7'." },
+        question: {
+          type: "string",
+          description: "One clear question in plain words, as you would ask it out loud.",
+        },
+      },
+      required: ["ticket_ref", "question"],
+      additionalProperties: false,
+    },
+  },
+  async run(ctx, input) {
+    /*
+     * The permission is checked here rather than by leaving it to the row rules,
+     * because this one writes and messages somebody. Reading a ticket is scoped
+     * by a policy; putting a question to a colleague is an action, and an action
+     * needs a decision.
+     */
+    const { data: mayDecide } = await ctx.db.rpc("has_permission", { p_key: "org.manage" });
+    if (!mayDecide) {
+      return "You may not ask on this person's behalf -- only whoever decides on tickets can. Tell them so.";
+    }
+
+    const db = createServiceClient();
+    const { data } = await db
+      .from("gaib_tickets")
+      .select("id,title,raised_by")
+      .eq("ref", Number(input.ticket_ref))
+      .maybeSingle();
+
+    const ticket = data as { id: string; title: string; raised_by: string | null } | null;
+    if (!ticket) return `There is no ticket ${input.ticket_ref}.`;
+    if (!ticket.raised_by) return "Nobody is recorded as having raised that one, so there is no one to ask.";
+    if (ticket.raised_by === ctx.userId) return "That is their own ticket -- just ask them here.";
+
+    const { error } = await db.from("gaib_ticket_questions").insert({
+      ticket_id: ticket.id,
+      asked_by: ctx.userId,
+      asked_of: ticket.raised_by,
+      question: String(input.question),
+    });
+    if (error) return `Could not put the question: ${error.message}`;
+
+    return `Asked. It will be put to them next time they talk to me, and the answer comes back onto ticket ${input.ticket_ref}.`;
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Google, always as the person asking
 // ---------------------------------------------------------------------------
@@ -565,6 +637,7 @@ export const TOOLS: GaibTool[] = [
   searchTicketsTool,
   raiseTicketTool,
   answerQuestionTool,
+  askReporterTool,
   describeDataTool,
   queryDataTool,
   clientBillingTool,
