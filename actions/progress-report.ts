@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { getRoleLabel } from "@/lib/roles";
+import { roleLabelsForUsers } from "@/lib/org";
 
 export async function getProgressReport() {
   // A server action is reachable over HTTP by anyone who can reach the app, and
@@ -29,7 +29,12 @@ export async function getProgressReport() {
   // All role-course assignments
   const { data: roleCourses } = await supabase
     .from("role_courses")
-    .select("role, course_id, courses(id, title)");
+    // role_id, not role. The column was renamed when roles moved to Settings
+    // and this query was not, so it asked for a column that no longer exists,
+    // failed, and every person in the report showed nought courses and nought
+    // per cent -- which reads as nobody having done any training rather than as
+    // a broken query.
+    .select("role_id, course_id, courses(id, title)");
 
   // All lesson_progress rows (bulk fetch — cheaper than per-user queries)
   const { data: allProgress } = await supabase
@@ -70,16 +75,47 @@ export async function getProgressReport() {
     completedByUser[p.user_id].add(p.lesson_id);
   });
 
-  // Build role → courses map
+  // Which courses each role is assigned, keyed on the role id from Settings.
   const coursesByRole: Record<string, { id: string; title: string }[]> = {};
   (roleCourses || []).forEach((rc: any) => {
-    if (!coursesByRole[rc.role]) coursesByRole[rc.role] = [];
-    if (rc.courses) coursesByRole[rc.role].push(rc.courses);
+    if (!rc.role_id) return;
+    if (!coursesByRole[rc.role_id]) coursesByRole[rc.role_id] = [];
+    if (rc.courses) coursesByRole[rc.role_id].push(rc.courses);
   });
+
+  /*
+   * Which roles each person holds, from Settings rather than profiles.role.
+   * Somebody with two roles is assigned the training for both, which is the
+   * behaviour anybody would expect and which the old single-value column could
+   * not express.
+   */
+  const { data: assignments } = await supabase
+    .from("org_members")
+    .select("auth_user_id, org_assignments(role_id)");
+
+  const rolesByUser = new Map<string, string[]>();
+  for (const m of (assignments ?? []) as any[]) {
+    if (!m.auth_user_id) continue;
+    rolesByUser.set(
+      m.auth_user_id,
+      (m.org_assignments ?? []).map((a: any) => a.role_id).filter(Boolean)
+    );
+  }
+
+  const roleLabels = await roleLabelsForUsers(
+    (profiles || []).map((p: any) => p.id)
+  );
 
   // Build per-user report
   const users = (profiles || []).map((profile) => {
-    const assignedCourses = coursesByRole[profile.role] || [];
+    const assignedCourses = [
+      ...new Map(
+        (rolesByUser.get(profile.id) ?? [])
+          .flatMap((roleId) => coursesByRole[roleId] ?? [])
+          // Two roles sharing a course is one course to do, not two.
+          .map((c) => [c.id, c] as const)
+      ).values(),
+    ];
     const completedSet = completedByUser[profile.id] || new Set();
 
     const courses = assignedCourses.map((course) => {
@@ -102,7 +138,7 @@ export async function getProgressReport() {
       avatarUrl: profile.avatar_url as string | null,
       email: emailMap[profile.id] || "",
       role: profile.role,
-      roleLabel: getRoleLabel(profile.role),
+      roleLabel: roleLabels.get(profile.id) ?? "No role set",
       courses,
       overallProgress,
       completedCourses,

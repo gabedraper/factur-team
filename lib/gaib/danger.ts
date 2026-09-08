@@ -39,7 +39,7 @@ export const DANGER: Guard[] = [
   { pattern: "app/auth/**", why: "sign-in callback" },
   { pattern: "lib/org.ts", why: "permissions" },
   { pattern: "lib/org-roles.ts", why: "role definitions" },
-  { pattern: "lib/roles.ts", why: "role definitions" },
+  { pattern: "lib/org-roles.ts", why: "role definitions" },
   { pattern: "actions/auth.ts", why: "sign-in" },
   { pattern: "actions/admin.ts", why: "granting access" },
   { pattern: "actions/org.ts", why: "granting access" },

@@ -534,6 +534,44 @@ export const currentMemberId = cache(async (): Promise<string | null> => {
  * either. Split roles are both shown, since someone who is 60% OBDM and 40%
  * OSDR is genuinely both.
  */
+/**
+ * The job roles a set of people hold, for lists that show who somebody is.
+ *
+ * The same answer myRoleLabel gives for one person, in one query for many.
+ * Screens used to print profiles.role for this, which has only ever held
+ * "admin" or "learner" -- so a room full of BDMs, recruiters and analysts all
+ * appeared as learners, and the label said nothing about anybody.
+ *
+ * Keyed on the auth user id, because that is what the LMS tables carry.
+ */
+export const roleLabelsForUsers = cache(
+  async (userIds: string[]): Promise<Map<string, string>> => {
+    const ids = [...new Set(userIds.filter(Boolean))];
+    if (!ids.length) return new Map();
+
+    const { data } = await createServiceClient()
+      .from("org_members")
+      .select("auth_user_id, org_assignments(org_roles(name,slug))")
+      .in("auth_user_id", ids);
+
+    type Row = {
+      auth_user_id: string;
+      org_assignments?: { org_roles?: { name: string; slug: string } | null }[];
+    };
+
+    const out = new Map<string, string>();
+    for (const row of (data ?? []) as unknown as Row[]) {
+      const names = (row.org_assignments ?? [])
+        .map((a) => a.org_roles)
+        .filter((r): r is { name: string; slug: string } => !!r && isJobRole(r))
+        .map((r) => r.name);
+      const label = [...new Set(names)].sort().join(" · ");
+      if (label) out.set(row.auth_user_id, label);
+    }
+    return out;
+  }
+);
+
 export const myRoleLabel = cache(async (): Promise<string | null> => {
   const memberId = await currentMemberId();
   if (!memberId) return null;

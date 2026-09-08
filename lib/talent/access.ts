@@ -5,7 +5,7 @@ import { myPermissions } from "@/lib/org";
  * What the viewer may do in the talent system.
  *
  * Read through `myPermissions()` rather than by asking the database directly,
- * because that one honours the role-preview cookie -- previewing a recruiter
+ * because that one honours the preview cookie -- previewing a person
  * has to actually narrow the screens or it is not a preview. The policies on
  * the tables are the real guard; this decides what to draw.
  */

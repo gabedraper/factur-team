@@ -5,7 +5,6 @@ import {
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
-import { ROLES } from "@/lib/roles";
 import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
 import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
 import { listClientsForSelf, listRolesForSelf } from "@/actions/self-service";
@@ -27,7 +26,6 @@ export default async function SettingsPage() {
   const canAdminTalent = perms.has("talent.admin") || canManage;
 
   const jar = await cookies();
-  const previewRole = jar.get("preview_role")?.value ?? null;
   const previewMember = jar.get("preview_member")?.value ?? null;
 
   const db = createServiceClient();
@@ -111,9 +109,7 @@ export default async function SettingsPage() {
         <section className="rounded-md border bg-card p-4 space-y-3">
           <h2 className="text-sm font-medium">Preview</h2>
           <PreviewPanel
-            roles={Object.entries(ROLES).map(([value, label]) => ({ value, label: label as string }))}
             people={people}
-            currentRole={previewRole}
             currentMemberId={previewMember}
           />
         </section>

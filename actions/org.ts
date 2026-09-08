@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
-import { myPermissions } from "@/lib/org";
+import { myPermissions, roleLabelsForUsers } from "@/lib/org";
 import { isJobRole, isStandaloneRole, type StandaloneRoleSlug } from "@/lib/org-roles";
 
 async function requireOrgManage() {
@@ -854,4 +854,17 @@ export async function switchService(
   if (error) return { success: false, error: error.message };
   revalidatePath(`/clients/results/${clientId}`);
   return { success: true };
+}
+
+/**
+ * The job roles a set of people hold, for screens that run in the browser.
+ *
+ * roleLabelsForUsers reads with the service key and cannot be called from a
+ * client component, so this is the door through to it. Returns a plain object
+ * because a Map does not survive the trip.
+ */
+export async function roleLabelsAction(userIds: string[]): Promise<Record<string, string>> {
+  if (!(await myPermissions()).has("lms.admin")) return {};
+  const labels = await roleLabelsForUsers(userIds);
+  return Object.fromEntries(labels);
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Moon, Sun, Eye, X } from "lucide-react";
-import { setPreviewRole, clearPreviewRole, setPreviewUser, clearPreviewUser } from "@/actions/preview";
+import { setPreviewUser, clearPreviewUser } from "@/actions/preview";
 
 const THEME_KEY = "factur-theme";
 
@@ -46,11 +46,9 @@ export function ThemePanel() {
 }
 
 export function PreviewPanel({
-  roles, people, currentRole, currentMemberId,
+  people, currentMemberId,
 }: {
-  roles: { value: string; label: string }[];
   people: { id: string; name: string }[];
-  currentRole: string | null;
   currentMemberId: string | null;
 }) {
   const [pending, startTransition] = useTransition();
@@ -63,28 +61,11 @@ export function PreviewPanel({
       router.refresh();
     });
 
-  const previewing = currentRole || currentMemberId;
+  const previewing = currentMemberId;
 
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Preview as role</span>
-          <select
-            className="h-8 w-full rounded-md border bg-field px-2 text-sm"
-            value={currentRole ?? ""}
-            disabled={pending}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!v) return act(() => clearPreviewRole());
-              act(() => setPreviewRole(v), "/learner");
-            }}
-          >
-            <option value="">— not previewing —</option>
-            {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-          </select>
-        </label>
-
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Preview as person</span>
           <select
@@ -107,7 +88,7 @@ export function PreviewPanel({
         <button
           className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
           disabled={pending}
-          onClick={() => act(async () => { await clearPreviewRole(); await clearPreviewUser(); }, "/settings")}
+          onClick={() => act(() => clearPreviewUser(), "/settings")}
         >
           <X className="h-3.5 w-3.5" /> Stop previewing
         </button>

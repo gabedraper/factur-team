@@ -22,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ClipboardList, Plus, Trash2, Calendar, Search } from "lucide-react";
-import { getRoleLabel } from "@/lib/roles";
+import { roleLabelsAction } from "@/actions/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 
 interface Enrollment {
@@ -38,6 +38,7 @@ export default function AdminEnrollmentsPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [users, setUsers] = useState<{ id: string; full_name: string; role: string }[]>([]);
   const [courses, setCourses] = useState<{ id: string; title: string }[]>([]);
+  const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   // Cleared in `finally`, so a failed load stops rather than spinning forever.
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,6 +66,16 @@ export default function AdminEnrollmentsPage() {
       setEnrollments(enrollData as unknown as Enrollment[]);
       setUsers((usersData.data || []) as any);
       setCourses((coursesData.data || []) as any);
+
+      // The roles Settings knows about, for everybody on this screen. The old
+      // label came from profiles.role, which says "learner" for all but six
+      // people and so told the reader nothing.
+      setRoleLabels(
+        await roleLabelsAction([
+          ...(usersData.data || []).map((u: any) => u.id),
+          ...(enrollData as any[]).map((e: any) => e.profiles?.id).filter(Boolean),
+        ])
+      );
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Couldn't load enrollments.");
@@ -156,7 +167,7 @@ export default function AdminEnrollmentsPage() {
                   <SelectContent>
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.full_name} — {getRoleLabel(u.role)}
+                        {u.full_name}{roleLabels[u.id] ? ` — ${roleLabels[u.id]}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -242,7 +253,7 @@ export default function AdminEnrollmentsPage() {
                   <tr key={e.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <p className="font-medium">{e.profiles?.full_name ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">{getRoleLabel(e.profiles?.role ?? "")}</p>
+                      <p className="text-xs text-muted-foreground">{roleLabels[e.profiles?.id ?? ""] ?? "No role set"}</p>
                     </td>
                     <td className="px-4 py-3">
                       <p className="max-w-[220px] truncate">{e.courses?.title ?? "—"}</p>

@@ -43,7 +43,6 @@ import {
   Coins,
   PhoneCall,
 } from "lucide-react";
-import { getRoleLabel } from "@/lib/roles";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
@@ -254,9 +253,6 @@ export default async function DashboardLayout({
       getCollectionsVisibility(),
     ]);
 
-  const previewRole = realPerms.has("org.manage")
-    ? (cookieStore.get("preview_role")?.value ?? null)
-    : null;
   const navGroups = getNavGroups(
     perms as Set<string>,
     collectionsVisibility.can_see_all || collectionsVisibility.attached
@@ -298,11 +294,7 @@ export default async function DashboardLayout({
                   {previewing?.full_name ?? previewing?.email ?? profile?.full_name ?? "User"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {previewing
-                    ? "Previewing"
-                    : previewRole
-                      ? `Previewing: ${getRoleLabel(previewRole)}`
-                      : (roleLabel ?? "No role set")}
+                  {previewing ? "Previewing" : (roleLabel ?? "No role set")}
                 </p>
               </div>
             </div>
@@ -340,11 +332,8 @@ export default async function DashboardLayout({
             />
           </header>
           <MaintenanceAlert canSee={perms.has("org.manage")} />
-          {(previewing || previewRole) && (
-            <PreviewBanner
-              as={previewing ? (previewing.full_name ?? previewing.email) : getRoleLabel(previewRole!)}
-              kind={previewing ? "person" : "role"}
-            />
+          {previewing && (
+            <PreviewBanner as={previewing.full_name ?? previewing.email} />
           )}
           <div className="flex-1">{children}</div>
         </main>

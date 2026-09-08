@@ -14,7 +14,6 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { getCourseProgress } from "@/lib/progress";
 import { GraduationCap } from "lucide-react";
-import { getRoleLabel } from "@/lib/roles";
 import { getCourseGradientStyle } from "@/lib/course-colors";
 
 export default async function LearnerDashboard() {

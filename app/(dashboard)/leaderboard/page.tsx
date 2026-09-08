@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/supabase/session";
-import { getRoleLabel } from "@/lib/roles";
+import { roleLabelsForUsers } from "@/lib/org";
 import { Trophy, Medal } from "lucide-react";
 import { Avatar } from "@/components/ui/thumbnail";
 
@@ -13,7 +13,7 @@ export default async function LeaderboardPage() {
   // Get all profiles
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, role, avatar_url");
+    .select("id, full_name, avatar_url");
 
   // Get lesson completion counts per user
   const { data: progress } = await supabase
@@ -46,6 +46,9 @@ export default async function LeaderboardPage() {
     }))
     .filter((r) => r.lessonsCompleted > 0 || r.coursesCompleted > 0)
     .sort((a, b) => b.lessonsCompleted - a.lessonsCompleted || b.coursesCompleted - a.coursesCompleted);
+
+  // Looked up for the people actually on the board rather than for everybody.
+  const roleLabels = await roleLabelsForUsers(rows.map((r) => r.id));
 
   const medalColors = ["text-yellow-500", "text-gray-400", "text-amber-600"];
 
@@ -99,7 +102,7 @@ export default async function LeaderboardPage() {
                       <span className="ml-2 text-xs text-primary font-normal">(you)</span>
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground">{getRoleLabel(row.role)}</p>
+                  <p className="text-xs text-muted-foreground">{roleLabels.get(row.id) ?? "No role set"}</p>
                 </div>
 
                 {/* Stats */}
