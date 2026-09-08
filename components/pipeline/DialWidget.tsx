@@ -177,11 +177,14 @@ export function DialWidget() {
           </div>
         )}
 
+        {/* 400x520 is Dialpad's own documented size for this embed --
+            developers.dialpad.com/docs/dialpad-mini-dialer. Anything smaller
+            and its own UI clips instead of reflowing. */}
         <iframe
           ref={frameRef}
           src={`${DIALPAD_ORIGIN}/apps/${CTI_CLIENT_ID}`}
           title="Dialpad"
-          className="h-[420px] w-full rounded-md border"
+          className="mx-auto h-[520px] w-full max-w-[400px] rounded-md border"
           allow="microphone; speaker-selection; autoplay; camera; display-capture; hid"
           sandbox="allow-popups allow-scripts allow-same-origin allow-forms"
         />

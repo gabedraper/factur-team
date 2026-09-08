@@ -41,7 +41,7 @@ export function WorkPanel({
 
   return (
     <aside
-      className={`${collapsed ? "w-14" : "w-96"} flex shrink-0 flex-col overflow-y-auto border-l bg-card/50 transition-[width] duration-200`}
+      className={`${collapsed ? "w-14" : "w-[440px]"} flex shrink-0 flex-col overflow-y-auto border-l bg-card/50 transition-[width] duration-200`}
     >
       <div className={`flex items-center gap-2 border-b px-4 py-3 ${collapsed ? "justify-center px-2" : ""}`}>
         {!collapsed && <span className="text-sm font-semibold">Work</span>}
