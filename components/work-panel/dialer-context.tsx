@@ -9,6 +9,16 @@ type DialerContextValue = {
   active: CallTarget | null;
   setActive: (target: CallTarget | null) => void;
   canAdmin: boolean;
+  /**
+   * A number something outside the dial widgets -- the Contact panel's
+   * phone field, say -- has asked to be dialed ad hoc, independent of
+   * whatever Opportunity is open. Whichever provider is actually live
+   * watches this and places the call; the requester doesn't need to know
+   * which provider that is or how it dials.
+   */
+  requestedCall: string | null;
+  requestCall: (number: string) => void;
+  clearRequestedCall: () => void;
 };
 
 const DialerContext = createContext<DialerContextValue | null>(null);
@@ -22,8 +32,16 @@ const DialerContext = createContext<DialerContextValue | null>(null);
  */
 export function DialerProvider({ children, canAdmin }: { children: ReactNode; canAdmin: boolean }) {
   const [active, setActive] = useState<CallTarget | null>(null);
+  const [requestedCall, setRequestedCall] = useState<string | null>(null);
   return (
-    <DialerContext.Provider value={{ active, setActive, canAdmin }}>
+    <DialerContext.Provider
+      value={{
+        active, setActive, canAdmin,
+        requestedCall,
+        requestCall: setRequestedCall,
+        clearRequestedCall: () => setRequestedCall(null),
+      }}
+    >
       {children}
     </DialerContext.Provider>
   );
@@ -43,12 +61,14 @@ export function useDialer() {
  * dial time and released once that call is dispositioned.
  */
 export function useCallTarget() {
-  const { active, canAdmin } = useDialer();
+  const { active, canAdmin, requestedCall, clearRequestedCall } = useDialer();
   const [committed, setCommitted] = useState<CallTarget | null>(null);
   return {
     target: committed ?? active,
     canAdmin,
     commit: () => setCommitted(active),
     release: () => setCommitted(null),
+    requestedCall,
+    clearRequestedCall,
   };
 }

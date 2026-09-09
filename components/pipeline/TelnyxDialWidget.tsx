@@ -35,7 +35,7 @@ import { toE164 } from "@/lib/phone";
 type CallState = "idle" | "dialing" | "ringing" | "ended";
 
 export function TelnyxDialWidget() {
-  const { target, canAdmin, commit, release } = useCallTarget();
+  const { target, canAdmin, commit, release, requestedCall, clearRequestedCall } = useCallTarget();
   const clientRef = useRef<InstanceType<typeof import("@telnyx/webrtc").TelnyxRTC> | null>(null);
   const [ready, setReady] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -117,8 +117,24 @@ export function TelnyxDialWidget() {
     };
   }, []);
 
-  /** overrideNumber comes from the keypad; omitted, this calls the Opportunity's own contact. */
-  async function placeCall(overrideNumber?: string) {
+  useEffect(() => {
+    if (!requestedCall) return;
+    void placeCall(requestedCall, { adHoc: false });
+    clearRequestedCall();
+    // placeCall/clearRequestedCall close over this render's state, which is
+    // what we want -- only requestedCall itself should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedCall]);
+
+  /**
+   * overrideNumber comes from either the keypad (an arbitrary number, kept
+   * ad hoc -- no CRM record to log it against) or from something outside
+   * this panel asking to dial a specific number, like the Contact panel's
+   * phone field (still this Opportunity's own contact, so still commits/
+   * logs normally). adHoc defaults from whether an override was given at
+   * all, but the caller can say otherwise.
+   */
+  async function placeCall(overrideNumber?: string, options?: { adHoc?: boolean }) {
     const raw = overrideNumber ?? target?.phoneNumber;
     if (!raw) { setError("This contact has no phone number on file."); return; }
     const client = clientRef.current;
@@ -147,7 +163,7 @@ export function TelnyxDialWidget() {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
-      adHocRef.current = Boolean(overrideNumber);
+      adHocRef.current = options?.adHoc ?? Boolean(overrideNumber);
       if (adHocRef.current) {
         setDialedNumber(number);
       } else {

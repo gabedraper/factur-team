@@ -45,7 +45,7 @@ function postToDialer(frame: HTMLIFrameElement | null, method: string, payload: 
 }
 
 export function DialWidget() {
-  const { target, canAdmin, commit, release } = useCallTarget();
+  const { target, canAdmin, commit, release, requestedCall, clearRequestedCall } = useCallTarget();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [authenticated, setAuthenticated] = useState(false);
   const [callState, setCallState] = useState<CallState>("idle");
@@ -79,8 +79,26 @@ export function DialWidget() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  async function placeCall() {
-    if (!target?.phoneNumber) {
+  useEffect(() => {
+    if (!requestedCall) return;
+    void placeCall(requestedCall);
+    clearRequestedCall();
+    // placeCall/clearRequestedCall close over this render's state, which is
+    // what we want -- only requestedCall itself should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedCall]);
+
+  /**
+   * overrideNumber comes from something outside this panel asking to dial a
+   * specific number -- the Contact panel's phone field, e.g. -- rather than
+   * this Opportunity's own contact.phoneNumber. Still commits/logs against
+   * the Opportunity currently open either way; it's the same real-world
+   * call, just placed from a different button.
+   */
+  async function placeCall(overrideNumber?: string) {
+    if (!target) { setError("Open an Opportunity to call."); return; }
+    const raw = overrideNumber ?? target.phoneNumber;
+    if (!raw) {
       setError("This contact has no phone number on file.");
       return;
     }
@@ -88,9 +106,9 @@ export function DialWidget() {
     // typed in over the years -- Dialpad's initiate_call silently does
     // nothing if this isn't clean E.164, which read as "click to dial is
     // broken" rather than "this contact's number is malformed."
-    const phoneNumber = toE164(target.phoneNumber);
+    const phoneNumber = toE164(raw);
     if (!phoneNumber) {
-      setError(`This contact's phone number doesn't look valid: "${target.phoneNumber}".`);
+      setError(`This contact's phone number doesn't look valid: "${raw}".`);
       return;
     }
     setError(null);
@@ -168,7 +186,7 @@ export function DialWidget() {
             ) : (
               <Button
                 size="sm"
-                onClick={placeCall}
+                onClick={() => placeCall()}
                 disabled={!authenticated || claiming || !target.phoneNumber}
                 className="gap-2"
               >

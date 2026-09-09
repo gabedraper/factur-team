@@ -30,7 +30,7 @@ import { toE164 } from "@/lib/phone";
 type CallState = "idle" | "dialing" | "ringing" | "ended";
 
 export function TwilioDialWidget() {
-  const { target, canAdmin, commit, release } = useCallTarget();
+  const { target, canAdmin, commit, release, requestedCall, clearRequestedCall } = useCallTarget();
   const deviceRef = useRef<import("@twilio/voice-sdk").Device | null>(null);
   const callRef = useRef<import("@twilio/voice-sdk").Call | null>(null);
   const [ready, setReady] = useState(false);
@@ -72,17 +72,35 @@ export function TwilioDialWidget() {
     };
   }, []);
 
-  async function placeCall() {
-    if (!target?.phoneNumber) { setError("This contact has no phone number on file."); return; }
+  useEffect(() => {
+    if (!requestedCall) return;
+    void placeCall(requestedCall);
+    clearRequestedCall();
+    // placeCall/clearRequestedCall close over this render's state, which is
+    // what we want -- only requestedCall itself should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedCall]);
+
+  /**
+   * overrideNumber comes from something outside this panel asking to dial a
+   * specific number -- the Contact panel's phone field, e.g. -- rather than
+   * this Opportunity's own contact.phoneNumber. Still commits/logs against
+   * the Opportunity currently open either way; it's the same real-world
+   * call, just placed from a different button.
+   */
+  async function placeCall(overrideNumber?: string) {
+    if (!target) { setError("Open an Opportunity to call."); return; }
     const device = deviceRef.current;
     if (!device) return;
+    const raw = overrideNumber ?? target.phoneNumber;
+    if (!raw) { setError("This contact has no phone number on file."); return; }
 
     // crm_contacts.phone comes out of Salesforce in whatever shape it was
     // typed in over the years -- normalize to E.164 rather than sending
     // whatever's on file straight to Twilio.
-    const to = toE164(target.phoneNumber);
+    const to = toE164(raw);
     if (!to) {
-      setError(`This contact's phone number doesn't look valid: "${target.phoneNumber}".`);
+      setError(`This contact's phone number doesn't look valid: "${raw}".`);
       return;
     }
 
@@ -161,7 +179,7 @@ export function TwilioDialWidget() {
                 <PhoneOff className="h-4 w-4" /> Hang up
               </Button>
             ) : (
-              <Button size="sm" onClick={placeCall} disabled={!ready || claiming || !target.phoneNumber} className="gap-2">
+              <Button size="sm" onClick={() => placeCall()} disabled={!ready || claiming || !target.phoneNumber} className="gap-2">
                 {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
                 Call
               </Button>
