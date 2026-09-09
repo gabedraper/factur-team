@@ -312,11 +312,45 @@ async function main() {
       db.from("work_processes").select("id,slug,name,match_prefixes,position").eq("active", true).order("position"),
       db.from("org_clients").select("id,name"),
       db.from("client_aliases").select("alias,client_name"),
-      db.from("org_members").select("id,email").eq("active", true),
+      db.from("org_members").select("id,email,full_name,active"),
     ]);
 
   const matcher = buildMatcher({ clients: clients ?? [], aliases: aliases ?? [] });
-  const byEmail = new Map((members ?? []).map((m) => [String(m.email).toLowerCase(), m.id]));
+  /*
+   * Email first, then name.
+   *
+   * ClickUp addresses and roster addresses have drifted: Darryl Mechell is
+   * darryl@bethefactur.com over there and something else here, Eli Garcia is on
+   * a misspelt facturmg.com domain. Both are active staff, and matching on
+   * email alone left their work assigned to nobody, which is the one thing
+   * "My work" cannot survive.
+   *
+   * Inactive people are included deliberately. Most of this list is finished
+   * work and the person who did it has often left -- Jeffrey West holds 456 of
+   * the 704 assignments in Finance alone. History reads wrong without them, and
+   * this app already chose to keep inactive people visible in history.
+   */
+  const byEmail = new Map();
+  const byFullName = new Map();
+  const ambiguousNames = new Set();
+  for (const m of members ?? []) {
+    const email = String(m.email ?? "").toLowerCase();
+    /* Active wins where the same address or name appears twice. */
+    if (email && (m.active || !byEmail.has(email))) byEmail.set(email, m.id);
+
+    const name = String(m.full_name ?? "").toLowerCase().trim();
+    if (!name) continue;
+    if (byFullName.has(name) && !m.active) continue;
+    if (byFullName.has(name) && m.active && ambiguousNames.has(name)) continue;
+    if (byFullName.has(name)) ambiguousNames.add(name);
+    byFullName.set(name, m.id);
+  }
+
+  function memberFor(assignee) {
+    const byMail = byEmail.get(String(assignee.email ?? "").toLowerCase());
+    if (byMail) return byMail;
+    return byFullName.get(String(assignee.username ?? "").toLowerCase().trim()) ?? null;
+  }
 
   console.log(
     `${processes?.length ?? 0} processes, ${matcher.stats.clients} clients, ` +
@@ -437,7 +471,7 @@ async function main() {
           assignees.push({
             clickup_id: t.id,
             clickup_user_id: String(a.id),
-            member_id: byEmail.get(String(a.email || "").toLowerCase()) ?? null,
+            member_id: memberFor(a),
             name: a.username || a.email || null,
           });
         }
