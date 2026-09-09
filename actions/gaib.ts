@@ -417,7 +417,7 @@ export async function approveTicket(ticketId: string) {
   if (!ticket) return { ok: false, error: "No such ticket" };
 
   await db.from("gaib_tickets")
-    .update({ lane: "approval", status: "queued", guard_tripped: null })
+    .update({ lane: "approval", status: "queued", guard_tripped: null, decision_note: null })
     .eq("id", ticketId);
   await logEvent(ticketId, "person", "approved", "sent to the agent to build");
 
@@ -433,21 +433,39 @@ export async function approveTicket(ticketId: string) {
   return { ok: true };
 }
 
+/*
+ * Closing a ticket, and saying why to the person who raised it.
+ *
+ * The reason goes onto the ticket rather than only into the event log. The
+ * notice trigger reads the ticket, so this is the difference between the
+ * reporter hearing your reasoning and hearing the coding agent's technical
+ * notes with your name on them -- which is what happened until now.
+ */
 export async function rejectTicket(ticketId: string, why: string) {
   if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
   const db = createServiceClient();
-  await db.from("gaib_tickets").update({ status: "rejected" }).eq("id", ticketId);
+  await db
+    .from("gaib_tickets")
+    .update({ status: "rejected", decision_note: why.trim() || null })
+    .eq("id", ticketId);
   await logEvent(ticketId, "person", "rejected", why || undefined);
   revalidatePath("/gaib");
   return { ok: true };
 }
 
 /** Mark a ticket done by hand, for work that happened outside the agent. */
-export async function closeTicket(ticketId: string, status: "shipped" | "duplicate") {
+export async function closeTicket(
+  ticketId: string,
+  status: "shipped" | "duplicate",
+  why = ""
+) {
   if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
   const db = createServiceClient();
-  await db.from("gaib_tickets").update({ status }).eq("id", ticketId);
-  await logEvent(ticketId, "person", status);
+  await db
+    .from("gaib_tickets")
+    .update({ status, decision_note: why.trim() || null })
+    .eq("id", ticketId);
+  await logEvent(ticketId, "person", status, why || undefined);
   revalidatePath("/gaib");
   return { ok: true };
 }
@@ -463,7 +481,7 @@ export async function retryTicket(ticketId: string) {
 
   const sent = await dispatchAgent(ticketId, lane);
   if (!sent.dispatched) return { ok: false, error: sent.reason };
-  await db.from("gaib_tickets").update({ status: "queued" }).eq("id", ticketId);
+  await db.from("gaib_tickets").update({ status: "queued", decision_note: null }).eq("id", ticketId);
   await logEvent(ticketId, "person", "retried");
   revalidatePath("/gaib");
   return { ok: true };

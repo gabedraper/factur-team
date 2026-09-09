@@ -62,10 +62,15 @@ export function phrase(n: Notice): string {
     case "stuck":
       return `I have not managed to get started on ${thing} — something went wrong at my end, not with what you told me. Gabe has been told. Nothing for you to do. [Ticket ${n.ref}]`;
 
-    case "shipped":
-      return n.kind === "bug"
-        ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. [Ticket ${n.ref}]`
-        : `Your idea is built and live — ${thing}. Give it a try and tell me if it's not what you had in mind. [Ticket ${n.ref}]`;
+    case "shipped": {
+      const why = shorten(n.note);
+      return [
+        n.kind === "bug"
+          ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. [Ticket ${n.ref}]`
+          : `Your idea is built and live — ${thing}. Give it a try and tell me if it's not what you had in mind. [Ticket ${n.ref}]`,
+        why ? `Gabe added: ${why}` : null,
+      ].filter(Boolean).join("\n\n");
+    }
 
     case "rejected": {
       const why = shorten(n.note);
@@ -76,8 +81,15 @@ export function phrase(n: Notice): string {
       ].filter(Boolean).join("\n\n");
     }
 
-    case "duplicate":
-      return `${thing} turned out to be the same thing somebody else had already reported, so it's been grouped with theirs. It's still being dealt with. [Ticket ${n.ref}]`;
+    case "duplicate": {
+      // Which ticket it was grouped with is the useful part, and it only
+      // exists if somebody typed it.
+      const why = shorten(n.note);
+      return [
+        `${thing} turned out to be the same thing somebody else had already reported, so it's been grouped with theirs. It's still being dealt with. [Ticket ${n.ref}]`,
+        why ? `Gabe added: ${why}` : null,
+      ].filter(Boolean).join("\n\n");
+    }
 
     /*
      * The one that needs the most care.

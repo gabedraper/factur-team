@@ -289,6 +289,13 @@ export function TicketCard({
 
       {decidable && (
         <div className="mt-4 space-y-2 border-t pt-4">
+          {/*
+            The actions that build something, and the ones that close it, are
+            two different groups because only the second kind takes a reason.
+            One row of five buttons under a single Reason box read as though the
+            box applied to all of them; it applied to Reject alone, and anything
+            typed before pressing Duplicate was thrown away without a word.
+          */}
           <div className="flex flex-wrap gap-2">
             {/*
               Three different things, not one button with three labels. A ticket
@@ -306,43 +313,48 @@ export function TicketCard({
                 {ticket.kind === "idea" ? "Build it" : "Hand to the agent"}
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => run(() => rejectTicket(ticket.id, why))}
-            >
-              Reject
-            </Button>
             {ticket.status === "failed" && (
               <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => retryTicket(ticket.id))}>
                 Retry
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={pending}
-              onClick={() => run(() => closeTicket(ticket.id, "shipped"))}
-            >
-              Mark shipped
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={pending}
-              onClick={() => run(() => closeTicket(ticket.id, "duplicate"))}
-            >
-              Duplicate
-            </Button>
           </div>
-          <Textarea
-            value={why}
-            onChange={(e) => setWhy(e.target.value)}
-            rows={1}
-            placeholder="Reason"
-            className="resize-none text-sm"
-          />
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Textarea
+              value={why}
+              onChange={(e) => setWhy(e.target.value)}
+              rows={1}
+              placeholder="Reason"
+              className="resize-none text-sm"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => run(() => rejectTicket(ticket.id, why))}
+              >
+                Reject
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => run(() => closeTicket(ticket.id, "shipped", why))}
+              >
+                Mark shipped
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => run(() => closeTicket(ticket.id, "duplicate", why))}
+              >
+                Duplicate
+              </Button>
+            </div>
+          </div>
 
           {/*
             Asking is separate from deciding, and sits below it, because the
