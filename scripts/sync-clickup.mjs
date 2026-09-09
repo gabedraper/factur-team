@@ -84,7 +84,10 @@ function requireCredentials() {
         : "No CLICKUP_TOKEN found in the environment or .env.local."
     );
     console.error("");
-    console.error("  ClickUp -> your avatar, bottom left -> Settings -> Apps -> API Token");
+    /* The direct URL, not a menu path: the avatar moved from the bottom left
+     * to the top right between ClickUp 2.0 and 3.0 and the old directions send
+     * people hunting. */
+    console.error("  https://app.clickup.com/settings/apps  ->  API Token  ->  Generate");
     console.error("  Generate, copy, then in ~/factur-team:");
     console.error("");
     console.error("    read -rsp 'Paste token: ' T && printf 'CLICKUP_TOKEN=%s\\n' \"$T\" >> .env.local && unset T");
