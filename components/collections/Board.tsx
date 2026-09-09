@@ -33,7 +33,7 @@ function onDay(date: string | null) {
  */
 const COLS =
   "grid items-center gap-x-3 " +
-  "grid-cols-[minmax(9rem,1fr)_6.5rem_repeat(6,minmax(5.5rem,6.5rem))_minmax(0,13rem)]";
+  "grid-cols-[minmax(12rem,1.6fr)_7rem_repeat(6,5.75rem)_minmax(0,12rem)]";
 
 /** One money cell. Zero stays grey: a colour should mean there is something there. */
 function Cell({ amount, tone }: { amount: number; tone?: string }) {
@@ -329,16 +329,18 @@ export function Board({
 
         return (
           <div key={key(r)} className="rounded-lg border bg-card">
-            <div className={`${COLS} px-3 py-2 text-sm`}>
+            <div className={`${COLS} min-h-11 px-3 py-2 text-sm`}>
               {/* Truncated rather than wrapped: a long name must not push the
                   money out of line with the row above it. */}
               <div className="flex min-w-0 items-center gap-2" title={r.client_name}>
-                <CompanyLogo
-                  name={r.client_name}
-                  domain={r.client_id ? domains?.[r.client_id] : null}
-                  size={20}
-                />
-                <span className="min-w-0 truncate">
+                <span className="shrink-0">
+                  <CompanyLogo
+                    name={r.client_name}
+                    domain={r.client_id ? domains?.[r.client_id] : null}
+                    size={20}
+                  />
+                </span>
+                <span className="min-w-0 flex-1 truncate">
                   {r.client_id ? (
                     <Link href={`/clients/${r.client_id}`} className="font-medium hover:underline">
                       {r.client_name}
@@ -346,18 +348,19 @@ export function Board({
                   ) : (
                     <span className="font-medium">{r.client_name}</span>
                   )}
-                  {r.matched && r.client_active === false && (
-                    <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      inactive client
-                    </span>
-                  )}
                 </span>
+                {r.matched && r.client_active === false && (
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    inactive
+                  </span>
+                )}
                 {!r.matched && (
                   <Link
                     href="/settings/quickbooks"
-                    className="ml-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 hover:underline dark:bg-amber-950 dark:text-amber-200"
+                    title="Not matched to a Salesforce client"
+                    className="shrink-0 whitespace-nowrap rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 hover:underline dark:bg-amber-950 dark:text-amber-200"
                   >
-                    not matched to a client
+                    not matched
                   </Link>
                 )}
               </div>
