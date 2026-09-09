@@ -674,7 +674,7 @@ export async function mergeTicket(ticketId: string): Promise<{ ok: boolean; erro
         },
         body: JSON.stringify({
           merge_method: "squash",
-          commit_title: `Gaib ${ticket.ref}: approved and merged`,
+          commit_title: `[Ticket ${ticket.ref}] approved and merged`,
         }),
       }
     );

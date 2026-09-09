@@ -173,7 +173,7 @@ async function pendingQuestions(userId: string): Promise<string> {
     "have opened with something else, and never twice in one conversation. When they answer, call",
     "answer_ticket_question with the id below. If they would rather not say, leave it and move on.",
     ...open.map((q) =>
-      `- id ${q.id} — about "${q.ticket_title}" (Gaib ${q.ticket_ref}): ${q.question}`
+      `- id ${q.id} — about "${q.ticket_title}" [Ticket ${q.ticket_ref}]: ${q.question}`
     ),
   ].join(" ");
 }

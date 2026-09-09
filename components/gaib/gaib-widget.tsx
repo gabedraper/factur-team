@@ -514,7 +514,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                 return (
                   <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
                     <Ticket className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="font-medium">Gaib {line.ref}</span>
+                    <span className="font-medium">Ticket {line.ref}</span>
                     <span className="truncate text-muted-foreground">{line.title}</span>
                     <Badge variant="secondary" className="ml-auto shrink-0">
                       {LANE_LABEL[line.lane] ?? line.lane}

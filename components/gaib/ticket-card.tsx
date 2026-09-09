@@ -30,6 +30,27 @@ const SEVERITY: Record<string, string> = {
   cosmetic: "bg-muted text-muted-foreground",
 };
 
+/**
+ * How long ago it was reported, in the words somebody would use.
+ *
+ * Days rather than hours past the first day, and a plain date once it is old
+ * enough that counting stops meaning anything -- "23 days ago" is arithmetic
+ * where "12 Aug" is a fact.
+ */
+function submitted(when: string): string {
+  const then = new Date(when);
+  const mins = Math.floor((Date.now() - then.getTime()) / 60_000);
+
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 24 * 60) return `${Math.floor(mins / 60)}h ago`;
+
+  const days = Math.floor(mins / (24 * 60));
+  if (days === 1) return "yesterday";
+  if (days < 14) return `${days} days ago`;
+  return then.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 const STATUS: Record<string, string> = {
   new: "New",
   queued: "Queued",
@@ -96,6 +117,18 @@ export function TicketCard({
                 {raisedByName}
               </span>
             )}
+            {/*
+              When it was reported. A queue without dates reads as though
+              everything arrived at once, and the thing most worth knowing
+              about a ticket waiting on you is how long it has been waiting.
+              The full date and time is on hover.
+            */}
+            <span
+              className="text-xs text-muted-foreground"
+              title={new Date(ticket.created_at).toLocaleString()}
+            >
+              {submitted(ticket.created_at)}
+            </span>
             <Badge variant="outline">{ticket.kind}</Badge>
             <Badge className={SEVERITY[ticket.severity]} variant="secondary">
               {ticket.severity} — {SEVERITY_MEANS[ticket.severity] ?? ""}
@@ -223,7 +256,7 @@ export function TicketCard({
               {chat.map((line, i) =>
                 line.kind === "ticket" ? (
                   <p key={i} className="text-xs italic text-muted-foreground">
-                    raised Gaib {line.ref}
+                    raised Ticket {line.ref}
                   </p>
                 ) : (
                   <div

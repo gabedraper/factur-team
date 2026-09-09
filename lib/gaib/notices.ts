@@ -60,24 +60,24 @@ export function phrase(n: Notice): string {
      * costs far more than the bug did.
      */
     case "stuck":
-      return `I have not managed to get started on ${thing} — something went wrong at my end, not with what you told me. Gabe has been told. Nothing for you to do. (Gaib ${n.ref})`;
+      return `I have not managed to get started on ${thing} — something went wrong at my end, not with what you told me. Gabe has been told. Nothing for you to do. [Ticket ${n.ref}]`;
 
     case "shipped":
       return n.kind === "bug"
-        ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. (Gaib ${n.ref})`
-        : `Your idea is built and live — ${thing}. Give it a try and tell me if it's not what you had in mind. (Gaib ${n.ref})`;
+        ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. [Ticket ${n.ref}]`
+        : `Your idea is built and live — ${thing}. Give it a try and tell me if it's not what you had in mind. [Ticket ${n.ref}]`;
 
     case "rejected": {
       const why = shorten(n.note);
       return [
-        `Gabe's had a look at ${thing} and decided against it for now. (Gaib ${n.ref})`,
+        `Gabe's had a look at ${thing} and decided against it for now. [Ticket ${n.ref}]`,
         why ? `His reasoning: ${why}` : null,
         `If you think that's the wrong call, tell me why and I'll put it back in front of him.`,
       ].filter(Boolean).join("\n\n");
     }
 
     case "duplicate":
-      return `${thing} turned out to be the same thing somebody else had already reported, so it's been grouped with theirs. It's still being dealt with. (Gaib ${n.ref})`;
+      return `${thing} turned out to be the same thing somebody else had already reported, so it's been grouped with theirs. It's still being dealt with. [Ticket ${n.ref}]`;
 
     /*
      * The one that needs the most care.
@@ -90,7 +90,7 @@ export function phrase(n: Notice): string {
     case "failed": {
       const why = shorten(n.note, 200);
       return [
-        `I got stuck on ${thing} and could use a bit more from you. (Gaib ${n.ref})`,
+        `I got stuck on ${thing} and could use a bit more from you. [Ticket ${n.ref}]`,
         why ? `Where it went wrong: ${why}` : null,
         `If you can tell me exactly what you clicked and what you saw, I'll have another go.`,
       ].filter(Boolean).join("\n\n");
@@ -99,16 +99,16 @@ export function phrase(n: Notice): string {
     case "awaiting_review":
       return n.kind === "idea"
         ? [
-            `I've worked out what ${thing} would involve, and it's with Gabe to decide. (Gaib ${n.ref})`,
+            `I've worked out what ${thing} would involve, and it's with Gabe to decide. [Ticket ${n.ref}]`,
             `I'll come back to you either way.`,
           ].join("\n\n")
         : [
-            `The fix for ${thing} is written and waiting on Gabe to check it before it goes live. (Gaib ${n.ref})`,
+            `The fix for ${thing} is written and waiting on Gabe to check it before it goes live. [Ticket ${n.ref}]`,
             `I'll let you know when it's in.`,
           ].join("\n\n");
 
     default:
-      return `There's an update on ${thing}. (Gaib ${n.ref})`;
+      return `There's an update on ${thing}. [Ticket ${n.ref}]`;
   }
 }
 

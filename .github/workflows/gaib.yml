@@ -310,7 +310,7 @@ jobs:
           {
             cat /tmp/title.txt
             echo
-            echo "Raised as Gaib $(jq -r '.ref' /tmp/ticket.json) by someone using the app."
+            echo "Raised as [Ticket $(jq -r '.ref' /tmp/ticket.json)] by someone using the app."
             echo
             head -c 500 /tmp/notes.md
             echo
@@ -380,7 +380,7 @@ jobs:
           git push -u --force origin "$BRANCH"
 
           {
-            echo "Raised as **Gaib $REF** by someone using the app."
+            echo "Raised as **[Ticket $REF]** by someone using the app."
             echo
             jq -r '.body' /tmp/ticket.json
             echo

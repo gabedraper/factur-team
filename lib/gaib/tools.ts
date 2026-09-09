@@ -214,7 +214,7 @@ const raiseTicketTool: GaibTool = {
       laneReason: String(input.lane_reason),
       pageUrl: (input.page_url as string) || ctx.pageUrl,
     });
-    return `Raised as Gaib ${ticket.ref} in the ${ticket.lane} lane, status ${ticket.status}. Tell them the number.`;
+    return `Raised as [Ticket ${ticket.ref}] in the ${ticket.lane} lane, status ${ticket.status}. Tell them the number.`;
   },
 };
 
