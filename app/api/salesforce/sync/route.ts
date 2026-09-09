@@ -145,15 +145,18 @@ export async function POST(request: NextRequest) {
       if (!oldestWatermark || since < oldestWatermark) oldestWatermark = since;
     }
 
-    /* Nothing moved, so nothing to transform. */
-    if (oldestWatermark) {
-      const { data: applied, error } = await db.rpc("apply_salesforce_transforms", {
-        p_since: oldestWatermark,
-      });
-      if (error) throw new Error(`transforms failed - ${error.message}`);
-      summary.transformed = applied;
-    }
-
+    /*
+     * The transforms are not called from here. They are pure SQL over tables
+     * already in this database, and running them through the API meant running
+     * them as the authenticator role, which carries statement_timeout=8s -- half
+     * a minute of Salesforce changes takes about nineteen seconds to transform,
+     * so every run was cancelled part-way. The salesforce-transforms cron job
+     * runs them in the database instead.
+     *
+     * The mirrors are the handover point between the two halves: this fills
+     * them, that drains them a few minutes later, and neither waits on the
+     * other.
+     */
     return NextResponse.json({ ok: true, ...summary });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
