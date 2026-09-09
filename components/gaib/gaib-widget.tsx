@@ -43,6 +43,13 @@ const LANE_LABEL: Record<string, string> = {
   scoping: "being scoped",
 };
 
+/* Small enough to still be a chat panel, big enough to still be usable. */
+const MIN_W = 288;
+const MIN_H = 260;
+
+/** Where the panel has been put, once somebody has put it somewhere. */
+type Placed = { x: number; y: number; w: number; h: number };
+
 /** Three dots, so a pause reads as thinking rather than as nothing happening. */
 function Typing() {
   return (
@@ -99,6 +106,11 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
   const lastSaid = useRef("");
   const bottom = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  // Null until the panel is first dragged or resized. The corner it starts in
+  // is a class, so leaving this alone keeps the narrow-screen width working for
+  // everybody who never moves it.
+  const [placed, setPlaced] = useState<Placed | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
 
   /*
    * The dot means one of two things: something to tell you, or something to ask
@@ -349,6 +361,58 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
     window.location.href = `/gaib#gaib-${t.ref}`;
   }
 
+  /*
+   * Dragging, for both the title bar and the corner grip.
+   *
+   * Wherever the panel is sitting when the gesture starts is measured off the
+   * screen rather than read from state, so the very first drag carries on from
+   * the default corner instead of jumping somewhere else.
+   *
+   * The grip is the top left corner, because the panel starts in the bottom
+   * right: pulling that corner grows it up and across the page, into screen
+   * somebody can see, rather than off the edge.
+   */
+  function drag(what: "move" | "size") {
+    return (e: React.PointerEvent) => {
+      const rect = frame.current?.getBoundingClientRect();
+      // The title bar carries the buttons too, and a click on one of those is
+      // not a drag.
+      if (!rect || (e.target as HTMLElement).closest("button")) return;
+      e.preventDefault();
+
+      const from = { x: rect.left, y: rect.top, w: rect.width, h: rect.height };
+      const startX = e.clientX;
+      const startY = e.clientY;
+
+      const move = (m: PointerEvent) => {
+        const dx = m.clientX - startX;
+        const dy = m.clientY - startY;
+        if (what === "move") {
+          // Kept on the screen: a panel dragged off the edge is a panel nobody
+          // can get hold of again.
+          setPlaced({
+            ...from,
+            x: Math.min(Math.max(from.x + dx, 0), window.innerWidth - from.w),
+            y: Math.min(Math.max(from.y + dy, 0), window.innerHeight - from.h),
+          });
+          return;
+        }
+        // Growing stops at the top and left edges, which is what the far corner
+        // staying put amounts to.
+        const w = Math.min(Math.max(from.w - dx, MIN_W), from.x + from.w);
+        const h = Math.min(Math.max(from.h - dy, MIN_H), from.y + from.h);
+        setPlaced({ x: from.x + from.w - w, y: from.y + from.h - h, w, h });
+      };
+
+      const stop = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop);
+    };
+  }
+
   function submit() {
     const text = draft.trim();
     if (!text || busy) return;
@@ -403,11 +467,35 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
       */}
       {open && (
         <div
+          ref={frame}
           role="complementary"
           aria-label="Gaib"
           className="fixed bottom-4 right-4 z-50 flex h-[30rem] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col rounded-xl border bg-background shadow-2xl sm:w-96"
+          // Once it has been moved, the corner it was pinned to has to let go:
+          // left and right both set would stretch it rather than place it.
+          style={
+            placed
+              ? {
+                  left: placed.x, top: placed.y, width: placed.w, height: placed.h,
+                  right: "auto", bottom: "auto", maxHeight: "none",
+                }
+              : undefined
+          }
         >
-          <div className="flex items-center gap-1 border-b px-3 py-2.5">
+          {/*
+            The grip sits over the corner of the title bar, so it takes the
+            gesture there rather than the bar underneath it.
+          */}
+          <div
+            onPointerDown={drag("size")}
+            aria-hidden
+            title="Drag to resize"
+            className="absolute left-0 top-0 h-4 w-4 cursor-nwse-resize touch-none rounded-tl-xl border-l-2 border-t-2 border-muted-foreground/30 hover:border-muted-foreground/70"
+          />
+          <div
+            onPointerDown={drag("move")}
+            className="flex cursor-move touch-none select-none items-center gap-1 border-b px-3 py-2.5"
+          >
             <MessageCircle className="ml-1 h-4 w-4 shrink-0" />
             <span className="ml-1 min-w-0 flex-1 truncate text-sm font-medium">
               {title ?? "Gaib"}
