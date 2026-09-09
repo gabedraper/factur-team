@@ -104,7 +104,11 @@ export function WorkPanel({
     setDragging(true);
 
     const move = (ev: PointerEvent) => {
-      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - ev.clientX));
+      // Rounded: a pointer position can be fractional, and a stored width of
+      // 439.9998779296875 is a thing somebody reads once and wonders about.
+      const next = Math.round(
+        Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, window.innerWidth - ev.clientX))
+      );
       setWidth(next);
     };
     const up = () => {
