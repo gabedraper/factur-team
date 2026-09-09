@@ -5,3 +5,6 @@ tsconfig.tsbuildinfo
 .env.vercel
 .vercel
 .env*
+
+# Personal Claude Code settings, not the team's
+.claude/settings.local.json
