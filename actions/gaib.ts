@@ -619,7 +619,9 @@ export async function myOpenTickets(): Promise<OpenTicket[]> {
  * marked shipped by the workflow that watches for merges, so the status still
  * comes from what actually happened rather than from what was clicked.
  */
-export async function mergeTicket(ticketId: string): Promise<{ ok: boolean; error?: string }> {
+export async function mergeTicket(
+  ticketId: string
+): Promise<{ ok: boolean; error?: string; conflict?: boolean }> {
   if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
 
   const db = createServiceClient();
@@ -699,13 +701,32 @@ export async function mergeTicket(ticketId: string): Promise<{ ok: boolean; erro
 
     if (!res.ok) {
       const why = (await res.text()).slice(0, 200);
-      /*
-       * A merge can be refused for perfectly ordinary reasons -- a conflict, a
-       * check still running, the branch behind. Passed through as-is, because
-       * "could not merge" without the reason sends somebody to GitHub to find
-       * out what this already knows.
-       */
       await logEvent(ticket.id, "person", "merge refused", why);
+
+      /*
+       * A clash is the ordinary way for this to fail, and it is not a fault.
+       * The agent wrote the fix against the code as it stood; other work has
+       * landed since and touched the same lines. Nothing is wrong with the
+       * fix -- it was written against a version of the app that no longer
+       * exists, and the way out is to build it again on the current one.
+       *
+       * Said in those words, with the flag the card uses to offer that. The
+       * raw GitHub reply is a JSON blob with a documentation link in it, which
+       * tells somebody reading the queue nothing they can act on.
+       */
+      if (/conflict/i.test(why)) {
+        return {
+          ok: false,
+          conflict: true,
+          error:
+            "It clashes with work that has landed since it was written. " +
+            "It needs building again on the current code.",
+        };
+      }
+
+      // Everything else passed through: a check still running, the branch
+      // behind, a protected branch. "Could not merge" without the reason sends
+      // somebody to GitHub to find out what this already knows.
       return { ok: false, error: `GitHub would not merge it: ${why}` };
     }
 

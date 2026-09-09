@@ -94,18 +94,30 @@ export function TicketCard({
    * merges on nearly every ticket.
    */
   const [done, setDone] = useState("");
+  /*
+   * A merge that clashed.
+   *
+   * The fix is sound; it was written against a version of the app that no
+   * longer exists. There is nothing to decide here and nothing to fix by hand
+   * -- it has to be built again on current code -- so the card offers that
+   * rather than leaving a red line and no way forward.
+   */
+  const [clashed, setClashed] = useState(false);
   const [pending, start] = useTransition();
 
   function run(
-    fn: () => Promise<{ ok: boolean; error?: string }>,
+    fn: () => Promise<{ ok: boolean; error?: string; conflict?: boolean }>,
     said?: string
   ) {
     setError("");
     setDone("");
+    setClashed(false);
     start(async () => {
       const r = await fn();
-      if (!r.ok) setError(r.error ?? "That didn't work");
-      else if (said) setDone(said);
+      if (!r.ok) {
+        setError(r.error ?? "That didn't work");
+        if (r.conflict) setClashed(true);
+      } else if (said) setDone(said);
     });
   }
 
@@ -320,7 +332,17 @@ export function TicketCard({
               agent. Approve used to mean the last of those in all three cases,
               which threw away finished work on the first.
             */}
-            {ticket.pr_url ? (
+            {clashed ? (
+              <Button
+                size="sm"
+                disabled={pending || done !== ""}
+                onClick={() =>
+                  run(() => approveTicket(ticket.id), "Sent back to be rebuilt")
+                }
+              >
+                Build it again on current code
+              </Button>
+            ) : ticket.pr_url ? (
               <Button
                 size="sm"
                 // Stays disabled after it works. A merged pull request cannot be
