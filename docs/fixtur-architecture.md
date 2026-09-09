@@ -1,9 +1,30 @@
 # Fixtur — how the build actually works
 
-Read from the Confluence space `Services` (75 pages, read 2026-09-09). This is a
-summary of what the docs say, plus what they contradict or leave out. Where the
-docs and reality could differ, the docs are the source here — nothing below was
-verified against running code.
+> **Scope warning — this is a partial read, and it is skewed old.**
+>
+> The Confluence `Services` space holds **between 261 and 320 pages**. This was
+> written from about **79 of them** — roughly a quarter — and, worse, they are
+> the *oldest* quarter. Confluence page ids rise over time; almost everything
+> read here is under id 14,000,000 (2023 vintage). The space also contains a
+> much newer tranche in the 340,000,000–420,000,000 range that was **not read**,
+> including what look like the current system documents:
+>
+> - `Factur Platform — System Architecture Overview`, with numbered sections
+>   1–8: Identity/Accounts/Authorization, Inbound Email Capture, Email Sorting
+>   and State Machines, Outbound Send Pipeline, Contacts/Accounts/Data
+>   Management, CRM and Enrichment Sync, AI Services, and Platform/
+>   Observability/Infrastructure
+> - `Public Database — System Documentation`, sections 1–6, including
+>   **`Database — Amazon DocumentDB`** — which may well supersede the MySQL
+>   Aurora described below
+> - `deliverability_service — Design and Operations`, `Sequence machine
+>   service`, `CSV Importer`, `Unsubscribe link`
+> - `Network Architecture & Security Design`, `OpenVPN`, `Outlook email`,
+>   `Outlook spam detectors`, `Outlook Admin accounts`
+> - Per-service pages such as `Service factur-develop-main-api-listener`
+>
+> **Treat everything below as the 2023 design, not necessarily the current
+> one.** Do not make decisions on it until the newer tranche is read.
 
 ---
 
