@@ -63,17 +63,25 @@ const TOKEN = env("CLICKUP_TOKEN");
 const SUPABASE_URL = env("NEXT_PUBLIC_SUPABASE_URL");
 const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 
-if (!TOKEN) {
-  console.error("No CLICKUP_TOKEN. Add CLICKUP_TOKEN=pk_... to .env.local");
-  console.error("ClickUp -> avatar, bottom left -> Settings -> Apps -> API Token.");
-  process.exit(1);
-}
-if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("No Supabase credentials in environment or .env.local");
-  process.exit(1);
-}
+/*
+ * Checked when the sync runs, not when the module loads: check-clickup-match
+ * imports norm() from here and has no business needing a ClickUp token to do
+ * it.
+ */
+let db;
 
-const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+function requireCredentials() {
+  if (!TOKEN) {
+    console.error("No CLICKUP_TOKEN. Add CLICKUP_TOKEN=pk_... to .env.local");
+    console.error("ClickUp -> avatar, bottom left -> Settings -> Apps -> API Token.");
+    process.exit(1);
+  }
+  if (!SUPABASE_URL || !SERVICE_KEY) {
+    console.error("No Supabase credentials in environment or .env.local");
+    process.exit(1);
+  }
+  db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+}
 
 // ---------------------------------------------------------------------------
 // ClickUp, politely. 100 requests a minute is the documented ceiling and it is
@@ -111,19 +119,98 @@ async function get(path, attempt = 0) {
 
 const SUFFIXES = /\b(inc|llc|l l c|ltd|limited|corp|corporation|co|company|group|holdings|usa|us|gmbh|plc|pty|lp|llp)\b/g;
 
-function norm(name) {
+export function norm(name) {
   return (name || "")
     .toLowerCase()
     .replace(/&/g, " and ")
-    .replace(/[.,'"`()\[\]/\\-]/g, " ")
+    /*
+     * Apostrophes are deleted, not spaced. "Hartmann's Inc" spaced becomes
+     * "hartmann s", which matches nothing; deleted it becomes "hartmanns",
+     * which is exactly what both org_clients and client_aliases hold.
+     */
+    .replace(/['\u2019`]/g, "")
+    .replace(/[.,"()\[\]/\\-]/g, " ")
     .replace(SUFFIXES, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
+/*
+ * ClickUp folders carry a trailing qualifier the client name never has:
+ * "Turner Machine Tool // Website" is the Turner Machine folder, not a client
+ * called Turner Machine Tool Website.
+ */
+export function folderName(name) {
+  return (name || "").split("//")[0].trim();
+}
+
+/*
+ * One matcher, built once, used by the sync and by check-clickup-match.
+ *
+ * The alias table is not a list of alternative full names -- it holds
+ * *prefixes*, written for the Salesforce and QuickBooks matchers: "budde sheet"
+ * stands for "Budde Sheet Metal Works". An exact lookup against it can never
+ * hit, which is why the first version of this matched 197 folders and zero
+ * aliases. So aliases match by prefix, longest first, and only when the alias
+ * is substantial enough to be worth trusting -- a three letter prefix would
+ * cheerfully attach half the book to one client.
+ */
+export function buildMatcher({ clients, aliases }) {
+  const byName = new Map();
+  for (const c of clients ?? []) {
+    const k = norm(c.name);
+    if (k && !byName.has(k)) byName.set(k, c.id);
+  }
+
+  let orphanAliases = 0;
+  const prefixes = [];
+  for (const a of aliases ?? []) {
+    const id = byName.get(norm(a.client_name));
+    const k = norm(a.alias);
+    if (!k) continue;
+    if (!id) {
+      /* The alias names a company that is not in org_clients -- usually a
+       * prospect or a client from before the roster. Counted, not guessed at. */
+      orphanAliases++;
+      continue;
+    }
+    if (k.length >= 8 || k.includes(" ")) prefixes.push([k, id]);
+  }
+  prefixes.sort((a, b) => b[0].length - a[0].length);
+
+  function lookup(raw) {
+    const k = norm(raw);
+    if (!k) return [null, null];
+    if (byName.has(k)) return [byName.get(k), "name"];
+    for (const [alias, id] of prefixes) {
+      if (k === alias || k.startsWith(alias + " ")) return [id, "alias"];
+    }
+    return [null, null];
+  }
+
+  return {
+    stats: { clients: byName.size, aliases: prefixes.length, orphanAliases },
+
+    /** Folder first, then the "<Client> - <Event>" title convention. */
+    clientFor(folder, title) {
+      if (folder) {
+        const [id, how] = lookup(folderName(folder));
+        if (id) return [id, how === "name" ? "folder" : "alias"];
+      }
+      const dash = (title || "").split(/\s+-\s+/)[0];
+      if (dash && dash !== title) {
+        const [id] = lookup(dash);
+        if (id) return [id, "title"];
+      }
+      return [null, null];
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 
 async function main() {
+  requireCredentials();
   const started = new Date();
   let runId = null;
 
@@ -142,21 +229,13 @@ async function main() {
       db.from("org_members").select("id,email").eq("active", true),
     ]);
 
-  const byName = new Map();
-  for (const c of clients ?? []) {
-    const k = norm(c.name);
-    if (k && !byName.has(k)) byName.set(k, c.id);
-  }
-  const byAlias = new Map();
-  for (const a of aliases ?? []) {
-    const id = byName.get(norm(a.client_name));
-    const k = norm(a.alias);
-    if (id && k && !byAlias.has(k)) byAlias.set(k, id);
-  }
+  const matcher = buildMatcher({ clients: clients ?? [], aliases: aliases ?? [] });
   const byEmail = new Map((members ?? []).map((m) => [String(m.email).toLowerCase(), m.id]));
 
   console.log(
-    `${processes?.length ?? 0} processes, ${byName.size} clients, ${byAlias.size} aliases, ${byEmail.size} members`
+    `${processes?.length ?? 0} processes, ${matcher.stats.clients} clients, ` +
+    `${matcher.stats.aliases} alias prefixes (${matcher.stats.orphanAliases} orphaned), ` +
+    `${byEmail.size} members`
   );
 
   /* First prefix that matches wins, which is why the table is ordered. */
@@ -174,22 +253,6 @@ async function main() {
   function podFor(listName) {
     const m = (listName || "").match(/\/\/\s*([A-Za-z0-9]+)\s*$/);
     return m ? m[1].toUpperCase() : null;
-  }
-
-  function clientFor(folderName, title) {
-    if (folderName) {
-      const k = norm(folderName);
-      if (byName.has(k)) return [byName.get(k), "folder"];
-      if (byAlias.has(k)) return [byAlias.get(k), "alias"];
-    }
-    // "Premier Manufacturing - Renewal Signed"
-    const dash = (title || "").split(/\s+-\s+/)[0];
-    if (dash && dash !== title) {
-      const k = norm(dash);
-      if (byName.has(k)) return [byName.get(k), "title"];
-      if (byAlias.has(k)) return [byAlias.get(k), "title"];
-    }
-    return [null, null];
   }
 
   // --- walk the workspace ---------------------------------------------------
@@ -239,7 +302,7 @@ async function main() {
       const tasks = res.tasks ?? [];
       for (const t of tasks) {
         seen++;
-        const [clientId, how] = clientFor(target.folder, t.name);
+        const [clientId, how] = matcher.clientFor(target.folder, t.name);
         if (!clientId) {
           unmatched++;
           const key = target.folder || `${target.space} / ${target.list.name}`;
@@ -358,7 +421,14 @@ async function main() {
   if (DRY) console.log("\n--dry-run: nothing was written.");
 }
 
-main().catch(async (err) => {
-  console.error("\nFAILED:", err.message);
-  process.exit(1);
-});
+/*
+ * Only when run directly. scripts/check-clickup-match.mjs imports norm() from
+ * here so the check exercises the matcher that actually ships, not a copy of it
+ * that drifts.
+ */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch(async (err) => {
+    console.error("\nFAILED:", err.message);
+    process.exit(1);
+  });
+}
