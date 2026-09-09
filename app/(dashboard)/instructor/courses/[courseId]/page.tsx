@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { createModule, reorderModules } from "@/actions/modules";
-import { createLesson, deleteLesson } from "@/actions/lessons";
+import { createLesson, deleteLesson, reorderLessons } from "@/actions/lessons";
 import { publishCourse, updateCourse } from "@/actions/courses";
 import {
   Card,
@@ -102,6 +102,8 @@ export default function CourseEditorPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draggingModuleId, setDraggingModuleId] = useState<string | null>(null);
   const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
+  const [draggingLessonId, setDraggingLessonId] = useState<string | null>(null);
+  const [dragOverLessonId, setDragOverLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourse();
@@ -208,6 +210,39 @@ export default function CourseEditorPage() {
 
     const result = await reorderModules(courseId, reordered.map((m) => m.id));
     // The list already moved on screen; if the save failed, put back whatever
+    // the database actually has rather than leave a lie on the page.
+    if (!result.success) loadModules();
+  }
+
+  // Lessons run in sequence inside their module, so they slide into a slot the
+  // same way modules do. A lesson only ever moves within its own list: dropped
+  // on a row belonging to another module it is not found there, and stays put.
+  async function handleDropLesson(moduleId: string, targetId: string) {
+    const sourceId = draggingLessonId;
+    setDraggingLessonId(null);
+    setDragOverLessonId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const lessons = modules.find((m) => m.id === moduleId)?.lessons;
+    if (!lessons) return;
+
+    const from = lessons.findIndex((l) => l.id === sourceId);
+    const to = lessons.findIndex((l) => l.id === targetId);
+    if (from === -1 || to === -1) return;
+
+    const reordered = [...lessons];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    setModules((prev) =>
+      prev.map((m) => (m.id === moduleId ? { ...m, lessons: reordered } : m))
+    );
+
+    const result = await reorderLessons(
+      moduleId,
+      courseId,
+      reordered.map((l) => l.id)
+    );
+    // The row already moved on screen; if the save failed, put back whatever
     // the database actually has rather than leave a lie on the page.
     if (!result.success) loadModules();
   }
@@ -404,9 +439,33 @@ export default function CourseEditorPage() {
                     {module.lessons.map((lesson, lIdx) => (
                       <div
                         key={lesson.id}
-                        className="flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60"
+                        draggable
+                        onDragStart={() => setDraggingLessonId(lesson.id)}
+                        onDragEnd={() => {
+                          setDraggingLessonId(null);
+                          setDragOverLessonId(null);
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOverLessonId(lesson.id);
+                        }}
+                        onDragLeave={() =>
+                          setDragOverLessonId((id) =>
+                            id === lesson.id ? null : id
+                          )
+                        }
+                        onDrop={() => handleDropLesson(module.id, lesson.id)}
+                        className={cn(
+                          "flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-muted/60",
+                          draggingLessonId === lesson.id && "opacity-40",
+                          dragOverLessonId === lesson.id &&
+                            draggingLessonId !== null &&
+                            draggingLessonId !== lesson.id &&
+                            "bg-primary/5 ring-1 ring-primary"
+                        )}
                       >
                         <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40 active:cursor-grabbing" />
                           <span className="text-muted-foreground">
                             {lessonTypeIcons[lesson.type]}
                           </span>

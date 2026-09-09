@@ -71,6 +71,29 @@ export async function updateLesson(
   return { success: true };
 }
 
+export async function reorderLessons(
+  moduleId: string,
+  courseId: string,
+  lessonIds: string[]
+) {
+  const supabase = await createClient();
+
+  // Positions are rewritten from scratch off the order handed in, so gaps left
+  // by earlier deletes close up and every lesson lands on its own number.
+  for (let i = 0; i < lessonIds.length; i++) {
+    const { error } = await supabase
+      .from("lessons")
+      .update({ position: i })
+      .eq("id", lessonIds[i])
+      .eq("module_id", moduleId);
+
+    if (error) return { success: false, error: error.message };
+  }
+
+  revalidatePath(`/instructor/courses/${courseId}`);
+  return { success: true };
+}
+
 export async function deleteLesson(lessonId: string, courseId: string) {
   const supabase = await createClient();
 
