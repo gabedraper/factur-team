@@ -52,6 +52,7 @@ import { getCollectionsVisibility } from "@/actions/collections";
 import { PageTiming } from "@/components/PageTiming";
 import { DialerProvider } from "@/components/work-panel/dialer-context";
 import { WorkPanel } from "@/components/work-panel/WorkPanel";
+import { myWork } from "@/actions/work";
 
 /*
  * The talent sections Factur actually works in.
@@ -259,6 +260,8 @@ export default async function DashboardLayout({
   );
   const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
   const showWorkPanel = perms.has("timelines.view");
+  /* Empty, cheaply, for anyone without the grant or before the first sync. */
+  const work = await myWork();
   const dialpadConfigured = Boolean(process.env.NEXT_PUBLIC_DIALPAD_CTI_CLIENT_ID);
   const telnyxConfigured = Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID);
   const twilioConfigured = Boolean(
@@ -342,6 +345,7 @@ export default async function DashboardLayout({
             lives in here now, and everyone needs to be able to reach it. The
             Calls section itself is still gated. */}
         <WorkPanel
+          work={work}
           showCalls={showWorkPanel}
           dialpadConfigured={dialpadConfigured}
           telnyxConfigured={telnyxConfigured}

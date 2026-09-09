@@ -228,3 +228,92 @@ No API exposes these; each is a person clicking through and rebuilding:
   A dead list is a dead process and should not get a spec.
 - The real status set per process, which decides how many boards we need.
 - Which custom fields are used often enough to become columns.
+
+---
+
+# Getting off ClickUp, in four phases
+
+The agreed shape: mirror it here, make the mirror two-way, reverse which side is
+authoritative, then switch ClickUp off. Written down because phases 3 and 4
+contain the only decisions in this project that cannot be walked back.
+
+## Phase 1 — read-only mirror, linked both ways
+
+ClickUp is authoritative. Nothing here writes to it.
+
+- Tasks land in `work_items`, matched to a process and a client.
+- Every row links **out** to ClickUp, where the task is still edited.
+- Every row links **in** to the screen the work is about, via
+  `lib/work-anchor.ts` — the leads page for targeting, activities for service
+  delivery, the client record otherwise.
+- Open work appears on the client page, in the right rail on every page, on
+  `/work`, and per-process on `/work/[slug]`.
+
+The inward link is the half that matters. A mirror that only sends people to
+ClickUp is an argument for keeping ClickUp.
+
+**Done except for data.** The sync has never run: it needs `CLICKUP_TOKEN` in
+`.env.local`, and until it has one every screen above correctly shows nothing.
+
+Exit condition: the workspace audit has run, the unmatched-client list has been
+read and the matcher fixed, and people recognise their own work here.
+
+## Phase 2 — two-way
+
+Both sides accept edits. This is the expensive phase and the one worth keeping
+short; the detail is under "Bidirectional sync" in the conversation that
+produced this file, but the parts that bite:
+
+- **Echo suppression.** Our write to ClickUp fires a webhook back at us. Without
+  fingerprinting our own writes this loops, at night, against a rate limit.
+- **Conflict rules.** Decide per client, not per field: whoever holds the client
+  in this phase owns it, and the other side is read-only for that client.
+- **Status mapping.** Statuses are per list, and six spellings of "Service
+  Delivery" means a translation table unless the cleanup happens first.
+- **The automation bot.** "Factur Automations" writes into that workspace.
+  Every rule touching a synced list has to be found by hand and switched off, or
+  our writes trigger theirs. ClickUp's API will not list them.
+
+Exit condition: a wave of clients has run for two weeks with edits on both sides
+and no divergence anyone noticed.
+
+## Phase 3 — reverse the authority
+
+This app is authoritative. ClickUp becomes the mirror, kept alive only for
+people and clients still working there.
+
+Mechanically this is phase 2 with the arrows swapped, but it is the moment the
+business starts depending on this app being up. Two things have to be true
+before the flip, and neither is code:
+
+- Everything ClickUp does that we do not is either rebuilt or consciously
+  dropped: dashboards, saved views, forms, whiteboards, proofing, the mobile
+  app, and the guest experience for the 15 external client users.
+- Somebody owns this app being available on a Tuesday morning.
+
+Exit condition: nobody's daily work requires opening ClickUp.
+
+## Phase 4 — switch ClickUp off
+
+The only irreversible step. Deleting the workspace destroys, permanently, the
+things no API ever exposed:
+
+- The full activity history. The API gives partial time-in-status and nothing
+  more, so "who changed this, when, and what did it say before" ends at the
+  cutover for every task ever created.
+- Automation definitions, dashboards, saved views, whiteboards, mind maps and
+  forms — as configuration, not just as content.
+- Comment threads and attachments not captured by the sync, including anything
+  posted by the external guests.
+
+Before anybody clicks delete:
+
+1. Export everything the API cannot reach, by hand, into a folder somebody owns.
+2. Take a final full sync and keep the raw JSON, not just the parsed rows.
+3. Downgrade rather than delete, and sit on it for a full quarter. A read-only
+   ClickUp plan costs less than one wrong deletion, and the questions that
+   reveal a gap — "what did we agree with this client in March" — arrive
+   monthly, not weekly.
+4. Only then delete, and only after the retention decision is written down.
+
+There is no exit condition for this one. It is a door that shuts behind you.

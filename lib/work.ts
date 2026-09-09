@@ -20,6 +20,7 @@ export type WorkItem = {
   pod: string | null;
   clientId: string | null;
   clientName: string | null;
+  opportunityId: string | null;
   space: string | null;
   folder: string | null;
   list: string | null;

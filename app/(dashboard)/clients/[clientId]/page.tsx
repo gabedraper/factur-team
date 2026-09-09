@@ -13,7 +13,7 @@ import { clientHistory } from "@/actions/client-history";
 import { Conversation } from "@/components/clients/Conversation";
 import { BillingSummary } from "@/components/clients/BillingSummary";
 import { Notes } from "@/components/clients/Notes";
-import { WorkPanel } from "@/components/work/WorkPanel";
+import { ClientWorkPanel } from "@/components/work/ClientWorkPanel";
 import { AgreementPanel } from "@/components/clients/AgreementPanel";
 import { ContactsPanel } from "@/components/clients/ContactsPanel";
 import { NpsPanel } from "@/components/clients/NpsPanel";
@@ -109,7 +109,7 @@ export default async function ClientPage({
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:gap-6">
         <div className="space-y-4">
-          <WorkPanel groups={work} />
+          <ClientWorkPanel groups={work} />
           <Notes clientId={clientId} notes={notes} />
           <Conversation entries={entries} clientId={clientId} />
         </div>

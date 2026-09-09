@@ -8,7 +8,7 @@ import { WorkRows } from "./WorkRows";
  * "what is happening on this account" has never been answerable in one place,
  * and answering it somewhere else would leave it that way.
  */
-export function WorkPanel({ groups }: { groups: WorkGroup[] }) {
+export function ClientWorkPanel({ groups }: { groups: WorkGroup[] }) {
   const total = groups.reduce((n, g) => n + g.items.length, 0);
 
   return (

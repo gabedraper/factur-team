@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Phone, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Phone, ListChecks, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialWidget } from "@/components/pipeline/DialWidget";
 import { TwilioDialWidget } from "@/components/pipeline/TwilioDialWidget";
 import { TelnyxDialWidget } from "@/components/pipeline/TelnyxDialWidget";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
+import { RailWork } from "@/components/work/RailWork";
+import type { WorkItem } from "@/lib/work";
 
 const STORAGE_KEY = "factur-work-panel-collapsed";
 
@@ -19,12 +21,14 @@ const STORAGE_KEY = "factur-work-panel-collapsed";
  * everything else in this panel: it's work you reach for from any page.
  */
 export function WorkPanel({
-  showCalls, dialpadConfigured, telnyxConfigured, twilioConfigured,
+  showCalls, dialpadConfigured, telnyxConfigured, twilioConfigured, work = [],
 }: {
   showCalls: boolean;
   dialpadConfigured: boolean;
   telnyxConfigured: boolean;
   twilioConfigured: boolean;
+  /** Open ClickUp work assigned to the viewer. Empty until the mirror runs. */
+  work?: WorkItem[];
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -79,6 +83,23 @@ export function WorkPanel({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {work.length > 0 && (
+        <div>
+          <div className={`flex items-center gap-2 border-b px-4 py-3 ${collapsed ? "justify-center px-2" : ""}`}>
+            <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+            {!collapsed && (
+              <>
+                <span className="text-sm font-semibold">ClickUp</span>
+                <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                  {work.length}
+                </span>
+              </>
+            )}
+          </div>
+          <RailWork items={work} collapsed={collapsed} />
         </div>
       )}
 

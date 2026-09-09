@@ -16,7 +16,7 @@ import { PRIORITY_ORDER } from "@/lib/work";
 
 const SELECT = `
   id, clickup_id, clickup_url, title, status, status_type, priority, due_at,
-  pod, client_id, clickup_space, clickup_folder, clickup_list,
+  pod, client_id, opportunity_id, clickup_space, clickup_folder, clickup_list,
   work_processes(slug, name, position),
   org_clients(name),
   work_item_assignees(name, member_id)
@@ -33,6 +33,7 @@ type Row = {
   due_at: string | null;
   pod: string | null;
   client_id: string | null;
+  opportunity_id: string | null;
   clickup_space: string | null;
   clickup_folder: string | null;
   clickup_list: string | null;
@@ -56,6 +57,7 @@ function toItem(r: Row): WorkItem {
     pod: r.pod,
     clientId: r.client_id,
     clientName: r.org_clients?.name ?? null,
+    opportunityId: r.opportunity_id,
     space: r.clickup_space,
     folder: r.clickup_folder,
     list: r.clickup_list,
