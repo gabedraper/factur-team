@@ -71,9 +71,24 @@ const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
 let db;
 
 function requireCredentials() {
-  if (!TOKEN) {
-    console.error("No CLICKUP_TOKEN. Add CLICKUP_TOKEN=pk_... to .env.local");
-    console.error("ClickUp -> avatar, bottom left -> Settings -> Apps -> API Token.");
+  if (!TOKEN || /your_token|YOUR_TOKEN|pk_xxx|<.*>/.test(TOKEN)) {
+    /*
+     * The placeholder case is called out separately because it is the likely
+     * one: these instructions get pasted, and a literal "pk_your_token_here"
+     * reaches ClickUp as a real request and comes back 401, which reads like a
+     * permissions problem rather than a copy-paste one.
+     */
+    console.error(
+      TOKEN
+        ? "CLICKUP_TOKEN is still the placeholder text, not a real token."
+        : "No CLICKUP_TOKEN found in the environment or .env.local."
+    );
+    console.error("");
+    console.error("  ClickUp -> your avatar, bottom left -> Settings -> Apps -> API Token");
+    console.error("  Generate, copy, then in ~/factur-team:");
+    console.error("");
+    console.error("    read -rsp 'Paste token: ' T && printf 'CLICKUP_TOKEN=%s\\n' \"$T\" >> .env.local && unset T");
+    console.error("");
     process.exit(1);
   }
   if (!SUPABASE_URL || !SERVICE_KEY) {
@@ -104,6 +119,12 @@ async function get(path, attempt = 0) {
     if (attempt > 4) throw new Error(`rate limited five times on ${path}`);
     await sleep(20_000 * (attempt + 1));
     return get(path, attempt + 1);
+  }
+  if (res.status === 401) {
+    throw new Error(
+      "401 from ClickUp: the token was rejected. Check it is a personal API " +
+      "token (starts pk_) and was copied whole, then retry."
+    );
   }
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} on ${path}`);
   return res.json();
