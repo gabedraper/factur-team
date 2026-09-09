@@ -38,6 +38,10 @@ const OBJECTS = [
  */
 const MAX_PER_OBJECT = 20_000;
 
+/* Rows per write. Wide enough to be worth a round trip, small enough that one
+ * statement finishes well inside the timeout. */
+const WRITE_BATCH = 500;
+
 /* Salesforce writes timestamps as 2026-09-09T11:22:33.000+0000. */
 function soqlTime(iso: string) {
   return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -114,8 +118,22 @@ export async function POST(request: NextRequest) {
         return out;
       });
 
-      const { error } = await db.from(mirror).upsert(payload, { onConflict: "Id" });
-      if (error) throw new Error(`${name}: writing to ${mirror} failed - ${error.message}`);
+      /*
+       * In batches, because these rows are wide -- an opportunity carries 335
+       * columns and a contact 339. A single upsert of a few thousand of them is
+       * megabytes of JSON and one very long statement, which is how the first
+       * run of this died: "canceling statement due to statement timeout". Small
+       * writes also mean a failure loses one batch rather than the whole run.
+       */
+      for (let i = 0; i < payload.length; i += WRITE_BATCH) {
+        const slice = payload.slice(i, i + WRITE_BATCH);
+        const { error } = await db.from(mirror).upsert(slice, { onConflict: "Id" });
+        if (error) {
+          throw new Error(
+            `${name}: writing rows ${i}-${i + slice.length} to ${mirror} failed - ${error.message}`,
+          );
+        }
+      }
 
       /* Advance only as far as the rows we actually stored. */
       const newest = payload[payload.length - 1].LastModifiedDate ?? since;

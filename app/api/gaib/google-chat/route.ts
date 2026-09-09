@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
 import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn } from "@/lib/gaib/chat";
+import { postToSpace } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 
 /*
@@ -239,6 +240,9 @@ async function answer(event: ChatEvent) {
     );
   }
 
+  /** Set when the turn carries on past the response and owns the session. */
+  let finishing = false;
+
   try {
     const sessionId = await conversationFor(person.userId, agent.id, event.spaceName);
 
@@ -276,11 +280,46 @@ async function answer(event: ChatEvent) {
 
     if (!text && ranOut) {
       /*
-       * Breaking out abandons the reply but not the work -- the loop writes
-       * each step to the database as it goes, so the answer finishes and is
-       * waiting in the panel. Saying so is better than a silence that looks
-       * like it was never asked.
+       * A question that outran Chat's patience.
+       *
+       * Breaking out of a `for await` calls return() on the generator, which
+       * ends it. The previous version of this said "I have kept working on it,
+       * open the app in a minute and the answer will be there" -- and the work
+       * had already stopped mid-tool-call, so there was never going to be an
+       * answer. Somebody asked a real question about a real prospect, was told
+       * to go and look, and found nothing.
+       *
+       * So the rest of the turn is genuinely finished, after the response has
+       * gone back to Chat, and the answer is posted into the same conversation
+       * when it is ready. The session is released in there rather than in the
+       * finally below, because the work still needs it.
        */
+      if (event.spaceName) {
+        finishing = true;
+        const space = event.spaceName;
+        after(async () => {
+          try {
+            const rest: string[] = [];
+            for await (const e of turn) {
+              if (e.type === "text") rest.push(e.text);
+              if (e.type === "error") rest.push(`Something went wrong: ${e.message}`);
+            }
+            const answer = rest.join("").trim();
+            if (answer) await postToSpace(space, answer);
+          } catch {
+            // Never worth taking anything else down for.
+          } finally {
+            await acting.session.release();
+          }
+        });
+
+        return reply(
+          "That one needs a bit more digging than Chat will wait for. " +
+            "I am still on it and will send the answer here in a moment.",
+          event
+        );
+      }
+
       return reply(
         "That is taking me longer than Chat will wait. I have kept working on it — " +
           "open Gaib in the app in a minute and the answer will be there.",
@@ -290,7 +329,9 @@ async function answer(event: ChatEvent) {
 
     return reply(text || "I do not have an answer for that.", event);
   } finally {
-    await acting.session.release();
+    // Not when the answer is still being written: the work that carries on
+    // after the response needs the session, and releases it itself.
+    if (!finishing) await acting.session.release();
   }
 }
 
