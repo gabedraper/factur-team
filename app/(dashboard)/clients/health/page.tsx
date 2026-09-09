@@ -30,10 +30,18 @@ export default async function ClientHealthPage({
    *
    * The choice is only honoured for someone entitled to make it, so a link to
    * ?scope=all shared with an account manager still shows them their own.
+   *
+   * Someone the client book never names has no clients of their own to be
+   * scoped to, so they see the whole board rather than an empty one. The scope
+   * is here to spare an account manager the other two hundred, not to withhold
+   * what the permission on this page has already granted.
    */
   const asked = params.scope === "all" ? true : params.scope === "mine" ? false : null;
   const showAll = scope.canSeeAll && (asked ?? scope.defaultAll);
-  const shown = showAll ? clients : clients.filter((c) => scope.mine.has(c.clientId));
+  const shown =
+    showAll || scope.mine.size === 0
+      ? clients
+      : clients.filter((c) => scope.mine.has(c.clientId));
 
   /*
    * Over every client, before either filter. A client's Client Performance
