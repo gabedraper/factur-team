@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { createModule } from "@/actions/modules";
+import { cn } from "@/lib/utils";
+import { createModule, reorderModules } from "@/actions/modules";
 import { createLesson, deleteLesson } from "@/actions/lessons";
 import { publishCourse, updateCourse } from "@/actions/courses";
 import {
@@ -43,6 +44,7 @@ import {
   ChevronDown,
   ChevronRight,
   Eye,
+  GripVertical,
 } from "lucide-react";
 
 interface Lesson {
@@ -98,6 +100,8 @@ export default function CourseEditorPage() {
   // Three states, not two: still fetching, versus fetched and there is nothing
   // to show. Collapsing them left the page saying "Loading course..." forever.
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [draggingModuleId, setDraggingModuleId] = useState<string | null>(null);
+  const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
 
   useEffect(() => {
     loadCourse();
@@ -182,6 +186,30 @@ export default function CourseEditorPage() {
     if (!course) return;
     await publishCourse(courseId, !course.is_published);
     loadCourse();
+  }
+
+  // Modules are taught in sequence, so dropping one onto another slides it into
+  // that slot and everything in between shuffles along. The "Module N" labels
+  // are just the row index, so they renumber themselves once the list moves.
+  async function handleDropModule(targetId: string) {
+    const sourceId = draggingModuleId;
+    setDraggingModuleId(null);
+    setDragOverModuleId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    const from = modules.findIndex((m) => m.id === sourceId);
+    const to = modules.findIndex((m) => m.id === targetId);
+    if (from === -1 || to === -1) return;
+
+    const reordered = [...modules];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    setModules(reordered);
+
+    const result = await reorderModules(courseId, reordered.map((m) => m.id));
+    // The list already moved on screen; if the save failed, put back whatever
+    // the database actually has rather than leave a lie on the page.
+    if (!result.success) loadModules();
   }
 
   function toggleModule(moduleId: string) {
@@ -330,10 +358,32 @@ export default function CourseEditorPage() {
           {modules.map((module, mIdx) => (
             <Card key={module.id}>
               <CardHeader
-                className="py-3 px-4 cursor-pointer hover:bg-muted/50 flex flex-row items-center justify-between"
+                draggable
+                onDragStart={() => setDraggingModuleId(module.id)}
+                onDragEnd={() => {
+                  setDraggingModuleId(null);
+                  setDragOverModuleId(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOverModuleId(module.id);
+                }}
+                onDragLeave={() =>
+                  setDragOverModuleId((id) => (id === module.id ? null : id))
+                }
+                onDrop={() => handleDropModule(module.id)}
+                className={cn(
+                  "py-3 px-4 cursor-pointer hover:bg-muted/50 flex flex-row items-center justify-between",
+                  draggingModuleId === module.id && "opacity-40",
+                  dragOverModuleId === module.id &&
+                    draggingModuleId !== null &&
+                    draggingModuleId !== module.id &&
+                    "bg-primary/5 ring-1 ring-primary"
+                )}
                 onClick={() => toggleModule(module.id)}
               >
                 <div className="flex items-center gap-2">
+                  <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground/40 active:cursor-grabbing" />
                   {expandedModules.has(module.id) ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
