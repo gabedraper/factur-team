@@ -43,6 +43,7 @@ import { join } from "node:path";
 const args = process.argv.slice(2);
 const DRY = args.includes("--dry-run");
 const SKIP_EMPTY = args.includes("--skip-empty");
+const SHOW_UNMATCHED = args.includes("--show-unmatched");
 const ONLY_SPACE = (args.find((a) => a.startsWith("--space=")) || "").split("=")[1];
 
 // ---------------------------------------------------------------------------
@@ -182,10 +183,30 @@ export function folderName(name) {
  * cheerfully attach half the book to one client.
  */
 export function buildMatcher({ clients, aliases }) {
-  const byName = new Map();
+  /*
+   * A name shared by more than one client is not a match, it is a coin toss.
+   *
+   * The roster holds twenty rows all called exactly "Certapro Painters", and
+   * the first version handed every CertaPro task -- Rock Hill, Nashua,
+   * Plymouth, Indianapolis, Grand Rapids -- to whichever of the twenty came
+   * back first. Filing work against the wrong client is worse than leaving it
+   * unfiled, because nobody rechecks a row that looks right. Ambiguous names
+   * are dropped from the matcher entirely and their tasks stay unmatched, which
+   * is the honest answer until the duplicates are cleaned up.
+   */
+  const seen = new Map();
   for (const c of clients ?? []) {
     const k = norm(c.name);
-    if (k && !byName.has(k)) byName.set(k, c.id);
+    if (!k) continue;
+    if (seen.has(k)) seen.get(k).push(c.id);
+    else seen.set(k, [c.id]);
+  }
+
+  const byName = new Map();
+  let ambiguous = 0;
+  for (const [k, ids] of seen) {
+    if (ids.length === 1) byName.set(k, ids[0]);
+    else ambiguous++;
   }
 
   let orphanAliases = 0;
@@ -204,6 +225,43 @@ export function buildMatcher({ clients, aliases }) {
   }
   prefixes.sort((a, b) => b[0].length - a[0].length);
 
+  /*
+   * Names safe to hunt for anywhere inside a task title.
+   *
+   * The Finance list does not follow one convention. "Client Moved to MTM - 30
+   * Day Contract Notice -- O-Ring Sales" puts the client last; "Un-Pause
+   * Invoices for Atlantic Combustion" puts it in the middle; "Amherst Tool 1
+   * Month Concession" puts it first with no separator. Matching only the prefix
+   * before " - " found 326 of 638 tasks in that space.
+   *
+   * Scanning the whole title is worth it, but only for names long enough that a
+   * hit is not a coincidence. The roster contains "Key", "IDS", "Gpa" and
+   * "Mooney" -- and Mooney is also a colleague's surname, so "Meghan Mooney -
+   * March Comp" would file itself under a client. Nine characters is the floor,
+   * matched on whole words only.
+   *
+   * "Factur" is excluded outright: it is in the roster as a client, and half
+   * the internal finance work mentions it.
+   */
+  const scan = [];
+  const SELF = /^factur\b/;
+  for (const [k, id] of byName) {
+    if (k.length >= 9 && !SELF.test(k)) scan.push([k, id]);
+  }
+  for (const [k, id] of prefixes) {
+    if (k.length >= 9 && !SELF.test(k)) scan.push([k, id]);
+  }
+  scan.sort((a, b) => b[0].length - a[0].length);
+
+  /* Longest name wins, so "Turner Machine Tool" beats "Turner Machine". */
+  function scanTitle(title) {
+    const t = " " + norm(title) + " ";
+    for (const [name, id] of scan) {
+      if (t.includes(" " + name + " ")) return [id, "title_scan"];
+    }
+    return [null, null];
+  }
+
   function lookup(raw) {
     const k = norm(raw);
     if (!k) return [null, null];
@@ -215,7 +273,7 @@ export function buildMatcher({ clients, aliases }) {
   }
 
   return {
-    stats: { clients: byName.size, aliases: prefixes.length, orphanAliases },
+    stats: { clients: byName.size, aliases: prefixes.length, orphanAliases, scannable: scan.length, ambiguous },
 
     /** Folder first, then the "<Client> - <Event>" title convention. */
     clientFor(folder, title) {
@@ -228,7 +286,9 @@ export function buildMatcher({ clients, aliases }) {
         const [id] = lookup(dash);
         if (id) return [id, "title"];
       }
-      return [null, null];
+      /* Last, because it is the loosest rule and should never pre-empt one of
+       * the exact ones above. */
+      return scanTitle(title);
     },
   };
 }
@@ -261,6 +321,8 @@ async function main() {
   console.log(
     `${processes?.length ?? 0} processes, ${matcher.stats.clients} clients, ` +
     `${matcher.stats.aliases} alias prefixes (${matcher.stats.orphanAliases} orphaned), ` +
+    `${matcher.stats.scannable} scannable names, ` +
+    `${matcher.stats.ambiguous} ambiguous names dropped, ` +
     `${byEmail.size} members`
   );
 
@@ -314,6 +376,9 @@ async function main() {
 
   let seen = 0, written = 0, unmatched = 0;
   const unmatchedFolders = new Map();
+  const unmatchedTitles = [];
+  const scanMatches = [];
+  const nameById = new Map((clients ?? []).map((c) => [c.id, c.name]));
 
   for (const [i, target] of lists.entries()) {
     const process = processFor(target.list.name);
@@ -333,6 +398,10 @@ async function main() {
           unmatched++;
           const key = target.folder || `${target.space} / ${target.list.name}`;
           unmatchedFolders.set(key, (unmatchedFolders.get(key) ?? 0) + 1);
+          if (SHOW_UNMATCHED) unmatchedTitles.push(t.name);
+        } else if (SHOW_UNMATCHED && how === "title_scan") {
+          /* The loosest rule, so its output is the one worth eyeballing. */
+          scanMatches.push(`${nameById.get(clientId) ?? "?"}  <-  ${t.name}`);
         }
 
         const ms = (v) => (v ? new Date(Number(v)).toISOString() : null);
@@ -444,6 +513,16 @@ async function main() {
       .slice(0, 30)
       .forEach(([name, n]) => console.log(`  ${String(n).padStart(5)}  ${name}`));
   }
+  if (SHOW_UNMATCHED && scanMatches.length) {
+    console.log(`\nMatched by scanning the title (first 40 of ${scanMatches.length}):`);
+    for (const m of scanMatches.slice(0, 40)) console.log(`  ${m}`);
+  }
+
+  if (SHOW_UNMATCHED && unmatchedTitles.length) {
+    console.log(`\nUnmatched task titles (first 60 of ${unmatchedTitles.length}):`);
+    for (const t of unmatchedTitles.slice(0, 60)) console.log(`  ${t}`);
+  }
+
   if (DRY) console.log("\n--dry-run: nothing was written.");
 }
 
