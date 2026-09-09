@@ -91,7 +91,7 @@ export function QuickbooksLinks({
                     >
                       <option value="">— nobody —</option>
                       {clients.map((c) => (
-                        <option key={c.id} value={c.id} disabled={Boolean(c.matchedTo)}>
+                        <option key={c.id} value={c.id}>
                           {c.name}
                           {c.active ? "" : "  (Inactive Client)"}
                           {c.matchedTo

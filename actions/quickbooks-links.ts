@@ -25,18 +25,22 @@ export async function listUnmatchedQuickbooks(): Promise<UnmatchedCustomer[]> {
 }
 
 /**
- * Every client, with the ones already spoken for marked and sent to the bottom.
+ * Every client, in one alphabetical list, with the ones already spoken for
+ * marked as such.
  *
  * Inactive clients are in. Matching exists to attach an open balance to whoever
  * ran up the debt, and most unattached balances belong to somebody who has
  * since left -- a list of current clients only cannot answer the question it is
  * being asked.
  *
- * Clients already tied to a customer are in too, but last and unselectable.
- * Leaving them out entirely was tidier and told a lie by omission: somebody
- * checking whether the screen worked searched for a client she knew existed,
- * did not find it, and reasonably concluded it was broken. An absent name meant
- * either "not here" or "already done" and the screen would not say which.
+ * Clients already tied to a customer are in too, pickable, and in the same
+ * alphabetical run as everybody else. Leaving them out was a lie by omission;
+ * greying them out at the bottom was the same lie said more quietly, and the
+ * premise under both -- a client has one set of books -- is not what the books
+ * say. QuickBooks writes the same company two or three ways, so a client
+ * already holding one of those customers is exactly the answer somebody is
+ * hunting for on the next. The name it is matched to is written beside it, and
+ * a person decides.
  */
 export type LinkableClient = {
   id: string;
@@ -71,12 +75,9 @@ export async function listClientsForLinking(): Promise<LinkableClient[]> {
       active: c.active && (c.status ?? "") !== "Inactive",
       matchedTo: spoken_for.get(c.id)?.join(", ") ?? null,
     }))
-    // Free names first, alphabetical; taken ones after, alphabetical again.
-    .sort(
-      (a, b) =>
-        Number(Boolean(a.matchedTo)) - Number(Boolean(b.matchedTo)) ||
-        a.name.localeCompare(b.name)
-    );
+    // Plain alphabetical, in one run. A list that starts at A again halfway
+    // down reads as a list that does not hold the name being looked for.
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
