@@ -396,13 +396,25 @@ jobs:
             echo "Gaib-Ticket: $TICKET"
           } > /tmp/pr.md
 
-          # The branch is pushed by now, so the work exists either way. If the
-          # pull request cannot be opened -- the repository setting that allows
-          # it is off by default, and that is exactly how this failed the first
-          # two times -- fall back to a compare link so the change is still one
-          # click away rather than lost behind a red cross.
-          URL=$(gh pr create --title "$(cat /tmp/title.txt)" --body-file /tmp/pr.md \
-                  --base main --head "$BRANCH" 2>/tmp/pr-error.txt) || URL=""
+          # A second run on the same ticket reuses the same branch, so the pull
+          # request from the first run is already there and `gh pr create`
+          # refuses. That refusal used to fall through to the compare link
+          # below, which overwrote a working pull request address with one that
+          # cannot be merged -- so "Merge and ship" failed on exactly the
+          # tickets that had been round twice. Asked for first, rather than
+          # discovered by failing.
+          URL=$(gh pr list --head "$BRANCH" --base main --state open \
+                  --json url --jq '.[0].url // empty' 2>/dev/null) || URL=""
+
+          if [ -z "$URL" ]; then
+            # The branch is pushed by now, so the work exists either way. If the
+            # pull request cannot be opened -- the repository setting that allows
+            # it is off by default, and that is exactly how this failed the first
+            # two times -- fall back to a compare link so the change is still one
+            # click away rather than lost behind a red cross.
+            URL=$(gh pr create --title "$(cat /tmp/title.txt)" --body-file /tmp/pr.md \
+                    --base main --head "$BRANCH" 2>/tmp/pr-error.txt) || URL=""
+          fi
 
           if [ -z "$URL" ]; then
             cat /tmp/pr-error.txt

@@ -617,7 +617,47 @@ export async function mergeTicket(ticketId: string): Promise<{ ok: boolean; erro
   if (!token) return { ok: false, error: "No GitHub token is configured" };
 
   // .../owner/repo/pull/123
-  const parts = ticket.pr_url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  let parts = ticket.pr_url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+
+  /*
+   * A compare link instead of a pull request.
+   *
+   * The agent falls back to one when it cannot open a pull request, and for a
+   * while the commonest reason was that the pull request already existed --
+   * so a ticket that went round twice ended up pointing at a page that cannot
+   * be merged, having overwritten the address of the one that can. The
+   * workflow no longer does that, but tickets from before it are still sitting
+   * in the queue, and the branch name in the link is enough to find the real
+   * one.
+   */
+  if (!parts) {
+    const compare = ticket.pr_url.match(
+      /github\.com\/([^/]+)\/([^/]+)\/compare\/[^.]+\.\.\.(.+)$/
+    );
+    if (compare) {
+      const [, owner, repo, branch] = compare;
+      const found = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls` +
+          `?state=open&head=${owner}:${decodeURIComponent(branch)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        }
+      ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+      const open = (found as { html_url?: string }[] | null)?.[0]?.html_url;
+      if (open) {
+        // Put the real one back, so this is looked up once rather than on
+        // every press.
+        await db.from("gaib_tickets").update({ pr_url: open }).eq("id", ticket.id);
+        parts = open.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+      }
+    }
+  }
+
   if (!parts) return { ok: false, error: `Could not read the pull request address: ${ticket.pr_url}` };
   const [, owner, repo, number] = parts;
 
