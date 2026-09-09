@@ -16,6 +16,14 @@ export type ClientScope = {
  */
 const LEAD_COLUMNS = ["team_lead_id", "data_team_lead_id"] as const;
 
+/*
+ * The strategist is still named on the client record too, so a strategist's
+ * own accounts are missing from My Clients if only the assignments table is
+ * read. Kept apart from LEAD_COLUMNS: being the strategist puts a client in
+ * your list, it does not make you a lead who may ask for all of them.
+ */
+const MINE_COLUMNS = [...LEAD_COLUMNS, "marketing_strategist_id"] as const;
+
 /**
  * Which clients a person sees, and whether they may ask for the rest.
  *
@@ -40,7 +48,7 @@ export async function clientScope(): Promise<ClientScope> {
 
   const [{ data: led }, { data: assigned }] = await Promise.all([
     db.from("org_clients").select("id")
-      .or(LEAD_COLUMNS.map((c) => `${c}.eq.${memberId}`).join(",")),
+      .or(MINE_COLUMNS.map((c) => `${c}.eq.${memberId}`).join(",")),
     db.from("org_client_assignments").select("client_id").eq("member_id", memberId),
   ]);
 
