@@ -193,6 +193,12 @@ export default function LessonViewerPage() {
     return url;
   }
 
+  // Saved addresses often have no scheme (play.vidyard.com/...), which would
+  // make the link relative to this page instead of pointing at the video.
+  function toExternalHref(url: string): string {
+    return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+  }
+
   return (
     <div className="p-6 max-w-4xl pb-20">
       {/* Breadcrumb */}
@@ -291,22 +297,36 @@ export default function LessonViewerPage() {
       {/* Lesson content */}
       <div className="mb-6">
         {lesson.type === "video" && content?.url && (
-          <div className="rounded-lg overflow-hidden bg-black aspect-video">
-            {isYouTube(content.url) ? (
-              <iframe
-                src={toYouTubeEmbed(content.url)}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video
-                src={content.url}
-                controls
-                className="w-full h-full"
-              />
-            )}
-          </div>
+          <>
+            <div className="rounded-lg overflow-hidden bg-black aspect-video">
+              {isYouTube(content.url) ? (
+                <iframe
+                  src={toYouTubeEmbed(content.url)}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={content.url}
+                  controls
+                  className="w-full h-full"
+                />
+              )}
+            </div>
+            {/* Always show the address, so a player that won't load isn't a dead end */}
+            <p className="mt-2 text-sm text-muted-foreground">
+              Trouble playing? Watch it here instead:{" "}
+              <a
+                href={toExternalHref(content.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline break-all hover:text-foreground"
+              >
+                {content.url}
+              </a>
+            </p>
+          </>
         )}
 
         {lesson.type === "text" && content?.body && (
