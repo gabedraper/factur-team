@@ -23,6 +23,7 @@ export const maxDuration = 300;
 
 /** Objects in dependency order, with the mirror each one lands in. */
 const OBJECTS = [
+  { name: "Clients__c", mirror: "sky_Client" },
   { name: "Account", mirror: "sky_Account" },
   { name: "Contact", mirror: "sky_Contact" },
   { name: "Opportunity", mirror: "sky_Opportunity" },
