@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { setCallActive } from "@/lib/calls/active";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
@@ -52,6 +53,21 @@ export function DialWidget() {
   const [claiming, setClaiming] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * Say so, for the right rail. It refuses to fold the Calls section away
+   * while this is true -- collapsing the panel out from under somebody who is
+   * mid-call is the one thing it must never do.
+   *
+   * Clearing it is its own effect, running only on unmount. Returned from the
+   * one above it would fire on every change of state, setting the flag false
+   * and true again in the same tick -- and a listener that saw the false would
+   * fold the section away underneath a live call.
+   */
+  useEffect(() => {
+    setCallActive(callState === "dialing" || callState === "ringing");
+  }, [callState]);
+  useEffect(() => () => setCallActive(false), []);
 
   useEffect(() => {
     if (!CTI_CLIENT_ID) return;
