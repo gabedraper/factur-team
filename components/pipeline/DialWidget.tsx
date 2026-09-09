@@ -7,6 +7,7 @@ import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber } from "@/actions/dialer";
 import { useCallTarget } from "@/components/work-panel/dialer-context";
+import { toE164 } from "@/lib/phone";
 
 /*
  * Click-to-dial, embedded.
@@ -83,6 +84,15 @@ export function DialWidget() {
       setError("This contact has no phone number on file.");
       return;
     }
+    // crm_contacts.phone comes out of Salesforce in whatever shape it was
+    // typed in over the years -- Dialpad's initiate_call silently does
+    // nothing if this isn't clean E.164, which read as "click to dial is
+    // broken" rather than "this contact's number is malformed."
+    const phoneNumber = toE164(target.phoneNumber);
+    if (!phoneNumber) {
+      setError(`This contact's phone number doesn't look valid: "${target.phoneNumber}".`);
+      return;
+    }
     setError(null);
     setClaiming(true);
     try {
@@ -99,7 +109,7 @@ export function DialWidget() {
       commit();
       setCallState("dialing");
       postToDialer(frameRef.current, "initiate_call", {
-        phone_number: target.phoneNumber,
+        phone_number: phoneNumber,
         outbound_caller_id: outboundCallerId,
         custom_data: JSON.stringify({ opportunity_id: target.opportunityId }),
       });

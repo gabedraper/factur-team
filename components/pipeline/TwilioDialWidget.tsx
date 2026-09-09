@@ -7,6 +7,7 @@ import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber, getTwilioVoiceToken } from "@/actions/dialer";
 import { useCallTarget } from "@/components/work-panel/dialer-context";
+import { toE164 } from "@/lib/phone";
 
 /*
  * Click-to-dial via Twilio's Voice SDK -- Plan B while the Dialpad Mini
@@ -76,6 +77,15 @@ export function TwilioDialWidget() {
     const device = deviceRef.current;
     if (!device) return;
 
+    // crm_contacts.phone comes out of Salesforce in whatever shape it was
+    // typed in over the years -- normalize to E.164 rather than sending
+    // whatever's on file straight to Twilio.
+    const to = toE164(target.phoneNumber);
+    if (!to) {
+      setError(`This contact's phone number doesn't look valid: "${target.phoneNumber}".`);
+      return;
+    }
+
     setError(null);
     setClaiming(true);
     try {
@@ -92,7 +102,7 @@ export function TwilioDialWidget() {
       commit();
       setCallState("dialing");
       const call = await device.connect({
-        params: { To: target.phoneNumber, CallerId: outboundCallerId, OpportunityId: target.opportunityId },
+        params: { To: to, CallerId: outboundCallerId, OpportunityId: target.opportunityId },
       });
       callRef.current = call;
       call.on("accept", () => setCallState("ringing"));

@@ -10,6 +10,7 @@ import { Keypad } from "@/components/pipeline/Keypad";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber, getTelnyxVoiceToken, sendSms } from "@/actions/dialer";
 import { useCallTarget } from "@/components/work-panel/dialer-context";
+import { toE164 } from "@/lib/phone";
 
 /*
  * Click-to-dial via Telnyx's WebRTC SDK -- Plan C. Twilio's own signup
@@ -118,10 +119,20 @@ export function TelnyxDialWidget() {
 
   /** overrideNumber comes from the keypad; omitted, this calls the Opportunity's own contact. */
   async function placeCall(overrideNumber?: string) {
-    const number = overrideNumber ?? target?.phoneNumber;
-    if (!number) { setError("This contact has no phone number on file."); return; }
+    const raw = overrideNumber ?? target?.phoneNumber;
+    if (!raw) { setError("This contact has no phone number on file."); return; }
     const client = clientRef.current;
     if (!client) return;
+
+    // crm_contacts.phone comes out of Salesforce in whatever shape it was
+    // typed in over the years -- Telnyx silently drops a call to anything
+    // that isn't clean E.164, which read as "the call didn't initiate"
+    // rather than "this number is malformed."
+    const number = toE164(raw);
+    if (!number) {
+      setError(`That doesn't look like a valid number: "${raw}".`);
+      return;
+    }
 
     setError(null);
     setClaiming(true);
@@ -161,9 +172,13 @@ export function TelnyxDialWidget() {
   }
 
   async function sendText() {
-    const to = manualNumber.trim();
     const text = smsBody.trim();
-    if (!to || !text) return;
+    if (!manualNumber.trim() || !text) return;
+    const to = toE164(manualNumber);
+    if (!to) {
+      setError(`That doesn't look like a valid number: "${manualNumber}".`);
+      return;
+    }
 
     setError(null);
     setSmsSent(false);
