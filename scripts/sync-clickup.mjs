@@ -90,7 +90,9 @@ function requireCredentials() {
     console.error("  https://app.clickup.com/settings/apps  ->  API Token  ->  Generate");
     console.error("  Generate, copy, then in ~/factur-team:");
     console.error("");
-    console.error("    read -rsp 'Paste token: ' T && printf 'CLICKUP_TOKEN=%s\\n' \"$T\" >> .env.local && unset T");
+    /* zsh syntax: macOS defaults to zsh, where bash's `read -rsp prompt VAR`
+     * reads nothing at all and silently writes an empty token. */
+    console.error("    read -rs \"T?Paste token: \" && printf 'CLICKUP_TOKEN=%s\\n' \"$T\" >> .env.local && unset T");
     console.error("");
     process.exit(1);
   }
