@@ -158,21 +158,52 @@ export async function searchDrive(
   }));
 }
 
-/** The text of one Doc, for when a search hit needs reading rather than listing. */
+/**
+ * The text of one file, for when a search hit needs reading rather than listing.
+ *
+ * The export format follows the file. A Doc comes back as plain text; a Sheet
+ * cannot be exported as plain text at all -- asking for it returns an error
+ * body, which is what made spreadsheets look unreadable rather than merely
+ * unsupported -- so a Sheet comes back as CSV.
+ *
+ * Note that CSV export gives the *first* tab only. A workbook with several tabs
+ * will read as just the first one, which is worth knowing before concluding a
+ * sheet is missing rows.
+ */
 export async function fetchDocText(
   actAs: string,
   fileId: string,
   cap = 12000
 ): Promise<string> {
   const token = await tokenFor("drive", actAs);
+  const id = encodeURIComponent(fileId);
+
+  const meta = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${id}?fields=mimeType&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const kind = meta.ok
+    ? ((await meta.json()) as { mimeType?: string }).mimeType ?? ""
+    : "";
+
+  const format =
+    kind === "application/vnd.google-apps.spreadsheet" ? "text/csv" : "text/plain";
+
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text/plain`,
+    `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=${format}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) {
-    // Anything that is not a Google Doc cannot be exported this way. Say which
-    // rather than returning an empty string that reads as an empty document.
-    throw new Error(`Drive ${res.status}: this file cannot be read as text`);
+    /*
+     * Only Google's own formats can be exported. A PDF or an uploaded .xlsx
+     * needs downloading instead, which this does not do -- so say which file it
+     * was and what it is, rather than returning an empty string that reads as
+     * an empty document.
+     */
+    throw new Error(
+      `Drive ${res.status}: this file cannot be read as text` +
+        (kind ? ` (it is ${kind})` : "")
+    );
   }
   return (await res.text()).slice(0, cap);
 }
