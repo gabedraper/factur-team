@@ -83,13 +83,29 @@ export function TicketCard({
       asked_at: string; answered_at: string | null; closed_at: string | null }[] | null
   >(null);
   const [error, setError] = useState("");
+  /*
+   * What just happened, when the card cannot show it by changing.
+   *
+   * Merging deliberately does not set the status -- the workflow that watches
+   * for the merge does, so "shipped" means the code actually landed rather than
+   * that a button was pressed. The gap is several seconds, during which the
+   * card looked untouched and said nothing, so the honest reading was that the
+   * press had not worked. Everybody pressed it twice, and the log shows two
+   * merges on nearly every ticket.
+   */
+  const [done, setDone] = useState("");
   const [pending, start] = useTransition();
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  function run(
+    fn: () => Promise<{ ok: boolean; error?: string }>,
+    said?: string
+  ) {
     setError("");
+    setDone("");
     start(async () => {
       const r = await fn();
       if (!r.ok) setError(r.error ?? "That didn't work");
+      else if (said) setDone(said);
     });
   }
 
@@ -305,16 +321,31 @@ export function TicketCard({
               which threw away finished work on the first.
             */}
             {ticket.pr_url ? (
-              <Button size="sm" disabled={pending} onClick={() => run(() => mergeTicket(ticket.id))}>
-                Merge and ship
+              <Button
+                size="sm"
+                // Stays disabled after it works. A merged pull request cannot be
+                // merged again, and the second press was only ever asking for
+                // reassurance the card should have given the first time.
+                disabled={pending || done !== ""}
+                onClick={() =>
+                  run(() => mergeTicket(ticket.id), "Merged — shipped in a moment")
+                }
+              >
+                {done ? "Merged" : "Merge and ship"}
               </Button>
             ) : (
-              <Button size="sm" disabled={pending} onClick={() => run(() => approveTicket(ticket.id))}>
+              <Button
+                size="sm"
+                disabled={pending || done !== ""}
+                onClick={() =>
+                  run(() => approveTicket(ticket.id), "Sent to the agent")
+                }
+              >
                 {ticket.kind === "idea" ? "Build it" : "Hand to the agent"}
               </Button>
             )}
             {ticket.status === "failed" && (
-              <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => retryTicket(ticket.id))}>
+              <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => retryTicket(ticket.id), "Sent back to the agent")}>
                 Retry
               </Button>
             )}
@@ -332,24 +363,24 @@ export function TicketCard({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={pending}
-                onClick={() => run(() => rejectTicket(ticket.id, why))}
+                disabled={pending || done !== ""}
+                onClick={() => run(() => rejectTicket(ticket.id, why), "Rejected")}
               >
                 Reject
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={pending}
-                onClick={() => run(() => closeTicket(ticket.id, "shipped", why))}
+                disabled={pending || done !== ""}
+                onClick={() => run(() => closeTicket(ticket.id, "shipped", why), "Marked shipped")}
               >
                 Mark shipped
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
-                disabled={pending}
-                onClick={() => run(() => closeTicket(ticket.id, "duplicate", why))}
+                disabled={pending || done !== ""}
+                onClick={() => run(() => closeTicket(ticket.id, "duplicate", why), "Marked duplicate")}
               >
                 Duplicate
               </Button>
@@ -391,6 +422,7 @@ export function TicketCard({
             </p>
           )}
 
+          {done && <p className="text-sm text-muted-foreground">{done}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}
