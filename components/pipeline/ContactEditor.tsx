@@ -1,98 +1,62 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Check, Phone as PhoneIcon } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Phone as PhoneIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/pipeline/bits";
-import { updateContact } from "@/actions/pipeline";
 import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
 
+/**
+ * Read-only on purpose: crm_contacts is a one-way Salesforce sync (see
+ * lib/integrations/catalogue.ts), so an edit made here can't push back and
+ * gets silently overwritten the next time that sync runs. An editable
+ * version of this panel existed briefly but never actually stuck -- the
+ * save button looked permanently "dirty" because nothing here re-fetched
+ * the saved value afterward, which read as "isn't saving" even when it
+ * technically was. Fixing that properly wasn't worth it for a value this
+ * panel doesn't own; wrong numbers get fixed in Salesforce.
+ */
 export function ContactEditor({
-  contactId, phone, email, industry,
+  phone, email, industry,
 }: {
-  contactId: string;
   phone: string | null;
   email: string | null;
   industry: string | null;
 }) {
-  const initial = { phone: phone ?? "", email: email ?? "" };
-  const [state, setState] = useState(initial);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
   const { requestCall } = useDialer();
-
-  // Explicit Save rather than auto-save-on-blur: these fields double as the
-  // number a click-to-dial affordance would read from, and a click meant to
-  // dial shouldn't also fire a blur-triggered save.
-  const dirty = state.phone !== initial.phone || state.email !== initial.email;
-
-  // Dials whatever's currently in the field, saved or not -- crm_contacts.phone
-  // is Salesforce-sourced and often not clean E.164 (parens/dashes, a
-  // spreadsheet-import ".0" suffix, even outright corrupted "+XXX ..."
-  // entries), so this is null more often than it should be. That's surfaced
-  // below rather than silently disabling the button with no explanation.
-  const dialableNumber = toE164(state.phone);
-
-  function save() {
-    setError(null);
-    start(async () => {
-      const result = await updateContact(contactId, { phone: state.phone || null, email: state.email || null });
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    });
-  }
+  const dialableNumber = toE164(phone);
 
   return (
-    <Panel title="Contact" action={saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3 w-3" /> Saved</span>}>
-      <div className="space-y-3 p-4 text-sm">
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div>
-          <label className="text-xs text-muted-foreground">Phone</label>
-          <div className="flex gap-2">
-            <Input
-              value={state.phone}
-              onChange={(e) => setState((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="+14155551234"
-              className="tabular-nums"
-            />
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              title={dialableNumber ? `Call ${dialableNumber}` : "This number doesn't look valid"}
-              disabled={!dialableNumber}
-              onClick={() => dialableNumber && requestCall(dialableNumber)}
-            >
-              <PhoneIcon className="h-4 w-4" />
-            </Button>
-          </div>
-          {state.phone.trim() && !dialableNumber && (
-            <p className="mt-1 text-xs text-red-600">Doesn&apos;t look like a valid number.</p>
-          )}
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground">Email</label>
-          <Input
-            type="email"
-            value={state.email}
-            onChange={(e) => setState((s) => ({ ...s, email: e.target.value }))}
-          />
+    <Panel title="Contact">
+      <dl className="space-y-2 p-4 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Phone</dt>
+          <dd className="flex items-center gap-2 tabular-nums">
+            {phone ?? "—"}
+            {phone && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-6 w-6"
+                title={dialableNumber ? `Call ${dialableNumber}` : "This number doesn't look valid"}
+                disabled={!dialableNumber}
+                onClick={() => dialableNumber && requestCall(dialableNumber)}
+              >
+                <PhoneIcon className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-xs text-muted-foreground">Industry</span>
-          <span>{industry ?? "—"}</span>
+          <dt className="text-muted-foreground">Email</dt>
+          <dd className="truncate">{email ?? "—"}</dd>
         </div>
-        <Button size="sm" onClick={save} disabled={!dirty || pending}>
-          Save
-        </Button>
-      </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">Industry</dt>
+          <dd>{industry ?? "—"}</dd>
+        </div>
+      </dl>
     </Panel>
   );
 }

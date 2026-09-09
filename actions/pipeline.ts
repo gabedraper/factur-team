@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { currentMemberId, myPermissions } from "@/lib/org";
+import { currentMemberId } from "@/lib/org";
 import { assertPipeline } from "@/lib/pipeline/access";
 
 /**
@@ -247,34 +247,6 @@ export async function searchCrmAccounts(
 
   const results = data as unknown as AccountMatch[];
   return { results, total: count ?? results.length };
-}
-
-/**
- * crm_contacts is "read-only in the app on purpose" everywhere else (see
- * lib/integrations/catalogue.ts) -- it's a one-way Salesforce sync, and an
- * edit here can't push back and may get silently overwritten next time that
- * sync runs. Phone/email are the exception: reps need to fix a wrong number
- * before they can dial it, and crm_contacts_manual_write already gates this
- * to org.manage at the RLS layer, so this is exposing a capability that
- * already existed rather than adding a new one. Name and account stay
- * untouched -- those are the identity fields, not operational ones.
- */
-export async function updateContact(
-  id: string,
-  patch: { phone?: string | null; email?: string | null }
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  try {
-    const perms = await myPermissions();
-    if (!perms.has("org.manage")) return { ok: false, error: "Forbidden: org.manage required" };
-
-    const supabase = await createClient();
-    const { error } = await supabase.from("crm_contacts").update(patch).eq("id", id);
-    if (error) return { ok: false, error: `Could not update that contact: ${error.message}` };
-    revalidatePath("/opportunities", "layout");
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not update that contact." };
-  }
 }
 
 export async function logOpportunityActivity(input: {

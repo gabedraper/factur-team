@@ -114,21 +114,19 @@ export function DialWidget() {
     setError(null);
     setClaiming(true);
     try {
+      // Unlike Telnyx/Twilio, Dialpad already manages its own outbound
+      // caller ID -- the number/identity picker built into the Mini Dialer
+      // itself (visible at the top of the embed). There's nothing to
+      // require from our own pool here; claim one if it happens to exist
+      // (so the pool's usage stats stay meaningful) but don't block the
+      // call on it.
       const claimed = await claimOutboundNumber("dialpad");
-      if (!claimed.ok) {
-        setError(claimed.error);
-        return;
-      }
-      const outboundCallerId = claimed.e164;
-      if (!outboundCallerId) {
-        setError("No active outbound numbers in the pool — add one in Dialer settings.");
-        return;
-      }
+      const outboundCallerId = claimed.ok ? claimed.e164 : null;
       commit();
       setCallState("dialing");
       postToDialer(frameRef.current, "initiate_call", {
         phone_number: phoneNumber,
-        outbound_caller_id: outboundCallerId,
+        ...(outboundCallerId ? { outbound_caller_id: outboundCallerId } : {}),
         custom_data: JSON.stringify({ opportunity_id: target.opportunityId }),
       });
     } catch (e) {

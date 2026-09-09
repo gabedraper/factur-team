@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
-import { myPermissions } from "@/lib/org";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
@@ -19,7 +18,6 @@ type Opportunity = {
   notes: string | null;
   next_action_date: string | null;
   updates: string | null;
-  contact_id: string;
   reached_lead: boolean;
   reached_eval_call_scheduled: boolean;
   reached_selling: boolean;
@@ -47,13 +45,12 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   await requirePipeline("view");
   const { opportunityId } = await params;
   const supabase = await createClient();
-  const perms = await myPermissions();
 
   const [{ data: opp, error }, { data: activities }] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates,contact_id," +
+        "id,name,stage,lead_status,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
         "org_clients(name),crm_accounts(name,industry),crm_contacts(first_name,last_name,title,email,phone)"
       )
@@ -115,31 +112,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
             }}
           />
 
-          {perms.has("org.manage") ? (
-            <ContactEditor
-              contactId={o.contact_id}
-              phone={o.crm_contacts?.phone ?? null}
-              email={o.crm_contacts?.email ?? null}
-              industry={o.crm_accounts?.industry ?? null}
-            />
-          ) : (
-            <Panel title="Contact">
-              <dl className="space-y-2 p-4 text-sm">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Phone</dt>
-                  <dd className="tabular-nums">{o.crm_contacts?.phone ?? "—"}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Email</dt>
-                  <dd className="truncate">{o.crm_contacts?.email ?? "—"}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Industry</dt>
-                  <dd>{o.crm_accounts?.industry ?? "—"}</dd>
-                </div>
-              </dl>
-            </Panel>
-          )}
+          <ContactEditor
+            phone={o.crm_contacts?.phone ?? null}
+            email={o.crm_contacts?.email ?? null}
+            industry={o.crm_accounts?.industry ?? null}
+          />
         </div>
 
         <div className="space-y-4">
