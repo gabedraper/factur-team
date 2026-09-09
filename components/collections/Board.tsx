@@ -9,7 +9,7 @@ import {
 } from "@/actions/collections";
 import { FIELD } from "@/lib/field-class";
 import { AGEING_TONE } from "@/lib/ageing-colours";
-import { PauseCircle, PlayCircle, Send, FileText, FlaskConical } from "lucide-react";
+import { PauseCircle, PlayCircle, Send, FileText, FlaskConical, Download } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 
@@ -24,6 +24,38 @@ function onDay(date: string | null) {
   return new Date(y, m - 1, d).toLocaleDateString("en-US", {
     day: "numeric", month: "short", year: "numeric",
   });
+}
+
+/*
+ * One field of the export. Client names carry commas -- "Rodman, Inc." -- and a
+ * stray one shifts every column after it by one, so anything with a comma, a
+ * quote or a newline in it is quoted and its quotes doubled.
+ */
+function field(value: string | number) {
+  const text = String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/*
+ * The board as a sheet: the columns of the table, in the order they are read
+ * on screen. Money goes out as bare numbers rather than as $1,234 -- a sheet
+ * cannot add up a currency string, and adding them up is the whole point.
+ */
+function toCsv(rows: BoardChase[]) {
+  const lines: (string | number)[][] = [
+    ["Client", "Stage", "Current", "1-30", "31-60", "61-90", "91+", "Past due"],
+    ...rows.map((r) => [
+      r.client_name,
+      r.stage,
+      Number(r.bucket_current ?? 0),
+      Number(r.bucket_1_30 ?? 0),
+      Number(r.bucket_31_60 ?? 0),
+      Number(r.bucket_61_90 ?? 0),
+      Number(r.bucket_91_plus ?? 0),
+      Number(r.past_due_total ?? 0),
+    ]),
+  ];
+  return lines.map((line) => line.map(field).join(",")).join("\r\n");
 }
 
 /*
@@ -226,6 +258,21 @@ export function Board({
     });
   }
 
+  /*
+   * Whatever is on screen, not the whole ledger: somebody who switched to My
+   * clients meant those, and the totals above already read that way.
+   */
+  function exportCsv() {
+    const url = URL.createObjectURL(
+      new Blob([toCsv(board)], { type: "text/csv;charset=utf-8" })
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `collections-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const owed = board.reduce((n, r) => n + Number(r.past_due_total ?? 0), 0);
   const dueNow = board.filter((r) => r.step_id).length;
 
@@ -265,6 +312,16 @@ export function Board({
           <b>{board.length}</b> with a balance
           {dueNow > 0 && <> · <b>{dueNow}</b> due a chase</>}
         </span>
+        {board.length > 0 && (
+          <button
+            onClick={exportCsv}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1 text-sm hover:bg-muted"
+            title="Download these rows to open in a spreadsheet"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/*
