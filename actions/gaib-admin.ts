@@ -213,12 +213,14 @@ export async function updateCodingSettings(next: {
 // ---------------------------------------------------------------------------
 
 export type ChatReach = {
-  userId: string;
+  userId: string | null;
   memberId: string;
   name: string;
   email: string;
   /** Whether Gaib can already speak to them without being spoken to first. */
   open: boolean;
+  /** No account yet. They get an invitation rather than the ordinary hello. */
+  neverSignedIn: boolean;
 };
 
 /**
@@ -227,6 +229,11 @@ export type ChatReach = {
  * Worth having on screen rather than inferring from silence: until a direct
  * message space exists, every notification aimed at somebody simply does not
  * arrive, and nothing anywhere says so.
+ *
+ * People with no account are listed too. They were left out while the
+ * conversation was filed against an app account, which excluded exactly the
+ * people worth writing to -- twelve members of staff who have never opened the
+ * app and would never have been told it exists.
  */
 export async function chatReach(): Promise<ChatReach[]> {
   if (!(await mayManage())) return [];
@@ -236,15 +243,18 @@ export async function chatReach(): Promise<ChatReach[]> {
     .from("org_members")
     .select("id,full_name,email,auth_user_id")
     .eq("active", true)
-    .not("auth_user_id", "is", null)
     .order("full_name");
 
   const rows = (members ?? []) as {
-    id: string; full_name: string | null; email: string | null; auth_user_id: string;
+    id: string; full_name: string | null; email: string | null; auth_user_id: string | null;
   }[];
 
-  const { data: spaces } = await db.from("gaib_chat_spaces").select("user_id");
-  const open = new Set(((spaces ?? []) as { user_id: string }[]).map((s) => s.user_id));
+  const { data: spaces } = await db.from("gaib_chat_spaces").select("email");
+  const open = new Set(
+    ((spaces ?? []) as { email: string | null }[])
+      .map((s) => s.email?.toLowerCase())
+      .filter(Boolean) as string[]
+  );
 
   return rows
     .filter((r) => r.email)
@@ -253,7 +263,8 @@ export async function chatReach(): Promise<ChatReach[]> {
       memberId: r.id,
       name: r.full_name ?? r.email!,
       email: r.email!,
-      open: open.has(r.auth_user_id),
+      open: open.has(r.email!.toLowerCase()),
+      neverSignedIn: !r.auth_user_id,
     }));
 }
 
@@ -265,13 +276,15 @@ export async function chatReach(): Promise<ChatReach[]> {
  * to do that is two of you first, then the rest.
  */
 export async function openChatWith(
-  userIds: string[]
+  memberIds: string[]
 ): Promise<Ok & { opened?: number; greeted?: number; failures?: { name: string; why: string }[] }> {
   if (!(await mayManage())) return DENIED;
-  if (!userIds.length) return { ok: false, error: "Nobody selected" };
+  if (!memberIds.length) return { ok: false, error: "Nobody selected" };
 
-  const wanted = new Set(userIds);
-  const people = (await chatReach()).filter((p) => wanted.has(p.userId));
+  // Keyed on the org record, not the account: the people this most needs to
+  // reach are the ones who have no account.
+  const wanted = new Set(memberIds);
+  const people = (await chatReach()).filter((p) => wanted.has(p.memberId));
   if (!people.length) return { ok: false, error: "Nobody selected" };
 
   const results = await openDmsFor(

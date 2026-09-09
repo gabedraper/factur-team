@@ -122,8 +122,30 @@ function intro(firstName: string): string {
   ].join("\n");
 }
 
+/**
+ * The same hello, for somebody who has never opened the app.
+ *
+ * Different because the ordinary one is useless to them: it offers to answer
+ * questions about a thing they have not seen. This says what the app is and
+ * how to get in, which is the step they are actually missing.
+ */
+function invitation(firstName: string): string {
+  return [
+    `Hi ${firstName} — I'm Gaib, the assistant in the Factur team app.`,
+    "",
+    "You have an account waiting and haven't used it yet. It's where your " +
+      "clients, your work and your team's numbers live.",
+    "",
+    "Sign in with your Factur Google account — nothing to set up:",
+    "https://team.facturmfg.com",
+    "",
+    "Once you're in, ask me anything here, or tell me if something's broken " +
+      "and I'll get it fixed.",
+  ].join("\n");
+}
+
 export type OpenedFor = {
-  userId: string;
+  userId: string | null;
   email: string;
   name: string;
   result: OpenResult;
@@ -138,12 +160,14 @@ export type OpenedFor = {
  * 429 that leaves half the list opened and no record of which half.
  */
 export async function openDmsFor(
-  people: { userId: string; email: string; name: string }[]
+  people: { userId: string | null; email: string; name: string }[]
 ): Promise<OpenedFor[]> {
   const db = createServiceClient();
   const out: OpenedFor[] = [];
 
   for (const person of people) {
+    const email = person.email.toLowerCase();
+
     /*
      * Whether to say hello is decided here, from our own records, rather than
      * from anything Chat says about the space.
@@ -154,28 +178,40 @@ export async function openDmsFor(
      * conversation opened and nothing said in it. Our own table is the honest
      * signal anyway: a row means Gaib has talked to them, which is exactly the
      * question being asked.
+     *
+     * Looked up by address rather than by account, so that somebody greeted
+     * before they had an account is not greeted a second time after they get
+     * one.
      */
     const { data: known } = await db
-      .from("gaib_chat_spaces").select("user_id").eq("user_id", person.userId).maybeSingle();
+      .from("gaib_chat_spaces").select("id").eq("email", email).maybeSingle();
     const isNew = !known;
 
     const result = await openDmAs(person.email);
     let introduced = false;
 
     if (result.ok) {
-      await db.from("gaib_chat_spaces").upsert({
-        user_id: person.userId,
-        space_name: result.spaceName,
-        last_seen: new Date().toISOString(),
-      });
+      await db.from("gaib_chat_spaces").upsert(
+        {
+          email,
+          user_id: person.userId,
+          space_name: result.spaceName,
+          last_seen: new Date().toISOString(),
+        },
+        { onConflict: "email" }
+      );
 
       // Written down first, then greeted. If the greeting fails Gaib can still
       // reach them later; if the order were reversed a failed write would mean
       // a person who has been introduced and cannot be found again.
       if (isNew) {
+        const firstName = person.name.split(/\s+/)[0] || "there";
+        // No account means they have never been in the app, so the ordinary
+        // hello would offer to answer questions about something they have not
+        // seen. They get the way in instead.
         const said = await postToSpace(
           result.spaceName,
-          intro(person.name.split(/\s+/)[0] || "there")
+          person.userId ? intro(firstName) : invitation(firstName)
         );
         introduced = said.ok;
       }

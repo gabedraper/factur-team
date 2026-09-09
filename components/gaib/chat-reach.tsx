@@ -30,7 +30,7 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
   const [failures, setFailures] = useState<{ name: string; why: string }[]>([]);
   const [pending, start] = useTransition();
 
-  const chosen = people.filter((p) => picked.has(p.userId));
+  const chosen = people.filter((p) => picked.has(p.memberId));
 
   function toggle(id: string) {
     setArmed(false);
@@ -57,7 +57,7 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {people.map((p) => (
               <label
-                key={p.userId}
+                key={p.memberId}
                 className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
                   p.open ? "text-muted-foreground" : "cursor-pointer hover:bg-accent"
                 }`}
@@ -69,14 +69,23 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 shrink-0"
-                      checked={picked.has(p.userId)}
+                      checked={picked.has(p.memberId)}
                       disabled={pending}
-                      onChange={() => toggle(p.userId)}
+                      onChange={() => toggle(p.memberId)}
                     />
                     <MessageSquareOff className="h-3.5 w-3.5 shrink-0 text-amber-600" />
                   </>
                 )}
                 <span className="truncate">{p.name}</span>
+                {/*
+                  They have never opened the app, so Gaib sends them the way in
+                  rather than an offer to answer questions about it.
+                */}
+                {p.neverSignedIn && (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    never signed in
+                  </span>
+                )}
               </label>
             ))}
           </div>
@@ -142,7 +151,7 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
                 <button
                   type="button"
                   className="text-xs text-muted-foreground hover:underline"
-                  onClick={() => setPicked(new Set(closed.map((p) => p.userId)))}
+                  onClick={() => setPicked(new Set(closed.map((p) => p.memberId)))}
                 >
                   Select all {closed.length}
                 </button>

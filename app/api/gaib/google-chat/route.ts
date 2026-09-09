@@ -317,12 +317,20 @@ async function conversationFor(
 
   // Remembered so Gaib can speak first later. A direct message space does not
   // exist until somebody opens one, so this is the only moment it can be known.
+  //
+  // The conflict target is named because the table no longer has user_id for
+  // its primary key -- it is keyed on a surrogate id so that somebody without
+  // an app account can still have a conversation. Left to the default, this
+  // would insert a second row for the same person on every message.
   if (spaceName) {
-    await db.from("gaib_chat_spaces").upsert({
-      user_id: userId,
-      space_name: spaceName,
-      last_seen: new Date().toISOString(),
-    });
+    await db.from("gaib_chat_spaces").upsert(
+      {
+        user_id: userId,
+        space_name: spaceName,
+        last_seen: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
   }
 
   const since = new Date(Date.now() - RESUME_WITHIN_HOURS * 3600_000).toISOString();
