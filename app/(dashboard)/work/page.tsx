@@ -28,7 +28,12 @@ export default async function WorkPage() {
   return (
     <div className="max-w-5xl space-y-4 p-6">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">My work</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-semibold">My work</h1>
+          <Link href="/work/browse" className="text-sm text-muted-foreground hover:text-foreground">
+            Spaces
+          </Link>
+        </div>
         {sync?.finishedAt && (
           <span className="text-xs tabular-nums text-muted-foreground">
             synced{" "}

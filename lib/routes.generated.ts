@@ -103,5 +103,7 @@ export const ROUTES: readonly string[] = [
   "/timelines/[view]",
   "/unauthorized",
   "/work",
-  "/work/[slug]"
+  "/work/[slug]",
+  "/work/browse",
+  "/work/browse/[containerId]"
 ] as const;

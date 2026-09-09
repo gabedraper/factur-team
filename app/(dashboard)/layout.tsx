@@ -10,6 +10,7 @@ import Image from "next/image";
 import {
   BookOpen,
   LayoutDashboard,
+  Layers,
   ListChecks,
   Users,
   Map,
@@ -113,7 +114,10 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   if (perms.has("work.view") || perms.has("org.manage")) {
     groups.push({
       label: "Work",
-      items: [{ href: "/work", label: "My Work", icon: <ListChecks className="h-4 w-4" /> }],
+      items: [
+        { href: "/work", label: "My Work", icon: <ListChecks className="h-4 w-4" /> },
+        { href: "/work/browse", label: "Spaces", icon: <Layers className="h-4 w-4" /> },
+      ],
     });
   }
 

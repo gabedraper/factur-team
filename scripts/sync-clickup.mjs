@@ -44,6 +44,8 @@ const args = process.argv.slice(2);
 const DRY = args.includes("--dry-run");
 const SKIP_EMPTY = args.includes("--skip-empty");
 const SHOW_UNMATCHED = args.includes("--show-unmatched");
+/* Rebuild the navigable tree only. ~46 calls, seconds, no task pull. */
+const CONTAINERS_ONLY = args.includes("--containers-only");
 const ONLY_SPACE = (args.find((a) => a.startsWith("--space=")) || "").split("=")[1];
 
 // ---------------------------------------------------------------------------
@@ -388,19 +390,72 @@ async function main() {
   console.log(`${spaces.length} spaces`);
 
   const targets = [];
-  for (const space of spaces) {
+  const containers = [];
+
+  /* One row per space, folder and list, in ClickUp's own order. */
+  const container = (kind, node, parent, spaceId, fallbackOrder) => ({
+    clickup_id: String(node.id),
+    kind,
+    name: node.name ?? "(unnamed)",
+    parent_clickup_id: parent ? String(parent) : null,
+    space_clickup_id: spaceId ? String(spaceId) : null,
+    /*
+     * ClickUp returns no orderindex for spaces, so their position in the
+     * response stands in for it. That response order is the nearest thing to
+     * the sidebar order anybody has, and without it the tree comes back in
+     * whatever order Postgres feels like, which changes between page loads.
+     */
+    orderindex: Number.isFinite(Number(node.orderindex))
+      ? Number(node.orderindex)
+      : fallbackOrder ?? null,
+    task_count: Number(node.task_count ?? 0),
+    archived: Boolean(node.archived),
+    statuses: node.statuses ?? null,
+    url: node.id ? `https://app.clickup.com/${team.id}/v/li/${node.id}` : null,
+    synced_at: new Date().toISOString(),
+  });
+
+  for (const [spaceIndex, space] of spaces.entries()) {
+    containers.push(container("space", space, null, space.id, spaceIndex));
+
     const [folders, loose] = await Promise.all([
       get(`/space/${space.id}/folder?archived=false`),
       get(`/space/${space.id}/list?archived=false`),
     ]);
+
     for (const f of folders.folders ?? []) {
+      containers.push(container("folder", f, space.id, space.id));
       for (const l of f.lists ?? []) {
+        containers.push(container("list", l, f.id, space.id));
         targets.push({ space: space.name, folder: f.name, list: l, count: l.task_count ?? 0 });
       }
     }
+    /* Folderless lists hang off the space itself -- the tree is not a fixed
+     * depth, and pretending otherwise loses a fifth of the workspace. */
     for (const l of loose.lists ?? []) {
+      containers.push(container("list", l, space.id, space.id));
       targets.push({ space: space.name, folder: null, list: l, count: l.task_count ?? 0 });
     }
+  }
+
+  if (!DRY && containers.length) {
+    for (let i = 0; i < containers.length; i += 500) {
+      const { error } = await db
+        .from("work_containers")
+        .upsert(containers.slice(i, i + 500), { onConflict: "clickup_id" });
+      if (error) throw new Error(`containers upsert failed: ${error.message}`);
+    }
+  }
+  console.log(`${containers.length} containers (${containers.filter((c) => c.kind === "list").length} lists)`);
+
+  if (CONTAINERS_ONLY) {
+    if (!DRY && runId) {
+      await db.from("work_sync_runs").update({
+        finished_at: new Date().toISOString(), lists_seen: targets.length,
+      }).eq("id", runId);
+    }
+    console.log("--containers-only: tree rebuilt, tasks left alone.");
+    return;
   }
 
   const lists = SKIP_EMPTY ? targets.filter((t) => t.count > 0) : targets;
