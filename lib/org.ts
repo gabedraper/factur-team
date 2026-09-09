@@ -433,15 +433,25 @@ export async function visibleOwnerIds(): Promise<string[] | null> {
  * Read from the roles list rather than a fixed set of columns, so adding a role
  * in Settings adds the field and unticking it takes the field away.
  */
-export async function listClientRoles(): Promise<{ id: string; name: string }[]> {
+export async function listClientRoles(): Promise<{ id: string; name: string; slug: string }[]> {
   const { data } = await createServiceClient()
     .from("org_roles")
-    .select("id,name")
+    .select("id,name,slug")
     .eq("active", true)
     .eq("client_assignable", true)
     .order("name");
-  return (data ?? []) as unknown as { id: string; name: string }[];
+  return (data ?? []) as unknown as { id: string; name: string; slug: string }[];
 }
+
+/*
+ * The people columns on the client record, from before roles became rows.
+ * Salesforce is what fills them, and client_role_now, the drift report and the
+ * NPS attribution all still read them.
+ */
+const RECORD_ROLE_COLUMNS: readonly string[] = [
+  "account_manager_id", "sdr_id", "marketing_strategist_id",
+  "data_analyst_id", "data_engineer_id",
+];
 
 /** One client with its team and everything Salesforce knows about it. */
 export async function getClientDetail(clientId: string) {
@@ -468,6 +478,22 @@ export async function getClientDetail(clientId: string) {
   const byRole: Record<string, string | null> = {};
   for (const a of (assigned ?? []) as { role_id: string; member_id: string | null }[]) {
     byRole[a.role_id] = a.member_id;
+  }
+
+  /*
+   * Where the assignments table says nothing, fall back to the column of the
+   * same name on the client record.
+   *
+   * Those columns were moved into assignments when roles became rows, and the
+   * strategist did not come across -- so Salesforce fills
+   * marketing_strategist_id on every account a strategist works, as it does for
+   * the analyst and the engineer, and nothing reading the assignments table
+   * could see it.
+   */
+  for (const r of roles) {
+    const column = `${r.slug.replace(/-/g, "_")}_id`;
+    if (byRole[r.id] || !RECORD_ROLE_COLUMNS.includes(column)) continue;
+    if (typeof row[column] === "string") byRole[r.id] = row[column] as string;
   }
 
   return {
