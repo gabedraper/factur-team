@@ -27,6 +27,13 @@ export async function getLeads(filters: LeadFilters = {}) {
   // Reps see their own leads, managers their team's, admins everything.
   const [owners, prospectors] = await Promise.all([visibleOwnerIds(), prospectingOwnerIds()]);
 
+  // The date the tiles count from, for the definitions shown against them. The
+  // stored rebuild's own window wins below when there is one; this is the
+  // window read here, which is what the tiles fall back to.
+  const windowFrom = new Date(Date.now() - METRICS_DAYS * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
   // A lead belongs to the prospecting pipeline when its owner's role in the app
   // says so, rather than anything read off the Salesforce record.
   const pipelineFor = (row: LeadRow) =>
@@ -39,6 +46,7 @@ export async function getLeads(filters: LeadFilters = {}) {
       ...assembleLeads([], []),
       summaries: {} as Record<string, RepSummary>,
       held: 0,
+      summaryWindowFrom: windowFrom,
       scope: "unlinked" as const,
     };
   }
@@ -82,7 +90,10 @@ export async function getLeads(filters: LeadFilters = {}) {
 
   const emptyScope = (owners === null ? "all" : "scoped") as "all" | "scoped";
   if (!rows.length) {
-    return { ...assembleLeads([], []), summaries: {} as Record<string, RepSummary>, held: 0, scope: emptyScope };
+    return {
+      ...assembleLeads([], []), summaries: {} as Record<string, RepSummary>,
+      held: 0, summaryWindowFrom: windowFrom, scope: emptyScope,
+    };
   }
 
   /*
@@ -150,6 +161,7 @@ export async function getLeads(filters: LeadFilters = {}) {
     leads: recent,
     summaries,
     summariesFrom: stored.generatedAt,
+    summaryWindowFrom: stored.windowFrom?.slice(0, 10) ?? windowFrom,
     held: assembled.leads.length,
     scope: emptyScope,
   };

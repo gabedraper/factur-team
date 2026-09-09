@@ -62,7 +62,7 @@ type Row = {
   touched_every_day: number; untouched_all_week: number;
   median_days_touched: number | null; median_gap: number | null;
   median_touches: number | null; meetings: number; gone_quiet: number;
-  generated_at: string;
+  window_from: string; generated_at: string;
 };
 
 function toSummary(r: Row): RepSummary {
@@ -80,6 +80,7 @@ function toSummary(r: Row): RepSummary {
 export async function readSummaries(): Promise<{
   summaries: Record<string, RepSummary>;
   generatedAt: string | null;
+  windowFrom: string | null;
 }> {
   const { data } = await createServiceClient().from("timeline_summaries").select("*");
   const rows = (data ?? []) as unknown as Row[];
@@ -92,6 +93,9 @@ export async function readSummaries(): Promise<{
     generatedAt: rows.length
       ? rows.reduce((a, b) => (a.generated_at > b.generated_at ? a : b)).generated_at
       : null,
+    // The date the stored figures count from, so the page can say so out loud
+    // rather than leaving the reader to guess at the window.
+    windowFrom: rows.length ? rows[0].window_from : null,
   };
 }
 
