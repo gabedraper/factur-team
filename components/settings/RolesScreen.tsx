@@ -99,6 +99,16 @@ export function RolesScreen({
                 <option value="">No service</option>
                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              <select className="h-8 rounded-md border bg-field px-2 text-sm"
+                      defaultValue={r.stage_field}
+                      title="Which progress field this role sees on a pursuit"
+                      onChange={(e) => run(() => updateRole(r.id, {
+                        stage_field: e.target.value as "stage" | "lead_status" | "both",
+                      }))}>
+                <option value="both">Stage &amp; lead status</option>
+                <option value="stage">Stage</option>
+                <option value="lead_status">Lead status</option>
+              </select>
               <span className="text-xs text-muted-foreground">
                 {r.holders} {r.holders === 1 ? "person" : "people"}
               </span>

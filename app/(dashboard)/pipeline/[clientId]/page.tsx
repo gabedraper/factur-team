@@ -6,6 +6,7 @@ import { requirePipeline } from "@/lib/pipeline/access";
 import { PageHeader } from "@/components/pipeline/bits";
 import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
 import { listTargetAccounts } from "@/actions/pipeline-targets";
+import { BOTH_STAGE_FIELDS, type StageFields } from "@/lib/pipeline/targets";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +40,11 @@ export default async function ClientTargetAccountsPage({
 
   if (!client) notFound();
 
-  const { rows, total } = await listTargetAccounts({
-    clientId, limit: 50, offset: 0,
-  });
+  const [{ rows, total }, { data: fieldRows }] = await Promise.all([
+    listTargetAccounts({ clientId, limit: 50, offset: 0 }),
+    db.rpc("my_stage_fields"),
+  ]);
+  const stageFields = ((fieldRows ?? [])[0] ?? BOTH_STAGE_FIELDS) as StageFields;
 
   return (
     <div className="space-y-4">
@@ -60,6 +63,7 @@ export default async function ClientTargetAccountsPage({
         clientName={client.name}
         initial={rows}
         initialTotal={total}
+        stageFields={stageFields}
       />
     </div>
   );

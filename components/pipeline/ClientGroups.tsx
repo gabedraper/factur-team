@@ -6,7 +6,8 @@ import { Chip, Empty, Panel } from "@/components/pipeline/bits";
 import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
-  type ClientRow, type PipelineScope,
+  BOTH_STAGE_FIELDS,
+  type ClientRow, type PipelineScope, type StageFields,
 } from "@/lib/pipeline/targets";
 
 /*
@@ -98,7 +99,13 @@ function build(rows: ClientRow[], levels: Grouping[], path = ""): Node[] {
     );
 }
 
-export function ClientGroups({ scope, rows }: { scope: PipelineScope; rows: ClientRow[] }) {
+export function ClientGroups({
+  scope, rows, stageFields = BOTH_STAGE_FIELDS,
+}: {
+  scope: PipelineScope;
+  rows: ClientRow[];
+  stageFields?: StageFields;
+}) {
   const levels = LEVELS[scope.level];
   const tree = useMemo(() => build(rows, levels), [rows, levels]);
   const [openClient, setOpenClient] = useState<string | null>(null);
@@ -110,7 +117,7 @@ export function ClientGroups({ scope, rows }: { scope: PipelineScope; rows: Clie
   if (levels.length === 0) {
     return (
       <Panel>
-        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} />
+        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
       </Panel>
     );
   }
@@ -118,19 +125,20 @@ export function ClientGroups({ scope, rows }: { scope: PipelineScope; rows: Clie
   return (
     <div className="space-y-2">
       {tree.map((n) => (
-        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} />
+        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
       ))}
     </div>
   );
 }
 
 function Group({
-  node, depth, openClient, setOpenClient,
+  node, depth, openClient, setOpenClient, stageFields,
 }: {
   node: Node;
   depth: number;
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
+  stageFields: StageFields;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -164,11 +172,12 @@ function Group({
                   depth={depth + 1}
                   openClient={openClient}
                   setOpenClient={setOpenClient}
+                  stageFields={stageFields}
                 />
               ))}
             </div>
           ) : (
-            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} />
+            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
           )}
         </div>
       )}
@@ -177,11 +186,12 @@ function Group({
 }
 
 function ClientList({
-  rows, openClient, setOpenClient,
+  rows, openClient, setOpenClient, stageFields,
 }: {
   rows: ClientRow[];
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
+  stageFields: StageFields;
 }) {
   const span = TARGET_STAGES.length + 2;
 
@@ -242,7 +252,11 @@ function ClientList({
               {open && (
                 <tr>
                   <td colSpan={span} className="border-b bg-muted/20 px-4 py-3">
-                    <TargetAccounts clientId={c.client_id} clientName={c.client_name} />
+                    <TargetAccounts
+                      clientId={c.client_id}
+                      clientName={c.client_name}
+                      stageFields={stageFields}
+                    />
                   </td>
                 </tr>
               )}

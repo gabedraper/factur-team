@@ -3,7 +3,7 @@ import { requirePipeline } from "@/lib/pipeline/access";
 import { previewedMemberId } from "@/lib/org";
 import { PageHeader } from "@/components/pipeline/bits";
 import { ClientGroups } from "@/components/pipeline/ClientGroups";
-import type { ClientRow, PipelineScope } from "@/lib/pipeline/targets";
+import { BOTH_STAGE_FIELDS, type ClientRow, type PipelineScope, type StageFields } from "@/lib/pipeline/targets";
 
 export const dynamic = "force-dynamic";
 
@@ -35,22 +35,24 @@ export default async function TargetCompaniesPage() {
      re-check that the caller really holds org.manage before honouring it. */
   const asMember = await previewedMemberId();
 
-  const [{ data: scopeRows }, { data: clientRows }] = await Promise.all([
+  const [{ data: scopeRows }, { data: clientRows }, { data: fieldRows }] = await Promise.all([
     db.rpc("pipeline_my_scope", { p_as_member: asMember }),
     db.rpc("pipeline_my_clients", { p_as_member: asMember }),
+    db.rpc("my_stage_fields"),
   ]);
 
   const scope = ((scopeRows ?? [])[0] ?? {
     level: "rep", member_id: "", member_name: null,
   }) as PipelineScope;
   const rows = (clientRows ?? []) as ClientRow[];
+  const stageFields = ((fieldRows ?? [])[0] ?? BOTH_STAGE_FIELDS) as StageFields;
 
   const companies = rows.reduce((n, r) => n + r.companies, 0);
 
   return (
     <div className="space-y-4">
       <PageHeader title="Target Companies" count={companies.toLocaleString()} />
-      <ClientGroups scope={scope} rows={rows} />
+      <ClientGroups scope={scope} rows={rows} stageFields={stageFields} />
     </div>
   );
 }

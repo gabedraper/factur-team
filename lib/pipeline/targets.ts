@@ -114,3 +114,15 @@ export type PipelineScope = {
   member_id: string;
   member_name: string | null;
 };
+
+/*
+ * Which of the two progress ladders this viewer reads, from org_roles.stage_field.
+ *
+ * A pursuit carries both: Prospecting Lead Status is the prospector's ladder and
+ * stops mattering once the lead is handed over; Stage is the deal's, and means
+ * nothing to somebody still chasing a first reply. The role says which, so the
+ * screen stops asking its reader to work out which column is theirs.
+ */
+export type StageFields = { show_stage: boolean; show_lead_status: boolean };
+
+export const BOTH_STAGE_FIELDS: StageFields = { show_stage: true, show_lead_status: true };

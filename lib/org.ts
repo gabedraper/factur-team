@@ -362,6 +362,7 @@ export async function listPodsAndClients() {
 export type RoleDetail = {
   id: string; slug: string; name: string; description: string | null;
   service_id: string | null; active: boolean; client_assignable: boolean;
+  stage_field: "stage" | "lead_status" | "both";
   permissionKeys: string[]; holders: number;
 };
 
@@ -370,7 +371,7 @@ export async function listRolesAndPermissions() {
   const [{ data: roles }, { data: perms }, { data: rolePerms }, { data: assignments }] =
     await Promise.all([
       db.from("org_roles")
-        .select("id,slug,name,description,service_id,active,client_assignable")
+        .select("id,slug,name,description,service_id,active,client_assignable,stage_field")
         .order("name"),
       db.from("org_permissions").select("key,name,description,category,position").order("position"),
       db.from("org_role_permissions").select("role_id,permission_key"),

@@ -408,7 +408,10 @@ export async function createRole(name: string, serviceId: string | null, descrip
 
 export async function updateRole(
   roleId: string,
-  fields: { name?: string; service_id?: string | null; description?: string | null; active?: boolean }
+  fields: {
+    name?: string; service_id?: string | null; description?: string | null;
+    active?: boolean; stage_field?: "stage" | "lead_status" | "both";
+  }
 ) {
   try {
     await requireOrgManage();

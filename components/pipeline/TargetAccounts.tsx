@@ -10,7 +10,8 @@ import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
-  type AccountContact, type TargetAccount, type UnworkedContact,
+  BOTH_STAGE_FIELDS,
+  type AccountContact, type StageFields, type TargetAccount, type UnworkedContact,
 } from "@/lib/pipeline/targets";
 
 /*
@@ -35,10 +36,11 @@ function shortDate(v: string | null) {
 }
 
 export function TargetAccounts({
-  clientId, clientName, initial, initialTotal,
+  clientId, clientName, initial, initialTotal, stageFields = BOTH_STAGE_FIELDS,
 }: {
   clientId: string;
   clientName: string;
+  stageFields?: StageFields;
   /* Omitted when the list is opened inside a client group, where there was no
      server render to seed it -- it fetches its own first page instead. */
   initial?: TargetAccount[];
@@ -181,6 +183,7 @@ export function TargetAccounts({
           clientName={clientName}
           account={selected}
           onClose={() => setSelected(null)}
+          stageFields={stageFields}
         />
       )}
     </div>
@@ -188,12 +191,13 @@ export function TargetAccounts({
 }
 
 function AccountPanel({
-  clientId, clientName, account, onClose,
+  clientId, clientName, account, onClose, stageFields,
 }: {
   clientId: string;
   clientName: string;
   account: TargetAccount;
   onClose: () => void;
+  stageFields: StageFields;
 }) {
   const [full, setFull] = useState(false);
   const [contacts, setContacts] = useState<AccountContact[] | null>(null);
@@ -279,6 +283,7 @@ function AccountPanel({
                   <ContactRow
                     key={c.opportunity_id}
                     contact={c}
+                    stageFields={stageFields}
                     expanded={openContact === c.opportunity_id}
                     onToggle={() =>
                       setOpenContact(openContact === c.opportunity_id ? null : c.opportunity_id)
@@ -329,9 +334,10 @@ function AccountPanel({
 }
 
 function ContactRow({
-  contact: c, expanded, onToggle,
+  contact: c, stageFields, expanded, onToggle,
 }: {
   contact: AccountContact;
+  stageFields: StageFields;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -345,7 +351,11 @@ function ContactRow({
           <div className="truncate text-xs text-muted-foreground">{c.title}</div>
         </div>
         <div className="hidden shrink-0 sm:block">
-          <Chip colour={STAGE_TONE[c.target_stage] ?? "slate"}>{c.stage}</Chip>
+          {/* Whichever ladder this reader is on. A prospector wants Attempting,
+              not Pipeline Hot: Quoting, and neither means much to the other. */}
+          <Chip colour={STAGE_TONE[c.target_stage] ?? "slate"}>
+            {stageFields.show_stage ? c.stage : (c.lead_status ?? c.stage)}
+          </Chip>
         </div>
         {c.next_action_date && (
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -356,8 +366,11 @@ function ContactRow({
 
       {expanded && (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t bg-muted/20 px-3 py-3 text-sm">
-          <Field label="Prospecting lead status" value={c.lead_status} />
-          <Field label="Stage" value={c.stage} />
+          {stageFields.show_lead_status && (
+            <Field label="Prospecting lead status" value={c.lead_status} />
+          )}
+          {stageFields.show_stage && <Field label="Stage" value={c.stage} />}
+          <Field label="Title" value={c.title} />
           <Field label="Email" value={c.email} />
           <PhoneField value={c.phone} />
           <Field label="Opened" value={shortDate(c.opened_on)} />
