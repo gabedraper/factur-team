@@ -103,12 +103,18 @@ Density is two tokens, `cell-x` and `cell-y`, currently 16px × 10px.
 
 - Money and counts use `<TD numeric>`. It right-aligns and sets `tabular-nums`
   so figures line up down the column.
-- **Lists do not carry logos or avatars.** Identity thumbnails belong on detail
-  pages and record headers, where you have committed to one record — not down
-  every row of a list you are scanning. A company logo is an external favicon
-  request per row, and a contact photo is almost always just initials, since
-  LinkedIn's are not obtainable. `<TDIdentity>` exists for the few lists that
-  genuinely need one; it is not the default.
+- **Company lists carry a logo. People lists do not.** Use `<TDIdentity>` on
+  companies and clients; on contacts, candidates and team members, the name is
+  the whole cell.
+
+  The asymmetry is deliberate. A favicon is a real signal — you recognise a
+  manufacturer's mark faster than you read its name — and it costs one external
+  request per row. A contact photo is almost always just initials, because
+  LinkedIn's are not obtainable, so it takes the same space and the same row
+  height while telling you nothing you were not about to read anyway.
+
+  This is also why `cell-y` is 10px rather than 8: a company row has to fit a
+  24px logo. If logos ever leave the company lists, that token can come down.
 - Wrap every table in `<TableScroll>`. A wide table without it pushes the whole
   page sideways.
 

@@ -56,6 +56,15 @@ export type EntityDef = {
   clientPath: ClientPath;
   /** The column a board groups by, when there is one. */
   stageField?: string;
+  /**
+   * Whether rows carry a thumbnail.
+   *
+   * True for companies, false for people, and the asymmetry is the point: a
+   * favicon is recognised faster than a name is read, while a person's avatar
+   * is nearly always initials -- LinkedIn photos are not obtainable -- so it
+   * costs a row's height to repeat what the next column already says.
+   */
+  rowIdentity: boolean;
 };
 
 export const ENTITIES: Record<string, EntityDef> = {
@@ -68,6 +77,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table", "board"],
     stageField: "stage",
     clientPath: "direct",
+    rowIdentity: false,
   },
   candidates: {
     key: "candidates",
@@ -78,6 +88,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table", "board"],
     stageField: "stage_id",
     clientPath: null,
+    rowIdentity: false,
   },
   accounts: {
     key: "accounts",
@@ -85,6 +96,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "company",
     renderers: ["table"],
     clientPath: "via_opportunity",
+    rowIdentity: true,
   },
   contacts: {
     key: "contacts",
@@ -92,6 +104,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "contact",
     renderers: ["table"],
     clientPath: "via_opportunity",
+    rowIdentity: false,
   },
   clients: {
     key: "clients",
@@ -100,6 +113,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     // status is a lifecycle, not a pipeline. Table only.
     renderers: ["table"],
     clientPath: null,
+    rowIdentity: true,
   },
   sequences: {
     key: "sequences",
@@ -107,6 +121,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "sequence",
     renderers: ["table"],
     clientPath: null,
+    rowIdentity: false,
   },
 };
 
