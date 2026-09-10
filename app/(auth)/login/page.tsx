@@ -76,6 +76,7 @@ export default function LoginPage() {
      * is the artwork's own navy, so a failure looks plain rather than wrong.
      */
     <div
+      // design-ok: single-theme by design; the artwork's own navy, see above
       className="relative min-h-screen overflow-hidden bg-[#0b1020] bg-cover bg-center p-4"
       style={{ backgroundImage: "url('/login-background.jpg')" }}
     >
@@ -129,6 +130,7 @@ export default function LoginPage() {
                   a pill rather than a lozenge of flat colour. */}
               <span
                 aria-hidden="true"
+                // design-ok: specular highlight on a coloured pill, not a surface
                 className="pointer-events-none absolute inset-x-3 top-1.5 h-3 rounded-full bg-white/35 blur-[2px]"
               />
             </button>

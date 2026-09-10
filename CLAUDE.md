@@ -31,9 +31,31 @@ value is how that starts again.
 | A person | `<Avatar>` | as above |
 | Loading | `<Skeleton>` / `<TableSkeleton>` | a spinner |
 
-There are 47 hand-rolled tables and 26 hand-typed card recipes still in the
-app. They are being retired a screen at a time. **Do not add to either count** —
-if you are editing a file that has one, moving it over is welcome.
+### The build enforces this
+
+`scripts/design-check.mjs` runs in `prebuild`, so **a deploy fails if new code
+breaks these rules.** It catches a bare `<table>`, Tailwind's own shadows,
+`bg-white`, literal hex colours in classes, the hand-typed card recipe, and a
+hand-styled `<h1>`.
+
+It is a ratchet, not a ban. About 280 old violations are recorded in
+`scripts/design-baseline.json`; a file there may keep its count but not raise
+it, and a file not there may have none. So new work must comply, and old work
+can only get better.
+
+- `npm run lint` — run the check.
+- `npm run design:report` — what is left, per rule.
+- `npm run design:update` — **after** retrofitting a file, lock the lower count
+  in so it cannot creep back. Never run it to make a failure go away: that
+  accepts the new violation into the baseline, which is the one thing the
+  check exists to stop.
+- A genuine exception is marked on the line, or the line above, with
+  `design-ok: <reason>`. The reason is required — `design-ok:` alone is ignored.
+  Current exceptions: the login page (single-theme by design) and the agreement
+  PDF frame (a PDF renders on white).
+
+If you are editing a file that already has old violations, moving it over is
+welcome — then run `design:update`.
 
 ### Separation is colour, not lines
 

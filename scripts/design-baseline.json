@@ -1,0 +1,504 @@
+{
+  "app/(dashboard)/admin/courses/[courseId]/page.tsx": {
+    "hand-h1": 2
+  },
+  "app/(dashboard)/admin/courses/page.tsx": {
+    "hand-h1": 1,
+    "raw-shadow": 1
+  },
+  "app/(dashboard)/admin/enrollments/page.tsx": {
+    "bare-table": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/admin/learning-paths/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/admin/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/admin/role-training/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/admin/weights/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/[clientId]/activities/page.tsx": {
+    "bare-table": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/[clientId]/leads/page.tsx": {
+    "bare-table": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/[clientId]/market/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/[clientId]/page.tsx": {
+    "card-recipe": 4,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/health/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/nps/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/nps/send/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/results/[clientId]/page.tsx": {
+    "bare-table": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/clients/results/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/collections/ar/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/collections/invoices/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/collections/page.tsx": {
+    "hand-h1": 2
+  },
+  "app/(dashboard)/error.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/gaib/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/gaib/transcripts/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/instructor/courses/[courseId]/lessons/[lessonId]/edit/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/instructor/courses/[courseId]/page.tsx": {
+    "hand-h1": 2
+  },
+  "app/(dashboard)/instructor/courses/new/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/instructor/courses/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/instructor/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/integrations/page.tsx": {
+    "bare-table": 5,
+    "card-recipe": 1,
+    "hand-h1": 2
+  },
+  "app/(dashboard)/leaderboard/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/learner/certificates/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/learner/courses/[courseId]/lessons/[lessonId]/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/learner/courses/[courseId]/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/learner/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/opportunities/my/[clientId]/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/progress/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/progress/person/[userId]/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/scoreboard/deals/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/scoreboard/hustle-points/[repId]/activities/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/scoreboard/hustle-points/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1,
+    "raw-shadow": 2
+  },
+  "app/(dashboard)/scoreboard/retention/page.tsx": {
+    "bg-white": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/sequences/[slug]/add/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/sequences/[slug]/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/sequences/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/agents/coding/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/agents/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/agreements/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/clients/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/dialpad/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/google/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/nps/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/page.tsx": {
+    "card-recipe": 18,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/people/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/performance/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/quickbooks/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/roles/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/salesforce/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/sequences/[slug]/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/sequences/page.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/services/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/settings/teams/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/(dashboard)/talent/campaigns/[campaignId]/page.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "app/(dashboard)/talent/campaigns/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/talent/companies/[companyId]/page.tsx": {
+    "card-recipe": 1
+  },
+  "app/(dashboard)/talent/companies/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/talent/deals/page.tsx": {
+    "card-recipe": 1
+  },
+  "app/(dashboard)/talent/jobs/[jobId]/page.tsx": {
+    "bare-table": 2,
+    "card-recipe": 1
+  },
+  "app/(dashboard)/talent/jobs/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/talent/page.tsx": {
+    "card-recipe": 4
+  },
+  "app/(dashboard)/talent/people/[personId]/page.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1,
+    "hand-h1": 2
+  },
+  "app/(dashboard)/talent/people/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/talent/pipeline/page.tsx": {
+    "bare-table": 1
+  },
+  "app/(dashboard)/talent/placements/page.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "app/(dashboard)/talent/reports/page.tsx": {
+    "bare-table": 2,
+    "card-recipe": 1
+  },
+  "app/(dashboard)/work/[slug]/page.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/work/browse/[containerId]/page.tsx": {
+    "card-recipe": 2,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/work/browse/page.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "app/(dashboard)/work/page.tsx": {
+    "card-recipe": 4,
+    "hand-h1": 1
+  },
+  "app/careers/[slug]/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/careers/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/error.tsx": {
+    "hand-h1": 1
+  },
+  "app/legal/privacy/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/legal/support/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/legal/terms/page.tsx": {
+    "hand-h1": 1
+  },
+  "app/portal/[token]/page.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "app/unauthorized/page.tsx": {
+    "hand-h1": 1
+  },
+  "components/clients/AgreementPanel.tsx": {
+    "card-recipe": 2
+  },
+  "components/clients/BillingSummary.tsx": {
+    "card-recipe": 1
+  },
+  "components/clients/ContactsPanel.tsx": {
+    "bare-table": 1
+  },
+  "components/clients/Conversation.tsx": {
+    "bare-table": 1
+  },
+  "components/clients/HealthTable.tsx": {
+    "bare-table": 1,
+    "card-recipe": 2
+  },
+  "components/clients/MarketReport.tsx": {
+    "bare-table": 1,
+    "card-recipe": 2
+  },
+  "components/clients/Notes.tsx": {
+    "card-recipe": 1
+  },
+  "components/clients/NpsPanel.tsx": {
+    "bare-table": 1
+  },
+  "components/clients/ResultsTable.tsx": {
+    "bare-table": 1
+  },
+  "components/clients/ServicePeriods.tsx": {
+    "bare-table": 1
+  },
+  "components/collections/ArLadder.tsx": {
+    "card-recipe": 5
+  },
+  "components/collections/Board.tsx": {
+    "card-recipe": 1
+  },
+  "components/collections/InvoiceRegister.tsx": {
+    "card-recipe": 3
+  },
+  "components/data/CompaniesSearch.tsx": {
+    "bare-table": 1
+  },
+  "components/data/PeopleSearch.tsx": {
+    "bare-table": 1
+  },
+  "components/gaib/chat-reach.tsx": {
+    "card-recipe": 1
+  },
+  "components/gaib/gaib-widget.tsx": {
+    "raw-shadow": 1
+  },
+  "components/no-access.tsx": {
+    "hand-h1": 1
+  },
+  "components/nps/NpsDashboard.tsx": {
+    "bare-table": 3,
+    "card-recipe": 5
+  },
+  "components/nps/NpsQueue.tsx": {
+    "card-recipe": 2
+  },
+  "components/nps/NpsReadiness.tsx": {
+    "bare-table": 1,
+    "card-recipe": 3
+  },
+  "components/nps/NpsResponseForm.tsx": {
+    "hand-h1": 1
+  },
+  "components/pipeline/ClientGroups.tsx": {
+    "bare-table": 1
+  },
+  "components/pipeline/OpportunityListViews.tsx": {
+    "bare-table": 1,
+    "raw-shadow": 1
+  },
+  "components/pipeline/TargetAccounts.tsx": {
+    "bare-table": 1,
+    "raw-shadow": 1
+  },
+  "components/pipeline/TargetContacts.tsx": {
+    "bare-table": 1
+  },
+  "components/pipeline/bits.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "components/scoreboard/MaskedBlurb.tsx": {
+    "raw-shadow": 1
+  },
+  "components/scoreboard/SourceRecordsBlurb.tsx": {
+    "raw-shadow": 1
+  },
+  "components/scoreboard/TeamBlurb.tsx": {
+    "raw-shadow": 1
+  },
+  "components/sequences/AddContacts.tsx": {
+    "bare-table": 1,
+    "card-recipe": 4
+  },
+  "components/sequences/NewSequence.tsx": {
+    "card-recipe": 1
+  },
+  "components/sequences/SequenceBuilder.tsx": {
+    "card-recipe": 6
+  },
+  "components/sequences/SequenceDetail.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "components/sequences/SequenceList.tsx": {
+    "card-recipe": 1
+  },
+  "components/settings/AgreementImport.tsx": {
+    "card-recipe": 3
+  },
+  "components/settings/ClientDetail.tsx": {
+    "card-recipe": 2
+  },
+  "components/settings/ClientRoleDrift.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "components/settings/ClientsScreen.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "components/settings/CodingRules.tsx": {
+    "bare-table": 1
+  },
+  "components/settings/GoogleCheck.tsx": {
+    "bare-table": 2,
+    "card-recipe": 2
+  },
+  "components/settings/PageUsageTable.tsx": {
+    "bare-table": 1
+  },
+  "components/settings/PeopleTable.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "components/settings/QuickbooksLinks.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  },
+  "components/settings/RolesScreen.tsx": {
+    "card-recipe": 2
+  },
+  "components/settings/SalesforceMatchScreen.tsx": {
+    "bare-table": 1,
+    "card-recipe": 2
+  },
+  "components/settings/SelfServicePanel.tsx": {
+    "bare-table": 1
+  },
+  "components/settings/ServicesScreen.tsx": {
+    "bare-table": 1
+  },
+  "components/settings/TeamsScreen.tsx": {
+    "card-recipe": 3
+  },
+  "components/settings/VoiceNumbers.tsx": {
+    "bare-table": 1
+  },
+  "components/talent/AddPerson.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/AddToJob.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/CompanyForm.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/DealsBoard.tsx": {
+    "raw-shadow": 1
+  },
+  "components/talent/EmailPerson.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/JobActions.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/JobForm.tsx": {
+    "card-recipe": 2
+  },
+  "components/talent/NewCampaign.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/PersonPicker.tsx": {
+    "card-recipe": 1
+  },
+  "components/talent/PipelineBoard.tsx": {
+    "card-recipe": 1,
+    "raw-shadow": 1
+  },
+  "components/talent/SettingsPanels.tsx": {
+    "bare-table": 1
+  },
+  "components/talent/bits.tsx": {
+    "card-recipe": 1,
+    "hand-h1": 1
+  },
+  "components/timelines/TimelineBoard.tsx": {
+    "bare-table": 1
+  },
+  "components/work/ClientWorkPanel.tsx": {
+    "card-recipe": 1
+  },
+  "components/work/ListView.tsx": {
+    "bare-table": 1,
+    "card-recipe": 1
+  }
+}

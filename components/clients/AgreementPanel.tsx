@@ -164,6 +164,7 @@ export function AgreementPanel({
             <iframe
               src={`/api/agreements/${agreement.agreement_id}/pdf#page=1&view=FitH&toolbar=0&navpanes=0`}
               title={agreement.agreement_name ?? "Signed agreement"}
+              // design-ok: a PDF renders on white, so its frame is white in both themes
               className="h-72 w-full rounded-md border bg-white"
             />
           </div>
