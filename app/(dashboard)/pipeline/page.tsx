@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
+import { previewedMemberId } from "@/lib/org";
 import { PageHeader } from "@/components/pipeline/bits";
 import { ClientGroups } from "@/components/pipeline/ClientGroups";
 import type { ClientRow, PipelineScope } from "@/lib/pipeline/targets";
@@ -28,9 +29,15 @@ export default async function TargetCompaniesPage() {
   await requirePipeline();
   const db = await createClient();
 
+  /* "Viewing as" is a cookie the Next layer reads; the database still sees the
+     signed-in person, so the previewed member has to be handed over explicitly
+     or previewing a rep shows the previewer their own screen. Both functions
+     re-check that the caller really holds org.manage before honouring it. */
+  const asMember = await previewedMemberId();
+
   const [{ data: scopeRows }, { data: clientRows }] = await Promise.all([
-    db.rpc("pipeline_my_scope"),
-    db.rpc("pipeline_my_clients"),
+    db.rpc("pipeline_my_scope", { p_as_member: asMember }),
+    db.rpc("pipeline_my_clients", { p_as_member: asMember }),
   ]);
 
   const scope = ((scopeRows ?? [])[0] ?? {
