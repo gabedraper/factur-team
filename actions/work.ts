@@ -234,3 +234,93 @@ export async function processesWithWork(): Promise<{ slug: string; name: string;
     .map((p) => ({ slug: p.slug, name: p.name, open: counts.get(p.id) ?? 0 }))
     .filter((p) => p.open > 0);
 }
+
+/**
+ * My work, bucketed the way an agenda reads.
+ *
+ * ClickUp Home answers one question -- what should I do now -- and answers it
+ * with dates, not with a flat list. Overdue first because it is the only
+ * bucket that is already a problem; undated last because a task nobody has
+ * committed to a day for is not today's work, however long it has sat there.
+ */
+export type Agenda = {
+  overdue: WorkItem[];
+  today: WorkItem[];
+  soon: WorkItem[];
+  later: WorkItem[];
+  undated: WorkItem[];
+};
+
+export async function myAgenda(): Promise<Agenda> {
+  const items = await myWork();
+  const now = new Date();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const endOfWeek = new Date(endOfToday.getTime() + 6 * 86_400_000);
+
+  const out: Agenda = { overdue: [], today: [], soon: [], later: [], undated: [] };
+  for (const item of items) {
+    if (!item.dueAt) { out.undated.push(item); continue; }
+    const due = new Date(item.dueAt);
+    if (due < now) out.overdue.push(item);
+    else if (due <= endOfToday) out.today.push(item);
+    else if (due <= endOfWeek) out.soon.push(item);
+    else out.later.push(item);
+  }
+  return out;
+}
+
+/**
+ * What my work is waiting on, and what it is holding up.
+ *
+ * Only worth showing where the blocker is still open -- a dependency on
+ * something already finished is history, not a reason nothing is moving.
+ */
+export type Blocked = {
+  item: WorkItem;
+  blockerTitle: string;
+  blockerUrl: string;
+  blockerStatus: string;
+};
+
+export async function myBlocked(): Promise<Blocked[]> {
+  const mine = await myWork();
+  if (mine.length === 0) return [];
+
+  const db = createServiceClient();
+  const { data: edges } = await db
+    .from("work_item_dependencies")
+    .select("work_item_id, depends_on_clickup_id")
+    .eq("relation", "waiting_on")
+    .in("work_item_id", mine.map((i) => i.id));
+
+  const rows = (edges ?? []) as { work_item_id: string; depends_on_clickup_id: string }[];
+  if (rows.length === 0) return [];
+
+  const { data: blockers } = await db
+    .from("work_items")
+    .select("clickup_id,title,clickup_url,status,status_type")
+    .in("clickup_id", [...new Set(rows.map((r) => r.depends_on_clickup_id))]);
+
+  const byId = new Map(
+    ((blockers ?? []) as {
+      clickup_id: string; title: string; clickup_url: string;
+      status: string; status_type: string | null;
+    }[]).map((b) => [b.clickup_id, b])
+  );
+  const byItem = new Map(mine.map((i) => [i.id, i]));
+
+  const out: Blocked[] = [];
+  for (const r of rows) {
+    const blocker = byId.get(r.depends_on_clickup_id);
+    const item = byItem.get(r.work_item_id);
+    if (!blocker || !item) continue;
+    if (blocker.status_type === "done" || blocker.status_type === "closed") continue;
+    out.push({
+      item,
+      blockerTitle: blocker.title,
+      blockerUrl: blocker.clickup_url,
+      blockerStatus: blocker.status,
+    });
+  }
+  return out;
+}
