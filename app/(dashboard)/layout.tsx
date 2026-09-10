@@ -335,7 +335,12 @@ export default async function DashboardLayout({
           inside one DialerProvider so a call started on an Opportunity page
           survives navigating anywhere else in this layout. */}
       <DialerProvider canAdmin={perms.has("org.manage")}>
-        <main className="flex flex-1 flex-col overflow-auto">
+        {/* min-w-0 overrides a flex item's default min-width: auto -- without
+            it, wide page content (like the Opportunity page's grid) refuses
+            to shrink below its own intrinsic width and pushes the work panel
+            off past the edge of the viewport instead of scrolling inside
+            itself, which read as "the panel is covered" or missing. */}
+        <main className="flex min-w-0 flex-1 flex-col overflow-auto">
           {/* Presence is the real signed-in person, not the previewed one -- the
               point of it is who is actually at a keyboard. */}
           <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-end border-b bg-card px-4">
