@@ -95,6 +95,14 @@ export const READABLE_TABLES: Record<string, string[]> = {
    */
   "What clients do, and their results": [
     "client_roster", "client_monthly_results", "client_cohorts", "client_profile",
+    /*
+     * What each client actually makes and holds, read off their own website:
+     * capabilities, products, certifications, materials, markets, equipment.
+     * These were queryable all along and never described, so Gaib had no way
+     * to know they existed and answered "which clients are ISO 9001" by
+     * guessing from company names.
+     */
+    "client_attributes", "client_attribute_lists", "client_attribute_totals",
   ],
   /*
    * No qb_ or sf_ tables here any more, and none in gaib_query either.
@@ -114,8 +122,19 @@ export const READABLE_TABLES: Record<string, string[]> = {
    * because these were not on the list. An assistant that can report a number
    * and cannot explain it is the less useful half of the job.
    */
+  /*
+   * How the scoreboard is scored. Somebody asked what a hustle point was worth
+   * and Gaib could not say -- not because the answer was buried in code, but
+   * because these were not on the list. An assistant that can report a number
+   * and cannot explain it is the less useful half of the job.
+   *
+   * app_settings is deliberately absent. It was here as "how things are
+   * scored" and contains nothing of the sort -- it is operational config, and
+   * one of its four rows is a live Resend API key in plain text. Row security
+   * with no policy at all was the only thing keeping it unread.
+   */
   "How things are scored": [
-    "effort_weights", "deal_weights", "client_health_weights", "app_settings",
+    "effort_weights", "deal_weights", "client_health_weights",
   ],
   "Surveys and sequences": [
     "nps_campaigns", "nps_sends", "nps_send_team", "sequences", "sequence_runs",
