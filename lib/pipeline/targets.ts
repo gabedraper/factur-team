@@ -102,10 +102,34 @@ export type ClientRow = {
   account_manager_name: string | null;
   held_by_id: string | null;
   held_by_name: string | null;
+  /* Companies per rolled-up band, for Target Companies. */
   stage_counts: Partial<Record<TargetStage, number>>;
+  /* Pursuits per raw Salesforce value, for Target Contacts. Both fields ride
+     along because a viewer may hold a prospecting role and a delivery one, and
+     because which they read is a setting somebody can change at any moment. */
+  contact_stage_counts: Record<string, number>;
+  contact_lead_status_counts: Record<string, number>;
   companies: number;
   open_companies: number;
+  pursuits: number;
 };
+
+/*
+ * A colour for a raw stage or lead status. The rolled-up bands have their own
+ * map; these are Salesforce's own values, of which there are 32 and 25, so they
+ * are read by shape rather than listed.
+ *
+ * Closed Won is not the same colour as DQ Contact, which is the whole reason
+ * this screen shows raw values instead of the band that lumps them together.
+ */
+export function progressTone(value: string): "slate" | "amber" | "emerald" | "rose" | "blue" {
+  const v = value.toLowerCase();
+  if (v.includes("won") || v === "customer" || v.includes("purchase order")) return "emerald";
+  if (v.startsWith("closed") || v.includes("no fit") || v.includes("lost") || v === "not the dm") return "rose";
+  if (v.includes("lt follow up") || v === "ltfu" || v.includes("follow up")) return "amber";
+  if (v.startsWith("prospecting") || v.includes("cold")) return "slate";
+  return "blue";
+}
 
 /* rep sees clients; lead sees their reports then clients; admin sees team
  * lead, then account manager, then clients. */

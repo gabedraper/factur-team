@@ -7,9 +7,10 @@ import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
 import { TargetContacts } from "@/components/pipeline/TargetContacts";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
-  BOTH_STAGE_FIELDS,
+  BOTH_STAGE_FIELDS, progressTone,
   type ClientRow, type PipelineScope, type StageFields,
 } from "@/lib/pipeline/targets";
+import { ALL_STAGES, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 /*
  * Everyone's target companies, stacked the way their job is stacked.
@@ -56,6 +57,8 @@ const LEVELS: Record<PipelineScope["level"], Grouping[]> = {
 
 const UNASSIGNED = " none";
 
+type Cols = ReturnType<typeof countColumns>;
+
 type Node = {
   key: string;
   label: string;
@@ -68,7 +71,9 @@ type Node = {
   total: number;
 };
 
-function build(rows: ClientRow[], levels: Grouping[], path = ""): Node[] {
+function build(
+  rows: ClientRow[], levels: Grouping[], totalOf: (r: ClientRow) => number, path = "",
+): Node[] {
   if (levels.length === 0) return [];
   const [level, ...rest] = levels;
 
@@ -87,9 +92,9 @@ function build(rows: ClientRow[], levels: Grouping[], path = ""): Node[] {
       key: path + "/" + key,
       label: b.label,
       clients: rest.length === 0 ? b.rows : [],
-      children: build(b.rows, rest, path + "/" + key),
+      children: build(b.rows, rest, totalOf, path + "/" + key),
       clientCount: b.rows.length,
-      total: b.rows.reduce((n, r) => n + r.companies, 0),
+      total: b.rows.reduce((n, r) => n + totalOf(r), 0),
     }))
     /* Biggest book of business first, and the unassigned pile sinks to the
        bottom however large it is, so it never sits above a real person. */
@@ -104,6 +109,51 @@ function build(rows: ClientRow[], levels: Grouping[], path = ""): Node[] {
    hierarchy are the same either way; only the thing you expand into differs. */
 export type ClientView = "companies" | "contacts";
 
+/*
+ * What the count columns are, for whichever screen this is.
+ *
+ * Companies: the eight rolled-up bands, fixed, because they are the same eight
+ * for everybody. Contacts: Salesforce's own values for whichever field the
+ * viewer's role reads -- and only the ones their own clients actually use, so a
+ * client working four stages gets four columns rather than thirty-two empty
+ * ones. Canonical picklist order first, then anything the picklist has not
+ * caught up with, biggest first.
+ */
+function countColumns(rows: ClientRow[], view: ClientView, stageFields: StageFields) {
+  if (view === "companies") {
+    return {
+      columns: TARGET_STAGES as readonly string[],
+      countsOf: (r: ClientRow) => r.stage_counts as Record<string, number>,
+      totalOf: (r: ClientRow) => r.companies,
+      tone: (v: string) => STAGE_TONE[v as keyof typeof STAGE_TONE] ?? "slate",
+    };
+  }
+
+  const useStage = stageFields.show_stage;
+  const countsOf = (r: ClientRow) =>
+    useStage ? r.contact_stage_counts : r.contact_lead_status_counts;
+  const canonical = useStage ? ALL_STAGES : LEAD_STATUSES;
+
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    for (const [k, n] of Object.entries(countsOf(r) ?? {})) {
+      totals.set(k, (totals.get(k) ?? 0) + n);
+    }
+  }
+  const present = [...totals.keys()];
+  const known = canonical.filter((v) => totals.has(v));
+  const rest = present
+    .filter((v) => !canonical.includes(v))
+    .sort((a, b) => (totals.get(b) ?? 0) - (totals.get(a) ?? 0));
+
+  return {
+    columns: [...known, ...rest],
+    countsOf,
+    totalOf: (r: ClientRow) => r.pursuits,
+    tone: progressTone,
+  };
+}
+
 export function ClientGroups({
   scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies",
 }: {
@@ -113,7 +163,8 @@ export function ClientGroups({
   view?: ClientView;
 }) {
   const levels = LEVELS[scope.level];
-  const tree = useMemo(() => build(rows, levels), [rows, levels]);
+  const cols = useMemo(() => countColumns(rows, view, stageFields), [rows, view, stageFields]);
+  const tree = useMemo(() => build(rows, levels, cols.totalOf), [rows, levels, cols]);
   const [openClient, setOpenClient] = useState<string | null>(null);
 
   if (rows.length === 0) {
@@ -123,7 +174,7 @@ export function ClientGroups({
   if (levels.length === 0) {
     return (
       <Panel>
-        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
+        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
       </Panel>
     );
   }
@@ -131,14 +182,14 @@ export function ClientGroups({
   return (
     <div className="space-y-2">
       {tree.map((n) => (
-        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
+        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
       ))}
     </div>
   );
 }
 
 function Group({
-  node, depth, openClient, setOpenClient, stageFields, view,
+  node, depth, openClient, setOpenClient, stageFields, view, cols,
 }: {
   node: Node;
   depth: number;
@@ -146,6 +197,7 @@ function Group({
   setOpenClient: (id: string | null) => void;
   stageFields: StageFields;
   view: ClientView;
+  cols: Cols;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -181,11 +233,12 @@ function Group({
                   setOpenClient={setOpenClient}
                   stageFields={stageFields}
                   view={view}
+                  cols={cols}
                 />
               ))}
             </div>
           ) : (
-            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
+            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
           )}
         </div>
       )}
@@ -194,15 +247,16 @@ function Group({
 }
 
 function ClientList({
-  rows, openClient, setOpenClient, stageFields, view,
+  rows, openClient, setOpenClient, stageFields, view, cols,
 }: {
   rows: ClientRow[];
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
   stageFields: StageFields;
   view: ClientView;
+  cols: Cols;
 }) {
-  const span = TARGET_STAGES.length + 2;
+  const span = cols.columns.length + 2;
 
   return (
     <div className="overflow-x-auto">
@@ -210,7 +264,7 @@ function ClientList({
         <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-2 text-left font-medium">Client</th>
-            {TARGET_STAGES.map((s) => (
+            {cols.columns.map((s) => (
               <th key={s} className="whitespace-nowrap px-2 py-2 text-center font-medium">{s}</th>
             ))}
             <th className="px-4 py-2 text-right font-medium">Total</th>
@@ -240,12 +294,12 @@ function ClientList({
 
                 {/* A cell per band whether or not it has anything in it, so the
                     numbers line up down the page. */}
-                {TARGET_STAGES.map((s) => {
-                  const n = c.stage_counts[s] ?? 0;
+                {cols.columns.map((s) => {
+                  const n = (cols.countsOf(c) ?? {})[s] ?? 0;
                   return (
                     <td key={s} className="px-2 py-2 text-center">
                       {n > 0 ? (
-                        <Chip colour={STAGE_TONE[s]} className="tabular-nums">
+                        <Chip colour={cols.tone(s)} className="tabular-nums">
                           {n.toLocaleString()}
                         </Chip>
                       ) : null}
@@ -254,7 +308,7 @@ function ClientList({
                 })}
 
                 <td className="px-4 py-2 text-right font-semibold tabular-nums">
-                  {c.companies.toLocaleString()}
+                  {cols.totalOf(c).toLocaleString()}
                 </td>
               </tr>
 

@@ -39,11 +39,11 @@ export default async function TargetContactsPage() {
   const rows = (clientRows ?? []) as ClientRow[];
   const stageFields = ((fieldRows ?? [])[0] ?? BOTH_STAGE_FIELDS) as StageFields;
 
-  const companies = rows.reduce((n, r) => n + r.companies, 0);
+  const pursuits = rows.reduce((n, r) => n + r.pursuits, 0);
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Target Contacts" count={companies.toLocaleString()} />
+      <PageHeader title="Target Contacts" count={pursuits.toLocaleString()} />
       <ClientGroups scope={scope} rows={rows} stageFields={stageFields} view="contacts" />
     </div>
   );
