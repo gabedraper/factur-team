@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
 import { editClientNote, setNotePinned, deleteClientNote } from "@/actions/client-notes";
-import { Mail, MessageSquare, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote, Pin } from "lucide-react";
+import { Mail, MessageSquare, MessageSquareText, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote, Pin, ListChecks } from "lucide-react";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -40,6 +40,8 @@ function Icon({ entry }: { entry: ConversationEntry }) {
   if (entry.kind === "payment") return <CircleDollarSign className={cls} />;
   if (entry.kind === "gap") return <AlertTriangle className={cls} />;
   if (entry.kind === "note") return <StickyNote className={cls} />;
+  if (entry.kind === "task") return <ListChecks className={cls} />;
+  if (entry.kind === "collections_sms") return <MessageSquareText className={cls} />;
   if (entry.kind === "collections" || entry.kind === "collections_upcoming")
     return <MailWarning className={cls} />;
   if (entry.source === "google_chat") return <MessageSquare className={cls} />;
@@ -295,6 +297,51 @@ export function Conversation({
                     Open in Gmail
                   </a>
                 )}
+              </div>
+            </div>
+          );
+        }
+
+        // A collections text sent -- no inbound side, since nothing ingests a
+        // client's SMS replies yet.
+        if (e.kind === "collections_sms") {
+          return (
+            <div key={key} className="flex justify-end">
+              <div className="max-w-[80%] rounded-lg border border-dashed bg-primary/5 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <Icon entry={e} />
+                  <span className="font-medium text-foreground">Text sent</span>
+                  <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
+                  {e.bill_email && <span>to {e.bill_email}</span>}
+                </div>
+                {e.preview && (
+                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.preview}</div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // Open ClickUp work, inset like the rest of the internal talk.
+        if (e.kind === "task") {
+          return (
+            <div key={key} className="flex justify-center">
+              <div className="w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  <Icon entry={e} />
+                  {e.author && <span>{e.author}</span>}
+                  {e.preview && <span>{e.preview}</span>}
+                  {e.due_date && <span>due {onDay(e.due_date)}</span>}
+                </div>
+                <div className="mt-0.5 text-sm font-medium">
+                  {e.url ? (
+                    <a href={e.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {e.title}
+                    </a>
+                  ) : (
+                    e.title
+                  )}
+                </div>
               </div>
             </div>
           );
