@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
-import type { Container, ContainerKind, Crumb } from "@/lib/work-tree";
+import type { Container, ContainerKind, Crumb, ListItem, FieldValue } from "@/lib/work-tree";
 import type { WorkItem } from "@/lib/work";
 
 /*
@@ -136,34 +136,53 @@ export async function containerWithPath(
   return { node, path };
 }
 
-/** The tasks in one list, open first, then everything else. */
-export async function listItems(listClickupId: string): Promise<WorkItem[]> {
+/**
+ * Every task in one list, with everything a row can show.
+ *
+ * Dependencies are resolved to titles here rather than in the page: the far end
+ * is a ClickUp id, and a row reading "waiting on 86ajwcuxf" helps nobody.
+ */
+export async function listItems(listClickupId: string): Promise<ListItem[]> {
   if (!(await mayView())) return [];
+  const db = createServiceClient();
 
-  const { data } = await createServiceClient()
+  const { data } = await db
     .from("work_items")
     .select(`
-      id, clickup_id, clickup_url, title, status, status_type, priority, due_at,
-      pod, client_id, opportunity_id, clickup_space, clickup_folder, clickup_list,
-      work_processes(slug, name), org_clients(name), work_item_assignees(name)
+      id, clickup_id, clickup_url, title, status, status_type, priority,
+      start_at, due_at, time_estimate_ms, fields, parent_clickup_id, client_id,
+      org_clients(name), work_item_assignees(name),
+      work_item_dependencies(depends_on_clickup_id, relation)
     `)
     .eq("clickup_list_id", listClickupId)
-    .order("status_type", { ascending: true })
-    .order("due_at", { nullsFirst: false })
-    .limit(1000);
+    .limit(2000);
 
-  type ItemRow = {
+  type Row = {
     id: string; clickup_id: string; clickup_url: string; title: string;
-    status: string; status_type: WorkItem["statusType"]; priority: WorkItem["priority"];
-    due_at: string | null; pod: string | null; client_id: string | null;
-    opportunity_id: string | null; clickup_space: string | null;
-    clickup_folder: string | null; clickup_list: string | null;
-    work_processes: { slug: string; name: string } | null;
+    status: string; status_type: ListItem["statusType"]; priority: string | null;
+    start_at: string | null; due_at: string | null; time_estimate_ms: number | null;
+    fields: FieldValue[] | null; parent_clickup_id: string | null;
+    client_id: string | null;
     org_clients: { name: string } | null;
     work_item_assignees: { name: string | null }[];
+    work_item_dependencies: { depends_on_clickup_id: string; relation: string }[];
   };
 
-  return ((data ?? []) as unknown as ItemRow[]).map((r) => ({
+  const rows = (data ?? []) as unknown as Row[];
+
+  /* One lookup for every dependency target across the whole list. */
+  const wanted = [...new Set(rows.flatMap((r) =>
+    (r.work_item_dependencies ?? []).map((d) => d.depends_on_clickup_id)))];
+  const titles = new Map<string, string>();
+  if (wanted.length) {
+    const { data: others } = await db
+      .from("work_items").select("clickup_id,title").in("clickup_id", wanted);
+    for (const o of (others ?? []) as { clickup_id: string; title: string }[]) {
+      titles.set(o.clickup_id, o.title);
+    }
+  }
+
+  return rows.map((r) => ({
     id: r.id,
     clickupId: r.clickup_id,
     url: r.clickup_url,
@@ -171,16 +190,18 @@ export async function listItems(listClickupId: string): Promise<WorkItem[]> {
     status: r.status,
     statusType: r.status_type,
     priority: r.priority,
+    startAt: r.start_at,
     dueAt: r.due_at,
-    processName: r.work_processes?.name ?? null,
-    processSlug: r.work_processes?.slug ?? null,
-    pod: r.pod,
-    clientId: r.client_id,
-    clientName: r.org_clients?.name ?? null,
-    opportunityId: r.opportunity_id,
-    space: r.clickup_space,
-    folder: r.clickup_folder,
-    list: r.clickup_list,
+    timeEstimateMs: r.time_estimate_ms,
     assignees: (r.work_item_assignees ?? []).map((a) => a.name ?? "").filter(Boolean),
+    fields: r.fields ?? [],
+    dependencies: (r.work_item_dependencies ?? []).map((d) => ({
+      clickupId: d.depends_on_clickup_id,
+      relation: d.relation as "blocking" | "waiting_on",
+      title: titles.get(d.depends_on_clickup_id) ?? null,
+    })),
+    parentClickupId: r.parent_clickup_id,
+    clientName: r.org_clients?.name ?? null,
+    clientId: r.client_id,
   }));
 }

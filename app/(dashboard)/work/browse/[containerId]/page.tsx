@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronRight, ExternalLink } from "lucide-react";
 import { containerWithPath, children, listItems } from "@/actions/work-tree";
 import { ContainerRows } from "@/components/work/ContainerRows";
-import { WorkRows } from "@/components/work/WorkRows";
+import { ListView } from "@/components/work/ListView";
 import { KIND_LABEL } from "@/lib/work-tree";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
@@ -77,17 +77,19 @@ export default async function ContainerPage({
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card px-3 py-1">
-        {isList ? (
-          items.length === 0 ? (
-            <p className="py-3 text-sm text-muted-foreground">No tasks mirrored.</p>
-          ) : (
-            <WorkRows items={items} show={{ client: true }} />
-          )
+      {isList ? (
+        items.length === 0 ? (
+          <div className="rounded-lg border bg-card px-3 py-3">
+            <p className="text-sm text-muted-foreground">No tasks mirrored.</p>
+          </div>
         ) : (
+          <ListView items={items} />
+        )
+      ) : (
+        <div className="rounded-lg border bg-card px-3 py-1">
           <ContainerRows items={kids} />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
