@@ -83,6 +83,56 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      /*
+       * The four slots below were missing, and the pattern was exact: every
+       * value with a token stayed consistent across the app, and every value
+       * without one drifted. Colour had tokens and is uniform; shadow,
+       * spacing, type scale and motion had none, and those are the four areas
+       * that fell apart -- 8 page-title treatments, three competing section
+       * paddings, 27 unusable shadows, no motion at all.
+       *
+       * All four are ADDITIVE on purpose. Redefining Tailwind's own `spacing`
+       * or `fontSize` scales would silently resize every one of the 110 pages
+       * at once; adding names beside them lets new work be correct and old
+       * work be moved over a screen at a time.
+       *
+       * Each name says what it is for rather than how big it is. `p-card`
+       * cannot drift into meaning something else the way `p-4` did, and when
+       * the decision changes it changes here -- once -- instead of in 41
+       * files.
+       */
+      boxShadow: {
+        raised: "var(--shadow-raised)",
+        overlay: "var(--shadow-overlay)",
+        modal: "var(--shadow-modal)",
+      },
+      fontSize: {
+        /* 20px/600 -- the treatment already on 28 pages, made the one answer. */
+        "page-title": ["1.25rem", { lineHeight: "1.75rem", fontWeight: "600", letterSpacing: "-0.01em" }],
+        "section-title": ["0.875rem", { lineHeight: "1.25rem", fontWeight: "600" }],
+        body: ["0.875rem", { lineHeight: "1.5rem" }],
+        /* Secondary text and table figures. 523 uses of text-xs say this is
+           the app's real second size, so it gets a name. */
+        meta: ["0.75rem", { lineHeight: "1rem" }],
+      },
+      spacing: {
+        /* Page gutter (p-6, 80 uses) and the card recipe (p-4, 41 uses). */
+        section: "1.5rem",
+        card: "1rem",
+        "card-tight": "0.75rem",
+        /* Table density, in one place. Change these two and every list in the
+           app changes with them -- which is the whole point of naming them. */
+        "cell-x": "0.75rem",
+        "cell-y": "0.5rem",
+      },
+      transitionTimingFunction: {
+        out: "var(--ease-out)",
+      },
+      transitionDuration: {
+        fast: "var(--duration-fast)",
+        base: "var(--duration-base)",
+        slow: "var(--duration-slow)",
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },

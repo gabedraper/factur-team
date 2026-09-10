@@ -46,6 +46,29 @@
     --field-border: 214.3 31.8% 85%;
     --ring: 236 63% 51%;
     --radius: 0.5rem;
+
+    /* Surface depth ---------------------------------------------------------
+       Shadows had no token, so every use fell through to Tailwind's defaults,
+       which are tuned for a white page and stay black in dark mode. They
+       looked wrong, so people stopped reaching for them: 27 shadows in the
+       whole app against borders everywhere. These three exist so there is a
+       right answer, and so dark mode can have a different one.
+
+       Named by what they are for, not by size -- a shadow that says "raised"
+       cannot drift into meaning "modal" the way sm/md/lg does. */
+    --shadow-raised: 0 1px 2px hsl(222 40% 12% / .06);
+    --shadow-overlay: 0 2px 4px hsl(222 40% 12% / .07), 0 8px 20px -8px hsl(222 40% 12% / .18);
+    --shadow-modal: 0 8px 32px -8px hsl(222 40% 12% / .28);
+
+    /* Motion ----------------------------------------------------------------
+       One duration and one curve, referenced rather than retyped. The curve
+       decelerates: things arrive quickly and settle, which reads as fast even
+       at 160ms. Anything past ~200ms starts to feel like waiting on the
+       twentieth navigation of the day. */
+    --ease-out: cubic-bezier(.2, .7, .3, 1);
+    --duration-fast: 120ms;
+    --duration-base: 160ms;
+    --duration-slow: 240ms;
   }
 
   .dark {
@@ -81,6 +104,17 @@
     --elevated: 217.2 32.6% 17.5%;
     --field-border: 217.2 32.6% 32%;
     --ring: 236 72% 68%;
+
+    /*
+     * Depth on a dark ground cannot be done with black -- there is nothing
+     * darker to cast onto. It is done with a light top edge instead, so the
+     * surface reads as catching light from above, plus a deeper spread to
+     * separate it from the page. Naively reusing the light values is why the
+     * app's few shadows disappear in dark mode.
+     */
+    --shadow-raised: inset 0 1px 0 hsl(210 40% 98% / .05), 0 1px 2px hsl(0 0% 0% / .4);
+    --shadow-overlay: inset 0 1px 0 hsl(210 40% 98% / .06), 0 8px 24px -8px hsl(0 0% 0% / .7);
+    --shadow-modal: inset 0 1px 0 hsl(210 40% 98% / .07), 0 12px 40px -8px hsl(0 0% 0% / .8);
   }
 }
 
