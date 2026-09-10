@@ -16,16 +16,30 @@ import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
  * the in-app route rather than reimplemented here, because two copies of a
  * permission rule is one copy that will eventually be wrong.
  *
- * Chat waits about thirty seconds for a reply and then gives up. An agent that
- * looks two things up can take longer than that, so the work is given a budget
- * and a slow answer is turned into an honest sentence rather than a timeout
- * that leaves somebody staring at nothing.
+ * Chat waits about thirty seconds for a reply and then gives up, and puts
+ * "Gaib not responding" in front of the person. Nobody should ever see that,
+ * so the budget below is a race against the clock rather than a check between
+ * steps -- see the note on it.
  */
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
-/** Google's patience, minus enough to get an answer back through the wire. */
-const BUDGET_MS = 25_000;
+/*
+ * How long to wait before promising rather than answering.
+ *
+ * Raced against the turn, not checked between its steps. The previous version
+ * looked at the clock each time the agent produced something, which cannot
+ * fire while a single slow tool call is in flight -- and that is exactly when
+ * it is needed. Elijah asked a question that sent Gaib to Google Chat search;
+ * that one call took thirty seconds on its own, the check never got to run,
+ * Chat gave up at thirty, and the reply went out at thirty-eight to nobody.
+ *
+ * Eight seconds because the ordinary question is answered in three or four and
+ * deserves one message rather than two, while anything reaching for Gmail,
+ * Chat or Drive will always be slower than Chat will wait and should say so
+ * immediately.
+ */
+const ANSWER_OR_PROMISE_MS = 8_000;
 
 /*
  * Is this thing switched on?
@@ -259,75 +273,98 @@ async function answer(event: ChatEvent) {
     });
 
     /*
+     * The whole turn as one promise, so it can be raced rather than watched.
+     *
      * Collected rather than streamed: Chat shows a message when it is finished,
      * so there is nothing to stream to. The pieces are joined because a turn
      * that used a tool produces text on both sides of it.
+     *
+     * Nothing breaks out of this loop. Breaking calls return() on the generator
+     * and ends the turn mid-tool-call, which is how somebody once got told the
+     * answer would be waiting in the app when the work had already stopped and
+     * no answer was ever coming. It runs to the end either way; the only
+     * question is whether anyone is still on the line to receive it.
      */
-    const said: string[] = [];
-    const deadline = Date.now() + BUDGET_MS;
-    let ranOut = false;
-
-    for await (const e of turn) {
-      if (e.type === "text") said.push(e.text);
-      if (e.type === "error") said.push(`Something went wrong: ${e.message}`);
-      if (Date.now() > deadline) {
-        ranOut = true;
-        break;
+    const work = (async () => {
+      const said: string[] = [];
+      for await (const e of turn) {
+        if (e.type === "text") said.push(e.text);
+        if (e.type === "error") said.push(`Something went wrong: ${e.message}`);
       }
+      return said.join("").trim();
+    })();
+
+    /*
+     * Answer if it is quick, promise if it is not.
+     *
+     * A timer, not a clock check between steps: a single slow tool call --
+     * Gmail, Chat search, Drive -- holds the loop for thirty seconds or more,
+     * and a check that only runs between steps cannot fire while it does. That
+     * is precisely when the promise is needed, so it has to come from outside.
+     */
+    const quick = await Promise.race([
+      work.then((text) => ({ ready: true as const, text })),
+      new Promise<{ ready: false }>((resolve) =>
+        setTimeout(() => resolve({ ready: false }), ANSWER_OR_PROMISE_MS)
+      ),
+    ]);
+
+    if (quick.ready) {
+      return reply(quick.text || "I do not have an answer for that.", event);
     }
 
-    const text = said.join("").trim();
+    /*
+     * Still working. Say so now, deliver later.
+     *
+     * The response has to leave well inside Chat's thirty seconds or Chat
+     * replaces it with "Gaib not responding" and the person is left with no
+     * reason to expect anything further. The turn carries on untouched and its
+     * answer is posted into the same conversation when it lands.
+     */
+    if (event.spaceName) {
+      finishing = true;
+      const space = event.spaceName;
 
-    if (!text && ranOut) {
-      /*
-       * A question that outran Chat's patience.
-       *
-       * Breaking out of a `for await` calls return() on the generator, which
-       * ends it. The previous version of this said "I have kept working on it,
-       * open the app in a minute and the answer will be there" -- and the work
-       * had already stopped mid-tool-call, so there was never going to be an
-       * answer. Somebody asked a real question about a real prospect, was told
-       * to go and look, and found nothing.
-       *
-       * So the rest of the turn is genuinely finished, after the response has
-       * gone back to Chat, and the answer is posted into the same conversation
-       * when it is ready. The session is released in there rather than in the
-       * finally below, because the work still needs it.
-       */
-      if (event.spaceName) {
-        finishing = true;
-        const space = event.spaceName;
-        after(async () => {
-          try {
-            const rest: string[] = [];
-            for await (const e of turn) {
-              if (e.type === "text") rest.push(e.text);
-              if (e.type === "error") rest.push(`Something went wrong: ${e.message}`);
-            }
-            const answer = rest.join("").trim();
-            if (answer) await postToSpace(space, answer);
-          } catch {
-            // Never worth taking anything else down for.
-          } finally {
-            await acting.session.release();
-          }
-        });
-
-        return reply(
-          "That one needs a bit more digging than Chat will wait for. " +
-            "I am still on it and will send the answer here in a moment.",
-          event
-        );
-      }
+      after(async () => {
+        try {
+          const text = await work;
+          await postToSpace(
+            space,
+            text ||
+              "I could not get to the bottom of that one. Ask me again and I will try a different way."
+          );
+        } catch {
+          // Say something rather than nothing: a promise to reply that goes
+          // quiet is worse than the original timeout.
+          await postToSpace(space, "That one beat me — something went wrong at my end.").catch(() => {});
+        } finally {
+          await acting.session.release();
+        }
+      });
 
       return reply(
-        "That is taking me longer than Chat will wait. I have kept working on it — " +
-          "open Gaib in the app in a minute and the answer will be there.",
+        "Give me a minute on that one — I need to look a few things up. " +
+          "I will send the answer here as soon as I have it.",
         event
       );
     }
 
-    return reply(text || "I do not have an answer for that.", event);
+    /*
+     * No space to post into, which should not happen for a direct message.
+     * The turn still finishes and is still written to the conversation, so the
+     * answer is in the app even though it cannot be delivered here.
+     */
+    finishing = true;
+    after(async () => {
+      try { await work; } catch { /* recorded either way */ }
+      finally { await acting.session.release(); }
+    });
+
+    return reply(
+      "Give me a minute on that one — I need to look a few things up. " +
+        "I cannot post back into this conversation, so open Gaib in the app and it will be there.",
+      event
+    );
   } finally {
     // Not when the answer is still being written: the work that carries on
     // after the response needs the session, and releases it itself.
