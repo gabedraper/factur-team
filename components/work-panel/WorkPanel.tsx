@@ -11,6 +11,7 @@ import { TelnyxDialWidget } from "@/components/pipeline/TelnyxDialWidget";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
 import { RailWork } from "@/components/work/RailWork";
 import { useCallActive } from "@/lib/calls/active";
+import { useExpandCallsSignal } from "@/lib/calls/expand";
 import type { WorkItem } from "@/lib/work";
 
 const STORAGE_KEY = "factur-work-panel-collapsed";
@@ -75,6 +76,27 @@ export function WorkPanel({
    * back when the call ends.
    */
   const callsShut = shut.includes("calls") && !onCall;
+
+  /*
+   * requestCall() (dialer-context.tsx) fires this when something outside the
+   * panel -- a contact's phone field, say -- wants to dial a number right
+   * now. The dial widget below is unmounted whenever the panel is collapsed
+   * or Calls is shut, so nothing would be listening for that request unless
+   * the panel opens itself first.
+   */
+  useExpandCallsSignal(() => {
+    setCollapsed((c) => {
+      if (!c) return c;
+      localStorage.setItem(STORAGE_KEY, "0");
+      return false;
+    });
+    setShut((s) => {
+      if (!s.includes("calls")) return s;
+      const next = s.filter((x) => x !== "calls");
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  });
 
   function toggleSection(id: string) {
     setShut((s) => {

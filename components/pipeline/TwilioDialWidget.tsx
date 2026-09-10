@@ -99,17 +99,20 @@ export function TwilioDialWidget() {
 
   /**
    * overrideNumber comes from something outside this panel asking to dial a
-   * specific number -- the Contact panel's phone field, e.g. -- rather than
-   * this Opportunity's own contact.phoneNumber. Still commits/logs against
-   * the Opportunity currently open either way; it's the same real-world
-   * call, just placed from a different button.
+   * specific number -- a target account's contact, e.g. -- which may have no
+   * Opportunity open at all. Only commit()/tag the call with an
+   * opportunity_id on the normal, no-override path calling this
+   * Opportunity's own contact; an ad hoc number is unrelated to whatever's
+   * open elsewhere.
    */
   async function placeCall(overrideNumber?: string) {
-    if (!target) { setError("Open an Opportunity to call."); return; }
     const device = deviceRef.current;
     if (!device) return;
-    const raw = overrideNumber ?? target.phoneNumber;
-    if (!raw) { setError("This contact has no phone number on file."); return; }
+    const raw = overrideNumber ?? target?.phoneNumber;
+    if (!raw) {
+      setError(target ? "This contact has no phone number on file." : "Open an Opportunity to call.");
+      return;
+    }
 
     // crm_contacts.phone comes out of Salesforce in whatever shape it was
     // typed in over the years -- normalize to E.164 rather than sending
@@ -133,10 +136,14 @@ export function TwilioDialWidget() {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
-      commit();
+      const isAdHoc = Boolean(overrideNumber);
+      if (!isAdHoc) commit();
       setCallState("dialing");
       const call = await device.connect({
-        params: { To: to, CallerId: outboundCallerId, OpportunityId: target.opportunityId },
+        params: {
+          To: to, CallerId: outboundCallerId,
+          ...(isAdHoc ? {} : { OpportunityId: target!.opportunityId }),
+        },
       });
       callRef.current = call;
       call.on("accept", () => setCallState("ringing"));

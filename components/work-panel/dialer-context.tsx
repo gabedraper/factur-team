@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { expandCallsPanel } from "@/lib/calls/expand";
 
 export type CallTarget = { opportunityId: string; phoneNumber: string | null; contactName: string };
 
@@ -38,7 +39,9 @@ export function DialerProvider({ children, canAdmin }: { children: ReactNode; ca
       value={{
         active, setActive, canAdmin,
         requestedCall,
-        requestCall: setRequestedCall,
+        // Ask the panel to un-collapse before the widget needs to be there to
+        // receive this -- see lib/calls/expand.ts.
+        requestCall: (number: string) => { expandCallsPanel(); setRequestedCall(number); },
         clearRequestedCall: () => setRequestedCall(null),
       }}
     >

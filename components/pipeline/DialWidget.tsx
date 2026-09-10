@@ -106,16 +106,17 @@ export function DialWidget() {
 
   /**
    * overrideNumber comes from something outside this panel asking to dial a
-   * specific number -- the Contact panel's phone field, e.g. -- rather than
-   * this Opportunity's own contact.phoneNumber. Still commits/logs against
-   * the Opportunity currently open either way; it's the same real-world
-   * call, just placed from a different button.
+   * specific number -- a target account's contact, e.g. -- which may well
+   * have no Opportunity open at all (Target Companies isn't an Opportunity
+   * page). Only commit()/tag the call with an opportunity_id when this is
+   * the normal, no-override path calling this Opportunity's own contact --
+   * an ad hoc number is unrelated to whatever happens to be open elsewhere,
+   * and must not be misattributed to it.
    */
   async function placeCall(overrideNumber?: string) {
-    if (!target) { setError("Open an Opportunity to call."); return; }
-    const raw = overrideNumber ?? target.phoneNumber;
+    const raw = overrideNumber ?? target?.phoneNumber;
     if (!raw) {
-      setError("This contact has no phone number on file.");
+      setError(target ? "This contact has no phone number on file." : "Open an Opportunity to call.");
       return;
     }
     // crm_contacts.phone comes out of Salesforce in whatever shape it was
@@ -138,12 +139,13 @@ export function DialWidget() {
       // call on it.
       const claimed = await claimOutboundNumber("dialpad");
       const outboundCallerId = claimed.ok ? claimed.e164 : null;
-      commit();
+      const isAdHoc = Boolean(overrideNumber);
+      if (!isAdHoc) commit();
       setCallState("dialing");
       postToDialer(frameRef.current, "initiate_call", {
         phone_number: phoneNumber,
         ...(outboundCallerId ? { outbound_caller_id: outboundCallerId } : {}),
-        custom_data: JSON.stringify({ opportunity_id: target.opportunityId }),
+        ...(isAdHoc ? {} : { custom_data: JSON.stringify({ opportunity_id: target!.opportunityId }) }),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not place that call.");
