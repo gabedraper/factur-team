@@ -202,7 +202,7 @@ export function WorkPanel({
             badge={onCall ? <span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="On a call" /> : null}
           />
           {!collapsed && !callsShut && (
-            <div className="p-3">
+            <div>
               {/* Dialpad first: it's the provider that's actually cleared for
                   outbound calling. Telnyx and Twilio stay wired up underneath
                   in case that changes. */}

@@ -183,9 +183,9 @@ export function DialWidget() {
         )
       }
     >
-      <div className="space-y-3 p-4">
+      <div className="space-y-3">
         {error && (
-          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="mx-3 mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             {error}
           </p>
         )}
@@ -193,7 +193,7 @@ export function DialWidget() {
         {!target ? (
           <Empty>Open an Opportunity to call.</Empty>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
             <span className="w-full truncate text-sm font-medium">{target.contactName}</span>
             {callState === "ringing" || callState === "dialing" ? (
               <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
@@ -222,13 +222,15 @@ export function DialWidget() {
         )}
 
         {/* 400x520 is Dialpad's own documented size for this embed --
-            developers.dialpad.com/docs/dialpad-mini-dialer. Anything smaller
-            and its own UI clips instead of reflowing. */}
+            developers.dialpad.com/docs/dialpad-mini-dialer -- but that's a
+            floor, not a target: no horizontal margin here, so it fills
+            whatever the panel gives it instead of sitting on a slab of empty
+            space either side. */}
         <iframe
           ref={frameRef}
           src={`${DIALPAD_ORIGIN}/apps/${CTI_CLIENT_ID}`}
           title="Dialpad"
-          className="mx-auto h-[520px] w-full max-w-[400px] rounded-md border"
+          className="h-[520px] w-full"
           allow="microphone; speaker-selection; autoplay; camera; display-capture; hid"
           sandbox="allow-popups allow-scripts allow-same-origin allow-forms"
         />
