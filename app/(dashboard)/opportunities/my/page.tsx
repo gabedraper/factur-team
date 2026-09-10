@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { listViews } from "@/actions/opportunity-views";
@@ -18,17 +19,26 @@ export const dynamic = "force-dynamic";
  * The per-client route still exists and is still linked from the pipeline
  * screens; it is simply no longer the way in.
  *
- * RLS decides the rows. A view with no filters is every opportunity the viewer
- * can see, which is exactly what it should be.
+ * No view, no query. Listing every opportunity is a sequential scan of 779,763
+ * rows before any join or count -- roughly two seconds of database spent
+ * answering a question nobody has asked yet -- so the list waits until a view
+ * is chosen. The one exception is the view this browser used last, read from a
+ * cookie here so it is known before the first paint and nobody watches the
+ * wrong list appear and then swap.
  */
 
 export default async function OpportunitiesPage() {
   await requirePipeline("view");
-  const [views, perms] = await Promise.all([listViews(), myPermissions()]);
+  const [views, perms, jar] = await Promise.all([listViews(), myPermissions(), cookies()]);
+  const remembered = jar.get("opp_list_view")?.value ?? null;
 
   return (
     <div className="p-6">
-      <OpportunityListViews views={views} canShare={perms.has("org.manage")} />
+      <OpportunityListViews
+        views={views}
+        canShare={perms.has("org.manage")}
+        initialViewId={remembered}
+      />
     </div>
   );
 }

@@ -83,14 +83,39 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
   return <span className="text-muted-foreground">{typeof v === "string" ? v : v == null ? "" : String(v)}</span>;
 }
 
+/*
+ * Remembered per browser, so coming back to the screen lands where you left it.
+ * A cookie rather than local storage because the page is server-rendered: the
+ * chosen view is known before the first paint, so nobody watches the wrong list
+ * appear and then swap.
+ */
+const REMEMBER = "opp_list_view";
+
+function remember(id: string) {
+  try {
+    document.cookie = `${REMEMBER}=${encodeURIComponent(id)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  } catch {
+    /* Cookies off. The list still works, it just forgets. */
+  }
+}
+
 export function OpportunityListViews({
-  views: initialViews, canShare,
+  views: initialViews, canShare, initialViewId,
 }: {
   views: ListView[];
   canShare: boolean;
+  initialViewId: string | null;
 }) {
   const [views, setViews] = useState(initialViews);
-  const [activeId, setActiveId] = useState<string | null>(initialViews[0]?.id ?? null);
+  /*
+   * Nothing is chosen for you. A list of every opportunity is a seq scan of
+   * 779,763 rows before any join or count -- about two seconds of database for
+   * a screen nobody asked a question of yet. So the query waits for a view, and
+   * the only view picked automatically is the one this browser last used.
+   */
+  const [activeId, setActiveId] = useState<string | null>(
+    initialViewId && initialViews.some((v) => v.id === initialViewId) ? initialViewId : null,
+  );
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -102,12 +127,13 @@ export function OpportunityListViews({
   const columns = knownColumns(active?.columns ?? DEFAULT_COLUMNS);
 
   const load = useCallback((view: ListView | null, nextPage: number, q: string) => {
+    if (!view) { setRows([]); setTotal(0); setPage(0); return; }
     start(async () => {
       const res = await listOpportunities({
-        columns: view?.columns ?? DEFAULT_COLUMNS,
-        filters: view?.filters ?? [],
-        sortField: view?.sort_field ?? null,
-        sortDir: view?.sort_dir ?? "asc",
+        columns: view.columns,
+        filters: view.filters,
+        sortField: view.sort_field,
+        sortDir: view.sort_dir,
         search: q,
         page: nextPage,
       });
@@ -118,6 +144,7 @@ export function OpportunityListViews({
   }, []);
 
   useEffect(() => {
+    if (activeId) remember(activeId);
     load(active, 0, search);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
@@ -132,6 +159,7 @@ export function OpportunityListViews({
           value={activeId ?? ""}
           onChange={(e) => setActiveId(e.target.value || null)}
         >
+          <option value="">Select a view</option>
           {views.map((v) => (
             <option key={v.id} value={v.id}>{v.shared ? v.name : `${v.name} (private)`}</option>
           ))}
@@ -152,6 +180,7 @@ export function OpportunityListViews({
       <div className="relative max-w-xs">
         <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          disabled={!active}
           value={search}
           onChange={(e) => { setSearch(e.target.value); load(active, 0, e.target.value); }}
           placeholder="Contact name or email"
@@ -160,7 +189,9 @@ export function OpportunityListViews({
       </div>
 
       <Panel>
-        {rows.length === 0 ? (
+        {!active ? (
+          <Empty>No view selected.</Empty>
+        ) : rows.length === 0 ? (
           <Empty>{loading ? "Loading…" : "Nothing matches this view."}</Empty>
         ) : (
           <div className="overflow-x-auto">
