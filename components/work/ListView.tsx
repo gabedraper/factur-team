@@ -19,20 +19,35 @@ import { dueClass, shortDate } from "@/lib/work";
  * Nothing here edits. Every title is a link out to the task in ClickUp.
  */
 export function ListView({ items }: { items: ListItem[] }) {
-  const groups = useMemo(() => groupOptions(items), [items]);
+  /*
+   * Completed work is hidden by default because the real view hides it, and
+   * the difference is not cosmetic: this list has eight phases, and five of
+   * them read wrong with finished tasks in. Phase 2 is entirely complete, so
+   * over there it does not appear at all -- showing it as a six-row group
+   * would be the page quietly disagreeing with ClickUp about what is left.
+   */
+  const [showDone, setShowDone] = useState(false);
+  const visible = useMemo(
+    () => (showDone
+      ? items
+      : items.filter((i) => i.statusType !== "done" && i.statusType !== "closed")),
+    [items, showDone]
+  );
+
+  const groups = useMemo(() => groupOptions(visible), [visible]);
   const [groupBy, setGroupBy] = useState<string>(groups[0] ?? "Status");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const columns = useMemo(() => columnFields(items, groupBy), [items, groupBy]);
+  const columns = useMemo(() => columnFields(visible, groupBy), [visible, groupBy]);
 
   /* Subtasks hang under their parent when the parent is in this list, and
    * stand on their own when it is not -- a list filtered to a phase can hold a
    * child whose parent lives elsewhere. */
   const { roots, childrenOf } = useMemo(() => {
-    const present = new Set(items.map((i) => i.clickupId));
+    const present = new Set(visible.map((i) => i.clickupId));
     const childrenOf = new Map<string, ListItem[]>();
     const roots: ListItem[] = [];
-    for (const item of items) {
+    for (const item of visible) {
       const parent = item.parentClickupId;
       if (parent && present.has(parent)) {
         childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), item]);
@@ -41,7 +56,7 @@ export function ListView({ items }: { items: ListItem[] }) {
       }
     }
     return { roots, childrenOf };
-  }, [items]);
+  }, [visible]);
 
   const keyFor = (item: ListItem) =>
     groupBy === "Status"
@@ -119,18 +134,29 @@ export function ListView({ items }: { items: ListItem[] }) {
 
   return (
     <div className="space-y-3">
-      {groups.length > 0 && (
-        <select
+      <div className="flex items-center gap-3">
+        {groups.length > 0 && (
+          <select
           value={groupBy}
           onChange={(e) => setGroupBy(e.target.value)}
-          className="rounded-md border bg-background px-2 py-1 text-xs"
-        >
-          <option value="Status">Status</option>
-          {groups.map((g) => (
-            <option key={g} value={g}>{g}</option>
-          ))}
-        </select>
-      )}
+            className="rounded-md border bg-background px-2 py-1 text-xs"
+          >
+            <option value="Status">Status</option>
+            {groups.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        )}
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showDone}
+            onChange={(e) => setShowDone(e.target.checked)}
+            className="h-3 w-3"
+          />
+          Completed
+        </label>
+      </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full min-w-[52rem]">
