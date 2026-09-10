@@ -121,9 +121,8 @@ export function TargetAccounts({
                 <th className="px-4 py-2 font-medium">Company</th>
                 <th className="px-4 py-2 font-medium">Stage</th>
                 <th className="px-4 py-2 font-medium">Location</th>
-                <th className="px-4 py-2 text-right font-medium">Contacts</th>
-                <th className="px-4 py-2 font-medium">Next action</th>
-                <th className="px-4 py-2 font-medium">Last activity</th>
+                <th className="px-4 py-2 font-medium">Industry</th>
+                <th className="px-4 py-2 font-medium">Keywords</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -138,7 +137,7 @@ export function TargetAccounts({
                 >
                   <td className="px-4 py-2">
                     <div className="font-medium">{r.account_name}</div>
-                    {r.domain && <div className="text-xs text-muted-foreground">{r.domain}</div>}
+                    <Website domain={r.domain} />
                   </td>
                   <td className="px-4 py-2">
                     <Chip colour={STAGE_TONE[r.target_stage] ?? "slate"}>{r.target_stage}</Chip>
@@ -146,15 +145,11 @@ export function TargetAccounts({
                   <td className="px-4 py-2 text-muted-foreground">
                     {[r.city, r.state].filter(Boolean).join(", ") || null}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {r.open_contacts}
-                    {r.contacts > r.open_contacts && (
-                      <span className="ml-1 text-xs text-muted-foreground">/ {r.contacts}</span>
-                    )}
+                  <td className="max-w-[14rem] px-4 py-2 text-muted-foreground">
+                    <div className="truncate" title={r.industry ?? undefined}>{r.industry}</div>
                   </td>
-                  <td className="px-4 py-2 tabular-nums">{shortDate(r.next_action_date)}</td>
-                  <td className="px-4 py-2 tabular-nums text-muted-foreground">
-                    {shortDate(r.last_activity_at)}
+                  <td className="max-w-[22rem] px-4 py-2 text-xs text-muted-foreground">
+                    <div className="truncate" title={r.keywords ?? undefined}>{r.keywords}</div>
                   </td>
                   <td className="px-4 py-2 text-muted-foreground">
                     <ChevronRight className="h-4 w-4" />
@@ -204,11 +199,15 @@ function AccountPanel({
   const [contacts, setContacts] = useState<AccountContact[] | null>(null);
   const [unworked, setUnworked] = useState<UnworkedContact[]>([]);
   const [openContact, setOpenContact] = useState<string | null>(null);
+  /* Shut by default: it is a long list of people nobody has touched, useful
+     when you go looking for it and noise the rest of the time. */
+  const [showPotential, setShowPotential] = useState(false);
 
   useEffect(() => {
     let live = true;
     setContacts(null);
     setOpenContact(null);
+    setShowPotential(false);
     getAccountDetail({ clientId, accountId: account.account_id }).then((d) => {
       if (!live) return;
       setContacts(d.contacts);
@@ -240,13 +239,16 @@ function AccountPanel({
               <Chip colour={STAGE_TONE[account.target_stage] ?? "slate"}>{account.target_stage}</Chip>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {account.domain && <span>{account.domain}</span>}
+              <Website domain={account.domain} />
               {account.industry && <span>{account.industry}</span>}
               {[account.city, account.state, account.country].filter(Boolean).length > 0 && (
                 <span>{[account.city, account.state, account.country].filter(Boolean).join(", ")}</span>
               )}
               <span>{clientName}</span>
             </div>
+            {account.keywords && (
+              <p className="mt-1 text-xs text-muted-foreground">{account.keywords}</p>
+            )}
           </div>
           <div className="flex shrink-0 gap-1">
             <Button variant="ghost" size="icon" onClick={() => setFull(!full)}>
@@ -265,7 +267,7 @@ function AccountPanel({
 
           <section className="space-y-2">
             <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              In progress {contacts ? `(${contacts.length})` : ""}
+              Target contacts {contacts ? `(${contacts.length})` : ""}
             </h3>
             {contacts === null ? (
               <Empty>Loading…</Empty>
@@ -289,10 +291,17 @@ function AccountPanel({
 
           {unworked.length > 0 && (
             <section className="space-y-2">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Not worked yet ({unworked.length})
-              </h3>
-              <div className="divide-y rounded-md border">
+              <button
+                type="button"
+                onClick={() => setShowPotential(!showPotential)}
+                className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight
+                  className={"h-3.5 w-3.5 transition-transform " + (showPotential ? "rotate-90" : "")}
+                />
+                Potential targets ({unworked.length})
+              </button>
+              <div className={"divide-y rounded-md border" + (showPotential ? "" : " hidden")}>
                 {unworked.map((c) => (
                   <div key={c.contact_id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <div className="min-w-0">
@@ -369,6 +378,31 @@ function ContactRow({
         </dl>
       )}
     </div>
+  );
+}
+
+/*
+ * The website, wherever it appears. crm_accounts stores a bare domain, so the
+ * scheme is put back on for the href while the text stays the domain -- nobody
+ * wants to read "https://" in a table cell.
+ *
+ * The click is stopped from propagating because every place this appears sits
+ * inside something else that is clickable: a table row that opens the panel, a
+ * client row that expands. Opening a company's site should not also rearrange
+ * the page behind it.
+ */
+function Website({ domain }: { domain: string | null }) {
+  if (!domain) return null;
+  return (
+    <a
+      href={`https://${domain}`}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+    >
+      {domain}
+    </a>
   );
 }
 

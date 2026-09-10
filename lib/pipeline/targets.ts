@@ -42,6 +42,7 @@ export type TargetAccount = {
   account_name: string;
   domain: string | null;
   industry: string | null;
+  keywords: string | null;
   city: string | null;
   state: string | null;
   country: string | null;
