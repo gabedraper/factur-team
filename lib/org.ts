@@ -76,14 +76,23 @@ export const myRealPermissions = cache(async (): Promise<Set<Permission>> => {
   return permissionsForMember("auth_user_id", user.id);
 });
 
-/** Who the app should behave as: normally you, or someone you are previewing. */
+/**
+ * Who the app should behave as: normally you, or someone you are previewing.
+ *
+ * The check is public.can_preview_as(), which is also what my_client_ids() and
+ * the pipeline reads enforce, so the app and the database cannot disagree about
+ * who may look through whose eyes. It reads the real signed-in identity rather
+ * than the cookie, so a stale or forged cookie grants nothing, and it is
+ * per-target: admins may preview anyone, team leads and managers only their own
+ * reporting line.
+ */
 export const previewedMemberId = cache(async (): Promise<string | null> => {
   const jar = await cookies();
   const id = jar.get("preview_member")?.value ?? null;
   if (!id) return null;
-  // A stale cookie must not grant anything, so the real rights are rechecked.
-  const real = await myRealPermissions();
-  return real.has("org.manage") ? id : null;
+  const db = await createClient();
+  const { data } = await db.rpc("can_preview_as", { p_target: id });
+  return data === true ? id : null;
 });
 
 /** The person being previewed, for the banner and the identity block. */

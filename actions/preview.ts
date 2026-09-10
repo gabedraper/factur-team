@@ -1,20 +1,27 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { createServiceClient } from "@/lib/supabase/server";
-import { myRealPermissions } from "@/lib/org";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 const HOUR = 60 * 60;
 
-/** Preview is an admin tool, so every setter checks the *real* user's rights. */
-async function requirePreviewRights() {
-  const perms = await myRealPermissions();
-  return perms.has("org.manage");
+/**
+ * Preview is a managers' tool, so every setter checks the *real* user's rights
+ * against the person being previewed. public.can_preview_as() is the single
+ * definition -- admins may preview anyone, team leads and managers only inside
+ * their own reporting line, everyone else not at all -- and the same function
+ * guards my_client_ids(), so refusing here and refusing there cannot drift
+ * apart.
+ */
+async function mayPreview(memberId: string) {
+  const db = await createClient();
+  const { data } = await db.rpc("can_preview_as", { p_target: memberId });
+  return data === true;
 }
 
 /** See the app as one specific person sees it, permissions and all. */
 export async function setPreviewUser(memberId: string) {
-  if (!(await requirePreviewRights())) return { success: false, error: "Not permitted." };
+  if (!(await mayPreview(memberId))) return { success: false, error: "Not permitted." };
 
   const db = createServiceClient();
   const { data } = await db
