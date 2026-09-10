@@ -14,7 +14,7 @@ import {
  *
  * Everything goes through the user-scoped client. RLS on opportunities already
  * limits a viewer to clients they hold a role on, and on
- * opportunity_list_views to their own views plus the shared ones, so neither
+ * list_views to their own views plus the shared ones, so neither
  * needs a check here that the database is not already making.
  *
  * No filter or column reaches the query as text. Both are looked up in
@@ -187,8 +187,11 @@ export async function listViews(): Promise<ListView[]> {
   await assertPipeline("view");
   const db = await createClient();
   const { data, error } = await db
-    .from("opportunity_list_views")
+    .from("list_views")
     .select("id,name,owner_member_id,shared,columns,filters,sort_field,sort_dir")
+    /* The table is shared across entities now, so a query without this would
+       hand opportunity screens the views belonging to contacts. */
+    .eq("entity", "opportunities")
     /* Shared first, then a person's own, each alphabetical -- the same order
        Salesforce lists them and the order people expect to scan. */
     .order("shared", { ascending: false })
@@ -228,14 +231,14 @@ export async function saveView(input: {
   if (!input.shared && !owner) return { success: false, error: "No member record for you." };
 
   const row = {
-    name, shared: input.shared, columns, filters,
+    name, entity: "opportunities", shared: input.shared, columns, filters,
     sort_field: input.sortField, sort_dir: input.sortDir,
     owner_member_id: owner, updated_at: new Date().toISOString(),
   };
 
   const res = input.id
-    ? await db.from("opportunity_list_views").update(row).eq("id", input.id).select("id").maybeSingle()
-    : await db.from("opportunity_list_views").insert(row).select("id").maybeSingle();
+    ? await db.from("list_views").update(row).eq("id", input.id).select("id").maybeSingle()
+    : await db.from("list_views").insert(row).select("id").maybeSingle();
 
   if (res.error) return { success: false, error: res.error.message };
   revalidatePath("/opportunities/my");
@@ -245,7 +248,8 @@ export async function saveView(input: {
 export async function deleteView(id: string): Promise<{ success: boolean; error?: string }> {
   await assertPipeline("view");
   const db = await createClient();
-  const { error } = await db.from("opportunity_list_views").delete().eq("id", id);
+  const { error } = await db
+    .from("list_views").delete().eq("id", id).eq("entity", "opportunities");
   if (error) return { success: false, error: error.message };
   revalidatePath("/opportunities/my");
   return { success: true };
