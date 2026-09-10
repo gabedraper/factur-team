@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { roleLabelsForUsers } from "@/lib/org";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -29,6 +30,12 @@ export default async function TeamMemberDetailPage({
     .single();
 
   if (!member) notFound();
+
+  // The job they actually do, from Settings. profiles.role only ever says
+  // "admin" or "learner", so this line used to tell forty-seven people they
+  // were a "Learner".
+  const roleLabel =
+    (await roleLabelsForUsers([member.id])).get(member.id) ?? "No role set";
 
   const { data: enrollments } = await supabase
     .from("enrollments")
@@ -74,7 +81,7 @@ export default async function TeamMemberDetailPage({
         />
         <div>
           <h1 className="text-3xl font-bold">{member.full_name}</h1>
-          <p className="text-muted-foreground capitalize">{member.role}</p>
+          <p className="text-muted-foreground">{roleLabel}</p>
         </div>
       </div>
 

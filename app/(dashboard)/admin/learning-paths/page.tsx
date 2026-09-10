@@ -61,21 +61,23 @@ export default function LearningPathsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [targetRole, setTargetRole] = useState("learner");
+  const [targetRole, setTargetRole] = useState("");
 
   // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editRole, setEditRole] = useState("learner");
+  const [editRole, setEditRole] = useState("");
 
+  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     loadPaths();
     loadAllCourses();
+    loadRoles();
   }, []);
 
   async function loadPaths() {
@@ -84,6 +86,22 @@ export default function LearningPathsPage() {
       .select("*")
       .order("created_at", { ascending: false });
     if (data) setPaths(data);
+  }
+
+  /*
+   * The roles from Settings, for the target picker.
+   *
+   * It used to offer learner / instructor / manager / admin -- four names from
+   * the old LMS that exist nowhere in this company. Somebody choosing one was
+   * labelling the path with a role nobody holds.
+   */
+  async function loadRoles() {
+    const { data } = await supabase
+      .from("org_roles")
+      .select("id, name")
+      .eq("active", true)
+      .order("name");
+    if (data) setRoles(data as { id: string; name: string }[]);
   }
 
   async function loadAllCourses() {
@@ -162,7 +180,7 @@ export default function LearningPathsPage() {
     setEditingPath(path);
     setEditName(path.name);
     setEditDescription(path.description || "");
-    setEditRole(path.target_role || "learner");
+    setEditRole(path.target_role || "");
     setEditOpen(true);
   }
 
@@ -174,13 +192,6 @@ export default function LearningPathsPage() {
       if (!pathCourses[pathId]) loadPathCourses(pathId);
     }
   }
-
-  const roleColors: Record<string, string> = {
-    learner: "bg-blue-50 text-blue-700 border-blue-200",
-    instructor: "bg-purple-50 text-purple-700 border-purple-200",
-    manager: "bg-orange-50 text-orange-700 border-orange-200",
-    admin: "bg-red-50 text-red-700 border-red-200",
-  };
 
   return (
     <div className="p-8">
@@ -216,10 +227,9 @@ export default function LearningPathsPage() {
                 <Select value={targetRole} onValueChange={setTargetRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="learner">Learner</SelectItem>
-                    <SelectItem value="instructor">Instructor</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -251,10 +261,9 @@ export default function LearningPathsPage() {
               <Select value={editRole} onValueChange={setEditRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="learner">Learner</SelectItem>
-                  <SelectItem value="instructor">Instructor</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -275,8 +284,8 @@ export default function LearningPathsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <CardTitle className="text-lg">{path.name}</CardTitle>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${roleColors[path.target_role || "learner"] || ""}`}>
-                        {path.target_role || "all"}
+                      <span className="text-xs px-2 py-0.5 rounded-full border font-medium text-muted-foreground">
+                        {path.target_role || "Everyone"}
                       </span>
                     </div>
                     {path.description && (

@@ -14,11 +14,19 @@ export async function getProgressReport() {
 
   const supabase = createServiceClient();
 
-  // All non-admin profiles
+  /*
+   * Everybody, including the people who run the place.
+   *
+   * This used to drop anyone whose profiles.role was 'admin'. That column now
+   * only ever says 'admin' or 'learner' and is a leftover of the old LMS
+   * vocabulary -- the six it matched are Chad, Darryl, Gabe, Miljan, Noah and
+   * Srdjan, who are team leads and managers with training assigned to them like
+   * anyone else. They were missing from the team progress report entirely, and
+   * nothing on the page said so.
+   */
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, role, avatar_url")
-    .neq("role", "admin")
+    .select("id, full_name, avatar_url")
     .order("full_name");
 
   // Auth emails
@@ -137,7 +145,6 @@ export async function getProgressReport() {
       name: profile.full_name || "Unknown",
       avatarUrl: profile.avatar_url as string | null,
       email: emailMap[profile.id] || "",
-      role: profile.role,
       roleLabel: roleLabels.get(profile.id) ?? "No role set",
       courses,
       overallProgress,
