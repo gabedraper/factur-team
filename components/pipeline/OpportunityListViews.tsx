@@ -123,7 +123,8 @@ export function OpportunityListViews({
     initialViewId && initialViews.some((v) => v.id === initialViewId) ? initialViewId : null,
   );
   const [rows, setRows] = useState<Row[]>([]);
-  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [tooBroad, setTooBroad] = useState(false);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<ListView | null>(null);
@@ -133,7 +134,7 @@ export function OpportunityListViews({
   const columns = knownColumns(active?.columns ?? DEFAULT_COLUMNS);
 
   const load = useCallback((view: ListView | null, nextPage: number, q: string) => {
-    if (!view) { setRows([]); setTotal(0); setPage(0); return; }
+    if (!view) { setRows([]); setHasMore(false); setTooBroad(false); setPage(0); return; }
     start(async () => {
       const res = await listOpportunities({
         columns: view.columns,
@@ -144,7 +145,8 @@ export function OpportunityListViews({
         page: nextPage,
       });
       setRows(res.rows);
-      setTotal(res.total);
+      setHasMore(res.hasMore);
+      setTooBroad(res.tooBroad);
       setPage(nextPage);
     });
   }, []);
@@ -155,11 +157,14 @@ export function OpportunityListViews({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
-  const pages = Math.ceil(total / PAGE);
-
   return (
     <div className="space-y-4">
-      <PageHeader title="Salesforce Opportunities" count={total.toLocaleString()}>
+      <PageHeader
+        title="Salesforce Opportunities"
+        /* No exact total any more: a count over an unfiltered view costs more
+           than the page it labels. "50+" is what is actually known. */
+        count={active ? `${rows.length}${hasMore ? "+" : ""}` : undefined}
+      >
         <select
           className="h-8 rounded-md border bg-field px-2 text-sm"
           value={activeId ?? ""}
@@ -198,6 +203,8 @@ export function OpportunityListViews({
       <Panel>
         {!active ? (
           <Empty>{views.length === 0 ? "No views yet." : "No view selected."}</Empty>
+        ) : tooBroad ? (
+          <Empty>This view is too broad to load. Add a filter, or sort by a date instead.</Empty>
         ) : rows.length === 0 ? (
           <Empty>{loading ? "Loading…" : "Nothing matches this view."}</Empty>
         ) : (
@@ -234,15 +241,15 @@ export function OpportunityListViews({
         )}
       </Panel>
 
-      {pages > 1 && (
+      {active && (hasMore || page > 0) && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span className="tabular-nums">
-            {(page * PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PAGE, total).toLocaleString()} of {total.toLocaleString()}
+            {(page * PAGE + 1).toLocaleString()}–{(page * PAGE + rows.length).toLocaleString()}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page === 0 || loading}
               onClick={() => load(active, page - 1, search)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= pages || loading}
+            <Button variant="outline" size="sm" disabled={!hasMore || loading}
               onClick={() => load(active, page + 1, search)}>Next</Button>
           </div>
         </div>

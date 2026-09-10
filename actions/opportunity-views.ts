@@ -44,7 +44,7 @@ export async function listOpportunities(input: {
   search?: string;
   clientId?: string | null;
   page?: number;
-}): Promise<{ rows: Record<string, unknown>[]; total: number }> {
+}): Promise<{ rows: Record<string, unknown>[]; hasMore: boolean; tooBroad: boolean }> {
   await assertPipeline("view");
   const db = await createClient();
 
@@ -106,7 +106,15 @@ export async function listOpportunities(input: {
     parts.push(`${name}${inner[t] ? "!inner" : ""}(${inside.join(",")})`);
   }
 
-  let q = db.from("opportunities").select(parts.join(","), { count: "exact" });
+  /*
+   * No exact count. Counting is the expensive half: PostgREST runs it as a
+   * second pass over the whole filtered set, so a view with no filter spends a
+   * couple of seconds counting 779,809 rows to put a number above a table
+   * showing fifty of them. Fetching one row more than a page tells us whether
+   * there is a next page, which is the only thing the number was being used
+   * for.
+   */
+  let q = db.from("opportunities").select(parts.join(","));
 
   if (input.clientId) q = q.eq("client_id", input.clientId);
 
@@ -155,10 +163,23 @@ export async function listOpportunities(input: {
   }
 
   const page = Math.max(0, input.page ?? 0);
-  const { data, error, count } = await q.range(page * PAGE, page * PAGE + PAGE - 1);
-  if (error) throw new Error(error.message);
+  const { data, error } = await q.range(page * PAGE, page * PAGE + PAGE);
 
-  return { rows: (data ?? []) as unknown as Record<string, unknown>[], total: count ?? 0 };
+  if (error) {
+    /*
+     * 57014 is Postgres cancelling on the statement timeout. It means this view
+     * asked for more than the database will do in one request -- almost always
+     * a sort on a joined column with nothing narrowing the rows first. The
+     * screen says so and asks for a filter rather than showing a broken page.
+     */
+    const timedOut = error.code === "57014" || /statement timeout|canceling statement/i.test(error.message);
+    if (timedOut) return { rows: [], hasMore: false, tooBroad: true };
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
+  const hasMore = rows.length > PAGE;
+  return { rows: hasMore ? rows.slice(0, PAGE) : rows, hasMore, tooBroad: false };
 }
 
 
