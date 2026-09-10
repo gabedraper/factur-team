@@ -4,6 +4,9 @@ import { Table, TableScroll, THead, TBody, TR, TH, TD, TDIdentity } from "@/comp
 import { Skeleton, TableSkeleton, SurfaceSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo, Avatar } from "@/components/ui/thumbnail";
+import { Suspense } from "react";
+import { ListDemo } from "./ListDemo";
+import { ListEmpty, NoMatches, LoadFailed } from "@/components/list/EmptyState";
 import { myPermissions } from "@/lib/org";
 import { redirect } from "next/navigation";
 
@@ -88,6 +91,25 @@ export default async function DesignPage() {
           </Table>
         </TableScroll>
       </Surface>
+
+      <Surface pad="none">
+        <div className="p-card pb-0">
+          <h2 className="text-section-title">List page</h2>
+        </div>
+        <div className="p-card pt-3">
+          {/* useSearchParams needs a boundary, and a list is exactly the kind
+              of page that will one day be statically rendered. */}
+          <Suspense fallback={<div className="h-8" />}>
+            <ListDemo />
+          </Suspense>
+        </div>
+      </Surface>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ListEmpty noun="clients" createHref="#" createLabel="Add a client" />
+        <NoMatches noun="clients" activeFilters={["Stage: Quote sent"]} clearHref="#" />
+        <LoadFailed noun="clients" detail="statement timeout" />
+      </div>
 
       <Surface title="People">
         <div className="flex flex-wrap items-center gap-4">
