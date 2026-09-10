@@ -49,6 +49,12 @@ can only get better.
   in so it cannot creep back. Never run it to make a failure go away: that
   accepts the new violation into the baseline, which is the one thing the
   check exists to stop.
+
+  **Not in a dirty tree.** It rescans the whole working folder, and another
+  session's uncommitted edits live in that folder too — so it would bake their
+  unfinished work into the baseline. Check `git status` first; if files you
+  did not touch are modified, lower your own entries in
+  `scripts/design-baseline.json` by hand instead.
 - A genuine exception is marked on the line, or the line above, with
   `design-ok: <reason>`. The reason is required — `design-ok:` alone is ignored.
   Current exceptions: the login page (single-theme by design) and the agreement

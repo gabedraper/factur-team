@@ -366,10 +366,6 @@
   "components/pipeline/TargetContacts.tsx": {
     "bare-table": 1
   },
-  "components/pipeline/bits.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
-  },
   "components/scoreboard/MaskedBlurb.tsx": {
     "raw-shadow": 1
   },
@@ -486,10 +482,6 @@
   },
   "components/talent/SettingsPanels.tsx": {
     "bare-table": 1
-  },
-  "components/talent/bits.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
   },
   "components/timelines/TimelineBoard.tsx": {
     "bare-table": 1

@@ -3,6 +3,8 @@ import { Plug, Star } from "lucide-react";
 import { tone } from "@/lib/talent/types";
 import { initials } from "@/lib/talent/format";
 import { cn } from "@/lib/utils";
+import { PageHeader as StandardPageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * The small pieces every talent screen is built from.
@@ -78,6 +80,15 @@ export function Stars({
   );
 }
 
+/*
+ * The shared page header, under the name this kit's pages already import.
+ *
+ * This used to be its own copy -- identical to the one in the pipeline kit,
+ * both drifting separately from the app's. It now delegates, so the pages
+ * that use it get the standard title without any of them changing. Children
+ * are still the actions, because that is the contract those pages were written
+ * against.
+ */
 export function PageHeader({
   title, count, children,
 }: {
@@ -85,19 +96,20 @@ export function PageHeader({
   count?: number | string;
   children?: React.ReactNode;
 }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      {count !== undefined && (
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-          {count}
-        </span>
-      )}
-      <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>
-    </div>
-  );
+  return <StandardPageHeader title={title} count={count} actions={children} />;
 }
 
+/*
+ * A Surface with a header bar, under the name this kit's pages already use.
+ *
+ * Built on <Surface> so it follows the app's rule for sections: no outer
+ * border, the surface colour does the separating. The header keeps its own
+ * divider -- that line separates the header from its contents inside one
+ * block, which is different from outlining the block.
+ *
+ * Contents stay flush to the edges (pad="none"), because what goes in a panel
+ * is usually a table or a list that brings its own cell padding.
+ */
 export function Panel({
   title, action, children, className,
 }: {
@@ -107,20 +119,21 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-lg border bg-card", className)}>
+    <Surface pad="none" className={cn("overflow-hidden", className)}>
       {(title || action) && (
-        <header className="flex items-center gap-2 border-b px-4 py-2.5">
-          <h2 className="text-sm font-semibold">{title}</h2>
+        <header className="flex items-center gap-2 border-b px-card py-2.5">
+          <h2 className="text-section-title">{title}</h2>
           <div className="ml-auto flex items-center gap-2">{action}</div>
         </header>
       )}
       {children}
-    </section>
+    </Surface>
   );
 }
 
+/** A one-line "nothing here" inside a panel. */
 export function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="px-4 py-6 text-sm text-muted-foreground">{children}</p>;
+  return <p className="px-card py-6 text-body text-muted-foreground">{children}</p>;
 }
 
 /** A label above a value, used all over the detail panes. */
