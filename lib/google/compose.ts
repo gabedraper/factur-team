@@ -32,6 +32,22 @@ export type Outgoing = {
    * make sense on its own.
    */
   html?: string | null;
+  /*
+   * Files to hang off the message. Absent or empty and the MIME built below is
+   * byte-for-byte what it always was, so nothing that already sends changes.
+   *
+   * The A/R ladder needs it: three of Breno's rungs promise "your full
+   * statement of account" in the body, and an email that says "attached" with
+   * nothing attached is worse than one that never mentioned it.
+   */
+  attachments?: Attachment[] | null;
+};
+
+export type Attachment = {
+  filename: string;
+  /** Almost always application/pdf here. */
+  contentType: string;
+  content: Buffer;
 };
 
 export type Placed = {
@@ -53,6 +69,7 @@ function mime(message: Outgoing, rfcMessageId: string): string {
 
   const cc = message.cc?.trim();
   const html = message.html?.trim();
+  const files = (message.attachments ?? []).filter((a) => a.content?.length);
 
   const headers = [
     `From: ${from}`,
@@ -71,7 +88,7 @@ function mime(message: Outgoing, rfcMessageId: string): string {
     Buffer.from(message.body, "utf8").toString("base64"),
   ];
 
-  if (!html) {
+  if (!html && files.length === 0) {
     return Buffer.from([...headers, ...plain].join("\r\n"), "utf8").toString("base64url");
   }
 
@@ -85,20 +102,59 @@ function mime(message: Outgoing, rfcMessageId: string): string {
    */
   const boundary = `factur-${rfcMessageId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`;
 
+  // The readable message: plain alone, or plain and HTML as alternatives.
+  const readable = html
+    ? [
+        `Content-Type: multipart/alternative; boundary="alt-${boundary}"`,
+        "",
+        `--alt-${boundary}`,
+        ...plain,
+        "",
+        `--alt-${boundary}`,
+        'Content-Type: text/html; charset="UTF-8"',
+        "Content-Transfer-Encoding: base64",
+        "",
+        Buffer.from(html, "utf8").toString("base64"),
+        "",
+        `--alt-${boundary}--`,
+      ]
+    : plain;
+
+  if (files.length === 0) {
+    return Buffer.from([...headers, ...readable].join("\r\n"), "utf8").toString("base64url");
+  }
+
+  /*
+   * multipart/mixed wrapping the readable part, then the files. Nesting rather
+   * than flattening matters: a reader picks one of the alternatives to show and
+   * lists the rest as attachments, so a flat structure would offer the client a
+   * choice between the plain text and the PDF.
+   *
+   * Base64 is wrapped at 76 characters. Unwrapped lines are legal in principle
+   * and rejected in practice by enough mail servers to be worth the two lines
+   * it costs to do properly.
+   */
+  const wrap = (b64: string) => (b64.match(/.{1,76}/g) ?? []).join("\r\n");
+
+  const parts = files.flatMap((f) => [
+    `--mix-${boundary}`,
+    `Content-Type: ${f.contentType}; name="${f.filename.replace(/["\r\n]/g, "")}"`,
+    "Content-Transfer-Encoding: base64",
+    `Content-Disposition: attachment; filename="${f.filename.replace(/["\r\n]/g, "")}"`,
+    "",
+    wrap(f.content.toString("base64")),
+    "",
+  ]);
+
   const lines = [
     ...headers,
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    `Content-Type: multipart/mixed; boundary="mix-${boundary}"`,
     "",
-    `--${boundary}`,
-    ...plain,
+    `--mix-${boundary}`,
+    ...readable,
     "",
-    `--${boundary}`,
-    'Content-Type: text/html; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
-    "",
-    Buffer.from(html, "utf8").toString("base64"),
-    "",
-    `--${boundary}--`,
+    ...parts,
+    `--mix-${boundary}--`,
   ];
 
   return Buffer.from(lines.join("\r\n"), "utf8").toString("base64url");

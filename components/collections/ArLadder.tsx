@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Clock, Loader2, Mail, Pause, Play, Send } from "lucide-react";
+import { Check, Clock, FileText, Loader2, Mail, Pause, Play, Send } from "lucide-react";
 import {
   draftArToMe, holdInvoice, placeArStep, releaseInvoice, setArStepActive,
   type ArChase, type ArSettings, type ArStep,
@@ -298,6 +298,14 @@ function Queue({
                     <span>Due: {when(r.due_date)}</span>
                     <span>Account total: {money.format(r.account_total ?? 0)}</span>
                   </div>
+                  <a
+                    href={`/api/ar/statement/${r.client_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <FileText className="h-3 w-3" /> Statement
+                  </a>
                   <div className="rounded-md border bg-card px-3 py-2 text-sm font-medium">
                     {r.rendered_subject}
                   </div>

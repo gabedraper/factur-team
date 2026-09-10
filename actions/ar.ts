@@ -5,7 +5,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { fill, fillHtml, type Figures } from "@/lib/ar/render";
 import { htmlToText } from "@/lib/email/richtext";
-import { draftAs, sendAs } from "@/lib/google/compose";
+import { draftAs, sendAs, type Attachment } from "@/lib/google/compose";
+import { buildStatement } from "@/lib/ar/statement-pdf";
 import { getCollectionsSettings } from "@/actions/collections";
 
 export type ArRow = {
@@ -209,6 +210,50 @@ export async function getArQueue(): Promise<ArChase[]> {
   });
 }
 
+/**
+ * The files a rung promises in its body.
+ *
+ * An email that says "attached is your full statement" with nothing attached
+ * is worse than one that never mentioned it, so a promise we cannot keep is a
+ * refusal to send rather than a send with the sentence quietly wrong.
+ */
+async function attachmentsFor(
+  stepId: string,
+  clientId: string
+): Promise<{ files: Attachment[] } | { error: string }> {
+  const { data } = await createServiceClient()
+    .from("ar_steps").select("attachments").eq("id", stepId).maybeSingle();
+  const wanted = ((data as { attachments: string[] } | null)?.attachments ?? []);
+  if (wanted.length === 0) return { files: [] };
+
+  const files: Attachment[] = [];
+
+  if (wanted.includes("statement")) {
+    const statement = await buildStatement(clientId);
+    if (!statement) {
+      return { error: "This step attaches a statement and there is nothing outstanding to put on one." };
+    }
+    files.push({
+      filename: statement.filename,
+      contentType: "application/pdf",
+      content: statement.pdf,
+    });
+  }
+
+  /*
+   * The invoice PDF lives behind QuickBooks' accounting API, which we are not
+   * connected to yet. Saying so is the point: this is the one rung that cannot
+   * keep its promise, and it should not go out pretending otherwise.
+   */
+  if (wanted.includes("invoice")) {
+    return {
+      error: "This step attaches the invoice PDF, which needs the QuickBooks connection we do not have yet.",
+    };
+  }
+
+  return { files };
+}
+
 /** A rehearsal, to the person asking, clearly marked so it cannot be confused. */
 export async function draftArToMe(
   invoiceId: number,
@@ -225,11 +270,15 @@ export async function draftArToMe(
 
   const settings = await getCollectionsSettings();
 
+  const attached = await attachmentsFor(stepId, row.client_id);
+  if ("error" in attached) return { success: false, error: attached.error };
+
   try {
     await draftAs({
       from: settings.send_as,
       fromName: await senderName(settings.send_as),
       to: me,
+      attachments: attached.files,
       // No copy on a rehearsal. An account manager learning a client is late
       // from a test would be worse than not being told at all.
       cc: null,
@@ -281,6 +330,9 @@ export async function placeArStep(
   const sender = await senderName(settings.send_as);
   const automatic = settings.mode === "full";
 
+  const attached = await attachmentsFor(stepId, row.client_id);
+  if ("error" in attached) return { success: false, error: attached.error };
+
   const outgoing = {
     from: settings.send_as,
     fromName: sender,
@@ -289,6 +341,7 @@ export async function placeArStep(
     subject: subject.trim(),
     body: htmlToText(body),
     html: body,
+    attachments: attached.files,
   };
 
   let placed;
