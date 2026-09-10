@@ -63,6 +63,18 @@ This is already in the tokens — use `shadow-*`, never a literal.
 The halo is **cool white, never blue**. `--ring` is Factur blue and means
 "your keyboard is here". Depth and focus must not look alike.
 
+### Name the noun in a button
+
+**"New client", never "New".** A list page can offer two different new things
+— a new record, and a new saved view — and a bare verb makes you read the rest
+of the page to work out which one you are looking at.
+
+The page's primary action creates the record the page lists, and it sits in
+`<PageHeader actions>`. Saving a filter set belongs beside the views, never in
+the page header. Same rule for confirmations: the button says what happens
+("Delete client"), and the toast afterwards says what happened ("Client
+deleted").
+
 ### Tokens
 
 | Use | Not |
