@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { Building2, ChevronRight } from "lucide-react";
 import { Chip, Empty, Panel } from "@/components/pipeline/bits";
 import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
+import { TargetContacts } from "@/components/pipeline/TargetContacts";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
   BOTH_STAGE_FIELDS,
@@ -99,12 +100,17 @@ function build(rows: ClientRow[], levels: Grouping[], path = ""): Node[] {
     );
 }
 
+/* Which list opens inside a client. The grouping, the counts and the role
+   hierarchy are the same either way; only the thing you expand into differs. */
+export type ClientView = "companies" | "contacts";
+
 export function ClientGroups({
-  scope, rows, stageFields = BOTH_STAGE_FIELDS,
+  scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies",
 }: {
   scope: PipelineScope;
   rows: ClientRow[];
   stageFields?: StageFields;
+  view?: ClientView;
 }) {
   const levels = LEVELS[scope.level];
   const tree = useMemo(() => build(rows, levels), [rows, levels]);
@@ -117,7 +123,7 @@ export function ClientGroups({
   if (levels.length === 0) {
     return (
       <Panel>
-        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
+        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
       </Panel>
     );
   }
@@ -125,20 +131,21 @@ export function ClientGroups({
   return (
     <div className="space-y-2">
       {tree.map((n) => (
-        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
+        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
       ))}
     </div>
   );
 }
 
 function Group({
-  node, depth, openClient, setOpenClient, stageFields,
+  node, depth, openClient, setOpenClient, stageFields, view,
 }: {
   node: Node;
   depth: number;
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
   stageFields: StageFields;
+  view: ClientView;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -173,11 +180,12 @@ function Group({
                   openClient={openClient}
                   setOpenClient={setOpenClient}
                   stageFields={stageFields}
+                  view={view}
                 />
               ))}
             </div>
           ) : (
-            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} />
+            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} />
           )}
         </div>
       )}
@@ -186,12 +194,13 @@ function Group({
 }
 
 function ClientList({
-  rows, openClient, setOpenClient, stageFields,
+  rows, openClient, setOpenClient, stageFields, view,
 }: {
   rows: ClientRow[];
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
   stageFields: StageFields;
+  view: ClientView;
 }) {
   const span = TARGET_STAGES.length + 2;
 
@@ -252,11 +261,15 @@ function ClientList({
               {open && (
                 <tr>
                   <td colSpan={span} className="border-b bg-muted/20 px-4 py-3">
-                    <TargetAccounts
-                      clientId={c.client_id}
-                      clientName={c.client_name}
-                      stageFields={stageFields}
-                    />
+                    {view === "contacts" ? (
+                      <TargetContacts clientId={c.client_id} stageFields={stageFields} />
+                    ) : (
+                      <TargetAccounts
+                        clientId={c.client_id}
+                        clientName={c.client_name}
+                        stageFields={stageFields}
+                      />
+                    )}
                   </td>
                 </tr>
               )}

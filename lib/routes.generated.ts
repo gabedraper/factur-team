@@ -49,6 +49,7 @@ export const ROUTES: readonly string[] = [
   "/opportunities/my/[clientId]",
   "/pipeline",
   "/pipeline/[clientId]",
+  "/pipeline/contacts",
   "/portal/[token]",
   "/progress",
   "/progress/person/[userId]",

@@ -143,3 +143,29 @@ export type CampaignMembership = {
   status: string | null;
   has_responded: boolean;
 };
+
+/*
+ * One pursuit as the Target Contacts list shows it: the person, their company,
+ * and enough to act without opening anything.
+ *
+ * Both progress fields ride along and the screen picks by role, rather than the
+ * query deciding -- somebody may hold a prospecting role and a delivery one.
+ */
+export type TargetContact = {
+  opportunity_id: string;
+  contact_id: string;
+  account_id: string | null;
+  account_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  updates: string | null;
+  next_action_date: string | null;
+  stage: string;
+  lead_status: string | null;
+  target_stage: TargetStage;
+  stage_rank: number;
+  total_count: number;
+};

@@ -19,6 +19,7 @@ import { assertPipeline } from "@/lib/pipeline/access";
 
 import type {
   TargetAccount, AccountContact, UnworkedContact, CampaignMembership,
+  TargetContact,
 } from "@/lib/pipeline/targets";
 
 export async function listTargetAccounts(input: {
@@ -78,4 +79,30 @@ export async function getAccountDetail(input: { clientId: string; accountId: str
     unworked: (rest.data ?? []) as UnworkedContact[],
     campaigns: (campaigns.data ?? []) as CampaignMembership[],
   };
+}
+
+/*
+ * The same pipeline as listTargetAccounts, one row per person instead of one
+ * per company. Server-paged for the same reason: the largest client is pursuing
+ * 41,260 companies, and rather more people than that.
+ */
+export async function listTargetContacts(input: {
+  clientId: string;
+  stages?: string[];
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ rows: TargetContact[]; total: number }> {
+  await assertPipeline();
+  const db = await createClient();
+  const { data, error } = await db.rpc("pipeline_target_contacts", {
+    p_client_id: input.clientId,
+    p_stages: input.stages?.length ? input.stages : null,
+    p_search: input.search || null,
+    p_limit: input.limit ?? 50,
+    p_offset: input.offset ?? 0,
+  });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as TargetContact[];
+  return { rows, total: rows.length ? Number(rows[0].total_count) : 0 };
 }

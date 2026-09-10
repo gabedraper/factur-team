@@ -209,6 +209,7 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
          * company decision before it is a person one.
          */
         { href: "/pipeline", label: "Target Companies", icon: <Target className="h-4 w-4" /> },
+        { href: "/pipeline/contacts", label: "Target Contacts", icon: <Users className="h-4 w-4" /> },
         { href: "/opportunities/my", label: "My Opportunities", icon: <PhoneCall className="h-4 w-4" /> },
         { href: "/timelines/quick-response", label: "Lead Response", icon: <Zap className="h-4 w-4" /> },
         { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },
