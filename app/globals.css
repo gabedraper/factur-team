@@ -4,7 +4,11 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Separation is carried by surface colour, not by borders -- decided
+       2026-09-10. Sections have no outline, so the page has to step back for
+       a card to read as a card. These two were identical white before, which
+       is why a borderless section was invisible. */
+    --background: 210 20% 97%;
     --foreground: 173 100% 2%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -65,10 +69,12 @@
     --shadow-overlay: 0 2px 4px hsl(222 40% 12% / .07), 0 8px 20px -8px hsl(222 40% 12% / .18);
     --shadow-modal: 0 8px 32px -8px hsl(222 40% 12% / .28);
 
-    /* The surface-lightening half of the lift, light theme -- where it
-       darkens fractionally instead, because on a light ground a raised object
-       gains contrast rather than brightness. */
-    --card-hover: 210 40% 99%;
+    /* No surface change on hover in the light theme, on purpose. The card is
+       already pure white and has nowhere lighter to go; darkening it would
+       read as pressed rather than raised. Light mode's lift is the shadow
+       alone. Kept as a token so components can reference one name in both
+       themes rather than branching. */
+    --card-hover: 0 0% 100%;
 
     /* Motion ----------------------------------------------------------------
        One duration and one curve, referenced rather than retyped. The curve
@@ -84,9 +90,15 @@
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    /* The dark half of the same decision, and the direction reverses: on a
+       dark ground a raised surface catches more light, so the card sits
+       *above* the page rather than the page above the card. Gives a clean
+       ladder -- page 4.9%, card 11%, field and popover 14%+. */
+    --card: 217.2 32.6% 11%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    /* Was the page colour, which put a menu *darker* than the card it opens
+       over now that cards are lifted. */
+    --popover: 217.2 32.6% 14%;
     --popover-foreground: 210 40% 98%;
     /* Lifted, not the same blue. #323CD0 on a dark ground is too close to
        the background to read as a control. */
