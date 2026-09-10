@@ -1,7 +1,16 @@
 const nextConfig = {
-  // Next 16 moved serverActions out of experimental.
-  serverActions: {
-    bodySizeLimit: "8mb",
+  /*
+   * Still under experimental in Next 16.3 -- it did NOT move out, whatever the
+   * previous comment here said. At the top level Next rejects the key as
+   * unrecognised (it says so in every Vercel build log) and silently falls
+   * back to its 1 MB default, so every upload through a server action --
+   * resumes, course material, signed agreements -- was capped at 1 MB rather
+   * than 8. Checked against next/dist/server/config-shared.d.ts.
+   */
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "8mb",
+    },
   },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
