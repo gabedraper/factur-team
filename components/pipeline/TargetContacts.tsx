@@ -9,9 +9,10 @@ import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
 import { listTargetContacts } from "@/actions/pipeline-targets";
 import {
-  TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE, BOTH_STAGE_FIELDS,
+  TARGET_STAGE_TONE as STAGE_TONE, BOTH_STAGE_FIELDS,
   type StageFields, type TargetContact,
 } from "@/lib/pipeline/targets";
+import { TARGET_CONTACT_STAGES } from "@/lib/pipeline/picklists";
 
 /*
  * A client's people, grouped by the company they work at.
@@ -91,7 +92,7 @@ export function TargetContacts({
             className="h-8 pl-8"
           />
         </div>
-        {TARGET_STAGES.map((s) => {
+        {TARGET_CONTACT_STAGES.map((s) => {
           const on = stages.includes(s);
           return (
             <button
