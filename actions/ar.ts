@@ -233,6 +233,7 @@ async function attachmentsFor(
     if (!statement) {
       return { error: "This step attaches a statement and there is nothing outstanding to put on one." };
     }
+    if ("problem" in statement) return { error: statement.problem };
     files.push({
       filename: statement.filename,
       contentType: "application/pdf",

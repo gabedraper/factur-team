@@ -1,15 +1,18 @@
 // Rendered on the server by renderToStream in the statement route, so this
 // must not carry "use client" -- the server cannot call a client function, and
 // under Turbopack the PDF simply fails to render rather than warning.
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 
 export type StatementLine = {
-  invoice_no: string;
+  /** 'invoice' is owed; 'credit' is money we hold and have not applied. */
+  kind: "invoice" | "credit";
+  ref: string;
   txn_date: string | null;
   due_date: string | null;
   original: number;
+  /** Positive on an invoice, negative on a credit, so the column simply adds. */
   balance: number;
-  age_days: number;
+  age_days: number | null;
   pay_link: string | null;
 };
 
@@ -28,11 +31,21 @@ const on = (iso: string | null) =>
  * The five columns the A/R ageing report uses, so a client querying the
  * statement and Breno reading the board are looking at the same arithmetic.
  * Each invoice sits in exactly one bucket -- these are not cumulative.
+ *
+ * Credits stand apart rather than being netted into the newest column. An
+ * unapplied payment has no due date and so no age, and folding it into
+ * "Current" produces the worst possible line: a client with a five thousand
+ * dollar invoice not yet due and a separate four and a half thousand credit
+ * would read "Current $500", which is true of nothing.
  */
 export function buckets(lines: StatementLine[]) {
-  const b = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d91: 0 };
+  const b = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d91: 0, credits: 0 };
   for (const l of lines) {
-    const a = l.age_days;
+    if (l.kind === "credit") {
+      b.credits += l.balance;
+      continue;
+    }
+    const a = l.age_days ?? 0;
     if (a <= 0) b.current += l.balance;
     else if (a <= 30) b.d1_30 += l.balance;
     else if (a <= 60) b.d31_60 += l.balance;
@@ -46,7 +59,7 @@ const s = StyleSheet.create({
   page: { padding: 44, fontFamily: "Helvetica", fontSize: 9.5, color: "#1a1a1a" },
 
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  brand: { fontSize: 15, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
+  logo: { width: 128, height: 40, objectFit: "contain" },
   title: { fontSize: 12, fontFamily: "Helvetica-Bold", textAlign: "right" },
   meta: { fontSize: 9, color: "#5a5a5a", textAlign: "right", marginTop: 3 },
 
@@ -70,6 +83,8 @@ const s = StyleSheet.create({
   cBal:  { width: "17%", paddingHorizontal: 6, textAlign: "right" },
 
   late: { color: "#a3231c", fontFamily: "Helvetica-Bold" },
+  credit: { color: "#1f6b45" },
+  creditRef: { color: "#1f6b45", fontFamily: "Helvetica-Oblique" },
 
   totalRow: {
     flexDirection: "row", borderTop: "1px solid #cfd4da",
@@ -86,7 +101,7 @@ const s = StyleSheet.create({
     textTransform: "uppercase", marginBottom: 10,
   },
   ageingRow: { flexDirection: "row" },
-  ageingCell: { width: "20%" },
+  ageingCell: { width: "16.6%" },
   ageingLabel: { fontSize: 7.5, color: "#5a5a5a", letterSpacing: 0.8, textTransform: "uppercase" },
   ageingValue: { fontSize: 10, marginTop: 3 },
 
@@ -97,12 +112,14 @@ const s = StyleSheet.create({
 });
 
 export function StatementDocument({
-  clientName, lines, asAt, payLink,
+  clientName, lines, asAt, payLink, logo,
 }: {
   clientName: string;
   lines: StatementLine[];
   asAt: string;
   payLink: string | null;
+  /** The wordmark as raw bytes; absent falls back to the name set in type. */
+  logo: Buffer | null;
 }) {
   const total = lines.reduce((t, l) => t + l.balance, 0);
   const b = buckets(lines);
@@ -113,13 +130,16 @@ export function StatementDocument({
     ["31–60", b.d31_60],
     ["61–90", b.d61_90],
     ["91+", b.d91],
+    ...(b.credits !== 0 ? ([["Credits", b.credits]] as [string, number][]) : []),
   ];
 
   return (
     <Document title={`Statement — ${clientName}`}>
       <Page size="A4" style={s.page}>
         <View style={s.head}>
-          <Text style={s.brand}>Factur</Text>
+          {logo
+            ? <Image style={s.logo} src={logo} />
+            : <Text style={{ fontSize: 15, fontFamily: "Helvetica-Bold" }}>Factur</Text>}
           <View>
             <Text style={s.title}>Statement of Account</Text>
             <Text style={s.meta}>As at {on(asAt)}</Text>
@@ -141,18 +161,26 @@ export function StatementDocument({
             <Text style={[s.th, s.cBal]}>Balance</Text>
           </View>
 
-          {lines.map((l) => (
-            <View key={l.invoice_no} style={s.row} wrap={false}>
-              <Text style={s.cInv}>{l.invoice_no}</Text>
-              <Text style={s.cDate}>{on(l.txn_date)}</Text>
-              <Text style={s.cDue}>{on(l.due_date)}</Text>
-              <Text style={[s.cAge, ...(l.age_days > 0 ? [s.late] : [])]}>
-                {l.age_days > 0 ? l.age_days : "—"}
-              </Text>
-              <Text style={s.cAmt}>{money.format(l.original)}</Text>
-              <Text style={s.cBal}>{money.format(l.balance)}</Text>
-            </View>
-          ))}
+          {lines.map((l) => {
+            const isCredit = l.kind === "credit";
+            const late = !isCredit && (l.age_days ?? 0) > 0;
+            return (
+              <View key={`${l.kind}-${l.ref}`} style={s.row} wrap={false}>
+                <Text style={[s.cInv, ...(isCredit ? [s.creditRef] : [])]}>
+                  {isCredit ? `Credit ${l.ref}` : l.ref}
+                </Text>
+                <Text style={s.cDate}>{on(l.txn_date)}</Text>
+                <Text style={s.cDue}>{on(l.due_date)}</Text>
+                <Text style={[s.cAge, ...(late ? [s.late] : [])]}>
+                  {late ? l.age_days : "—"}
+                </Text>
+                <Text style={s.cAmt}>{isCredit ? "—" : money.format(l.original)}</Text>
+                <Text style={[s.cBal, ...(isCredit ? [s.credit] : [])]}>
+                  {money.format(l.balance)}
+                </Text>
+              </View>
+            );
+          })}
 
           <View style={s.totalRow}>
             <Text style={s.totalLabel}>Total outstanding</Text>
@@ -166,7 +194,11 @@ export function StatementDocument({
             {ageing.map(([label, value]) => (
               <View key={label} style={s.ageingCell}>
                 <Text style={s.ageingLabel}>{label}</Text>
-                <Text style={[s.ageingValue, ...(value > 0 && label !== "Current" ? [s.late] : [])]}>
+                <Text style={[
+                  s.ageingValue,
+                  ...(value > 0 && label !== "Current" ? [s.late] : []),
+                  ...(label === "Credits" ? [s.credit] : []),
+                ]}>
                   {money.format(value)}
                 </Text>
               </View>

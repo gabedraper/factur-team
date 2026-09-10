@@ -33,6 +33,9 @@ export async function GET(
   if (!statement) {
     return NextResponse.json({ error: "Nothing outstanding" }, { status: 404 });
   }
+  if ("problem" in statement) {
+    return NextResponse.json({ error: statement.problem }, { status: 409 });
+  }
 
   return new NextResponse(new Uint8Array(statement.pdf), {
     status: 200,
