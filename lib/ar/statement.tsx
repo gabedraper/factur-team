@@ -4,8 +4,13 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 
 export type StatementLine = {
-  /** 'invoice' is owed; 'credit' is money we hold and have not applied. */
-  kind: "invoice" | "credit";
+  /*
+   * What we are owed, against the two ways a client can be in credit: a memo we
+   * issued, and a payment they sent that is not yet applied to anything. Kept
+   * apart because a client checking the statement looks for the one they
+   * remember.
+   */
+  kind: "invoice" | "credit" | "payment";
   ref: string;
   txn_date: string | null;
   due_date: string | null;
@@ -41,7 +46,7 @@ const on = (iso: string | null) =>
 export function buckets(lines: StatementLine[]) {
   const b = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d91: 0, credits: 0 };
   for (const l of lines) {
-    if (l.kind === "credit") {
+    if (l.kind !== "invoice") {
       b.credits += l.balance;
       continue;
     }
@@ -75,9 +80,9 @@ const s = StyleSheet.create({
   },
   th: { fontSize: 7.5, color: "#5a5a5a", letterSpacing: 0.8, textTransform: "uppercase" },
 
-  cInv:  { width: "18%", paddingHorizontal: 6 },
-  cDate: { width: "17%", paddingHorizontal: 6 },
-  cDue:  { width: "17%", paddingHorizontal: 6 },
+  cInv:  { width: "26%", paddingHorizontal: 6 },
+  cDate: { width: "14%", paddingHorizontal: 6 },
+  cDue:  { width: "14%", paddingHorizontal: 6 },
   cAge:  { width: "14%", paddingHorizontal: 6, textAlign: "right" },
   cAmt:  { width: "17%", paddingHorizontal: 6, textAlign: "right" },
   cBal:  { width: "17%", paddingHorizontal: 6, textAlign: "right" },
@@ -91,6 +96,7 @@ const s = StyleSheet.create({
     paddingTop: 8, marginTop: 2,
   },
   totalLabel: { width: "83%", paddingHorizontal: 6, textAlign: "right", fontFamily: "Helvetica-Bold" },
+  // Six ageing cells now that credits have their own.
   totalValue: { width: "17%", paddingHorizontal: 6, textAlign: "right", fontFamily: "Helvetica-Bold" },
 
   ageing: { marginTop: 26, borderTop: "1px solid #cfd4da", paddingTop: 10 },
@@ -162,12 +168,16 @@ export function StatementDocument({
           </View>
 
           {lines.map((l) => {
-            const isCredit = l.kind === "credit";
+            const isCredit = l.kind !== "invoice";
             const late = !isCredit && (l.age_days ?? 0) > 0;
             return (
               <View key={`${l.kind}-${l.ref}`} style={s.row} wrap={false}>
                 <Text style={[s.cInv, ...(isCredit ? [s.creditRef] : [])]}>
-                  {isCredit ? `Credit ${l.ref}` : l.ref}
+                  {l.kind === "credit"
+                    ? `Credit memo ${l.ref}`
+                    : l.kind === "payment"
+                      ? `Payment ${l.ref}`
+                      : l.ref}
                 </Text>
                 <Text style={s.cDate}>{on(l.txn_date)}</Text>
                 <Text style={s.cDue}>{on(l.due_date)}</Text>
