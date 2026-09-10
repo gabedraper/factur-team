@@ -99,15 +99,67 @@ small sizes.
 
 ### Tables
 
-Density is two tokens, `cell-x` and `cell-y`, currently 16px × 10px. It is not
-tighter because a 24px company logo has to fit a row — lists show logos.
+Density is two tokens, `cell-x` and `cell-y`, currently 16px × 10px.
 
 - Money and counts use `<TD numeric>`. It right-aligns and sets `tabular-nums`
   so figures line up down the column.
-- Naming a company or a person uses `<TDIdentity>`, which carries the
-  thumbnail. This is what stops a logo appearing on one list and not the next.
+- **Lists do not carry logos or avatars.** Identity thumbnails belong on detail
+  pages and record headers, where you have committed to one record — not down
+  every row of a list you are scanning. A company logo is an external favicon
+  request per row, and a contact photo is almost always just initials, since
+  LinkedIn's are not obtainable. `<TDIdentity>` exists for the few lists that
+  genuinely need one; it is not the default.
 - Wrap every table in `<TableScroll>`. A wide table without it pushes the whole
   page sideways.
+
+### List pages
+
+Every list is the same shell: title, a row of view chips, then the rows. The
+view chips come first because people return to the same few questions.
+
+- **Filters live in the URL.** A view sets query parameters; changing a filter
+  changes the URL. That is what makes a filtered list survive a reload, work
+  with the back button, and paste into Slack as the thing you were looking at.
+  Filters held only in component state are the reason people re-apply the same
+  filter all day — 34 files still do this.
+- **A view is a starting point, not a cage.** Open a saved view, adjust it, and
+  save the result as a new one if it is worth keeping.
+- **Views are not lists.** A view is a stored query and its contents change as
+  the data does. A list is records somebody put there by hand. Never use the
+  word "list" for a view: `list_views` holds the first, `tal_lists` the second.
+- **Board is only for an ordered pipeline** — something you move a record
+  through, like an opportunity stage. A status column is not a pipeline;
+  nobody should be able to drag a client into Inactive.
+- **Cards and timeline are not switcher options.** A specific view asks for
+  them.
+
+### Selecting and acting
+
+Bulk selection is the primary way to act on records: tick rows, act on all of
+them at once. It matches how the app is used — adding many contacts to a
+sequence, exporting a filtered set.
+
+Single-record actions live on the record, reached by clicking the row. Do not
+put a button in every row to do what opening the record already does.
+
+### Empty states say why
+
+An empty list and a list filtered down to nothing are different, and they need
+different words and different buttons:
+
+- Nothing exists yet → say so, and offer to create one.
+- Filters excluded everything → name the filter, and offer to clear it.
+- The query failed → say it failed. Never let an error render as "no data".
+
+The third is the one that matters: a broken query showing an empty table is
+how an app gets reported as broken when it is working, and how a real fault
+goes unnoticed for a week.
+
+### Forms
+
+Label above the field, always. It survives any width, reads fastest, and needs
+no fixed label column. Every field reserves space for its error message so the
+form does not jump when validation fires.
 
 ### Loading
 
