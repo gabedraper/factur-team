@@ -26,6 +26,11 @@ export type Permission =
   | "timelines.view" | "timelines.view.all" | "clients.health"
   | "clients.results"
   | "finance.collections"
+  // Separate from finance.collections (the email chase flow everyone with
+  // that permission can run): SMS consent isn't documented for every
+  // client's MSA, so sending a collections text is its own, narrower right
+  // rather than something the general collections permission implies.
+  | "finance.collections.sms"
   | "nps.send"
   | "sequences.send"
   | "work.view"
