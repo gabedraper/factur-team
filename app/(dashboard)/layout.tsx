@@ -106,14 +106,14 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
   if (learn.length) groups.push({ label: "Learn", items: learn });
 
   /*
-   * The ClickUp mirror. One link, because the whole point of it is that the
-   * work shows up beside the client, the invoice and the opportunity it is
-   * about -- this page is only for the part that is about none of them, which
-   * is your own queue.
+   * The ClickUp mirror. Two links only, because the whole point of it is that
+   * the work shows up beside the client, the invoice and the opportunity it is
+   * about -- these pages are for the parts that are about none of them: your
+   * own queue, and the workspace as ClickUp lays it out.
    */
   if (perms.has("work.view") || perms.has("org.manage")) {
     groups.push({
-      label: "Work",
+      label: "ClickUp",
       items: [
         { href: "/work", label: "My Work", icon: <ListChecks className="h-4 w-4" /> },
         { href: "/work/browse", label: "Spaces", icon: <Layers className="h-4 w-4" /> },
