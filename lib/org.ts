@@ -53,11 +53,19 @@ export type Permission =
  */
 const permissionsForMember = cache(async (column: "auth_user_id" | "id", value: string) => {
   const db = createServiceClient();
-  const { data } = await db
+  const { data, error } = await db
     .from("org_members")
     .select("org_assignments(org_roles(org_role_permissions(permission_key)))")
     .eq(column, value)
     .maybeSingle();
+  /*
+   * A failed read is not an empty set of rights. Left unthrown, a database
+   * hiccup came back as "no permissions", and every gated page then told the
+   * person their role did not include something it did -- which reads as a
+   * settings problem rather than the outage it was. Thrown, it reaches the
+   * error boundary and says what happened, like getProfile does.
+   */
+  if (error) throw new Error(`Couldn't read your permissions: ${error.message}`);
 
   const keys = new Set<Permission>();
   type Row = { org_assignments?: { org_roles?: { org_role_permissions?: { permission_key: string }[] } }[] };

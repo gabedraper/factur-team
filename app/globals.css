@@ -85,6 +85,24 @@
     --duration-fast: 120ms;
     --duration-base: 160ms;
     --duration-slow: 240ms;
+
+    /*
+     * Chart series. The eight categorical slots of the data-viz palette, in
+     * an order validated for colour-vision safety between neighbours -- so
+     * a stacked bar or a set of lines stays tellable-apart. Assigned in
+     * order, never cycled; a ninth series folds into "Other".
+     */
+    --viz-1: #2a78d6;
+    --viz-2: #eb6834;
+    --viz-3: #1baf7a;
+    --viz-4: #eda100;
+    --viz-5: #e87ba4;
+    --viz-6: #008300;
+    --viz-7: #4a3aa7;
+    --viz-8: #e34948;
+    --viz-grid: #e1e0d9;
+    --viz-axis: #c3c2b7;
+    --viz-ink: #898781;
   }
 
   .dark {
@@ -148,6 +166,19 @@
     --shadow-modal: inset 0 1px 0 hsl(210 40% 98% / .12), 0 0 0 1px hsl(210 40% 98% / .05), 0 16px 44px -10px hsl(220 40% 84% / .18);
     /* The surface-lightening half of the lift. A shadow cannot express it. */
     --card-hover: 217.2 32.6% 14%;
+
+    /* The same eight hues, stepped for the dark surface -- not a flip. */
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-5: #d55181;
+    --viz-6: #008300;
+    --viz-7: #9085e9;
+    --viz-8: #e66767;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+    --viz-ink: #898781;
   }
 }
 

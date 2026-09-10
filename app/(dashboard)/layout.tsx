@@ -43,6 +43,7 @@ import {
   LineChart,
   Coins,
   PhoneCall,
+  BarChart3,
 } from "lucide-react";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
@@ -151,6 +152,16 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     }
     groups.push({ label: "Clients", items: clients });
   }
+
+  /*
+   * Reports are gated one by one on the grants that already gate the screens
+   * they draw from, and the training report is open to everyone, so the link
+   * is always there. The index lists only what the person may open.
+   */
+  groups.push({
+    label: "Reports",
+    items: [{ href: "/reports", label: "All reports", icon: <BarChart3 className="h-4 w-4" /> }],
+  });
 
   /*
    * Talent is a section rather than a page -- it is an applicant tracker and a

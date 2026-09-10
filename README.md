@@ -16,6 +16,7 @@ Live at **team.facturmfg.com**. Sign-in is restricted to `@bethefactur.com` and
 | `/admin/weights` | Scoring weights behind the sales boards |
 | `/talent/*` | Recruiting: people, companies, jobs, pipelines, placements |
 | `/careers`, `/portal/{token}` | Public: the job board and the hiring-manager share links |
+| `/reports`, `/reports/new`, `/reports/r/{id}` | Reports: build on any table, save, share, chart; dashboards of saved reports; standard reports under `/reports/standard/{key}` |
 
 Note the two boards are different things: `/leaderboard` ranks training
 progress, `/scoreboard` ranks selling.
@@ -51,6 +52,42 @@ The public routes (`/careers`, `/portal/{token}`) are deliberately absent from
 through five `security definer` functions and nothing else. A policy on
 `tal_jobs` generous enough to serve the careers page would leak confidential
 searches, which is why there isn't one.
+
+## Reports
+
+Two kinds, one library at `/reports`.
+
+**Custom reports** are built by anyone, on any table or view they can read.
+The builder (`/reports/new`) picks an object, then either the columns to list
+or the groups and measures to summarise, then filters; a live preview runs as
+you go. A saved report is a `spec` (object, fields, operators, values -- data,
+never SQL) plus an optional `chart`, stored in `reports`, private to its
+author or shared with everyone. Dashboards (`dashboards`) are ordered tiles
+of saved reports.
+
+Three database functions do the work, and all run as the signed-in person so
+row security decides what a report can see:
+
+- `report_objects()` -- every readable table and view, its typed columns, and
+  the single-column foreign keys that let a report show `client_id › name`.
+  A short deny list (`report_object_allowed`) keeps sync state, secrets and
+  the report tables themselves out of the picker.
+- `run_report(spec)` -- validates every name in the spec against
+  `pg_catalog`, builds the query with `format('%I')` and `%L`, and returns
+  rows, output columns and a total. Unknown fields, operators and objects
+  raise; values are always literals.
+- `report_field_values(...)` -- distinct values for a filter picker.
+
+The app side lives in `lib/reporting/` (schemas, data reads, formatting),
+`actions/reports.ts` (preview, save, delete) and `components/reporting/`
+(builder, chart, table, dashboards). Charts are Recharts, coloured by the
+`--viz-*` tokens in `globals.css`.
+
+**Standard reports** are written in code, for numbers a query cannot express
+(health scores, hustle points). Each is a definition under
+`lib/reports/defs/*.ts` listed in `lib/reports/catalogue.ts`, drawn by
+`/reports/standard/{key}`, gated on the permission that gates its source
+screen, with filters in the URL and a CSV at `/api/reports/standard/{key}/csv`.
 
 ## Running it
 
