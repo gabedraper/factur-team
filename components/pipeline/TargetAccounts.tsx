@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Building2, ChevronRight, Maximize2, Minimize2, X, Search, Phone as PhoneIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,10 +53,12 @@ export function TargetAccounts({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<TargetAccount | null>(null);
-  // Lifted out of AccountPanel: the list needs to know when the panel is
-  // full, so it can get out of the way instead of sitting hidden underneath it.
-  const [full, setFull] = useState(false);
   const [loading, start] = useTransition();
+  // The box the account panel is allowed to fill -- its right edge is
+  // wherever the work panel currently begins, so the account panel's own
+  // absolute positioning follows it there for free, without either
+  // component knowing the other's width.
+  const boxRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback((next: {
     stages?: string[]; search?: string; page?: number;
@@ -90,10 +92,13 @@ export function TargetAccounts({
   const pages = Math.ceil(total / PAGE);
 
   return (
-    <div className="flex h-full min-w-0 items-start gap-3">
-      {/* hidden rather than unmounted when the panel goes full, so the
-          filters, page and scroll position are still there when it closes. */}
-      <div className={`min-w-0 space-y-3 ${selected && full ? "hidden" : "flex-1"}`}>
+    // relative + min-w-0: the account panel positions itself absolute
+    // right-0 against this box, so its right edge is always exactly where
+    // this box's own right edge is -- which, being a normal flex child of
+    // main, is always exactly where the work panel begins, however wide
+    // that currently is.
+    <div ref={boxRef} className="relative min-w-0">
+      <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-1.5">
           <div className="relative w-56 shrink-0">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -192,24 +197,28 @@ export function TargetAccounts({
           account={selected}
           onClose={() => setSelected(null)}
           stageFields={stageFields}
-          full={full}
-          setFull={setFull}
+          boxRef={boxRef}
         />
       )}
     </div>
   );
 }
 
+const PANEL_MIN_WIDTH = 380;
+const PANEL_MAX_WIDTH = 900;
+const PANEL_DEFAULT_WIDTH = 560;
+const PANEL_WIDTH_KEY = "factur-account-panel-width";
+
 function AccountPanel({
-  clientId, clientName, account, onClose, stageFields, full, setFull,
+  clientId, clientName, account, onClose, stageFields, boxRef,
 }: {
   clientId: string;
   clientName: string;
   account: TargetAccount;
   onClose: () => void;
   stageFields: StageFields;
-  full: boolean;
-  setFull: (full: boolean) => void;
+  /** The box this panel positions itself against -- see TargetAccounts. */
+  boxRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [contacts, setContacts] = useState<AccountContact[] | null>(null);
   const [unworked, setUnworked] = useState<UnworkedContact[]>([]);
@@ -218,6 +227,46 @@ function AccountPanel({
   /* Shut by default: it is a long list of people nobody has touched, useful
      when you go looking for it and noise the rest of the time. */
   const [showPotential, setShowPotential] = useState(false);
+  const [full, setFull] = useState(false);
+  const [width, setWidth] = useState(PANEL_DEFAULT_WIDTH);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    const saved = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+    if (saved >= PANEL_MIN_WIDTH && saved <= PANEL_MAX_WIDTH) setWidth(saved);
+  }, []);
+
+  /*
+   * Dragging the edge, same recipe as the work panel's own handle: measured
+   * from the box's current right edge rather than a start offset, so it
+   * tracks the pointer exactly rather than drifting. Clamped to the box's
+   * own width too -- this panel must never reach past the left sidebar
+   * regardless of how wide somebody drags it.
+   */
+  const drag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setDragging(true);
+    const box = boxRef.current;
+    if (!box) return;
+    const right = box.getBoundingClientRect().right;
+
+    const move = (ev: PointerEvent) => {
+      const ceiling = Math.min(PANEL_MAX_WIDTH, box.getBoundingClientRect().width);
+      const next = Math.round(Math.min(ceiling, Math.max(PANEL_MIN_WIDTH, right - ev.clientX)));
+      setWidth(next);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      setWidth((w) => {
+        localStorage.setItem(PANEL_WIDTH_KEY, String(w));
+        return w;
+      });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }, [boxRef]);
 
   useEffect(() => {
     let live = true;
@@ -259,16 +308,31 @@ function AccountPanel({
   }, [onClose]);
 
   return (
-    // In-flow, not fixed-to-viewport: a modal-style overlay was covering the
-    // work panel on the right, since it drew relative to the whole screen
-    // rather than the space actually left for it. Sticky rather than a fixed
-    // height, so it scrolls independently but never claims more height than
-    // the page's own scroll container has given it.
+    // absolute + right-0 against boxRef, not fixed-to-viewport: a modal-style
+    // overlay was covering the work panel on the right, since it drew
+    // relative to the whole screen rather than the space actually left for
+    // it. Positioned this way, its right edge is always exactly where the
+    // box (and so the work panel) begins, however wide that currently is --
+    // growing the work panel pushes this panel along for free, no
+    // coordination between the two needed. The list sits underneath,
+    // full width, unconditionally: this panel is what overlays it.
     <aside
-      className={`sticky top-0 flex max-h-screen shrink-0 flex-col self-start overflow-hidden rounded-md border bg-background transition-[width] ${
-        full ? "w-full" : "w-full max-w-2xl"
-      }`}
+      style={full ? undefined : { width }}
+      className={`absolute inset-y-0 right-0 z-10 flex flex-col overflow-hidden border-l bg-background shadow-lg ${
+        dragging ? "" : "transition-[width] duration-200"
+      } ${full ? "left-0" : ""}`}
     >
+        {!full && (
+          <div
+            onPointerDown={drag}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize panel"
+            className={`absolute left-0 top-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-primary/30 ${
+              dragging ? "bg-primary/40" : ""
+            }`}
+          />
+        )}
         <header className="flex items-start justify-between gap-3 border-b px-5 py-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
