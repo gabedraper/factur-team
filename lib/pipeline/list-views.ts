@@ -103,9 +103,20 @@ const TEXT_OPS: Operator[] = [
 const DATE_OPS: Operator[] = ["on", "before", "after", "on_or_before", "on_or_after", "is_empty", "is_not_empty"];
 const BOOL_OPS: Operator[] = ["is_true", "is_false"];
 
+/*
+ * No "contains" on a picklist, and that is a performance decision as much as a
+ * semantic one. A picklist is a closed set of exact strings chosen from a
+ * dropdown, so contains was never the right question -- and ilike '%...%'
+ * cannot seek an index, which turned one real view from 7.9ms into 4,087ms and
+ * a timeout. Equals seeks straight into (client_id, lead_status) and the limit
+ * stops after fifty rows instead of joining nineteen hundred.
+ */
+const PICKLIST_OPS: Operator[] = ["equals", "not_equals", "is_empty", "is_not_empty"];
+
 export function operatorsFor(type: FieldType): Operator[] {
   if (type === "date") return DATE_OPS;
   if (type === "boolean") return BOOL_OPS;
+  if (type === "picklist") return PICKLIST_OPS;
   return TEXT_OPS;
 }
 
