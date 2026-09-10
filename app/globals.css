@@ -45,7 +45,12 @@
     --elevated: 210 40% 98%;
     --field-border: 214.3 31.8% 85%;
     --ring: 236 63% 51%;
-    --radius: 0.5rem;
+    /*
+     * 8px, chosen 2026-09-10. The token is 10px because rounded-md -- the
+     * class the app actually uses -- is defined as --radius minus 2. Set this
+     * to 8px and every corner in the app quietly becomes 6px instead.
+     */
+    --radius: 0.625rem;
 
     /* Surface depth ---------------------------------------------------------
        Shadows had no token, so every use fell through to Tailwind's defaults,
@@ -59,6 +64,11 @@
     --shadow-raised: 0 1px 2px hsl(222 40% 12% / .06);
     --shadow-overlay: 0 2px 4px hsl(222 40% 12% / .07), 0 8px 20px -8px hsl(222 40% 12% / .18);
     --shadow-modal: 0 8px 32px -8px hsl(222 40% 12% / .28);
+
+    /* The surface-lightening half of the lift, light theme -- where it
+       darkens fractionally instead, because on a light ground a raised object
+       gains contrast rather than brightness. */
+    --card-hover: 210 40% 99%;
 
     /* Motion ----------------------------------------------------------------
        One duration and one curve, referenced rather than retyped. The curve
@@ -112,9 +122,20 @@
      * separate it from the page. Naively reusing the light values is why the
      * app's few shadows disappear in dark mode.
      */
-    --shadow-raised: inset 0 1px 0 hsl(210 40% 98% / .05), 0 1px 2px hsl(0 0% 0% / .4);
-    --shadow-overlay: inset 0 1px 0 hsl(210 40% 98% / .06), 0 8px 24px -8px hsl(0 0% 0% / .7);
-    --shadow-modal: inset 0 1px 0 hsl(210 40% 98% / .07), 0 12px 40px -8px hsl(0 0% 0% / .8);
+    --shadow-raised: inset 0 1px 0 hsl(210 40% 98% / .06), 0 1px 2px hsl(0 0% 0% / .4);
+    /*
+     * The lift, chosen 2026-09-10. Three mechanisms together: a lit top edge,
+     * a hairline of reflected light, and a neutral halo.
+     *
+     * The halo is deliberately cool white and not blue. --ring is Factur blue
+     * and means "your keyboard is here"; a blue glow meaning "this is raised"
+     * would make focus and depth look alike, which is an accessibility
+     * problem before it is an aesthetic one.
+     */
+    --shadow-overlay: inset 0 1px 0 hsl(210 40% 98% / .10), 0 0 0 1px hsl(210 40% 98% / .04), 0 8px 26px -8px hsl(220 40% 84% / .13);
+    --shadow-modal: inset 0 1px 0 hsl(210 40% 98% / .12), 0 0 0 1px hsl(210 40% 98% / .05), 0 16px 44px -10px hsl(220 40% 84% / .18);
+    /* The surface-lightening half of the lift. A shadow cannot express it. */
+    --card-hover: 217.2 32.6% 14%;
   }
 }
 

@@ -76,6 +76,7 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+          hover: "hsl(var(--card-hover))",
         },
       },
       borderRadius: {
@@ -118,7 +119,8 @@ const config: Config = {
       spacing: {
         /* Page gutter (p-6, 80 uses) and the card recipe (p-4, 41 uses). */
         section: "1.5rem",
-        card: "1rem",
+        /* 24px, chosen 2026-09-10 -- up from the 16px the card recipe used. */
+        card: "1.5rem",
         "card-tight": "0.75rem",
         /* Table density, in one place. Change these two and every list in the
            app changes with them -- which is the whole point of naming them. */
