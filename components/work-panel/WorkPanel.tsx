@@ -21,13 +21,16 @@ const SECTIONS_KEY = "factur-work-panel-shut";
 /*
  * How wide it is allowed to get.
  *
- * The floor is what the dialpad needs to stay usable; below it the keypad
- * starts wrapping. The ceiling is about the page rather than the panel -- a
+ * The floor is what the dialpad needs to stay usable: its iframe is a fixed
+ * 400px (Dialpad's own documented size -- see DialWidget.tsx) inside p-3
+ * padding, so anything under ~424px squishes Dialpad's own UI rather than
+ * letting it reflow. 480 leaves it breathing room instead of sitting right
+ * at that edge. The ceiling is about the page rather than the panel -- a
  * rail past half the window stops being a rail.
  */
-const MIN_WIDTH = 320;
+const MIN_WIDTH = 480;
 const MAX_WIDTH = 720;
-const DEFAULT_WIDTH = 440;
+const DEFAULT_WIDTH = 480;
 
 /**
  * The persistent right rail -- left is navigation, this is work: whatever a
