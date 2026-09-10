@@ -50,9 +50,14 @@ export default async function CollectionsPage({
     <div className="p-6 space-y-4 max-w-6xl">
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold">Collections</h1>
-        <Link href="/collections/ar" className="text-sm text-muted-foreground hover:text-foreground">
-          A/R Ladder
-        </Link>
+        <div className="flex items-baseline gap-4">
+          <Link href="/collections/invoices" className="text-sm text-muted-foreground hover:text-foreground">
+            Invoices
+          </Link>
+          <Link href="/collections/ar" className="text-sm text-muted-foreground hover:text-foreground">
+            A/R Ladder
+          </Link>
+        </div>
       </div>
       <Board rows={rows} settings={settings} visibility={visibility} scope={scope} domains={domains} />
     </div>
