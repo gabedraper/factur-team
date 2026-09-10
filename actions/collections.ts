@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { resolveAction } from "@/lib/sequences/step-actions";
-import { myPermissions, previewedMemberId } from "@/lib/org";
+import { myPermissions, previewedMemberId, currentMemberId } from "@/lib/org";
 import { fill, fillHtml, type Figures } from "@/lib/collections/render";
 import { htmlToText } from "@/lib/email/richtext";
 import { draftAs, sendAs } from "@/lib/google/compose";
+import { sendDialpadSms } from "@/actions/dialer";
+import { toE164 } from "@/lib/phone";
 
 export type QueueRow = {
   client_id: string;
@@ -454,4 +456,162 @@ export async function placeChase(
   revalidatePath("/collections");
   revalidatePath(`/clients/${clientId}`);
   return { success: true, mode: settings.mode };
+}
+
+/*
+ * Collections texting -- separate from the email chase ladder above and
+ * deliberately simpler. Only whoever holds finance.collections.sms
+ * (Financial Manager, today just Brenolene) can touch any of this, because
+ * SMS consent isn't documented in client_terms the way email follow-up is
+ * assumed to be for every client -- it has to be a manual, per-client
+ * record (client_sms_consent) that she keeps, not an automated ladder like
+ * the email one. One-off sends rather than a scheduled cadence, on
+ * purpose: the population of consenting clients is small and the person
+ * sending is the one who's supposed to actually know each client's MSA.
+ */
+
+async function maySendSms() {
+  const perms = await myPermissions();
+  return perms.has("finance.collections.sms") || perms.has("org.manage");
+}
+
+export type SmsConsent = {
+  client_id: string;
+  consented_at: string;
+  consented_by_name: string | null;
+  note: string;
+};
+
+export async function listSmsConsent(): Promise<SmsConsent[]> {
+  if (!(await maySendSms())) return [];
+  const { data, error } = await createServiceClient()
+    .from("client_sms_consent")
+    .select("client_id,consented_at,note,org_members(full_name)")
+    .order("consented_at", { ascending: false });
+  if (error) throw new Error(`Could not load SMS consent: ${error.message}`);
+
+  return (data as unknown as Array<Record<string, unknown>>).map((r) => ({
+    client_id: r.client_id as string,
+    consented_at: r.consented_at as string,
+    consented_by_name: (r.org_members as { full_name: string | null } | null)?.full_name ?? null,
+    note: r.note as string,
+  }));
+}
+
+export async function addSmsConsent(
+  clientId: string,
+  note: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    if (!(await maySendSms())) return { ok: false, error: "Forbidden: finance.collections.sms required." };
+    if (!note.trim()) return { ok: false, error: "Say where this consent comes from before recording it." };
+
+    const me = await currentMemberId();
+    const { error } = await createServiceClient().from("client_sms_consent").upsert({
+      client_id: clientId,
+      note: note.trim(),
+      consented_by: me,
+      consented_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/collections");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not record that." };
+  }
+}
+
+export async function removeSmsConsent(clientId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    if (!(await maySendSms())) return { ok: false, error: "Forbidden: finance.collections.sms required." };
+    const { error } = await createServiceClient().from("client_sms_consent").delete().eq("client_id", clientId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/collections");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not remove that." };
+  }
+}
+
+export type SmsTarget = { clientName: string; phone: string | null; consented: boolean };
+
+/**
+ * Phone comes from client_terms.billing_contact_phone first -- extracted
+ * from the actual agreement, so it's the number the MSA's consent (if any)
+ * would actually cover -- falling back to QuickBooks' number for the same
+ * customer when the agreement didn't carry one.
+ */
+export async function getCollectionsSmsTarget(clientId: string): Promise<SmsTarget | null> {
+  if (!(await maySendSms())) return null;
+  const db = createServiceClient();
+
+  const [{ data: client }, { data: consent }, { data: terms }, { data: links }] = await Promise.all([
+    db.from("org_clients").select("name").eq("id", clientId).maybeSingle(),
+    db.from("client_sms_consent").select("client_id").eq("client_id", clientId).maybeSingle(),
+    db.from("client_terms").select("billing_contact_phone").eq("client_id", clientId).maybeSingle(),
+    db.rpc("get_client_quickbooks"),
+  ]);
+  if (!client) return null;
+
+  let phone = (terms as { billing_contact_phone: string | null } | null)?.billing_contact_phone ?? null;
+  const link = (links as unknown as Array<{ client_id: string; qb_customer_id: string }> | null)
+    ?.find((l) => l.client_id === clientId);
+  if (!phone && link) {
+    const { data: qbCustomer } = await db
+      .from("qb_customers_raw")
+      .select("primaryphone_freeformnumber")
+      .eq("id", link.qb_customer_id)
+      .maybeSingle();
+    phone = (qbCustomer as { primaryphone_freeformnumber: string | null } | null)?.primaryphone_freeformnumber ?? null;
+  }
+
+  return {
+    clientName: (client as { name: string }).name,
+    phone,
+    consented: Boolean(consent),
+  };
+}
+
+export async function sendCollectionsSms(
+  clientId: string,
+  phone: string,
+  body: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    if (!(await maySendSms())) return { ok: false, error: "Forbidden: finance.collections.sms required." };
+    if (!body.trim()) return { ok: false, error: "Nothing to send." };
+
+    // Checked server-side regardless of what the UI shows -- a permission
+    // to send SMS at all is not the same as consent for this client.
+    const { data: consent } = await createServiceClient()
+      .from("client_sms_consent").select("client_id").eq("client_id", clientId).maybeSingle();
+    if (!consent) return { ok: false, error: "This client has no recorded SMS consent." };
+
+    const to = toE164(phone);
+    if (!to) return { ok: false, error: `That doesn't look like a valid number: "${phone}".` };
+
+    const result = await sendDialpadSms(to, body.trim());
+    if (!result.ok) return result;
+
+    const { error } = await createServiceClient().from("collections_sms_sent").insert({
+      client_id: clientId,
+      to_phone: to,
+      body: body.trim(),
+      sent_by: await currentMemberId(),
+    });
+    if (error) {
+      return {
+        ok: false,
+        error: `The text was sent, but recording it failed: ${error.message}. Do not send it again.`,
+      };
+    }
+
+    revalidatePath("/collections");
+    revalidatePath(`/clients/${clientId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not send that text." };
+  }
 }

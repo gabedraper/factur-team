@@ -22,6 +22,12 @@ import { isJobRole } from "@/lib/org-roles";
 
 export type Permission =
   | "org.manage" | "lms.admin" | "lms.instruct" | "scoreboard.view"
+  // Pay, company financials and assessment material in the handbook. Its own
+  // right rather than part of lms.admin: the nine people who administer
+  // training are not the people who should read everyone's commission
+  // scenarios, and the handbook is read through Gaib as often as through the
+  // screens.
+  | "lms.restricted"
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
   | "timelines.view" | "timelines.view.all" | "clients.health"
   | "clients.results"

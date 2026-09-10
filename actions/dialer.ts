@@ -230,3 +230,44 @@ export async function sendSms(to: string, body: string): Promise<{ ok: true } | 
     return { ok: false, error: e instanceof Error ? e.message : "Could not send that text." };
   }
 }
+
+/**
+ * Sends one SMS via Dialpad's own Messages API -- a different product from
+ * the Mini Dialer CTI embedded elsewhere in this app, which has no
+ * server-callable send of its own. Requires DIALPAD_API_KEY, a static key
+ * generated in Dialpad's admin portal (Settings, not the OAuth Client
+ * ID/Secret the Mini Dialer's CTI app was issued -- that's a different
+ * credential for a different product) and, per Dialpad's own docs,
+ * "business messaging" registered on the account before this endpoint will
+ * accept anything -- a one-time portal step, same idea as Telnyx's
+ * messaging profile.
+ *
+ * DIALPAD_SMS_USER_ID picks which licensed Dialpad user the text is sent
+ * as; DIALPAD_SMS_FROM_NUMBER picks which of that user's numbers it goes
+ * out from. Both optional per Dialpad's API, but almost certainly needed
+ * in practice -- an account with multiple users/numbers has to pick one.
+ */
+export async function sendDialpadSms(to: string, body: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await assertPipeline("view");
+    const { DIALPAD_API_KEY, DIALPAD_SMS_USER_ID, DIALPAD_SMS_FROM_NUMBER } = process.env;
+    if (!DIALPAD_API_KEY) {
+      return { ok: false, error: "Dialpad texting isn't configured yet — needs DIALPAD_API_KEY." };
+    }
+
+    const res = await fetch("https://dialpad.com/api/v2/sms", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${DIALPAD_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to_numbers: [to],
+        text: body,
+        ...(DIALPAD_SMS_USER_ID ? { user_id: Number(DIALPAD_SMS_USER_ID) } : {}),
+        ...(DIALPAD_SMS_FROM_NUMBER ? { from_number: DIALPAD_SMS_FROM_NUMBER } : {}),
+      }),
+    });
+    if (!res.ok) return { ok: false, error: `Could not send that text: ${res.status} ${await res.text()}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not send that text." };
+  }
+}

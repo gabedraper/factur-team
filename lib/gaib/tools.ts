@@ -125,7 +125,23 @@ export const READABLE_TABLES: Record<string, string[]> = {
     "tal_person_jobs", "tal_person_educations", "tal_placements", "tal_applications",
     "tal_workflow_stages", "tal_workflows", "tal_lists", "tal_list_members",
   ],
+  /*
+   * The handbook. 151 courses pulled over from Guru, mostly not published yet
+   * -- which is a publishing state, not a secret, and reading it is most of
+   * what somebody means by "how do I do my job". Pay, company financials and
+   * assessment material sit behind lms.restricted and simply do not come back
+   * for anyone without it.
+   */
   Learning: ["courses", "modules", "lessons", "enrollments", "lesson_progress", "certificates"],
+  /*
+   * What is on somebody's plate, mirrored read-only from ClickUp. The right
+   * rail has shown these for months while Gaib could not see them, so "what am
+   * I meant to be working on" was a question it could not answer about a list
+   * sitting on the same screen.
+   */
+  "Tasks and projects": [
+    "work_items", "work_item_assignees", "work_containers", "work_processes",
+  ],
   /*
    * What has been reported and what became of it. Scoped by the same row rules
    * as the screens: your own, or everything if you run the queue.
