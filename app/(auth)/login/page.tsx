@@ -1,12 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  /*
+   * The auth callback sends people back here with ?error= when something went
+   * wrong, and nothing used to read it -- so a failed sign-in landed on the
+   * pills with no explanation, and the obvious reaction was to try the same
+   * thing again. Read from window rather than useSearchParams so the page
+   * needs no Suspense boundary for the one parameter it cares about.
+   */
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code === "profile") {
+      setError("You're signed in, but your account couldn't be loaded just now. Try again in a moment.");
+    } else if (code) {
+      setError("Sign-in didn't finish. Try again.");
+    }
+  }, []);
 
   /*
    * Each pill signs in and sets the theme it stands for.

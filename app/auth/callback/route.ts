@@ -20,11 +20,21 @@ export async function GET(request: Request) {
 
   // No profile means the sign-in was not a Factur address: handle_new_user()
   // only creates one for the allowed domains.
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", data.user.id)
-    .single();
+    .maybeSingle();
+
+  /*
+   * A failed read is not a missing profile. Treating it as one signed a real
+   * Factur employee out whenever the database was slow -- the next line is a
+   * signOut(). Send them back to sign in with an honest error instead, and
+   * leave the session alone so a retry can succeed.
+   */
+  if (profileError) {
+    return NextResponse.redirect(`${origin}/login?error=profile`);
+  }
 
   if (!profile) {
     await supabase.auth.signOut();
