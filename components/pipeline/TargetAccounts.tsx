@@ -53,6 +53,9 @@ export function TargetAccounts({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<TargetAccount | null>(null);
+  // Lifted out of AccountPanel: the list needs to know when the panel is
+  // full, so it can get out of the way instead of sitting hidden underneath it.
+  const [full, setFull] = useState(false);
   const [loading, start] = useTransition();
 
   const load = useCallback((next: {
@@ -87,96 +90,100 @@ export function TargetAccounts({
   const pages = Math.ceil(total / PAGE);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div className="relative w-56 shrink-0">
-          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); load({ search: e.target.value, page: 0 }); }}
-            placeholder="Company or domain"
-            className="h-8 pl-8"
-          />
-        </div>
-        {TARGET_STAGES.map((s) => {
-          const on = stages.includes(s);
-          return (
-            <button
-              key={s}
-              onClick={() => toggleStage(s)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                on ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"
-              }`}
-            >
-              {s}
-            </button>
-          );
-        })}
-      </div>
-
-      <Panel>
-        {rows.length === 0 ? (
-          <Empty>{loading ? "Loading…" : "No companies match."}</Empty>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Stage</th>
-                <th className="px-4 py-2 font-medium">Location</th>
-                <th className="px-4 py-2 font-medium">Industry</th>
-                <th className="px-4 py-2 font-medium">Keywords</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.account_id}
-                  onClick={() => setSelected(r)}
-                  className={`cursor-pointer border-b last:border-0 hover:bg-muted/40 ${
-                    selected?.account_id === r.account_id ? "bg-muted/60" : ""
-                  }`}
-                >
-                  <td className="px-4 py-2">
-                    <div className="font-medium">{r.account_name}</div>
-                    <Website domain={r.domain} />
-                  </td>
-                  <td className="px-4 py-2">
-                    <Chip colour={STAGE_TONE[r.target_stage] ?? "slate"}>{r.target_stage}</Chip>
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {[r.city, r.state].filter(Boolean).join(", ") || null}
-                  </td>
-                  <td className="max-w-[14rem] px-4 py-2 text-muted-foreground">
-                    <div className="truncate" title={r.industry ?? undefined}>{r.industry}</div>
-                  </td>
-                  <td className="max-w-[22rem] px-4 py-2 text-xs text-muted-foreground">
-                    <div className="truncate" title={r.keywords ?? undefined}>{r.keywords}</div>
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Panel>
-
-      {pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span className="tabular-nums">
-            {(page * PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PAGE, total).toLocaleString()} of {total.toLocaleString()}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 0 || loading}
-              onClick={() => load({ page: page - 1 })}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page + 1 >= pages || loading}
-              onClick={() => load({ page: page + 1 })}>Next</Button>
+    <div className="flex h-full min-w-0 items-start gap-3">
+      {/* hidden rather than unmounted when the panel goes full, so the
+          filters, page and scroll position are still there when it closes. */}
+      <div className={`min-w-0 space-y-3 ${selected && full ? "hidden" : "flex-1"}`}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="relative w-56 shrink-0">
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); load({ search: e.target.value, page: 0 }); }}
+              placeholder="Company or domain"
+              className="h-8 pl-8"
+            />
           </div>
+          {TARGET_STAGES.map((s) => {
+            const on = stages.includes(s);
+            return (
+              <button
+                key={s}
+                onClick={() => toggleStage(s)}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                  on ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                }`}
+              >
+                {s}
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        <Panel>
+          {rows.length === 0 ? (
+            <Empty>{loading ? "Loading…" : "No companies match."}</Empty>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Company</th>
+                  <th className="px-4 py-2 font-medium">Stage</th>
+                  <th className="px-4 py-2 font-medium">Location</th>
+                  <th className="px-4 py-2 font-medium">Industry</th>
+                  <th className="px-4 py-2 font-medium">Keywords</th>
+                  <th className="px-4 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.account_id}
+                    onClick={() => setSelected(r)}
+                    className={`cursor-pointer border-b last:border-0 hover:bg-muted/40 ${
+                      selected?.account_id === r.account_id ? "bg-muted/60" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-2">
+                      <div className="font-medium">{r.account_name}</div>
+                      <Website domain={r.domain} />
+                    </td>
+                    <td className="px-4 py-2">
+                      <Chip colour={STAGE_TONE[r.target_stage] ?? "slate"}>{r.target_stage}</Chip>
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {[r.city, r.state].filter(Boolean).join(", ") || null}
+                    </td>
+                    <td className="max-w-[14rem] px-4 py-2 text-muted-foreground">
+                      <div className="truncate" title={r.industry ?? undefined}>{r.industry}</div>
+                    </td>
+                    <td className="max-w-[22rem] px-4 py-2 text-xs text-muted-foreground">
+                      <div className="truncate" title={r.keywords ?? undefined}>{r.keywords}</div>
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      <ChevronRight className="h-4 w-4" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+
+        {pages > 1 && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span className="tabular-nums">
+              {(page * PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PAGE, total).toLocaleString()} of {total.toLocaleString()}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0 || loading}
+                onClick={() => load({ page: page - 1 })}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={page + 1 >= pages || loading}
+                onClick={() => load({ page: page + 1 })}>Next</Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {selected && (
         <AccountPanel
@@ -185,6 +192,8 @@ export function TargetAccounts({
           account={selected}
           onClose={() => setSelected(null)}
           stageFields={stageFields}
+          full={full}
+          setFull={setFull}
         />
       )}
     </div>
@@ -192,15 +201,16 @@ export function TargetAccounts({
 }
 
 function AccountPanel({
-  clientId, clientName, account, onClose, stageFields,
+  clientId, clientName, account, onClose, stageFields, full, setFull,
 }: {
   clientId: string;
   clientName: string;
   account: TargetAccount;
   onClose: () => void;
   stageFields: StageFields;
+  full: boolean;
+  setFull: (full: boolean) => void;
 }) {
-  const [full, setFull] = useState(false);
   const [contacts, setContacts] = useState<AccountContact[] | null>(null);
   const [unworked, setUnworked] = useState<UnworkedContact[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignMembership[]>([]);
@@ -249,13 +259,16 @@ function AccountPanel({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <aside
-        className={`relative flex h-full flex-col overflow-hidden border-l bg-background shadow-xl transition-all ${
-          full ? "w-full" : "w-full max-w-2xl"
-        }`}
-      >
+    // In-flow, not fixed-to-viewport: a modal-style overlay was covering the
+    // work panel on the right, since it drew relative to the whole screen
+    // rather than the space actually left for it. Sticky rather than a fixed
+    // height, so it scrolls independently but never claims more height than
+    // the page's own scroll container has given it.
+    <aside
+      className={`sticky top-0 flex max-h-screen shrink-0 flex-col self-start overflow-hidden rounded-md border bg-background transition-[width] ${
+        full ? "w-full" : "w-full max-w-2xl"
+      }`}
+    >
         <header className="flex items-start justify-between gap-3 border-b px-5 py-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -374,7 +387,6 @@ function AccountPanel({
           )}
         </div>
       </aside>
-    </div>
   );
 }
 
