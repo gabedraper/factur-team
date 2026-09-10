@@ -1,5 +1,7 @@
 "use server";
 
+import { clientIdsForScope } from "@/lib/list-views/resolve";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertPipeline } from "@/lib/pipeline/access";
@@ -43,6 +45,12 @@ export async function listOpportunities(input: {
   sortDir?: "asc" | "desc";
   search?: string;
   clientId?: string | null;
+  /**
+   * "mine" narrows to clients the person is staffed on themselves; "team"
+   * widens to everyone down their reporting line. Both are answered by the
+   * database, from the session -- see clientIdsForScope.
+   */
+  scope?: "mine" | "team" | null;
   page?: number;
 }): Promise<{ rows: Record<string, unknown>[]; hasMore: boolean; tooBroad: boolean }> {
   await assertPipeline("view");
@@ -117,6 +125,17 @@ export async function listOpportunities(input: {
   let q = db.from("opportunities").select(parts.join(","));
 
   if (input.clientId) q = q.eq("client_id", input.clientId);
+  if (input.scope) {
+    /*
+     * An empty scope means "none of your clients", and it has to stay empty.
+     * Return early rather than hand .in() an empty list and trust how that is
+     * interpreted: if it were ever read as "no filter", somebody staffed on no
+     * clients would open "My opportunities" and be shown everyone's.
+     */
+    const ids = await clientIdsForScope(input.scope);
+    if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
+    q = q.in("client_id", ids);
+  }
 
   for (const f of filters) {
     const field = FIELD_BY_KEY.get(f.field)!;
