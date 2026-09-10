@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Users, ShieldCheck, Building2, Layers, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature } from "lucide-react";
+  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature, Palette } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -178,6 +178,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Dialpad</span>
                 <span className="block text-xs text-muted-foreground">
                   The click-to-dial widget&apos;s outbound number pool, and whether it&apos;s wired up.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/design"
+                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+              <Palette className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Design reference</span>
+                <span className="block text-xs text-muted-foreground">
+                  Every shared component, in both themes.
                 </span>
               </span>
             </Link>
