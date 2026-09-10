@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { setCallActive } from "@/lib/calls/active";
 import { Phone, PhoneOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
+import { Panel, NotConnected, Chip } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber } from "@/actions/dialer";
 import { useCallTarget } from "@/components/work-panel/dialer-context";
@@ -190,9 +190,7 @@ export function DialWidget() {
           </p>
         )}
 
-        {!target ? (
-          <Empty>Open an Opportunity to call.</Empty>
-        ) : (
+        {target && (
           <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
             <span className="w-full truncate text-sm font-medium">{target.contactName}</span>
             {callState === "ringing" || callState === "dialing" ? (
