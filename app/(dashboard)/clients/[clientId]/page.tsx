@@ -10,6 +10,7 @@ import { getClientAgreement } from "@/actions/client-agreement";
 import { listClientContacts } from "@/actions/client-contacts";
 import { listNps } from "@/actions/nps";
 import { clientHistory } from "@/actions/client-history";
+import { getCollectionsSmsTarget } from "@/actions/collections";
 import { Conversation } from "@/components/clients/Conversation";
 import { BillingSummary } from "@/components/clients/BillingSummary";
 import { Notes } from "@/components/clients/Notes";
@@ -18,6 +19,7 @@ import { AgreementPanel } from "@/components/clients/AgreementPanel";
 import { ContactsPanel } from "@/components/clients/ContactsPanel";
 import { NpsPanel } from "@/components/clients/NpsPanel";
 import { HistoryPanel } from "@/components/clients/HistoryPanel";
+import { CollectionsSmsPanel } from "@/components/clients/CollectionsSmsPanel";
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { myPermissions, getClientDetail, listMembers } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
@@ -47,6 +49,7 @@ export default async function ClientPage({
 
   const { clientId } = await params;
   const admin = perms.has("org.manage");
+  const smsAllowed = admin || perms.has("finance.collections.sms");
 
   const { data: client } = await createServiceClient()
     .from("org_clients")
@@ -79,6 +82,8 @@ export default async function ClientPage({
         clientHistory(clientId),
       ])
     : [null, null, null, null];
+
+  const smsTarget = smsAllowed ? await getCollectionsSmsTarget(clientId) : null;
 
   const people = (members?.members ?? [])
     .filter((m) => m.active)
@@ -150,6 +155,14 @@ export default async function ClientPage({
             <Section title="NPS">
               <div className="rounded-md border bg-card p-3">
                 <NpsPanel clientId={clientId} entries={nps} canEdit={admin} />
+              </div>
+            </Section>
+          )}
+
+          {smsTarget && (
+            <Section title="Collections texting">
+              <div className="rounded-md border bg-card p-3">
+                <CollectionsSmsPanel clientId={clientId} target={smsTarget} />
               </div>
             </Section>
           )}
