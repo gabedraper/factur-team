@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { buildMatcher } from "@/lib/clickup/match.mjs";
+import { packFields, packDependencies } from "@/lib/clickup/fields.mjs";
 
 /*
  * Keeping the ClickUp mirror current, incrementally.
@@ -33,6 +34,8 @@ type Task = {
   due_date?: string | null; start_date?: string | null; date_closed?: string | null;
   date_created?: string | null; date_updated?: string | null;
   url?: string; parent?: string | null;
+  time_estimate?: number | null; time_spent?: number | null;
+  custom_fields?: unknown[]; dependencies?: unknown[];
   assignees?: Assignee[];
   list?: { id?: string; name?: string };
   folder?: { id?: string; name?: string };
@@ -160,6 +163,9 @@ export async function POST(request: NextRequest) {
           clickup_list_id: t.list?.id ? String(t.list.id) : null,
           client_match: how,
           parent_clickup_id: t.parent ?? null,
+          time_estimate_ms: t.time_estimate ?? null,
+          time_spent_ms: t.time_spent ?? null,
+          fields: packFields(t),
           synced_at: new Date().toISOString(),
         };
       });
@@ -187,6 +193,16 @@ export async function POST(request: NextRequest) {
         }))
       ).filter((l) => l.work_item_id);
       if (links.length) await db.from("work_item_assignees").upsert(links);
+
+      await db.from("work_item_dependencies").delete().in("work_item_id", [...idFor.values()]);
+      const edges = tasks.flatMap((t) =>
+        packDependencies(t).map((e: { depends_on_clickup_id: string; relation: string }) => ({
+          work_item_id: idFor.get(t.id),
+          depends_on_clickup_id: e.depends_on_clickup_id,
+          relation: e.relation,
+        }))
+      ).filter((e) => e.work_item_id);
+      if (edges.length) await db.from("work_item_dependencies").upsert(edges);
 
       /*
        * A list created since the last full walk has no container row, so it

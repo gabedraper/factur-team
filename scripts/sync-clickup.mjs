@@ -38,6 +38,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { norm, folderName, buildMatcher } from "../lib/clickup/match.mjs";
+import { packFields, packDependencies } from "../lib/clickup/fields.mjs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -318,6 +319,7 @@ async function main() {
     const pod = podFor(target.list.name);
     const rows = [];
     const assignees = [];
+    const dependencies = [];
 
     for (let page = 0; ; page++) {
       const res = await get(
@@ -363,8 +365,15 @@ async function main() {
           clickup_list_id: String(target.list.id),
           client_match: how,
           parent_clickup_id: t.parent ?? null,
+          time_estimate_ms: t.time_estimate ?? null,
+          time_spent_ms: t.time_spent ?? null,
+          fields: packFields(t),
           synced_at: new Date().toISOString(),
         });
+
+        for (const edge of packDependencies(t)) {
+          dependencies.push({ clickup_id: t.id, ...edge });
+        }
 
         for (const a of t.assignees ?? []) {
           assignees.push({
@@ -410,6 +419,20 @@ async function main() {
         .filter((a) => a.work_item_id);
       for (let j = 0; j < links.length; j += 500) {
         await db.from("work_item_assignees").upsert(links.slice(j, j + 500));
+      }
+
+      /* Replaced wholesale, like assignees: an edge removed in ClickUp has to
+       * disappear here, and there is no way to know which one went. */
+      await db.from("work_item_dependencies").delete().in("work_item_id", [...idFor.values()]);
+      const edges = dependencies
+        .map((d) => ({
+          work_item_id: idFor.get(d.clickup_id),
+          depends_on_clickup_id: d.depends_on_clickup_id,
+          relation: d.relation,
+        }))
+        .filter((d) => d.work_item_id);
+      for (let j = 0; j < edges.length; j += 500) {
+        await db.from("work_item_dependencies").upsert(edges.slice(j, j + 500));
       }
     }
 
