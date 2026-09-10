@@ -24,10 +24,13 @@
  *   node scripts/design-check.mjs            check (runs in prebuild)
  *   node scripts/design-check.mjs --update   accept current counts as baseline
  *   node scripts/design-check.mjs --report   per-rule totals, no failure
+ *   node scripts/design-check.mjs --staged   only what the next commit holds
+ *                                            (the pre-commit hook)
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const BASELINE = join(ROOT, "scripts", "design-baseline.json");
@@ -92,33 +95,54 @@ function walk(dir, out = []) {
   return out;
 }
 
+const mode = process.argv[2];
+const STAGED = mode === "--staged";
+
+function git(...args) {
+  return execFileSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+}
+
+/*
+ * The files to check, as [path, read]. Normally that is the working folder.
+ * With --staged it is only what the commit being made will contain: several
+ * sessions share this folder, and one session's unfinished file must not
+ * refuse another session's commit. Untracked files are skipped, and a file
+ * with unstaged edits is read as it stands in the index.
+ */
+function sources() {
+  if (!STAGED) {
+    return ["app", "components"]
+      .flatMap((base) => (existsSync(join(ROOT, base)) ? walk(join(ROOT, base)) : []))
+      .map((file) => [relative(ROOT, file).split(sep).join("/"), () => readFileSync(file, "utf8")]);
+  }
+  const unstaged = new Set(git("diff", "--name-only", "-z").split("\0"));
+  return git("ls-files", "-z", "--", "app/*.tsx", "components/*.tsx")
+    .split("\0")
+    .filter(Boolean)
+    .map((rel) => [rel, () => (unstaged.has(rel) ? git("show", `:${rel}`) : readFileSync(join(ROOT, rel), "utf8"))]);
+}
+
 function scan() {
   const counts = {};
-  for (const base of ["app", "components"]) {
-    const dir = join(ROOT, base);
-    if (!existsSync(dir)) continue;
-    for (const file of walk(dir)) {
-      const rel = relative(ROOT, file).split(sep).join("/");
-      if (EXEMPT.some((e) => rel.startsWith(e))) continue;
+  for (const [rel, read] of sources()) {
+    if (EXEMPT.some((e) => rel.startsWith(e))) continue;
 
-      const lines = readFileSync(file, "utf8").split("\n");
-      lines.forEach((line, i) => {
-        // An exception needs a reason. "design-ok" alone does not count.
-        const marked = /design-ok:\s*\S/.test(line) || /design-ok:\s*\S/.test(lines[i - 1] ?? "");
-        if (marked) return;
-        for (const rule of RULES) {
-          if (rule.test.test(line)) {
-            counts[rel] ??= {};
-            counts[rel][rule.id] = (counts[rel][rule.id] ?? 0) + 1;
-          }
+    const lines = read().split("\n");
+    lines.forEach((line, i) => {
+      // An exception needs a reason. "design-ok" alone does not count.
+      const marked = /design-ok:\s*\S/.test(line) || /design-ok:\s*\S/.test(lines[i - 1] ?? "");
+      if (marked) return;
+      for (const rule of RULES) {
+        if (rule.test.test(line)) {
+          counts[rel] ??= {};
+          counts[rel][rule.id] = (counts[rel][rule.id] ?? 0) + 1;
         }
-      });
-    }
+      }
+    });
   }
   return counts;
 }
 
-const mode = process.argv[2];
 const now = scan();
 
 if (mode === "--report") {
@@ -146,7 +170,19 @@ if (mode === "--update") {
   process.exit(0);
 }
 
-const baseline = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, "utf8")) : {};
+function loadBaseline() {
+  // A commit is checked against the baseline it will carry, not the one on disk.
+  if (STAGED) {
+    try {
+      return JSON.parse(git("show", ":scripts/design-baseline.json"));
+    } catch {
+      return {};
+    }
+  }
+  return existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, "utf8")) : {};
+}
+
+const baseline = loadBaseline();
 const worse = [];
 let improved = 0;
 

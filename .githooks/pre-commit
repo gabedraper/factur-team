@@ -1,0 +1,13 @@
+#!/bin/sh
+# The design check at commit time, not deploy time. A violation Vercel finds
+# has already been pushed, and it blocks every deploy until someone fixes it.
+#
+# Only what this commit contains is checked, so another session's unfinished
+# files in the same folder cannot refuse your commit.
+#
+# Enabled per checkout with:  git config core.hooksPath .githooks
+
+# Some git apps run hooks without the shell's PATH. Vercel still checks.
+command -v node >/dev/null 2>&1 || exit 0
+
+exec node scripts/design-check.mjs --staged

@@ -38,6 +38,17 @@ breaks these rules.** It catches a bare `<table>`, Tailwind's own shadows,
 `bg-white`, literal hex colours in classes, the hand-typed card recipe, and a
 hand-styled `<h1>`.
 
+**Commits are checked too.** A pre-commit hook in `.githooks/` runs the same
+check on what you are committing, so a violation is caught in your session
+rather than in a failed deploy that blocks everyone. It looks only at staged
+content — another session's unfinished files cannot refuse your commit. If a
+commit is refused, fix the file. Do not bypass it with `--no-verify`: Vercel
+runs the same check and will refuse the deploy instead. Run `npm run lint`
+while you work rather than waiting for the commit to tell you.
+
+A fresh clone needs the hook turned on once:
+`git config core.hooksPath .githooks`.
+
 It is a ratchet, not a ban. About 280 old violations are recorded in
 `scripts/design-baseline.json`; a file there may keep its count but not raise
 it, and a file not there may have none. So new work must comply, and old work
