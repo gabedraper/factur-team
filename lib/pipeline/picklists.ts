@@ -31,6 +31,26 @@ export const STAGE_GROUPS: { label: string; values: string[] }[] = [
 
 export const ALL_STAGES: string[] = STAGE_GROUPS.flatMap((g) => g.values);
 
+/*
+ * The ladder OSDR and OBDM work, which is what Target Contacts filters by.
+ *
+ * That screen shows the raw Salesforce stage on every row, so its filters have
+ * to be those same values -- the rolled-up bands Target Companies reads belong
+ * to the Factur salesperson's pipeline and name nothing a reader can see on the
+ * rows underneath.
+ *
+ * A subset of ALL_STAGES rather than the lot: prospecting, Pipeline - Selling
+ * and Sales Support are not stages this side of the house works, and Lead
+ * Generated: Scheduled came off the list after it was first mapped out.
+ */
+export const TARGET_CONTACT_STAGES: string[] = [
+  "Lead Generated", "Pipeline: Warm", "Pipeline: Hot",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Quote Follow up", "Pipeline Hot: Quoting",
+  "Pipeline Hot: Supplier forms / NDA", "Pipeline Hot: Appointment set",
+  "Pipeline: LT Follow Up",
+  "Closed: Closed Won", "Closed: Closed Lost", "Closed: DQ Contact", "Closed: DQ Company", "Closed: No Quote",
+];
+
 export const LEAD_STATUSES: string[] = [
   "Pipeline - Cold", "Pipeline - Warm SDR", "Pipeline - Warm", "Pipeline - Selling",
   "Closing", "LTFU", "Lost Follow Up", "Customer", "Relationship", "No Fit Ever - Contact", "No Fit Ever - Account",
