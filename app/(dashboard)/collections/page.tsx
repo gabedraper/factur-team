@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import {
   getCollectionsBoard, getCollectionsSettings, getCollectionsVisibility,
 } from "@/actions/collections";
@@ -47,7 +48,12 @@ export default async function CollectionsPage({
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
-      <h1 className="text-xl font-semibold">Collections</h1>
+      <div className="flex items-baseline justify-between">
+        <h1 className="text-xl font-semibold">Collections</h1>
+        <Link href="/collections/ar" className="text-sm text-muted-foreground hover:text-foreground">
+          A/R Ladder
+        </Link>
+      </div>
       <Board rows={rows} settings={settings} visibility={visibility} scope={scope} domains={domains} />
     </div>
   );
