@@ -2,7 +2,10 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { Building2, ChevronRight } from "lucide-react";
-import { Chip, Empty, Panel } from "@/components/pipeline/bits";
+import { Chip, Empty, Panel, PageHeader } from "@/components/pipeline/bits";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
 import { TargetContacts } from "@/components/pipeline/TargetContacts";
 import {
@@ -13,96 +16,71 @@ import {
 import { ALL_STAGES, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 /*
- * Everyone's target companies, stacked the way their job is stacked.
+ * Everyone's target companies, filtered the way their job is stacked.
  *
- * A rep gets one list of their clients. A lead gets their reports, and each
- * report's clients under them. A manager gets team leads, then account
- * managers, then clients. Same rows, nested one level deeper each time you are
- * responsible for more people.
+ * A rep gets one flat list of their own clients. A lead gets a "held by"
+ * filter over their reports' clients. A manager gets a team lead filter, and
+ * an account manager filter scoped to whichever team lead is picked.
  *
- * One client open at a time, by design -- the point of this screen is to choose
- * where to spend the day, and three clients expanded at once is not a choice,
- * it is a wall. Groups are free to be open together, because those are how you
- * get to the client rather than the thing you are reading.
+ * This used to be a tree -- team leads containing account managers
+ * containing clients, each with its own expand/collapse. Right for one
+ * person drilling into one branch; a manager opening several branches at
+ * once got a wall of nested, half-expanded accordions with no way to compare
+ * two clients under different managers side by side. Filters at the top
+ * replace that: pick who you're looking at, get one flat, sortable-by-eye
+ * list, same as a rep already had.
  *
  * The stage counts are a table with a column per band rather than a row of
  * chips per client. Chips packed against the right edge put every client's
- * Cold Target in a different place, so comparing two clients meant reading both
- * labels instead of glancing down a column -- which is the only thing anyone
- * wants from a screen of fifteen clients side by side. A fixed column per band
- * costs the empty cells and is worth it.
+ * Cold Target in a different place, so comparing two clients meant reading
+ * both labels instead of glancing down a column -- which is the only thing
+ * anyone wants from a screen of fifteen clients side by side. A fixed column
+ * per band costs the empty cells and is worth it.
  *
- * The unassigned buckets stay in the code but are usually empty now. They only
- * ever filled up because former clients were being counted as live: across the
- * 167 current clients with open pipeline, every one has a team lead. If one
- * shows up with none it is worth seeing, not worth hiding.
+ * The unassigned bucket stays in the code but is usually empty now. It only
+ * ever filled up because former clients were being counted as live: across
+ * the 167 current clients with open pipeline, every one has a team lead. If
+ * one shows up with none it is worth seeing, not worth hiding.
  */
 
 type Grouping = {
   id: (r: ClientRow) => string | null;
   name: (r: ClientRow) => string | null;
   empty: string;
+  /** What the "everyone" option reads as -- only the top filter says "Everyone". */
+  allLabel: string;
 };
 
 const LEVELS: Record<PipelineScope["level"], Grouping[]> = {
   rep: [],
   lead: [
-    { id: (r) => r.held_by_id, name: (r) => r.held_by_name, empty: "Held by you" },
+    { id: (r) => r.held_by_id, name: (r) => r.held_by_name, empty: "Held by you", allLabel: "Everyone" },
   ],
   admin: [
-    { id: (r) => r.team_lead_id, name: (r) => r.team_lead_name, empty: "No team lead" },
-    { id: (r) => r.account_manager_id, name: (r) => r.account_manager_name, empty: "No account manager" },
+    { id: (r) => r.team_lead_id, name: (r) => r.team_lead_name, empty: "No team lead", allLabel: "Everyone" },
+    { id: (r) => r.account_manager_id, name: (r) => r.account_manager_name, empty: "No account manager", allLabel: "All account managers" },
   ],
 };
 
-const UNASSIGNED = " none";
+const UNASSIGNED = "__none";
+const ALL = "__all";
 
-type Cols = ReturnType<typeof countColumns>;
-
-type Node = {
-  key: string;
-  label: string;
-  clients: ClientRow[];
-  children: Node[];
-  /* Clients in this branch, at every depth. The header used to show
-     children.length, which at the top of a manager's view is a count of
-     account managers reading as though it were a count of clients. */
-  clientCount: number;
-  total: number;
-};
-
-function build(
-  rows: ClientRow[], levels: Grouping[], totalOf: (r: ClientRow) => number, path = "",
-): Node[] {
-  if (levels.length === 0) return [];
-  const [level, ...rest] = levels;
-
-  const buckets = new Map<string, { label: string; rows: ClientRow[] }>();
+/** One option per distinct value of a level, with a client count to filter by eye. */
+function distinctOptions(rows: ClientRow[], level: Grouping) {
+  const buckets = new Map<string, { label: string; count: number }>();
   for (const r of rows) {
-    const id = level.id(r);
-    const key = id ?? UNASSIGNED;
-    const label = (id ? level.name(r) : null) ?? level.empty;
-    const bucket = buckets.get(key);
-    if (bucket) bucket.rows.push(r);
-    else buckets.set(key, { label, rows: [r] });
+    const rawId = level.id(r);
+    const id = rawId ?? UNASSIGNED;
+    const label = (rawId ? level.name(r) : null) ?? level.empty;
+    const b = buckets.get(id);
+    if (b) b.count += 1;
+    else buckets.set(id, { label, count: 1 });
   }
-
   return [...buckets.entries()]
-    .map(([key, b]) => ({
-      key: path + "/" + key,
-      label: b.label,
-      clients: rest.length === 0 ? b.rows : [],
-      children: build(b.rows, rest, totalOf, path + "/" + key),
-      clientCount: b.rows.length,
-      total: b.rows.reduce((n, r) => n + totalOf(r), 0),
-    }))
-    /* Biggest book of business first, and the unassigned pile sinks to the
-       bottom however large it is, so it never sits above a real person. */
-    .sort(
-      (a, b) =>
-        Number(a.key.endsWith(UNASSIGNED)) - Number(b.key.endsWith(UNASSIGNED)) ||
-        b.total - a.total
-    );
+    .map(([id, b]) => ({ id, ...b }))
+    /* The unassigned bucket sinks to the bottom however large it is, so it
+       never sits above a real person. */
+    .sort((a, b) => Number(a.id === UNASSIGNED) - Number(b.id === UNASSIGNED) || b.count - a.count);
 }
 
 /* Which list opens inside a client. The grouping, the counts and the role
@@ -154,95 +132,101 @@ function countColumns(rows: ClientRow[], view: ClientView, stageFields: StageFie
   };
 }
 
+type Cols = ReturnType<typeof countColumns>;
+
 export function ClientGroups({
-  scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies",
+  scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies", title, count,
 }: {
   scope: PipelineScope;
   rows: ClientRow[];
   stageFields?: StageFields;
   view?: ClientView;
+  title: string;
+  count: number | string;
 }) {
   const levels = LEVELS[scope.level];
   const cols = useMemo(() => countColumns(rows, view, stageFields), [rows, view, stageFields]);
-  const tree = useMemo(() => build(rows, levels, cols.totalOf), [rows, levels, cols]);
   const [openClient, setOpenClient] = useState<string | null>(null);
+  // One selection per grouping level; null means that level's filter is at
+  // "All". Picking a value at level i clears anything picked at levels after
+  // it -- the account manager filter's own options are scoped to whichever
+  // team lead is picked, so a stale pick there could point at nobody.
+  const [selected, setSelected] = useState<(string | null)[]>(() => levels.map(() => null));
 
-  if (rows.length === 0) {
-    return <Panel><Empty>No target companies.</Empty></Panel>;
-  }
+  // Rows remaining after each level's filter, in order -- scopedRows[0] is
+  // everything, scopedRows[n] is what's left after all n filters. Each
+  // level's own dropdown options come from the stage *before* it, so
+  // picking a team lead narrows the account manager list without the
+  // account manager filter narrowing itself out of existence.
+  const scopedRows = useMemo(() => {
+    const stages: ClientRow[][] = [rows];
+    levels.forEach((level, i) => {
+      const prior = stages[i];
+      const pick = selected[i];
+      stages.push(pick ? prior.filter((r) => (level.id(r) ?? UNASSIGNED) === pick) : prior);
+    });
+    return stages;
+  }, [rows, levels, selected]);
 
-  if (levels.length === 0) {
-    return (
-      <Panel>
-        <ClientList rows={rows} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
-      </Panel>
-    );
+  const filteredRows = scopedRows[scopedRows.length - 1];
+
+  function setLevel(i: number, id: string | null) {
+    setSelected((s) => {
+      const next = [...s];
+      next[i] = id;
+      for (let j = i + 1; j < next.length; j++) next[j] = null;
+      return next;
+    });
   }
 
   return (
-    <div className="space-y-2">
-      {tree.map((n) => (
-        <Group key={n.key} node={n} depth={0} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
-      ))}
-    </div>
-  );
-}
+    <div className="space-y-4">
+      <PageHeader title={title} count={count}>
+        {levels.map((level, i) => {
+          const options = distinctOptions(scopedRows[i], level);
+          // Nothing to filter by (a rep's own single bucket, or a manager
+          // whose team all reports to one lead) -- no point in a dropdown
+          // with one answer.
+          if (options.length <= 1) return null;
+          return (
+            <Select
+              key={i}
+              value={selected[i] ?? ALL}
+              onValueChange={(v) => setLevel(i, v === ALL ? null : v)}
+            >
+              <SelectTrigger className="h-8 w-auto min-w-[10rem] gap-2 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>
+                  {level.allLabel} ({scopedRows[i].length})
+                </SelectItem>
+                {options.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.label} ({o.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        })}
+      </PageHeader>
 
-function Group({
-  node, depth, openClient, setOpenClient, stageFields, view, cols,
-}: {
-  node: Node;
-  depth: number;
-  openClient: string | null;
-  setOpenClient: (id: string | null) => void;
-  stageFields: StageFields;
-  view: ClientView;
-  cols: Cols;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Panel className={depth > 0 ? "border-0 bg-transparent" : undefined}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-muted/30"
-      >
-        <ChevronRight
-          className={"h-4 w-4 shrink-0 text-muted-foreground transition-transform " + (open ? "rotate-90" : "")}
-        />
-        <span className="text-sm font-semibold">{node.label}</span>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-          {node.clientCount.toLocaleString()}
-        </span>
-        <span className="ml-auto text-xs font-semibold tabular-nums">
-          {node.total.toLocaleString()}
-        </span>
-      </button>
-
-      {open && (
-        <div className="border-t">
-          {node.children.length > 0 ? (
-            <div className="space-y-1 py-1 pl-4">
-              {node.children.map((c) => (
-                <Group
-                  key={c.key}
-                  node={c}
-                  depth={depth + 1}
-                  openClient={openClient}
-                  setOpenClient={setOpenClient}
-                  stageFields={stageFields}
-                  view={view}
-                  cols={cols}
-                />
-              ))}
-            </div>
-          ) : (
-            <ClientList rows={node.clients} openClient={openClient} setOpenClient={setOpenClient} stageFields={stageFields} view={view} cols={cols} />
-          )}
-        </div>
+      {filteredRows.length === 0 ? (
+        <Panel><Empty>No target companies.</Empty></Panel>
+      ) : (
+        <Panel>
+          <ClientList
+            rows={filteredRows}
+            openClient={openClient}
+            setOpenClient={setOpenClient}
+            stageFields={stageFields}
+            view={view}
+            cols={cols}
+          />
+        </Panel>
       )}
-    </Panel>
+    </div>
   );
 }
 

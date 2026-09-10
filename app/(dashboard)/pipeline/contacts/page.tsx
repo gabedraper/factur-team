@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { previewedMemberId } from "@/lib/org";
-import { PageHeader } from "@/components/pipeline/bits";
 import { ClientGroups } from "@/components/pipeline/ClientGroups";
 import { BOTH_STAGE_FIELDS, type ClientRow, type PipelineScope, type StageFields } from "@/lib/pipeline/targets";
 
@@ -42,9 +41,13 @@ export default async function TargetContactsPage() {
   const pursuits = rows.reduce((n, r) => n + r.pursuits, 0);
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Target Contacts" count={pursuits.toLocaleString()} />
-      <ClientGroups scope={scope} rows={rows} stageFields={stageFields} view="contacts" />
-    </div>
+    <ClientGroups
+      title="Target Contacts"
+      count={pursuits.toLocaleString()}
+      scope={scope}
+      rows={rows}
+      stageFields={stageFields}
+      view="contacts"
+    />
   );
 }

@@ -202,15 +202,19 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       label: "Opportunities",
       items: [
         /*
-         * Target Companies and My Opportunities are the same pipeline seen two
-         * ways. My Opportunities lists pursuits -- one row per person being
-         * chased. This one starts from the client, then their companies, then
+         * Three ways into the same pipeline.
+         *
+         * Target Companies starts from the client, then their companies, then
          * the people inside each, because choosing where to spend the day is a
-         * company decision before it is a person one.
+         * company decision before it is a person one. Target Contacts is the
+         * same thing at the grain of a person. Salesforce Opportunities is a
+         * flat list behind a saved view -- named, with its own columns and
+         * filters -- which is the shape anyone moving off Salesforce already
+         * has in their hands.
          */
         { href: "/pipeline", label: "Target Companies", icon: <Target className="h-4 w-4" /> },
         { href: "/pipeline/contacts", label: "Target Contacts", icon: <Users className="h-4 w-4" /> },
-        { href: "/opportunities/my", label: "My Opportunities", icon: <PhoneCall className="h-4 w-4" /> },
+        { href: "/opportunities/my", label: "Salesforce Opportunities", icon: <PhoneCall className="h-4 w-4" /> },
         { href: "/timelines/quick-response", label: "Lead Response", icon: <Zap className="h-4 w-4" /> },
         { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },
         { href: "/timelines/full-life", label: "Full lead life", icon: <Activity className="h-4 w-4" /> },
