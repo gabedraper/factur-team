@@ -38,7 +38,9 @@ export async function resolveViews(entityKey: string): Promise<ViewList> {
      * makes them free: a client that goes Inactive drops out of this query and
      * its views vanish with it. Nothing to delete, nothing to backfill.
      */
-    entity.clientPath
+    /* Per-client views need a route to a client, and are pointless on the
+       clients list itself -- "Acme's clients" would be one row, Acme. */
+    entity.clientPath && entity.myScope !== "is_client"
       ? db.from("org_clients").select("id,name")
           .in("status", LIVE_CLIENT_STATUSES as unknown as string[])
           .order("name")

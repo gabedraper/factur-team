@@ -20,6 +20,9 @@ import type { ResolvedView } from "@/lib/list-views/catalogue";
  * a search.
  */
 
+/** The query parameters that mean "a view is selected". */
+const VIEW_PARAMS = ["scope", "client", "view"] as const;
+
 export function ViewSwitcher({
   entity,
   pinned,
@@ -47,8 +50,14 @@ export function ViewSwitcher({
   /* A chip is current when every parameter it sets is already set. Comparing
      whole query strings would drop the highlight the moment somebody sorted a
      column, which is exactly when they still want to know where they are. */
-  const isCurrent = (view: ResolvedView) =>
-    Object.entries(view.params).every(([k, v]) => params.get(k) === v);
+  const isCurrent = (view: ResolvedView) => {
+    const entries = Object.entries(view.params);
+    /* The "All" view sets nothing, and [].every() is true -- so without this
+       it would be highlighted as current on every page, including while
+       "My clients" is showing. It is current only when no view is selected. */
+    if (entries.length === 0) return !VIEW_PARAMS.some((k) => params.has(k));
+    return entries.every(([k, v]) => params.get(k) === v);
+  };
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();

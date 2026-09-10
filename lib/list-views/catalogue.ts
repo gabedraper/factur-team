@@ -33,6 +33,16 @@ export type Renderer = "table" | "board" | "cards" | "timeline";
  */
 export type ClientPath = "direct" | "via_opportunity" | null;
 
+/**
+ * How "mine" is answered for a list — a different question from ClientPath,
+ * and conflating the two is what first left Clients without a "My clients".
+ *
+ *   is_client  — the row IS a client, so mine is my_client_ids_direct() itself.
+ *   via_client — the row belongs to a client, so mine is rows whose client is.
+ *   null       — the list has no notion of "mine" (candidates, sequences).
+ */
+export type MyScope = "is_client" | "via_client" | null;
+
 export type EntityDef = {
   key: string;
   /** Plural, as it appears in a page title. */
@@ -54,6 +64,17 @@ export type EntityDef = {
    */
   renderers: Renderer[];
   clientPath: ClientPath;
+  /** Whether "My ..." and "My team's ..." views apply, and how. */
+  myScope: MyScope;
+  /**
+   * Whether an "All" view is offered.
+   *
+   * Only where listing everything is cheap. Clients are 992 rows. Opportunities
+   * are 780,000, and listing them is a sequential scan of roughly two seconds
+   * before any join -- which is why that page refuses to query until a view
+   * is chosen, and why it gets no "All".
+   */
+  allView: boolean;
   /** The column a board groups by, when there is one. */
   stageField?: string;
   /**
@@ -77,6 +98,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table", "board"],
     stageField: "stage",
     clientPath: "direct",
+    myScope: "via_client",
+    allView: false,
     rowIdentity: false,
   },
   candidates: {
@@ -88,6 +111,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table", "board"],
     stageField: "stage_id",
     clientPath: null,
+    myScope: null,
+    allView: false,
     rowIdentity: false,
   },
   accounts: {
@@ -96,6 +121,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "company",
     renderers: ["table"],
     clientPath: "via_opportunity",
+    myScope: "via_client",
+    allView: false,
     rowIdentity: true,
   },
   contacts: {
@@ -104,6 +131,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "contact",
     renderers: ["table"],
     clientPath: "via_opportunity",
+    myScope: "via_client",
+    allView: false,
     rowIdentity: false,
   },
   clients: {
@@ -113,6 +142,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     // status is a lifecycle, not a pipeline. Table only.
     renderers: ["table"],
     clientPath: null,
+    myScope: "is_client",
+    allView: true,
     rowIdentity: true,
   },
   sequences: {
@@ -121,6 +152,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     singular: "sequence",
     renderers: ["table"],
     clientPath: null,
+    myScope: null,
+    allView: true,
     rowIdentity: false,
   },
 };
@@ -166,8 +199,23 @@ export type ResolvedView = {
  * line. Neither is computed here — this only names them.
  */
 export function systemViews(entity: EntityDef): ResolvedView[] {
-  if (!entity.clientPath) return [];
+  const all: ResolvedView[] = entity.allView
+    ? [{
+        key: viewKey.system("all"),
+        label: `All ${entity.label.toLowerCase()}`,
+        kind: "system",
+        // No parameters: the unfiltered list is the page's own default.
+        params: {},
+        pinned: true,
+        hidden: false,
+        position: -1,
+      }]
+    : [];
+  // Asked of myScope, not clientPath. A client has no route "to a client" --
+  // it is one -- and yet "My clients" is the most natural view in the app.
+  if (!entity.myScope) return all;
   return [
+    ...all,
     {
       key: viewKey.system("mine"),
       label: `My ${entity.label.toLowerCase()}`,
