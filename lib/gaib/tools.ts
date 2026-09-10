@@ -651,11 +651,80 @@ const searchMyDriveTool: GaibTool = {
 
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// The handbook
+// ---------------------------------------------------------------------------
+
+const searchHandbookTool: GaibTool = {
+  name: "search_handbook",
+  label: "Search the handbook",
+  blurb: "Finds the passages in Factur's training material that answer a question.",
+  reads: "The company handbook — 146 courses brought over from Guru.",
+  definition: {
+    name: "search_handbook",
+    description:
+      "Search Factur's own written material: onboarding, policies, how to use " +
+      "every tool, sales process, manufacturing background. This is the right " +
+      "tool for anything shaped like \"how do I\", \"what is our policy on\", " +
+      "\"where do I find\" or \"how does X work here\" -- it answers from what " +
+      "Factur has actually written down rather than from general knowledge. " +
+      "Returns a handful of passages with the course and lesson each came from; " +
+      "cite those so the reader can go and read the whole thing.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "What to look for, in the words somebody would use. Quoted \"exact " +
+            "phrases\" are honoured.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  async run(ctx, input) {
+    const query = String(input.query ?? "").trim();
+    if (!query) return "Give me something to look for.";
+
+    /*
+     * Runs as the person asking, so pay and finance material is simply absent
+     * for anyone without lms.restricted -- there is no second rule here to
+     * fall out of step with the one on the lessons.
+     */
+    const { data, error } = await ctx.db.rpc("handbook_search", {
+      p_query: query,
+      p_limit: 6,
+    });
+    if (error) return `Could not search the handbook: ${error.message}`;
+
+    const hits = (data ?? []) as {
+      course: string; lesson: string; passage: string;
+    }[];
+
+    /*
+     * Nothing found is worth saying plainly. An empty result here means the
+     * handbook does not cover it, or does not use those words -- not that the
+     * answer is no, and not that the search is broken.
+     */
+    if (!hits.length) {
+      return "Nothing in the handbook matches that. Try different words, or say so rather than guessing.";
+    }
+
+    return hits
+      .map((h) => `## ${h.course} — ${h.lesson}\n${h.passage}`)
+      .join("\n\n");
+  },
+};
+
 export const TOOLS: GaibTool[] = [
   searchTicketsTool,
   raiseTicketTool,
   answerQuestionTool,
   askReporterTool,
+  searchHandbookTool,
   describeDataTool,
   queryDataTool,
   clientBillingTool,
