@@ -126,3 +126,20 @@ export type PipelineScope = {
 export type StageFields = { show_stage: boolean; show_lead_status: boolean };
 
 export const BOTH_STAGE_FIELDS: StageFields = { show_stage: true, show_lead_status: true };
+
+/*
+ * A campaign membership at a company: who was on it, and what came of it.
+ *
+ * Fetched once per account rather than once per contact -- the panel groups by
+ * contact_id itself, which beats a query per row on an account with thirty-six
+ * people at it.
+ */
+export type CampaignMembership = {
+  contact_id: string;
+  campaign_id: string;
+  name: string;
+  type: string | null;
+  start_date: string | null;
+  status: string | null;
+  has_responded: boolean;
+};

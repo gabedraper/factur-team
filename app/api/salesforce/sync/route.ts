@@ -27,6 +27,7 @@ const OBJECTS = [
   { name: "Account", mirror: "sky_Account" },
   { name: "Contact", mirror: "sky_Contact" },
   { name: "Campaign", mirror: "sky_Campaign" },
+  { name: "CampaignMember", mirror: "sky_CampaignMember" },
   { name: "Opportunity", mirror: "sky_Opportunity" },
   { name: "Task", mirror: "sky_Task" },
   { name: "Event", mirror: "sky_Event" },

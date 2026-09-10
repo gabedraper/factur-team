@@ -18,7 +18,7 @@ import { assertPipeline } from "@/lib/pipeline/access";
  */
 
 import type {
-  TargetAccount, AccountContact, UnworkedContact,
+  TargetAccount, AccountContact, UnworkedContact, CampaignMembership,
 } from "@/lib/pipeline/targets";
 
 export async function listTargetAccounts(input: {
@@ -53,23 +53,29 @@ export async function listTargetAccounts(input: {
 export async function getAccountDetail(input: { clientId: string; accountId: string }): Promise<{
   contacts: AccountContact[];
   unworked: UnworkedContact[];
+  campaigns: CampaignMembership[];
 }> {
   await assertPipeline();
   const db = await createClient();
 
-  const [worked, rest] = await Promise.all([
+  const [worked, rest, campaigns] = await Promise.all([
     db.rpc("pipeline_account_contacts", {
       p_client_id: input.clientId, p_account_id: input.accountId,
     }),
     db.rpc("pipeline_account_unworked_contacts", {
       p_client_id: input.clientId, p_account_id: input.accountId, p_limit: 50,
     }),
+    /* Campaign membership is a property of the company and its people, not of
+       this client's pursuit of them, so it is not scoped by client. */
+    db.rpc("account_campaign_memberships", { p_account_id: input.accountId }),
   ]);
   if (worked.error) throw new Error(worked.error.message);
   if (rest.error) throw new Error(rest.error.message);
+  if (campaigns.error) throw new Error(campaigns.error.message);
 
   return {
     contacts: (worked.data ?? []) as AccountContact[],
     unworked: (rest.data ?? []) as UnworkedContact[],
+    campaigns: (campaigns.data ?? []) as CampaignMembership[],
   };
 }

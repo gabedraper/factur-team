@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { Building2, ChevronRight, Maximize2, Minimize2, X, Search, Phone as PhoneIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { toE164 } from "@/lib/phone";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
   BOTH_STAGE_FIELDS,
-  type AccountContact, type StageFields, type TargetAccount, type UnworkedContact,
+  type AccountContact, type CampaignMembership, type StageFields,
+  type TargetAccount, type UnworkedContact,
 } from "@/lib/pipeline/targets";
 
 /*
@@ -202,6 +203,7 @@ function AccountPanel({
   const [full, setFull] = useState(false);
   const [contacts, setContacts] = useState<AccountContact[] | null>(null);
   const [unworked, setUnworked] = useState<UnworkedContact[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignMembership[]>([]);
   const [openContact, setOpenContact] = useState<string | null>(null);
   /* Shut by default: it is a long list of people nobody has touched, useful
      when you go looking for it and noise the rest of the time. */
@@ -216,9 +218,28 @@ function AccountPanel({
       if (!live) return;
       setContacts(d.contacts);
       setUnworked(d.unworked);
+      setCampaigns(d.campaigns);
     });
     return () => { live = false; };
   }, [clientId, account.account_id]);
+
+  /* One row per campaign for the company header, and a lookup for the contact
+     rows, both off the single fetch. */
+  const byCampaign = useMemo(() => {
+    const m = new Map<string, { name: string; type: string | null; start_date: string | null; members: number }>();
+    for (const c of campaigns) {
+      const at = m.get(c.campaign_id);
+      if (at) at.members += 1;
+      else m.set(c.campaign_id, { name: c.name, type: c.type, start_date: c.start_date, members: 1 });
+    }
+    return [...m.entries()];
+  }, [campaigns]);
+
+  const byContact = useMemo(() => {
+    const m = new Map<string, CampaignMembership[]>();
+    for (const c of campaigns) m.set(c.contact_id, [...(m.get(c.contact_id) ?? []), c]);
+    return m;
+  }, [campaigns]);
 
   /* Escape closes, the way every panel should. */
   useEffect(() => {
@@ -269,6 +290,29 @@ function AccountPanel({
             <p className="rounded-md bg-muted/50 px-3 py-2 text-sm">{account.latest_update}</p>
           )}
 
+          {byCampaign.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Campaigns ({byCampaign.length})
+              </h3>
+              <div className="divide-y rounded-md border">
+                {byCampaign.map(([id, c]) => (
+                  <div key={id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{c.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[c.type, shortDate(c.start_date)].filter(Boolean).join(" · ")}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {c.members} {c.members === 1 ? "contact" : "contacts"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="space-y-2">
             <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Target contacts {contacts ? `(${contacts.length})` : ""}
@@ -283,6 +327,7 @@ function AccountPanel({
                   <ContactRow
                     key={c.opportunity_id}
                     contact={c}
+                    campaigns={byContact.get(c.contact_id) ?? []}
                     stageFields={stageFields}
                     expanded={openContact === c.opportunity_id}
                     onToggle={() =>
@@ -334,9 +379,10 @@ function AccountPanel({
 }
 
 function ContactRow({
-  contact: c, stageFields, expanded, onToggle,
+  contact: c, campaigns, stageFields, expanded, onToggle,
 }: {
   contact: AccountContact;
+  campaigns: CampaignMembership[];
   stageFields: StageFields;
   expanded: boolean;
   onToggle: () => void;
@@ -377,6 +423,18 @@ function ContactRow({
           <Field label="Next action" value={shortDate(c.next_action_date)} />
           <Field label="Last activity" value={shortDate(c.last_activity_at)} />
           <Field label="Activities" value={String(c.activity_count)} />
+          {campaigns.length > 0 && (
+            <div className="col-span-2">
+              <dt className="text-xs text-muted-foreground">Campaigns</dt>
+              <dd className="mt-1 flex flex-wrap gap-1">
+                {campaigns.map((m) => (
+                  <Chip key={m.campaign_id} colour={m.has_responded ? "emerald" : "slate"}>
+                    {m.name}
+                  </Chip>
+                ))}
+              </dd>
+            </div>
+          )}
           {c.updates && (
             <div className="col-span-2">
               <dt className="text-xs text-muted-foreground">Updates</dt>
