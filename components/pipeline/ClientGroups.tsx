@@ -9,11 +9,9 @@ import {
 import { TargetAccounts } from "@/components/pipeline/TargetAccounts";
 import { TargetContacts } from "@/components/pipeline/TargetContacts";
 import {
-  TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
-  BOTH_STAGE_FIELDS, progressTone,
+  BOTH_STAGE_FIELDS,
   type ClientRow, type PipelineScope, type StageFields,
 } from "@/lib/pipeline/targets";
-import { ALL_STAGES, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 /*
  * Everyone's target companies, filtered the way their job is stacked.
@@ -88,51 +86,23 @@ function distinctOptions(rows: ClientRow[], level: Grouping) {
 export type ClientView = "companies" | "contacts";
 
 /*
- * What the count columns are, for whichever screen this is.
+ * One number per client, and which number depends on the screen.
  *
- * Companies: the eight rolled-up bands, fixed, because they are the same eight
- * for everybody. Contacts: Salesforce's own values for whichever field the
- * viewer's role reads -- and only the ones their own clients actually use, so a
- * client working four stages gets four columns rather than thirty-two empty
- * ones. Canonical picklist order first, then anything the picklist has not
- * caught up with, biggest first.
+ * These rows carried a column per stage -- eight rolled-up bands on Target
+ * Companies, and up to thirty-two raw Salesforce values on Target Contacts.
+ * Accurate, and unreadable: a wall of small chips that has to be scanned across
+ * before you can compare two clients on the thing you came to compare them on.
+ * The breakdown belongs inside a client, where the target company and target
+ * contact lists already show it, not on the row you use to choose which client
+ * to open.
+ *
+ * Companies counts companies; Contacts counts pursuits. The per-stage maps
+ * still come back from pipeline_my_clients and are simply not drawn -- they
+ * cost nothing to carry and something to remove.
  */
-function countColumns(rows: ClientRow[], view: ClientView, stageFields: StageFields) {
-  if (view === "companies") {
-    return {
-      columns: TARGET_STAGES as readonly string[],
-      countsOf: (r: ClientRow) => r.stage_counts as Record<string, number>,
-      totalOf: (r: ClientRow) => r.companies,
-      tone: (v: string) => STAGE_TONE[v as keyof typeof STAGE_TONE] ?? "slate",
-    };
-  }
-
-  const useStage = stageFields.show_stage;
-  const countsOf = (r: ClientRow) =>
-    useStage ? r.contact_stage_counts : r.contact_lead_status_counts;
-  const canonical = useStage ? ALL_STAGES : LEAD_STATUSES;
-
-  const totals = new Map<string, number>();
-  for (const r of rows) {
-    for (const [k, n] of Object.entries(countsOf(r) ?? {})) {
-      totals.set(k, (totals.get(k) ?? 0) + n);
-    }
-  }
-  const present = [...totals.keys()];
-  const known = canonical.filter((v) => totals.has(v));
-  const rest = present
-    .filter((v) => !canonical.includes(v))
-    .sort((a, b) => (totals.get(b) ?? 0) - (totals.get(a) ?? 0));
-
-  return {
-    columns: [...known, ...rest],
-    countsOf,
-    totalOf: (r: ClientRow) => r.pursuits,
-    tone: progressTone,
-  };
+function totalFor(view: ClientView): (r: ClientRow) => number {
+  return view === "companies" ? (r) => r.companies : (r) => r.pursuits;
 }
-
-type Cols = ReturnType<typeof countColumns>;
 
 export function ClientGroups({
   scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies", title, count,
@@ -145,7 +115,7 @@ export function ClientGroups({
   count: number | string;
 }) {
   const levels = LEVELS[scope.level];
-  const cols = useMemo(() => countColumns(rows, view, stageFields), [rows, view, stageFields]);
+  const totalOf = useMemo(() => totalFor(view), [view]);
   const [openClient, setOpenClient] = useState<string | null>(null);
   // One selection per grouping level; null means that level's filter is at
   // "All". Picking a value at level i clears anything picked at levels after
@@ -222,7 +192,7 @@ export function ClientGroups({
             setOpenClient={setOpenClient}
             stageFields={stageFields}
             view={view}
-            cols={cols}
+            totalOf={totalOf}
           />
         </Panel>
       )}
@@ -231,16 +201,16 @@ export function ClientGroups({
 }
 
 function ClientList({
-  rows, openClient, setOpenClient, stageFields, view, cols,
+  rows, openClient, setOpenClient, stageFields, view, totalOf,
 }: {
   rows: ClientRow[];
   openClient: string | null;
   setOpenClient: (id: string | null) => void;
   stageFields: StageFields;
   view: ClientView;
-  cols: Cols;
+  totalOf: (r: ClientRow) => number;
 }) {
-  const span = cols.columns.length + 2;
+  const span = 2;
 
   return (
     <div className="overflow-x-auto">
@@ -248,9 +218,6 @@ function ClientList({
         <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-2 text-left font-medium">Client</th>
-            {cols.columns.map((s) => (
-              <th key={s} className="whitespace-nowrap px-2 py-2 text-center font-medium">{s}</th>
-            ))}
             <th className="px-4 py-2 text-right font-medium">Total</th>
           </tr>
         </thead>
@@ -276,23 +243,8 @@ function ClientList({
                   </span>
                 </td>
 
-                {/* A cell per band whether or not it has anything in it, so the
-                    numbers line up down the page. */}
-                {cols.columns.map((s) => {
-                  const n = (cols.countsOf(c) ?? {})[s] ?? 0;
-                  return (
-                    <td key={s} className="px-2 py-2 text-center">
-                      {n > 0 ? (
-                        <Chip colour={cols.tone(s)} className="tabular-nums">
-                          {n.toLocaleString()}
-                        </Chip>
-                      ) : null}
-                    </td>
-                  );
-                })}
-
                 <td className="px-4 py-2 text-right font-semibold tabular-nums">
-                  {cols.totalOf(c).toLocaleString()}
+                  {totalOf(c).toLocaleString()}
                 </td>
               </tr>
 
