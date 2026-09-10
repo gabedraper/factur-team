@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Building2, ChevronRight, Maximize2, Minimize2, X, Search } from "lucide-react";
+import { Building2, ChevronRight, Maximize2, Minimize2, X, Search, Phone as PhoneIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip, Empty, Panel } from "@/components/pipeline/bits";
 import { getAccountDetail, listTargetAccounts } from "@/actions/pipeline-targets";
+import { useDialer } from "@/components/work-panel/dialer-context";
+import { toE164 } from "@/lib/phone";
 import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE,
   type AccountContact, type TargetAccount, type UnworkedContact,
@@ -46,27 +48,25 @@ export function TargetAccounts({
   const [total, setTotal] = useState(initialTotal ?? 0);
   const [stages, setStages] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [openOnly, setOpenOnly] = useState(true);
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<TargetAccount | null>(null);
   const [loading, start] = useTransition();
 
   const load = useCallback((next: {
-    stages?: string[]; search?: string; openOnly?: boolean; page?: number;
+    stages?: string[]; search?: string; page?: number;
   }) => {
     const s = next.stages ?? stages;
     const q = next.search ?? search;
-    const o = next.openOnly ?? openOnly;
     const p = next.page ?? 0;
     start(async () => {
       const res = await listTargetAccounts({
-        clientId, stages: s, search: q, openOnly: o, limit: PAGE, offset: p * PAGE,
+        clientId, stages: s, search: q, limit: PAGE, offset: p * PAGE,
       });
       setRows(res.rows);
       setTotal(res.total);
       setPage(p);
     });
-  }, [clientId, stages, search, openOnly]);
+  }, [clientId, stages, search]);
 
   /* Seeded by the server on the per-client page, unseeded when expanded inside
      a group. Only the second case has anything to fetch. */
@@ -85,26 +85,16 @@ export function TargetAccounts({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative max-w-xs flex-1">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative w-56 shrink-0">
           <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => { setSearch(e.target.value); load({ search: e.target.value, page: 0 }); }}
             placeholder="Company or domain"
-            className="pl-8"
+            className="h-8 pl-8"
           />
         </div>
-        <Button
-          variant={openOnly ? "default" : "outline"}
-          size="sm"
-          onClick={() => { const v = !openOnly; setOpenOnly(v); load({ openOnly: v, page: 0 }); }}
-        >
-          Open only
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
         {TARGET_STAGES.map((s) => {
           const on = stages.includes(s);
           return (
@@ -360,7 +350,7 @@ function ContactRow({
           <Field label="Prospecting lead status" value={c.lead_status} />
           <Field label="Stage" value={c.stage} />
           <Field label="Email" value={c.email} />
-          <Field label="Phone" value={c.phone} />
+          <PhoneField value={c.phone} />
           <Field label="Opened" value={shortDate(c.opened_on)} />
           <Field label="Next action" value={shortDate(c.next_action_date)} />
           <Field label="Last activity" value={shortDate(c.last_activity_at)} />
@@ -378,6 +368,41 @@ function ContactRow({
           </div>
         </dl>
       )}
+    </div>
+  );
+}
+
+/*
+ * The number, and a way to ring it. The panel showed the digits as plain text,
+ * so the one thing anyone opens a contact to do could not be done from here.
+ *
+ * Same shape as ContactEditor: toE164 decides whether the number is dialable at
+ * all -- Salesforce phone fields hold extensions, spreadsheet ".0" artifacts
+ * and two numbers in one box -- and the button says so rather than sending
+ * rubbish to the provider.
+ */
+function PhoneField({ value }: { value: string | null }) {
+  const { requestCall } = useDialer();
+  const dialable = toE164(value);
+  if (!value) return null;
+
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">Phone</dt>
+      <dd className="flex items-center gap-2">
+        <span className="truncate tabular-nums">{value}</span>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          className="h-6 w-6 shrink-0"
+          title={dialable ? `Call ${dialable}` : "This number doesn't look valid"}
+          disabled={!dialable}
+          onClick={(e) => { e.stopPropagation(); if (dialable) requestCall(dialable); }}
+        >
+          <PhoneIcon className="h-3.5 w-3.5" />
+        </Button>
+      </dd>
     </div>
   );
 }

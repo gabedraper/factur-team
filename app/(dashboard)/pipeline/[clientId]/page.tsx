@@ -40,7 +40,7 @@ export default async function ClientTargetAccountsPage({
   if (!client) notFound();
 
   const { rows, total } = await listTargetAccounts({
-    clientId, openOnly: true, limit: 50, offset: 0,
+    clientId, limit: 50, offset: 0,
   });
 
   return (

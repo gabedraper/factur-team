@@ -45,7 +45,7 @@ export default async function TargetCompaniesPage() {
   }) as PipelineScope;
   const rows = (clientRows ?? []) as ClientRow[];
 
-  const companies = rows.reduce((n, r) => n + r.open_companies, 0);
+  const companies = rows.reduce((n, r) => n + r.companies, 0);
 
   return (
     <div className="space-y-4">
