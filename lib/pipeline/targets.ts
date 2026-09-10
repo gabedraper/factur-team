@@ -82,3 +82,34 @@ export type UnworkedContact = {
   phone: string | null;
   other_clients_pursuing: number;
 };
+
+/*
+ * A client on the landing screen, with its target companies counted per stage.
+ *
+ * The counts arrive as a map rather than a column each so a rename or a new
+ * band does not mean a migration; render TARGET_STAGES in order against it and
+ * skip the ones that are absent.
+ */
+export type ClientRow = {
+  client_id: string;
+  client_name: string;
+  client_active: boolean;
+  client_status: string | null;
+  team_lead_id: string | null;
+  team_lead_name: string | null;
+  account_manager_id: string | null;
+  account_manager_name: string | null;
+  held_by_id: string | null;
+  held_by_name: string | null;
+  stage_counts: Partial<Record<TargetStage, number>>;
+  companies: number;
+  open_companies: number;
+};
+
+/* rep sees clients; lead sees their reports then clients; admin sees team
+ * lead, then account manager, then clients. */
+export type PipelineScope = {
+  level: "rep" | "lead" | "admin";
+  member_id: string;
+  member_name: string | null;
+};

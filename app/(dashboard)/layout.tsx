@@ -202,13 +202,13 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
       label: "Opportunities",
       items: [
         /*
-         * Target Accounts and My Opportunities are the same pipeline seen two
+         * Target Companies and My Opportunities are the same pipeline seen two
          * ways. My Opportunities lists pursuits -- one row per person being
          * chased. This one starts from the client, then their companies, then
          * the people inside each, because choosing where to spend the day is a
          * company decision before it is a person one.
          */
-        { href: "/pipeline", label: "Target Accounts", icon: <Target className="h-4 w-4" /> },
+        { href: "/pipeline", label: "Target Companies", icon: <Target className="h-4 w-4" /> },
         { href: "/opportunities/my", label: "My Opportunities", icon: <PhoneCall className="h-4 w-4" /> },
         { href: "/timelines/quick-response", label: "Lead Response", icon: <Zap className="h-4 w-4" /> },
         { href: "/timelines/follow-up", label: "Lead follow up", icon: <CalendarClock className="h-4 w-4" /> },

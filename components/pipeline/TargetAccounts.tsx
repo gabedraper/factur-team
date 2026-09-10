@@ -37,11 +37,13 @@ export function TargetAccounts({
 }: {
   clientId: string;
   clientName: string;
-  initial: TargetAccount[];
-  initialTotal: number;
+  /* Omitted when the list is opened inside a client group, where there was no
+     server render to seed it -- it fetches its own first page instead. */
+  initial?: TargetAccount[];
+  initialTotal?: number;
 }) {
-  const [rows, setRows] = useState(initial);
-  const [total, setTotal] = useState(initialTotal);
+  const [rows, setRows] = useState<TargetAccount[]>(initial ?? []);
+  const [total, setTotal] = useState(initialTotal ?? 0);
   const [stages, setStages] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [openOnly, setOpenOnly] = useState(true);
@@ -65,6 +67,13 @@ export function TargetAccounts({
       setPage(p);
     });
   }, [clientId, stages, search, openOnly]);
+
+  /* Seeded by the server on the per-client page, unseeded when expanded inside
+     a group. Only the second case has anything to fetch. */
+  useEffect(() => {
+    if (initial === undefined) load({ page: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
 
   function toggleStage(s: string) {
     const next = stages.includes(s) ? stages.filter((x) => x !== s) : [...stages, s];

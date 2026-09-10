@@ -10,7 +10,7 @@ import { listTargetAccounts } from "@/actions/pipeline-targets";
 export const dynamic = "force-dynamic";
 
 /*
- * One client's target accounts.
+ * One client's target companies.
  *
  * The first page is rendered on the server so the list is there on arrival;
  * every filter, search and page after that goes through the same server action
@@ -50,7 +50,7 @@ export default async function ClientTargetAccountsPage({
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Pipeline
+        Target Companies
       </Link>
 
       <PageHeader title={client.name} count={total} />
