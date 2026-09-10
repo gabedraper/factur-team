@@ -84,6 +84,12 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
 }
 
 /*
+ * Nothing ships pre-made. Everyone writes their own view before anything runs,
+ * which is the habit worth carrying over from Salesforce and also the only
+ * honest way to open this screen: a list of every opportunity is a scan of
+ * 779,763 rows, and offering it as the obvious first click makes the screen
+ * look slow for a question nobody asked.
+ *
  * Remembered per browser, so coming back to the screen lands where you left it.
  * A cookie rather than local storage because the page is server-rendered: the
  * chosen view is known before the first paint, so nobody watches the wrong list
@@ -157,9 +163,10 @@ export function OpportunityListViews({
         <select
           className="h-8 rounded-md border bg-field px-2 text-sm"
           value={activeId ?? ""}
+          disabled={views.length === 0}
           onChange={(e) => setActiveId(e.target.value || null)}
         >
-          <option value="">Select a view</option>
+          <option value="">{views.length === 0 ? "No views" : "Select a view"}</option>
           {views.map((v) => (
             <option key={v.id} value={v.id}>{v.shared ? v.name : `${v.name} (private)`}</option>
           ))}
@@ -190,7 +197,7 @@ export function OpportunityListViews({
 
       <Panel>
         {!active ? (
-          <Empty>No view selected.</Empty>
+          <Empty>{views.length === 0 ? "No views yet." : "No view selected."}</Empty>
         ) : rows.length === 0 ? (
           <Empty>{loading ? "Loading…" : "Nothing matches this view."}</Empty>
         ) : (
