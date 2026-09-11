@@ -102,4 +102,79 @@ export function stripAttributes<T extends Record<string, unknown>>(row: T) {
   return rest;
 }
 
+/**
+ * One record, just the fields asked for.
+ *
+ * Used either side of a write-back push: what Salesforce held before, and what
+ * it holds after. Returns null for a record the Run As user cannot see, which
+ * is a real answer rather than an error -- sharing rules on that user are the
+ * usual reason an id we hold is invisible to it.
+ */
+export async function getRecord(
+  object: string,
+  id: string,
+  fields: string[],
+): Promise<Record<string, unknown> | null> {
+  const { accessToken, instanceUrl } = await getSalesforceToken();
+  const url =
+    `${instanceUrl}/services/data/${API_VERSION}/sobjects/${object}/${id}` +
+    `?fields=${encodeURIComponent(fields.join(","))}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Salesforce read of ${object} ${id} failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  }
+  return (await res.json()) as Record<string, unknown>;
+}
+
+/**
+ * Write fields to one record.
+ *
+ * Salesforce answers 204 with no body on success, and an array of
+ * {errorCode, message, fields} on a refusal. A PATCH is all or nothing: one
+ * field a validation rule dislikes and none of them are written, which is why
+ * the log records a whole edit's fields together.
+ *
+ * Returns the message rather than throwing, because a refusal is an outcome
+ * this feature records, not an exception -- a picklist value Salesforce does
+ * not have is exactly what the test is looking for.
+ */
+export async function updateRecord(
+  object: string,
+  id: string,
+  fields: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string; retryable: boolean }> {
+  const { accessToken, instanceUrl } = await getSalesforceToken();
+  const res = await fetch(
+    `${instanceUrl}/services/data/${API_VERSION}/sobjects/${object}/${id}`,
+    {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    },
+  );
+  if (res.ok) return { ok: true };
+
+  const body = await res.text();
+  let error = `${res.status}: ${body.slice(0, 400)}`;
+  try {
+    const parsed = JSON.parse(body) as Array<{ errorCode?: string; message?: string; fields?: string[] }>;
+    if (Array.isArray(parsed) && parsed[0]) {
+      const first = parsed[0];
+      error = [first.errorCode, first.message, first.fields?.length ? `(${first.fields.join(", ")})` : null]
+        .filter(Boolean).join(" ");
+    }
+  } catch {
+    /* Not JSON -- keep the raw body, trimmed. */
+  }
+  /* 5xx and the request limit are worth trying again; a validation rule is not. */
+  const retryable = res.status >= 500 || res.status === 429 || res.status === 401;
+  return { ok: false, error, retryable };
+}
+
+/** The record in Salesforce's own UI, for a log somebody has to act on. */
+export function salesforceRecordUrl(id: string): string {
+  return `${LOGIN_URL}/${id}`;
+}
+
 export const SALESFORCE_API_VERSION = API_VERSION;

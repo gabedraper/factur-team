@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Users, ShieldCheck, Building2, Layers, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature, Palette } from "lucide-react";
+  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature, Palette, UploadCloud} from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -170,6 +170,16 @@ export default async function SettingsPage() {
                 <span className="block text-sm font-medium">Signed agreements</span>
                 <span className="block text-xs text-muted-foreground">
                   Bring contracts in from PandaDoc and tie them to the right client.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/salesforce-writeback"
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
+              <UploadCloud className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-sm font-medium">Salesforce write-back</span>
+                <span className="block text-xs text-muted-foreground">
+                  Whose app edits are pushed to Salesforce, and every field that went.
                 </span>
               </span>
             </Link>

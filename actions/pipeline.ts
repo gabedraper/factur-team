@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { currentMemberId } from "@/lib/org";
 import { assertPipeline } from "@/lib/pipeline/access";
+import { queueEdit, pushEdits, PUSHABLE_FIELDS } from "@/lib/salesforce/writeback";
 
 /**
  * Opportunities: one Client's pursuit of one Contact.
@@ -156,6 +158,19 @@ export async function updateOpportunity(
   try {
     const { supabase, me } = await ctx();
 
+    /*
+     * Read before writing, because the Salesforce push needs what this row
+     * held a moment ago: it is how a conflict is spotted (Salesforce holding
+     * something that is neither the old value nor the new one means somebody
+     * edited it over there). Through the user's own client, so a row they
+     * cannot see returns nothing and the update below fails the same way.
+     */
+    const { data: before } = await supabase
+      .from("opportunities")
+      .select(["salesforce_opportunity_id", ...PUSHABLE_FIELDS].join(", "))
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("opportunities")
       .update({ ...patch, updated_by: me })
@@ -164,6 +179,34 @@ export async function updateOpportunity(
 
     await supabase.rpc("record_opportunity_history", { p_source: "manual" });
     revalidatePath("/opportunities", "layout");
+
+    /*
+     * Queued here rather than in a trigger on the table: the inbound sync
+     * writes to opportunities every three minutes and a trigger cannot tell
+     * those writes from a person's, so every sync would bounce straight back
+     * at Salesforce. An action knows who is typing.
+     *
+     * after() runs once the save has already answered -- nobody waits on
+     * Salesforce to see their own edit -- and a failure here is logged, never
+     * shown: the edit is saved, and the push has its own record and its own
+     * retry. The cron sweep catches anything this misses.
+     */
+    if (before) {
+      after(async () => {
+        try {
+          const { ids } = await queueEdit({
+            memberId: me,
+            opportunityId: id,
+            before: before as unknown as Record<string, unknown>,
+            patch: patch as Record<string, unknown>,
+          });
+          if (ids.length) await pushEdits({ ids });
+        } catch (e) {
+          console.error("salesforce writeback", e);
+        }
+      });
+    }
+
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not update that opportunity." };
