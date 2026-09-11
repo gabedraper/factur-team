@@ -1,36 +1,27 @@
 /*
- * ClickUp access -> work_people and work_list_access.
+ * ClickUp access -> work_people and work_list_access, by hand.
  *
- *   node scripts/sync-clickup-access.mjs            # people and every list
+ *   node scripts/sync-clickup-access.mjs            # people, orphans, every list
  *   node scripts/sync-clickup-access.mjs --people   # just the person links
+ *   node scripts/sync-clickup-access.mjs --missing  # only lists never read
  *
  * Environment: CLICKUP_TOKEN, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *
- * ---------------------------------------------------------------------------
- * Two jobs.
+ * The scheduled route app/api/work/access-sync does the same in small batches
+ * every fifteen minutes; this is for a full re-read, or after changing the
+ * rules. The logic lives in lib/clickup/access.mjs so the two cannot drift.
  *
- * People: every ClickUp user, linked to a person here by email, then by full
- * name, else left unlinked and listed at the end. A link set by hand
- * (match = 'manual') is never overwritten -- that is how a mismatch like
- * darryl@bethefactur.com vs darryl.mechell@facturmfg.com gets fixed for good.
- *
- * Lists: who ClickUp says can open each list, from /list/{id}/member. It
- * reports effective access -- inherited from the space, granted through a user
- * group, or shared on the list itself -- so nothing here has to reproduce
- * ClickUp's permission rules. It only has to ask.
- *
- * One call per list, about 1,000 of them, so this is a daily job and not part
- * of the fifteen-minute task sync.
- * ---------------------------------------------------------------------------
+ * About 1,000 calls for every list, so it paces itself against ClickUp's
+ * limit and takes around thirteen minutes.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { syncPeople, backfillOrphanLists, syncListAccess } from "../lib/clickup/access.mjs";
 import { everyRow } from "../lib/supabase/every-row.mjs";
 
 const PEOPLE_ONLY = process.argv.includes("--people");
-/* Only lists whose access has never been read -- to fill gaps without re-reading 1,000. */
 const MISSING_ONLY = process.argv.includes("--missing");
 
 function env(name) {
@@ -57,135 +48,24 @@ async function get(path, attempt = 0) {
   return res.json();
 }
 
-const lower = (s) => String(s ?? "").toLowerCase().trim();
+const people = await syncPeople(db, get);
+const linked = people.filter((r) => r.member_id);
+console.log(`${people.length} ClickUp users: ${linked.length} linked ` +
+  `(${people.filter((r) => r.match === "email").length} email, ` +
+  `${people.filter((r) => r.match === "name").length} name, ` +
+  `${people.filter((r) => r.match === "manual").length} by hand); ` +
+  `${people.filter((r) => !r.member_id && r.role === 4).length} guests, ` +
+  `${people.filter((r) => !r.member_id && r.role !== 4).length} other unlinked`);
 
-async function syncPeople() {
-  const team = (await get("/team")).teams?.[0];
-  const users = (team.members ?? []).map((m) => m.user).filter(Boolean);
+if (!PEOPLE_ONLY) {
+  const orphans = await backfillOrphanLists(db, get, console.log);
+  if (orphans) console.log(`${orphans} orphan lists recorded`);
 
-  const [members, existing] = await Promise.all([
-    everyRow(() => db.from("org_members").select("id,email,full_name,active").order("id")),
-    everyRow(() => db.from("work_people").select("clickup_user_id,member_id,match").order("clickup_user_id")),
-  ]);
-
-  /* Active wins where an address or a name appears twice; a name shared by two
-   * different people is not used at all. */
-  const byEmail = new Map();
-  const nameCount = new Map();
-  const byName = new Map();
-  for (const m of members ?? []) {
-    const e = lower(m.email);
-    if (e && (m.active || !byEmail.has(e))) byEmail.set(e, m.id);
-    const n = lower(m.full_name);
-    if (!n) continue;
-    nameCount.set(n, (nameCount.get(n) ?? 0) + 1);
-    if (m.active || !byName.has(n)) byName.set(n, m.id);
-  }
-  const manual = new Map((existing ?? []).filter((r) => r.match === "manual").map((r) => [r.clickup_user_id, r.member_id]));
-
-  const rows = users.map((u) => {
-    const id = String(u.id);
-    if (manual.has(id)) {
-      return { clickup_user_id: id, email: u.email ?? null, username: u.username ?? null, role: u.role ?? null,
-               member_id: manual.get(id), match: "manual", synced_at: new Date().toISOString() };
-    }
-    let memberId = byEmail.get(lower(u.email)) ?? null;
-    let how = memberId ? "email" : null;
-    if (!memberId) {
-      const n = lower(u.username);
-      if (n && nameCount.get(n) === 1) { memberId = byName.get(n); how = "name"; }
-    }
-    return { clickup_user_id: id, email: u.email ?? null, username: u.username ?? null, role: u.role ?? null,
-             member_id: memberId, match: how, synced_at: new Date().toISOString() };
-  });
-
-  const { error } = await db.from("work_people").upsert(rows, { onConflict: "clickup_user_id" });
-  if (error) throw new Error("people upsert: " + error.message);
-
-  const linked = rows.filter((r) => r.member_id);
-  console.log(`${rows.length} ClickUp users: ${linked.length} linked ` +
-    `(${rows.filter((r) => r.match === "email").length} by email, ` +
-    `${rows.filter((r) => r.match === "name").length} by name, ` +
-    `${rows.filter((r) => r.match === "manual").length} by hand)`);
-  const guests = rows.filter((r) => !r.member_id && r.role === 4).length;
-  const loose = rows.filter((r) => !r.member_id && r.role !== 4);
-  console.log(`  unlinked: ${guests} guests (expected -- client staff), ${loose.length} others:`);
-  for (const r of loose) console.log(`    ${r.username ?? "?"} <${r.email ?? "no email"}>`);
-}
-
-/*
- * Lists that tasks point at but the tree never recorded -- archived lists, in
- * the first case found: the tree walk asks ClickUp for unarchived lists only,
- * while tasks keep the list they were filed in. With no container a list has no
- * access rows, and its tasks fall outside every access decision. Each is looked
- * up and recorded, archived or not.
- */
-async function backfillOrphanLists() {
-  const known = new Set((await everyRow(() =>
-    db.from("work_containers").select("clickup_id").eq("kind", "list").order("clickup_id"))).map((r) => r.clickup_id));
-  const referenced = new Set((await everyRow(() =>
-    db.from("work_items").select("clickup_list_id").not("clickup_list_id", "is", null).order("clickup_list_id")))
-    .map((r) => r.clickup_list_id));
-  const orphans = [...referenced].filter((id) => !known.has(id));
-  if (orphans.length === 0) return;
-
-  console.log(`\n${orphans.length} lists referenced by tasks but missing from the tree`);
-  for (const id of orphans) {
-    try {
-      const l = await get(`/list/${id}`);
-      /* A folderless list comes back inside a hidden folder; its real parent is
-       * the space. */
-      const parent = l.folder && !l.folder.hidden ? l.folder.id : l.space?.id;
-      await db.from("work_containers").upsert({
-        clickup_id: String(l.id), kind: "list", name: l.name ?? "(unnamed)",
-        parent_clickup_id: parent ? String(parent) : null,
-        space_clickup_id: l.space?.id ? String(l.space.id) : null,
-        orderindex: Number.isFinite(Number(l.orderindex)) ? Number(l.orderindex) : null,
-        task_count: Number(l.task_count ?? 0), archived: Boolean(l.archived),
-        statuses: l.statuses ?? null, synced_at: new Date().toISOString(),
-      }, { onConflict: "clickup_id" });
-      console.log(`  + ${l.name}${l.archived ? " (archived)" : ""}`);
-    } catch (e) {
-      console.log(`  ! ${id}: ${e.message}`);
-    }
-  }
-}
-
-async function syncLists() {
   const lists = await everyRow(() => {
-    /* Archived lists included: their tasks are still in the mirror. */
     let q = db.from("work_containers").select("clickup_id,name").eq("kind", "list").order("clickup_id");
     if (MISSING_ONLY) q = q.is("access_synced_at", null);
     return q;
   });
-  console.log(`\n${lists.length} lists`);
-
-  let done = 0, failed = 0;
-  for (const l of lists ?? []) {
-    try {
-      const res = await get(`/list/${l.clickup_id}/member`);
-      const ids = [...new Set((res.members ?? []).map((m) => String(m.id)))];
-      /* Replace wholesale: someone removed from a list in ClickUp has to lose it
-       * here, and there is no way to know which rows went. */
-      await db.from("work_list_access").delete().eq("list_clickup_id", l.clickup_id);
-      if (ids.length) {
-        const { error } = await db.from("work_list_access")
-          .insert(ids.map((u) => ({ list_clickup_id: l.clickup_id, clickup_user_id: u })));
-        if (error) throw new Error(error.message);
-      }
-      await db.from("work_containers").update({ access_synced_at: new Date().toISOString() }).eq("clickup_id", l.clickup_id);
-      done++;
-    } catch (e) {
-      failed++;
-      console.log(`  ! ${l.name} (${l.clickup_id}): ${e.message}`);
-    }
-    if (done % 100 === 0 && done) console.log(`  ${done}/${lists.length}`);
-  }
+  const { done, failed } = await syncListAccess(db, get, lists, console.log);
   console.log(`lists: ${done} read, ${failed} failed, ${calls} API calls`);
-}
-
-await syncPeople();
-if (!PEOPLE_ONLY) {
-  await backfillOrphanLists();
-  await syncLists();
 }
