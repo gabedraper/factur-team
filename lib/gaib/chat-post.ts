@@ -38,7 +38,7 @@ export function canPost(): boolean {
   return credentials() !== null;
 }
 
-async function token(): Promise<string | null> {
+async function token(scope: string = SCOPE): Promise<string | null> {
   const creds = credentials();
   if (!creds) return null;
 
@@ -48,11 +48,79 @@ async function token(): Promise<string | null> {
     // Without this the signature fails with an error that says nothing about
     // newlines -- the same trap the ingest key fell into.
     key: creds.private_key.replace(/\\n/g, "\n"),
-    scopes: [SCOPE],
+    scopes: [scope],
   });
 
   const { access_token } = await jwt.authorize();
   return access_token ?? null;
+}
+
+/*
+ * Reading every message in a room, not just the ones that mention Gaib.
+ *
+ * A separate scope from posting, and one Google only honours once a Workspace
+ * admin has approved it for this app. Until then the token is issued and the
+ * listing call is refused with a 403 -- which the reader reports rather than
+ * treating as an empty room.
+ */
+const READ_ROOM_SCOPE = "https://www.googleapis.com/auth/chat.app.messages.readonly";
+
+export type RoomMessage = {
+  name: string;
+  text: string;
+  createTime: string;
+  threadName: string | null;
+  senderUser: string | null;
+  senderType: string | null;
+  mentionsApp: boolean;
+  attachments: { resourceName: string; contentType: string }[];
+};
+
+export async function listRoomMessages(
+  spaceName: string,
+  sinceIso: string
+): Promise<{ ok: true; messages: RoomMessage[] } | { ok: false; reason: string; status?: number }> {
+  const access = await token(READ_ROOM_SCOPE).catch(() => null);
+  if (!access) return { ok: false, reason: "no key, or it would not authorise" };
+
+  const filter = encodeURIComponent(`createTime > "${sinceIso}"`);
+  const res = await fetch(
+    `https://chat.googleapis.com/v1/${spaceName}/messages?pageSize=50&orderBy=createTime%20asc&filter=${filter}`,
+    { headers: { Authorization: `Bearer ${access}` } }
+  );
+  if (!res.ok) {
+    return { ok: false, status: res.status, reason: `Chat ${res.status}: ${(await res.text()).slice(0, 200)}` };
+  }
+
+  type Raw = {
+    name: string; text?: string; argumentText?: string; createTime: string;
+    thread?: { name?: string };
+    sender?: { name?: string; type?: string };
+    annotations?: { type?: string; userMention?: { user?: { type?: string } } }[];
+    attachment?: { contentType?: string; source?: string; attachmentDataRef?: { resourceName?: string } }[];
+  };
+  const body = (await res.json()) as { messages?: Raw[] };
+
+  return {
+    ok: true,
+    messages: (body.messages ?? []).map((m) => ({
+      name: m.name,
+      text: (m.text ?? "").trim(),
+      createTime: m.createTime,
+      threadName: m.thread?.name ?? null,
+      senderUser: m.sender?.name ?? null,
+      senderType: m.sender?.type ?? null,
+      // A mention of an app arrives through the webhook as well, and must not
+      // be answered twice.
+      mentionsApp: (m.annotations ?? []).some(
+        (a) => a.type === "USER_MENTION" && a.userMention?.user?.type === "BOT"
+      ),
+      attachments: (m.attachment ?? [])
+        .filter((a) => a.source !== "DRIVE_FILE" && a.attachmentDataRef?.resourceName)
+        .filter((a) => /^image\/(png|jpe?g|gif|webp)$/i.test(a.contentType ?? ""))
+        .map((a) => ({ resourceName: a.attachmentDataRef!.resourceName!, contentType: a.contentType! })),
+    })),
+  };
 }
 
 /**
@@ -62,20 +130,26 @@ async function token(): Promise<string | null> {
  * that did not arrive is a small loss, and one that took a background job down
  * with it is a larger one.
  */
-export async function postToSpace(spaceName: string, text: string): Promise<PostResult> {
+export async function postToSpace(
+  spaceName: string,
+  text: string,
+  /** Reply under this thread rather than starting a new one. */
+  threadName?: string | null
+): Promise<PostResult> {
   const access = await token().catch(() => null);
   if (!access) return { ok: false, reason: "no posting key, or it would not authorise" };
 
   try {
+    const query = threadName ? "?messageReplyOption=REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD" : "";
     const res = await fetch(
-      `https://chat.googleapis.com/v1/${spaceName}/messages`,
+      `https://chat.googleapis.com/v1/${spaceName}/messages${query}`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${access}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, ...(threadName ? { thread: { name: threadName } } : {}) }),
       }
     );
 
@@ -171,5 +245,29 @@ export async function postGifToSpace(
     return { ok: true, messageName: body.name ?? "(unnamed)" };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "unknown error" };
+  }
+}
+
+/**
+ * The shared spaces Gaib is a member of, straight from Chat.
+ *
+ * Rooms used to be learned only when somebody mentioned Gaib in one -- so a
+ * room it had been added to but nobody had yet spoken to was invisible, and
+ * could not have its daily test switched on. Asking Chat directly finds them
+ * on the next run.
+ */
+export async function listAppRooms(): Promise<{ name: string; displayName: string | null }[]> {
+  const access = await token().catch(() => null);
+  if (!access) return [];
+  try {
+    const res = await fetch(
+      `https://chat.googleapis.com/v1/spaces?pageSize=100&filter=${encodeURIComponent('spaceType = "SPACE"')}`,
+      { headers: { Authorization: `Bearer ${access}` } }
+    );
+    if (!res.ok) return [];
+    const body = (await res.json()) as { spaces?: { name: string; displayName?: string }[] };
+    return (body.spaces ?? []).map((s) => ({ name: s.name, displayName: s.displayName ?? null }));
+  } catch {
+    return [];
   }
 }
