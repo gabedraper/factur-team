@@ -139,7 +139,10 @@ export function TDIdentity({
   sub?: React.ReactNode;
 }) {
   return (
-    <td className={cn("px-cell-x py-cell-y align-middle", className)} {...props}>
+    /* A width cap, because `truncate` does nothing in a table cell on its own:
+       the column just grows to the longest name and pushes every column after
+       it off the right edge. Capped, a long name gets its ellipsis. */
+    <td className={cn("max-w-[22rem] px-cell-x py-cell-y align-middle", className)} {...props}>
       <div className="flex items-center gap-2.5">
         <span className="shrink-0">{thumb}</span>
         <span className="min-w-0">

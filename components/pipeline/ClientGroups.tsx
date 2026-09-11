@@ -245,9 +245,9 @@ function ClientList({
                         type="button"
                         aria-expanded={open}
                         onClick={(e) => { e.stopPropagation(); setOpenClient(open ? null : c.client_id); }}
-                        className="flex items-center gap-1.5 font-medium"
+                        className="flex max-w-full items-center gap-1.5 font-medium"
                       >
-                        {c.client_name}
+                        <span className="truncate">{c.client_name}</span>
                         <ChevronRight
                           className={"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fast ease-out " + (open ? "rotate-90" : "")}
                         />
