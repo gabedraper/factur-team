@@ -153,7 +153,6 @@ async function loadClients({
       .select("id,name,status,email_domain,account_manager_id")
       .order("name");
 
-    if (ids) query = query.in("id", ids);
     if (status === "live") query = query.in("status", LIVE_CLIENT_STATUSES as unknown as string[]);
     else if (status !== "all") query = query.eq("status", status);
     if (q) query = query.ilike("name", `%${q.replace(/[%_]/g, "\\$&")}%`);
@@ -165,7 +164,14 @@ async function loadClients({
       id: string; name: string; status: string | null;
       email_domain: string | null; account_manager_id: string | null;
     };
-    const raw = (data ?? []) as Raw[];
+    /*
+     * Scope is applied here, not in the query. The ids would have to travel in
+     * the query string, and a manager at the top of the reporting line has
+     * close to a thousand -- past what the API gateway accepts, so "My team's
+     * clients" failed for them. There are only ~1,000 clients to filter.
+     */
+    const inScope = ids ? new Set(ids) : null;
+    const raw = ((data ?? []) as Raw[]).filter((r) => !inScope || inScope.has(r.id));
 
     /*
      * Two reads rather than an embedded join. org_clients and org_members are

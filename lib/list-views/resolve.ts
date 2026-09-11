@@ -120,7 +120,10 @@ export async function resolveViews(entityKey: string): Promise<ViewList> {
  * `my_client_ids()` walks the reporting line downward; the `_direct` variant
  * does not.
  */
-export async function clientIdsForScope(scope: "mine" | "team"): Promise<string[]> {
+export async function clientIdsForScope(
+  scope: "mine" | "team",
+  { liveOnly = false }: { liveOnly?: boolean } = {},
+): Promise<string[]> {
   /*
    * The session client, never the service one. Both functions resolve who is
    * asking from auth.uid(); called with the service key there is no user, so
@@ -129,7 +132,24 @@ export async function clientIdsForScope(scope: "mine" | "team"): Promise<string[
    */
   const db = await createClient();
   const fn = scope === "team" ? "my_client_ids" : "my_client_ids_direct";
-  const { data, error } = await db.rpc(fn);
-  if (error) throw new Error(`${fn}: ${error.message}`);
-  return ((data ?? []) as { client_id: string }[]).map((r) => r.client_id);
+  const [scoped, live] = await Promise.all([
+    db.rpc(fn),
+    liveOnly
+      ? db.from("org_clients").select("id").in("status", LIVE_CLIENT_STATUSES as unknown as string[])
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (scoped.error) throw new Error(`${fn}: ${scoped.error.message}`);
+  if (live.error) throw new Error(`live clients: ${live.error.message}`);
+  const ids = ((scoped.data ?? []) as { client_id: string }[]).map((r) => r.client_id);
+  if (!liveOnly) return ids;
+  /*
+   * Callers put these ids in a query string, and the API gateway refuses one
+   * past roughly 15k characters -- about 400 ids. A manager at the top of the
+   * reporting line reaches nearly every client ever staffed, close to a
+   * thousand, so "My team's" failed outright for exactly the people most
+   * likely to open it. Live clients are 215, and an inactive client's views
+   * are hidden anyway.
+   */
+  const liveIds = new Set(((live.data ?? []) as { id: string }[]).map((r) => r.id));
+  return ids.filter((id) => liveIds.has(id));
 }

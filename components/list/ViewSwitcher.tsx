@@ -22,6 +22,8 @@ import type { ResolvedView } from "@/lib/list-views/catalogue";
 
 /** The query parameters that mean "a view is selected". */
 const VIEW_PARAMS = ["scope", "client", "view"] as const;
+/** Parameters carried across a view switch rather than reset by it. */
+const KEEP_PARAMS = ["as"] as const;
 
 export function ViewSwitcher({
   entity,
@@ -44,6 +46,11 @@ export function ViewSwitcher({
   const href = (view: ResolvedView) => {
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries(view.params)) next.set(k, v);
+    // Table or board is how you are looking, not what -- it survives a switch.
+    for (const k of KEEP_PARAMS) {
+      const v = params.get(k);
+      if (v) next.set(k, v);
+    }
     return `${pathname}?${next.toString()}`;
   };
 

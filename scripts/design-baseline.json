@@ -349,13 +349,6 @@
   "components/nps/NpsResponseForm.tsx": {
     "hand-h1": 1
   },
-  "components/pipeline/ClientGroups.tsx": {
-    "bare-table": 1
-  },
-  "components/pipeline/OpportunityListViews.tsx": {
-    "bare-table": 1,
-    "raw-shadow": 1
-  },
   "components/pipeline/TargetAccounts.tsx": {
     "bare-table": 1,
     "raw-shadow": 1

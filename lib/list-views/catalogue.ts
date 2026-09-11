@@ -69,7 +69,8 @@ export type EntityDef = {
   /**
    * Whether an "All" view is offered.
    *
-   * Only where listing everything is cheap. Clients are 992 rows. Opportunities
+   * Only where listing everything is cheap. Clients are 992 rows, and the
+   * target pages are one row per client. Opportunities
    * are 780,000, and listing them is a sequential scan of roughly two seconds
    * before any join -- which is why that page refuses to query until a view
    * is chosen, and why it gets no "All".
@@ -122,7 +123,8 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table"],
     clientPath: "via_opportunity",
     myScope: "via_client",
-    allView: false,
+    // Cheap here: the page is one row per client, a few hundred at most.
+    allView: true,
     rowIdentity: true,
   },
   contacts: {
@@ -132,7 +134,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     renderers: ["table"],
     clientPath: "via_opportunity",
     myScope: "via_client",
-    allView: false,
+    allView: true,
     rowIdentity: false,
   },
   clients: {

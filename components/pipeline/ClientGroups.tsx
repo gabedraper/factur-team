@@ -1,8 +1,12 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Building2, ChevronRight } from "lucide-react";
-import { Chip, Empty, Panel, PageHeader } from "@/components/pipeline/bits";
+import { ChevronRight } from "lucide-react";
+import { Chip } from "@/components/pipeline/bits";
+import { Surface } from "@/components/ui/surface";
+import { Table, TableScroll, THead, TBody, TR, TH, TD, TDIdentity } from "@/components/ui/table";
+import { CompanyLogo } from "@/components/ui/thumbnail";
+import { ListEmpty } from "@/components/list/EmptyState";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -105,18 +109,21 @@ function totalFor(view: ClientView): (r: ClientRow) => number {
 }
 
 export function ClientGroups({
-  scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies", title, count,
+  scope, rows, stageFields = BOTH_STAGE_FIELDS, view = "companies", domains, initialOpen = null, error = null,
 }: {
   scope: PipelineScope;
   rows: ClientRow[];
   stageFields?: StageFields;
   view?: ClientView;
-  title: string;
-  count: number | string;
+  /** Client id to email domain, for the logo. */
+  domains: Record<string, string>;
+  /** Opened on arrival -- how a per-client view lands on that client's list. */
+  initialOpen?: string | null;
+  error?: string | null;
 }) {
   const levels = LEVELS[scope.level];
   const totalOf = useMemo(() => totalFor(view), [view]);
-  const [openClient, setOpenClient] = useState<string | null>(null);
+  const [openClient, setOpenClient] = useState<string | null>(initialOpen);
   // One selection per grouping level; null means that level's filter is at
   // "All". Picking a value at level i clears anything picked at levels after
   // it -- the account manager filter's own options are scoped to whichever
@@ -149,9 +156,11 @@ export function ClientGroups({
     });
   }
 
+  const noun = view === "contacts" ? "target contacts" : "target companies";
+
   return (
-    <div className="space-y-4">
-      <PageHeader title={title} count={count}>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
         {levels.map((level, i) => {
           const options = distinctOptions(scopedRows[i], level);
           // Nothing to filter by (a rep's own single bucket, or a manager
@@ -164,7 +173,7 @@ export function ClientGroups({
               value={selected[i] ?? ALL}
               onValueChange={(v) => setLevel(i, v === ALL ? null : v)}
             >
-              <SelectTrigger className="h-8 w-auto min-w-[10rem] gap-2 text-xs">
+              <SelectTrigger className="h-8 w-auto min-w-[10rem] gap-2 text-meta">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -180,12 +189,12 @@ export function ClientGroups({
             </Select>
           );
         })}
-      </PageHeader>
+      </div>
 
-      {filteredRows.length === 0 ? (
-        <Panel><Empty>No target companies.</Empty></Panel>
+      {error || filteredRows.length === 0 ? (
+        <ListEmpty noun={noun} error={error} />
       ) : (
-        <Panel>
+        <Surface pad="none">
           <ClientList
             rows={filteredRows}
             openClient={openClient}
@@ -193,15 +202,16 @@ export function ClientGroups({
             stageFields={stageFields}
             view={view}
             totalOf={totalOf}
+            domains={domains}
           />
-        </Panel>
+        </Surface>
       )}
     </div>
   );
 }
 
 function ClientList({
-  rows, openClient, setOpenClient, stageFields, view, totalOf,
+  rows, openClient, setOpenClient, stageFields, view, totalOf, domains,
 }: {
   rows: ClientRow[];
   openClient: string | null;
@@ -209,65 +219,65 @@ function ClientList({
   stageFields: StageFields;
   view: ClientView;
   totalOf: (r: ClientRow) => number;
+  domains: Record<string, string>;
 }) {
-  const span = 2;
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-4 py-2 text-left font-medium">Client</th>
-            <th className="px-4 py-2 text-right font-medium">Total</th>
-          </tr>
-        </thead>
-        <tbody>
+    <TableScroll>
+      <Table>
+        <THead>
+          <TR>
+            <TH>Client</TH>
+            <TH numeric>Total</TH>
+          </TR>
+        </THead>
+        <TBody>
           {rows.map((c) => {
             const open = openClient === c.client_id;
             return (
               <Fragment key={c.client_id}>
-              <tr
-                onClick={() => setOpenClient(open ? null : c.client_id)}
-                className="cursor-pointer border-b last:border-0 hover:bg-muted/30"
-              >
-                <td className="px-4 py-2">
-                  <span className="flex items-center gap-2">
-                    <ChevronRight
-                      className={"h-4 w-4 shrink-0 text-muted-foreground transition-transform " + (open ? "rotate-90" : "")}
-                    />
-                    <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="font-medium">{c.client_name}</span>
-                    {!c.client_active && c.client_status && (
-                      <Chip colour="slate">{c.client_status}</Chip>
-                    )}
-                  </span>
-                </td>
+                <TR interactive onClick={() => setOpenClient(open ? null : c.client_id)} className="cursor-pointer">
+                  <TDIdentity
+                    thumb={<CompanyLogo name={c.client_name} domain={domains[c.client_id]} size={24} />}
+                    name={
+                      /* A button inside the row, so the row opens from the
+                         keyboard too -- a clickable <tr> is mouse-only. */
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        onClick={(e) => { e.stopPropagation(); setOpenClient(open ? null : c.client_id); }}
+                        className="flex items-center gap-1.5 font-medium"
+                      >
+                        {c.client_name}
+                        <ChevronRight
+                          className={"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-fast ease-out " + (open ? "rotate-90" : "")}
+                        />
+                      </button>
+                    }
+                    sub={!c.client_active && c.client_status ? <Chip colour="slate">{c.client_status}</Chip> : undefined}
+                  />
+                  <TD numeric className="font-semibold">{totalOf(c).toLocaleString()}</TD>
+                </TR>
 
-                <td className="px-4 py-2 text-right font-semibold tabular-nums">
-                  {totalOf(c).toLocaleString()}
-                </td>
-              </tr>
-
-              {open && (
-                <tr>
-                  <td colSpan={span} className="border-b bg-muted/20 px-4 py-3">
-                    {view === "contacts" ? (
-                      <TargetContacts clientId={c.client_id} stageFields={stageFields} />
-                    ) : (
-                      <TargetAccounts
-                        clientId={c.client_id}
-                        clientName={c.client_name}
-                        stageFields={stageFields}
-                      />
-                    )}
-                  </td>
-                </tr>
-              )}
+                {open && (
+                  <TR>
+                    <TD colSpan={2} className="bg-muted/30 py-3">
+                      {view === "contacts" ? (
+                        <TargetContacts clientId={c.client_id} stageFields={stageFields} />
+                      ) : (
+                        <TargetAccounts
+                          clientId={c.client_id}
+                          clientName={c.client_name}
+                          stageFields={stageFields}
+                        />
+                      )}
+                    </TD>
+                  </TR>
+                )}
               </Fragment>
             );
           })}
-        </tbody>
-      </table>
-    </div>
+        </TBody>
+      </Table>
+    </TableScroll>
   );
 }

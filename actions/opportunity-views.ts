@@ -52,6 +52,12 @@ export async function listOpportunities(input: {
    */
   scope?: "mine" | "team" | null;
   page?: number;
+  /**
+   * Rows per page. The table pages by 50; the board asks for more at once
+   * because it cannot page -- a stage column has no "next" -- and is capped so
+   * a broad view cannot turn into a scan.
+   */
+  limit?: number;
 }): Promise<{ rows: Record<string, unknown>[]; hasMore: boolean; tooBroad: boolean }> {
   await assertPipeline("view");
   const db = await createClient();
@@ -132,7 +138,7 @@ export async function listOpportunities(input: {
      * interpreted: if it were ever read as "no filter", somebody staffed on no
      * clients would open "My opportunities" and be shown everyone's.
      */
-    const ids = await clientIdsForScope(input.scope);
+    const ids = await clientIdsForScope(input.scope, { liveOnly: true });
     if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
     q = q.in("client_id", ids);
   }
@@ -181,8 +187,9 @@ export async function listOpportunities(input: {
     q = q.order("updated_at", { ascending: false });
   }
 
+  const size = Math.min(Math.max(input.limit ?? PAGE, 1), 200);
   const page = Math.max(0, input.page ?? 0);
-  const { data, error } = await q.range(page * PAGE, page * PAGE + PAGE);
+  const { data, error } = await q.range(page * size, page * size + size);
 
   if (error) {
     /*
@@ -197,8 +204,22 @@ export async function listOpportunities(input: {
   }
 
   const rows = (data ?? []) as unknown as Record<string, unknown>[];
-  const hasMore = rows.length > PAGE;
-  return { rows: hasMore ? rows.slice(0, PAGE) : rows, hasMore, tooBroad: false };
+  const hasMore = rows.length > size;
+  return { rows: hasMore ? rows.slice(0, size) : rows, hasMore, tooBroad: false };
+}
+
+/** One saved view, or null when it is gone or not yours to see -- RLS decides. */
+export async function getView(id: string): Promise<ListView | null> {
+  await assertPipeline("view");
+  const db = await createClient();
+  const { data, error } = await db
+    .from("list_views")
+    .select("id,name,owner_member_id,shared,columns,filters,sort_field,sort_dir")
+    .eq("id", id)
+    .eq("entity", "opportunities")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ListView | null) ?? null;
 }
 
 

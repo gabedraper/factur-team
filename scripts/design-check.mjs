@@ -23,6 +23,10 @@
  *
  *   node scripts/design-check.mjs            check (runs in prebuild)
  *   node scripts/design-check.mjs --update   accept current counts as baseline
+ *   node scripts/design-check.mjs --update <file>...
+ *                                            the same, for those files only --
+ *                                            safe while other sessions have
+ *                                            unfinished work in the folder
  *   node scripts/design-check.mjs --report   per-rule totals, no failure
  *   node scripts/design-check.mjs --staged   only what the next commit holds
  *                                            (the pre-commit hook)
@@ -159,14 +163,36 @@ if (mode === "--report") {
   process.exit(0);
 }
 
+const only = mode === "--update" ? process.argv.slice(3) : [];
+
 if (mode === "--update") {
+  /*
+   * With file names, only those entries change and only downwards: it locks in
+   * a retrofit without rescanning anybody else's half-finished edits into the
+   * baseline. A file that has gone or come clean loses its entry.
+   */
+  let next = now;
+  if (only.length) {
+    const prev = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, "utf8")) : {};
+    next = { ...prev };
+    for (const f of only) {
+      if (!prev[f]) continue;
+      const lowered = Object.fromEntries(
+        Object.entries(prev[f])
+          .map(([id, n]) => [id, Math.min(n, now[f]?.[id] ?? 0)])
+          .filter(([, n]) => n > 0),
+      );
+      if (Object.keys(lowered).length) next[f] = lowered;
+      else delete next[f];
+    }
+  }
   // Sorted so the baseline diffs cleanly and a shrinking count is easy to see.
   const sorted = Object.fromEntries(
-    Object.keys(now).sort().map((f) => [f, Object.fromEntries(Object.entries(now[f]).sort())]),
+    Object.keys(next).sort().map((f) => [f, Object.fromEntries(Object.entries(next[f]).sort())]),
   );
   writeFileSync(BASELINE, JSON.stringify(sorted, null, 2) + "\n");
-  const n = Object.values(now).reduce((a, r) => a + Object.values(r).reduce((x, y) => x + y, 0), 0);
-  console.log(`Baseline written: ${n} existing violations across ${Object.keys(now).length} files.`);
+  const n = Object.values(sorted).reduce((a, r) => a + Object.values(r).reduce((x, y) => x + y, 0), 0);
+  console.log(`Baseline written: ${n} existing violations across ${Object.keys(sorted).length} files.`);
   process.exit(0);
 }
 
@@ -212,7 +238,7 @@ if (worse.length) {
 
 if (improved) {
   console.log(`Design check passed. ${improved} count${improved === 1 ? "" : "s"} went down --`);
-  console.log(`run  node scripts/design-check.mjs --update  to lock that in so it cannot come back.`);
+  console.log(`run  npm run design:update -- <the files you changed>  to lock that in so it cannot come back.`);
 } else {
   console.log("Design check passed.");
 }
