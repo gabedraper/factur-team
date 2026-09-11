@@ -220,7 +220,7 @@ export async function readAgreement(
        * agree on a borderline promise -- a range, an either/or -- and a figure
        * left behind by an earlier reading has nothing to check it against.
        */
-      const promised = new Set(c.kpis.map((k) => k.metric));
+      const promised = new Set<string>(c.kpis.map((k) => k.metric));
       const stale = ((have ?? []) as { metric: string; source: string }[])
         .filter((k) => k.source === "contract" && !promised.has(k.metric))
         .map((k) => k.metric);
