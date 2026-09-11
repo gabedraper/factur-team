@@ -84,6 +84,37 @@ async function greetNewStarters(): Promise<{ opened: number; greeted: number }> 
  * known once they have messaged Gaib, so until then this falls back to their
  * name -- the update still reaches the room, it just does not notify them.
  */
+/*
+ * Anything queued for Gaib to say outside a live conversation.
+ *
+ * A failed send is recorded and left for the next run rather than retried in
+ * a loop, and a message is never sent twice: sent_at is stamped only once
+ * Chat has accepted it.
+ */
+async function drainOutbox(): Promise<{ sent: number; failed: number }> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_outbox")
+    .select("id,space_name,text")
+    .is("sent_at", null)
+    .order("queued_at", { ascending: true })
+    .limit(10);
+
+  let sent = 0;
+  let failed = 0;
+  for (const m of (data ?? []) as { id: number; space_name: string; text: string }[]) {
+    const r = await postToSpace(m.space_name, m.text);
+    if (r.ok) {
+      await db.from("gaib_outbox").update({ sent_at: new Date().toISOString(), error: null }).eq("id", m.id);
+      sent++;
+    } else {
+      await db.from("gaib_outbox").update({ error: r.reason }).eq("id", m.id);
+      failed++;
+    }
+  }
+  return { sent, failed };
+}
+
 async function mentionFor(userId: string): Promise<string> {
   const db = createServiceClient();
   const { data: member } = await db
@@ -208,10 +239,12 @@ export async function POST(request: NextRequest) {
 
   // Last, and never allowed to take the deliveries down with it.
   const starters = await greetNewStarters().catch(() => ({ opened: 0, greeted: 0 }));
+  const outbox = await drainOutbox().catch(() => ({ sent: 0, failed: 0 }));
 
   return NextResponse.json({
     considered: rows.length,
     newStarters: starters,
+    outbox,
     delivered: delivered.length,
     waitingOnSomebodyToSayHelloFirst: skipped.length,
     ticketMissing: orphaned.length,
