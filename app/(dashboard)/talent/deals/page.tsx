@@ -3,6 +3,7 @@ import { listDeals } from "@/lib/talent/queries";
 import { DealsBoard } from "@/components/talent/DealsBoard";
 import { PageHeader, Stat } from "@/components/talent/bits";
 import { money } from "@/lib/talent/format";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,12 @@ export default async function DealsPage({
     <div className="space-y-4 p-6">
       <PageHeader title="Deals" count={rows.length} />
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-4">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Open" value={open.length} />
         <Stat label="Open value" value={money(open.reduce((s, d) => s + (d.value ?? 0), 0))} />
         <Stat label="Weighted" value={money(Math.round(weighted))} />
         <Stat label="Won" value={rows.filter((d) => d.status === "won").length} />
-      </div>
+      </Surface>
 
       <DealsBoard deals={deals} canEdit={access.recruit} />
     </div>

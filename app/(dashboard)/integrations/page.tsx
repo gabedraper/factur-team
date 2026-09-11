@@ -4,6 +4,7 @@ import { myPermissions } from "@/lib/org";
 import { integrationsReport } from "@/actions/integrations";
 import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -117,7 +118,7 @@ export default async function IntegrationsPage() {
       {report.integrations.map((i) => {
         const Direction = DIRECTION[i.direction].icon;
         return (
-          <section key={i.key} className="space-y-3 rounded-md border bg-card p-4">
+          <Surface key={i.key} as="section" className="space-y-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="text-base font-medium">{i.name}</h2>
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -203,7 +204,7 @@ export default async function IntegrationsPage() {
                 </Link>
               )}
             </div>
-          </section>
+          </Surface>
         );
       })}
 

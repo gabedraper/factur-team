@@ -1,5 +1,6 @@
 import { Chip, Panel } from "@/components/pipeline/bits";
 import type { MarketReport, MarketRow, Trend, CoverageStatus } from "@/lib/market/report";
+import { Surface } from "@/components/ui/surface";
 
 const nf = new Intl.NumberFormat("en-US");
 const pf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
@@ -31,11 +32,11 @@ const METRIC_LABEL: Record<Trend["metric"], string> = {
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <Surface >
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
       {sub && <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">{sub}</div>}
-    </div>
+    </Surface>
   );
 }
 
@@ -145,7 +146,7 @@ function Sparkline({ points }: { points: { period: string; value: number }[] }) 
 function TrendCard({ trend }: { trend: Trend }) {
   const up = (trend.changePct ?? 0) >= 0;
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
+    <Surface pad="tight" className="flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="truncate text-sm font-medium">{trend.market}</div>
         <div className="truncate text-xs text-muted-foreground">
@@ -165,7 +166,7 @@ function TrendCard({ trend }: { trend: Trend }) {
         </div>
         <div className="text-[11px] text-muted-foreground">year</div>
       </div>
-    </div>
+    </Surface>
   );
 }
 

@@ -21,20 +21,31 @@ import { cn } from "@/lib/utils";
  * dialogs, popovers -- get a shadow permanently.
  */
 
-type SurfaceProps = React.HTMLAttributes<HTMLDivElement> & {
+type Pad = "card" | "tight" | "none";
+
+type SurfaceProps = React.HTMLAttributes<HTMLElement> & {
   /**
    * Padding. `card` (24px) is the default and correct for a top-level block;
    * `tight` (12px) is for a panel nested inside another one, where the outer
    * padding is already doing the work; `none` is for a Surface whose only
    * child is a Table, which brings its own cell padding.
    */
-  pad?: "card" | "tight" | "none";
+  pad?: Pad;
   /**
    * Set when the whole block is a link or a button -- a row in a card list, a
    * draggable item. Adds the hover lift, which is the app's only resting-state
    * use of shadow.
    */
   interactive?: boolean;
+  /**
+   * A box inside a card. White on white has no edge, and sections carry no
+   * border, so a nested box steps down the surface ladder instead -- the same
+   * rule as a card on the page, one level in. In dark mode the ladder runs
+   * upwards and this reads as a step lighter, which is the same thing.
+   */
+  inset?: boolean;
+  /** The element, when a div is the wrong one: a section, a list item. */
+  as?: "div" | "section" | "article" | "aside" | "ul" | "ol" | "li";
   /**
    * Renders a heading and, optionally, controls on the same line. Saves every
    * caller reinventing the same flex row.
@@ -49,20 +60,33 @@ const PAD = {
   none: "",
 } as const;
 
-export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(
-  ({ className, pad = "card", interactive, title, actions, children, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-md bg-card text-card-foreground",
-        PAD[pad],
-        interactive &&
-          // The lift, in both themes at once: the shadow token already
-          // differs per theme, and card-hover carries the surface change a
-          // shadow cannot express (lighter on dark, unchanged on light).
-          "cursor-pointer transition-[background-color,box-shadow] duration-base ease-out hover:bg-card-hover hover:shadow-overlay",
-        className,
-      )}
+/**
+ * The recipe as a class string, for the few things that must look like a
+ * surface but cannot be a div -- a <Link> or a <label> that is a card. Same
+ * source as <Surface>, so the two cannot drift.
+ */
+export function surface({
+  pad = "card",
+  interactive = false,
+  inset = false,
+}: { pad?: Pad; interactive?: boolean; inset?: boolean } = {}) {
+  return cn(
+    "rounded-md text-card-foreground",
+    inset ? "bg-muted/60" : "bg-card",
+    PAD[pad],
+    interactive &&
+      // The lift, in both themes at once: the shadow token already differs
+      // per theme, and card-hover carries the surface change a shadow cannot
+      // express (lighter on dark, unchanged on light).
+      "cursor-pointer transition-[background-color,box-shadow] duration-base ease-out hover:bg-card-hover hover:shadow-overlay",
+  );
+}
+
+export const Surface = React.forwardRef<HTMLElement, SurfaceProps>(
+  ({ className, pad = "card", interactive, inset, as: Tag = "div", title, actions, children, ...props }, ref) => (
+    <Tag
+      ref={ref as React.Ref<never>}
+      className={cn(surface({ pad, interactive, inset }), className)}
       {...props}
     >
       {(title || actions) && (
@@ -77,7 +101,7 @@ export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(
         </div>
       )}
       {children}
-    </div>
+    </Tag>
   ),
 );
 Surface.displayName = "Surface";

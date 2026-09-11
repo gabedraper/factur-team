@@ -5,6 +5,7 @@ import { setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive 
 import type { MemberRow } from "@/lib/org";
 import { isJobRole } from "@/lib/org-roles";
 import { useSort, SortHeader } from "@/components/ui/sortable";
+import { Surface } from "@/components/ui/surface";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
 type Service = { id: string; name: string };
@@ -111,7 +112,7 @@ export function PeopleTable(
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -221,7 +222,7 @@ export function PeopleTable(
             )}
           </tbody>
         </table>
-      </div>
+      </Surface>
 
       <p className="text-xs text-muted-foreground">
         Amber rows came from Salesforce without a role that could be resolved — picking one clears

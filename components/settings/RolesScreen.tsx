@@ -6,6 +6,7 @@ import {
 } from "@/actions/org";
 import { isStandaloneRole } from "@/lib/org-roles";
 import type { RoleDetail } from "@/lib/org";
+import { Surface } from "@/components/ui/surface";
 
 type Service = { id: string; name: string };
 type Perm = {
@@ -55,7 +56,7 @@ export function RolesScreen({
         </p>
       )}
 
-      <section className="rounded-md border bg-card p-4 space-y-2">
+      <Surface as="section" className="space-y-2">
         <h2 className="text-sm font-medium">New role</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input className="h-8 min-w-40 rounded-md border bg-field px-2 text-sm"
@@ -83,12 +84,12 @@ export function RolesScreen({
           A role tied to a service is a job someone does and counts towards their allocation. A role
           with no service — like Manager — only says what they may see.
         </p>
-      </section>
+      </Surface>
 
       {roles.map((r) => {
         const builtIn = isStandaloneRole(r.slug);
         return (
-          <section key={r.id} className={`rounded-md border bg-card p-4 space-y-3 ${r.active ? "" : "opacity-60"}`}>
+          <Surface as="section" key={r.id} className={`space-y-3 ${r.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <input className="h-8 min-w-40 rounded-md border bg-field px-2 text-sm font-medium"
                      defaultValue={r.name}
@@ -153,7 +154,7 @@ export function RolesScreen({
                 </div>
               ))}
             </div>
-          </section>
+          </Surface>
         );
       })}
     </div>

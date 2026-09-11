@@ -1,5 +1,6 @@
 import type { WorkGroup } from "@/lib/work";
 import { WorkRows } from "./WorkRows";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * The open ClickUp work on one client, grouped by process.
@@ -12,7 +13,7 @@ export function ClientWorkPanel({ groups }: { groups: WorkGroup[] }) {
   const total = groups.reduce((n, g) => n + g.items.length, 0);
 
   return (
-    <div className="rounded-lg border bg-card">
+    <Surface pad="none">
       <div className="flex items-baseline justify-between border-b px-3 py-2">
         <h2 className="text-sm font-semibold">ClickUp</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
@@ -39,6 +40,6 @@ export function ClientWorkPanel({ groups }: { groups: WorkGroup[] }) {
           ))}
         </div>
       )}
-    </div>
+    </Surface>
   );
 }

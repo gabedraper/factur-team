@@ -1,5 +1,6 @@
 import type { BillingSummary as Summary } from "@/actions/billing";
 import { AGEING_TONE } from "@/lib/ageing-colours";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -20,14 +21,14 @@ function Tile({
   const colour = tone ?? "";
 
   return (
-    <div className="rounded-lg border bg-card px-3 py-2">
+    <Surface pad="tight">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       <div className={`mt-0.5 text-sm font-semibold tabular-nums ${colour}`}>
         {value}
       </div>
-    </div>
+    </Surface>
   );
 }
 

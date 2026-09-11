@@ -5,6 +5,7 @@ import { getCampaign, integrationStatus } from "@/lib/talent/queries";
 import { CampaignEditor } from "@/components/talent/CampaignEditor";
 import { Chip, Empty, NotConnected, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { ago } from "@/lib/talent/format";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +52,13 @@ export default async function CampaignPage({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-5">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <Stat label="Enrolled" value={members.length} />
         <Stat label="Active" value={members.filter((m) => m.status === "active").length} />
         <Stat label="Replied" value={replied} />
         <Stat label="Steps" value={steps.length} />
         <Stat label="Queued" value={queued} tint={queued ? "text-amber-600 dark:text-amber-400" : undefined} />
-      </div>
+      </Surface>
 
       {!canSend && (
         <NotConnected name={gmail.name} requires={gmail.requires} canAdmin={access.admin} />

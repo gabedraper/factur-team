@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { linkSalesforceUser } from "@/actions/org";
 import type { MatchSuggestion } from "@/lib/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
+import { Surface, surface } from "@/components/ui/surface";
 
 export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSuggestion[] }) {
   const [rows, setRows] = useState(suggestions);
@@ -48,7 +49,7 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -96,10 +97,10 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
             )}
           </tbody>
         </table>
-      </div>
+      </Surface>
 
       {without.length > 0 && (
-        <details className="rounded-md border bg-card p-4">
+        <details className={surface()}>
           <summary className="cursor-pointer text-sm font-medium">
             {without.length} people with no Salesforce match at all
           </summary>

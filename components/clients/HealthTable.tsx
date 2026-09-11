@@ -6,6 +6,7 @@ import { useSort, SortHeader } from "@/components/ui/sortable";
 import { band, type ClientHealth } from "@/lib/clients/health-score";
 import { AGEING_TONE } from "@/lib/ageing-colours";
 import { CompanyLogo } from "@/components/ui/thumbnail";
+import { Surface } from "@/components/ui/surface";
 
 const BAND_CLASS: Record<string, string> = {
   good: "text-emerald-600 dark:text-emerald-400",
@@ -331,7 +332,7 @@ export function HealthTable({
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -407,7 +408,7 @@ export function HealthTable({
                     <td colSpan={12} className="px-3 py-3">
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         {c.inputs.map((i) => (
-                          <div key={i.key} className="rounded-md border bg-card p-3">
+                          <Surface key={i.key} pad="tight" inset>
                             {/* The label keeps the left; the way out of the card
                                 sits opposite it rather than below the numbers. */}
                             <div className="flex items-center justify-between gap-2">
@@ -493,7 +494,7 @@ export function HealthTable({
                               </div>
                             )}
                             {i.key === "receivables" && <Ageing c={c} />}
-                          </div>
+                          </Surface>
                         ))}
                       </div>
                       <Link
@@ -509,7 +510,7 @@ export function HealthTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </Surface>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { quickSearchPeople } from "@/actions/talent";
 import { Avatar } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
+import { Surface } from "@/components/ui/surface";
 
 export type PickedPerson = {
   id: string; name: string; title: string | null;
@@ -56,7 +57,7 @@ export function PersonPicker({
       </div>
 
       {results.length > 0 && (
-        <ul className="max-h-64 divide-y overflow-y-auto rounded-md border bg-card">
+        <Surface as="ul" pad="none" inset className="max-h-64 divide-y overflow-y-auto">
           {results.map((p) => (
             <li key={p.id}>
               <button
@@ -74,7 +75,7 @@ export function PersonPicker({
               </button>
             </li>
           ))}
-        </ul>
+        </Surface>
       )}
     </div>
   );

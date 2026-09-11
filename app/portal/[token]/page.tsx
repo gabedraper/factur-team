@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PortalFeedback } from "@/components/talent/PortalFeedback";
 import { onDay, place } from "@/lib/talent/format";
+import { Surface } from "@/components/ui/surface";
 
 /*
  * The hiring-manager portal.
@@ -65,7 +66,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       ) : (
         <ol className="mt-10 space-y-6">
           {view.submissions.map((s) => (
-            <li key={s.id} className="rounded-lg border bg-card p-5">
+            <Surface key={s.id} as="li">
               <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0">
                   <h2 className="text-lg font-medium">{s.person.name}</h2>
@@ -116,7 +117,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
                   canRespond={view.can_leave_feedback}
                 />
               </div>
-            </li>
+            </Surface>
           ))}
         </ol>
       )}

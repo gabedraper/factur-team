@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { SequenceRow } from "@/actions/sequence-audience";
+import { surface } from "@/components/ui/surface";
 
 /**
  * Shared sequences and your own, as two views of one list.
@@ -46,7 +47,7 @@ export function SequenceList({ sequences }: { sequences: SequenceRow[] }) {
             <Link
               key={s.id}
               href={`/sequences/${s.slug}`}
-              className="block rounded-md border bg-card px-4 py-3 hover:bg-muted"
+              className={`${surface({ pad: "tight", interactive: true })} block`}
             >
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-medium">{s.name}</span>

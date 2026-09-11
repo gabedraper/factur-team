@@ -6,6 +6,7 @@ import { ExternalLink, ChevronRight, ChevronDown } from "lucide-react";
 import type { ListItem } from "@/lib/work-tree";
 import { estimate, columnFields, groupOptions } from "@/lib/work-tree";
 import { dueClass, shortDate } from "@/lib/work";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * A ClickUp list, rebuilt read-only.
@@ -158,7 +159,7 @@ export function ListView({ items }: { items: ListItem[] }) {
         </label>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full min-w-[52rem]">
           <thead>
             <tr className="border-b text-left text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -201,7 +202,7 @@ export function ListView({ items }: { items: ListItem[] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Surface>
     </div>
   );
 }

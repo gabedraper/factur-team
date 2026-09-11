@@ -6,6 +6,7 @@ import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import type { WorkItem } from "@/lib/work";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ function Section({
 }) {
   if (items.length === 0) return null;
   return (
-    <div className="rounded-lg border bg-card">
+    <Surface pad="none">
       <div className="flex items-baseline justify-between border-b px-3 py-2">
         <h2 className={`text-sm font-semibold ${tone ?? ""}`}>{title}</h2>
         <span className="text-xs tabular-nums text-muted-foreground">{items.length}</span>
@@ -34,7 +35,7 @@ function Section({
       <div className="px-3 py-1">
         <WorkRows items={items} show={{ client: true, process: true }} />
       </div>
-    </div>
+    </Surface>
   );
 }
 
@@ -73,9 +74,9 @@ export default async function WorkPage() {
       </div>
 
       {total === 0 && (
-        <div className="rounded-lg border bg-card px-3 py-3">
+        <Surface pad="tight">
           <p className="text-sm text-muted-foreground">Nothing open.</p>
-        </div>
+        </Surface>
       )}
 
       <Section title="Overdue" items={agenda.overdue} tone="text-destructive" />
@@ -83,7 +84,7 @@ export default async function WorkPage() {
       <Section title="This week" items={agenda.soon} />
 
       {blocked.length > 0 && (
-        <div className="rounded-lg border bg-card">
+        <Surface pad="none">
           <div className="flex items-baseline justify-between border-b px-3 py-2">
             <h2 className="text-sm font-semibold">Waiting on</h2>
             <span className="text-xs tabular-nums text-muted-foreground">{blocked.length}</span>
@@ -105,14 +106,14 @@ export default async function WorkPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Surface>
       )}
 
       <Section title="Later" items={agenda.later} />
       <Section title="No date" items={agenda.undated} />
 
       {processes.length > 0 && (
-        <div className="rounded-lg border bg-card">
+        <Surface pad="none">
           <div className="border-b px-3 py-2">
             <h2 className="text-sm font-semibold">Processes</h2>
           </div>
@@ -128,7 +129,7 @@ export default async function WorkPage() {
               </Link>
             ))}
           </div>
-        </div>
+        </Surface>
       )}
     </div>
   );

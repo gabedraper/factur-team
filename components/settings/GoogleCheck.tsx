@@ -6,6 +6,7 @@ import {
   type AccountCheck,
 } from "@/actions/google-check";
 import type { IngestReport } from "@/lib/ingest/comms";
+import { Surface } from "@/components/ui/surface";
 
 const LANES: { kind: IngestReport["kind"]; label: string; doing: string }[] = [
   { kind: "mail", label: "Pull billing mail (90 days)", doing: "Reading mailbox" },
@@ -134,7 +135,7 @@ export function GoogleCheck() {
               )} read — ${sum((r) => r.matching)} matched the search`;
             })()}
           </p>
-          <div className="overflow-x-auto rounded-md border bg-card">
+          <Surface pad="none" className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -172,7 +173,7 @@ export function GoogleCheck() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Surface>
         </div>
       )}
 
@@ -201,7 +202,7 @@ export function GoogleCheck() {
             })}
           </p>
 
-          <div className="overflow-x-auto rounded-md border bg-card">
+          <Surface pad="none" className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -255,7 +256,7 @@ export function GoogleCheck() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Surface>
         </>
       )}
     </div>

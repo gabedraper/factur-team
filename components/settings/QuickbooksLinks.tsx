@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { decideQuickbooksLink, type UnmatchedCustomer } from "@/actions/quickbooks-links";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -59,7 +60,7 @@ export function QuickbooksLinks({
         {overdue > 0 && <> — <span className="text-red-600 dark:text-red-400">{money.format(overdue)} of it past 60 days</span></>}
       </p>
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -129,7 +130,7 @@ export function QuickbooksLinks({
             ))}
           </tbody>
         </table>
-      </div>
+      </Surface>
     </div>
   );
 }

@@ -3,15 +3,16 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { checkNpsSenders, type Coverage, type SenderCheck } from "@/actions/nps-readiness";
+import { Surface, surface } from "@/components/ui/surface";
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className="rounded-md border bg-card px-3 py-2">
+    <Surface pad="tight">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${warn ? "text-amber-600 dark:text-amber-400" : ""}`}>
         {value}
       </div>
-    </div>
+    </Surface>
   );
 }
 
@@ -33,7 +34,7 @@ function ClientList({
           <Link
             key={c.id}
             href={`/settings/clients/${c.id}`}
-            className="rounded-md border bg-card px-2 py-1 text-xs hover:bg-muted"
+            className={`${surface({ pad: "tight", interactive: true })} text-xs`}
           >
             {c.name}
             {c.note && (
@@ -84,7 +85,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
         )}
 
         {result && result.senders.length > 0 && (
-          <div className="overflow-x-auto rounded-md border bg-card">
+          <Surface pad="none" className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -114,7 +115,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Surface>
         )}
 
         {result && blocked.length === 0 && result.senders.length > 0 && (

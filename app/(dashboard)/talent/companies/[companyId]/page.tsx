@@ -10,6 +10,7 @@ import { LogActivity } from "@/components/talent/LogActivity";
 import { Avatar, Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { ago, money, place } from "@/lib/talent/format";
 import { COMPANY_KIND, DEAL_STAGE, JOB_STATUS, label } from "@/lib/talent/types";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +59,12 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-4">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="People" value={people.length} />
         <Stat label="Jobs" value={jobs.length} />
         <Stat label="Open deals" value={deals.length} />
         <Stat label="Last activity" value={ago(company.last_activity_at)} />
-      </div>
+      </Surface>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Jobs">

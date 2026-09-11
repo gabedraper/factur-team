@@ -15,6 +15,7 @@ import { ago, money, onDay, place, salaryRange } from "@/lib/talent/format";
 import {
   EMPLOYMENT_TYPE, JOB_KIND, JOB_STATUS, REMOTE, SUBMISSION_STATUS, label,
 } from "@/lib/talent/types";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +95,7 @@ export default async function JobPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-6">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-6">
         <Stat label="In pipeline" value={live.length} />
         <Stat label="Submitted" value={candidates.filter((c) => c.stage_kind === "submitted").length} />
         <Stat label="Interviewing" value={candidates.filter((c) => c.stage_kind === "interview").length} />
@@ -105,7 +106,7 @@ export default async function JobPage({
           tint={stale ? "text-amber-600 dark:text-amber-400" : undefined}
         />
         <Stat label="Openings" value={job.openings} />
-      </div>
+      </Surface>
 
       <Tabs tabs={TABS} active={tab} base={`/talent/jobs/${job.id}`} />
 

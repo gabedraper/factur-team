@@ -10,6 +10,7 @@ import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
 import { STEP_ACTIONS, resolveAction } from "@/lib/sequences/step-actions";
 import RichTextEditor from "@/components/rich-text-editor";
+import { Surface } from "@/components/ui/surface";
 
 /*
  * The settings this screen offers, and the ones it does not yet.
@@ -264,7 +265,7 @@ export function SequenceBuilder({
           <div className="min-w-0 flex-1 space-y-6">
             <section id="sending" className="space-y-3">
               <h2 className="text-sm font-medium">Sending</h2>
-              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
+              <Surface pad="tight" className="flex flex-wrap items-center gap-2">
                 <span className="text-sm">When a step comes due</span>
                 {([
                   ["semi", "leave me a draft"],
@@ -282,10 +283,10 @@ export function SequenceBuilder({
                   </button>
                 ))}
                 <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
-              </div>
+              </Surface>
 
               {writers.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-3">
+                <Surface pad="tight" className="flex flex-wrap items-center gap-2">
                   <span className="text-sm">Wording for</span>
                   <select
                     className={`h-8 rounded-md border px-2 text-sm ${FIELD}`}
@@ -300,13 +301,13 @@ export function SequenceBuilder({
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
                   </select>
-                </div>
+                </Surface>
               )}
             </section>
 
             <section id="recipients" className="space-y-3">
               <h2 className="text-sm font-medium">Recipients</h2>
-              <div className="space-y-2 rounded-md border bg-card p-3 text-sm">
+              <Surface pad="tight" className="space-y-2 text-sm">
                 <label className="flex items-start gap-2">
                   <input
                     type="checkbox"
@@ -331,12 +332,12 @@ export function SequenceBuilder({
                   <input type="checkbox" className="mt-0.5" disabled />
                   Skip anyone in a sequence from chosen teams — needs team scoping
                 </label>
-              </div>
+              </Surface>
             </section>
 
             <section id="exit" className="space-y-3">
               <h2 className="text-sm font-medium">Exit criteria</h2>
-              <div className="space-y-2 rounded-md border bg-card p-3 text-sm">
+              <Surface pad="tight" className="space-y-2 text-sm">
                 {ENDINGS.filter((e) => !e.only || e.only === sequence.slug).map((e) => (
                   <label key={e.key} className="flex items-start gap-2">
                     <input
@@ -365,7 +366,7 @@ export function SequenceBuilder({
                   <input type="checkbox" className="mt-0.5" disabled />
                   Stop when they book a meeting — no booking connected
                 </label>
-              </div>
+              </Surface>
             </section>
           </div>
         </div>
@@ -426,7 +427,7 @@ export function SequenceBuilder({
 
           {/* The step being written. */}
           {step ? (
-            <div className="min-w-0 flex-1 space-y-3 rounded-md border bg-card p-4">
+            <Surface className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-2 border-b pb-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">{step.position}. Email</span>
@@ -489,7 +490,7 @@ export function SequenceBuilder({
                   <Send className="h-4 w-4" /> Test
                 </button>
               </div>
-            </div>
+            </Surface>
           ) : (
             <div className="flex min-w-0 flex-1 items-center justify-center rounded-md border border-dashed p-12 text-sm text-muted-foreground">
               No steps yet.
@@ -498,7 +499,7 @@ export function SequenceBuilder({
 
           {/* What this step does, as opposed to what it says. */}
           {step && (
-            <div className="w-full shrink-0 space-y-3 rounded-md border bg-card p-4 lg:w-64">
+            <Surface className="w-full shrink-0 space-y-3 lg:w-64">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 Step settings
               </p>
@@ -552,7 +553,7 @@ export function SequenceBuilder({
               >
                 <Trash2 className="h-4 w-4" /> Delete step
               </button>
-            </div>
+            </Surface>
           )}
         </div>
       )}

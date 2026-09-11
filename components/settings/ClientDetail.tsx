@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setClientRole, setClientLead, setClientOwner } from "@/actions/org";
+import { Surface } from "@/components/ui/surface";
 
 type Person = { id: string; name: string };
 type Team = Record<string, unknown> | null;
@@ -61,7 +62,7 @@ export function ClientDetail({
         </p>
       )}
 
-      <section className="rounded-md border bg-card p-4 space-y-3">
+      <Surface as="section" className="space-y-3">
         <h2 className="text-sm font-medium">Team {pending && <span className="text-xs text-muted-foreground">· saving…</span>}</h2>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -106,10 +107,10 @@ export function ClientDetail({
             );
           })}
         </div>
-      </section>
+      </Surface>
 
       {salesforce && (
-        <section className="rounded-md border bg-card p-4">
+        <Surface as="section">
           <h2 className="mb-1 text-sm font-medium">From Salesforce</h2>
           <p className="mb-3 text-xs text-muted-foreground">
             Read-only. Change these in Salesforce; they refresh on the next sync.
@@ -147,7 +148,7 @@ export function ClientDetail({
               </div>
             ))}
           </dl>
-        </section>
+        </Surface>
       )}
     </div>
   );

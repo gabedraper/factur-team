@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createSequence } from "@/actions/sequences";
 import { FIELD } from "@/lib/field-class";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * Start a new ladder.
@@ -33,7 +34,7 @@ export function NewSequence() {
   }
 
   return (
-    <div className="space-y-2 rounded-md border bg-card p-3">
+    <Surface pad="tight" className="space-y-2">
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
@@ -75,6 +76,6 @@ export function NewSequence() {
           Cancel
         </button>
       </div>
-    </div>
+    </Surface>
   );
 }

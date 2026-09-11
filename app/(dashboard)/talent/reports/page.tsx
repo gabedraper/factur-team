@@ -5,6 +5,7 @@ import { Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { Button } from "@/components/ui/button";
 import { money, onDay } from "@/lib/talent/format";
 import { STAGE_KIND, label } from "@/lib/talent/types";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function ReportsPage({
         <Button size="sm" variant="outline" type="submit">Apply</Button>
       </form>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-5">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <Stat label="Open jobs" value={jobs.length} />
         <Stat label="In pipeline" value={pipeline.length} />
         <Stat label="Placements" value={inWindow.length} />
@@ -69,7 +70,7 @@ export default async function ReportsPage({
           label="Fell off"
           value={placementRows.filter((p) => p.status === "fell_off").length}
         />
-      </div>
+      </Surface>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Activity">

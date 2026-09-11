@@ -6,6 +6,7 @@ import {
   type AgreementCounts, type ImportReport, type ExtractReport,
 } from "@/actions/pandadoc";
 import { Download, BookOpen } from "lucide-react";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * Bringing the signed agreements in, a batch at a time.
@@ -39,12 +40,12 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
           ["Unmatched", counts.unmatched + total.unmatched],
           ["Terms from contract", counts.with_terms + total.terms],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border bg-card px-3 py-2">
+          <Surface key={String(label)} pad="tight">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {label}
             </div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums">{value}</div>
-          </div>
+          </Surface>
         ))}
       </div>
 
@@ -99,7 +100,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
       </div>
 
       {reads.length > 0 && (
-        <div className="rounded-lg border bg-card text-sm">
+        <Surface pad="none" className="text-sm">
           {reads.map((r, i) => (
             <div key={i} className="border-b px-3 py-2 last:border-0">
               <span className="tabular-nums">
@@ -111,11 +112,11 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
               ))}
             </div>
           ))}
-        </div>
+        </Surface>
       )}
 
       {runs.length > 0 && (
-        <div className="rounded-lg border bg-card text-sm">
+        <Surface pad="none" className="text-sm">
           {runs.map((r, i) => (
             <div key={i} className="border-b px-3 py-2 last:border-0">
               <span className="tabular-nums">
@@ -129,7 +130,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
               )}
             </div>
           ))}
-        </div>
+        </Surface>
       )}
     </div>
   );

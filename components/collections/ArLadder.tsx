@@ -8,6 +8,7 @@ import {
   draftArToMe, holdInvoice, placeArStep, releaseInvoice, setArStepActive,
   type ArChase, type ArSettings, type ArStep,
 } from "@/actions/ar";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -96,7 +97,7 @@ export function ArLadder({
       </div>
 
       {/* The rungs, and which are live */}
-      <section className="rounded-lg border bg-card">
+      <Surface as="section" pad="none">
         <div className="flex items-center justify-between border-b px-3 py-2">
           <h2 className="text-sm font-semibold">Ladder</h2>
           <span className="text-xs text-muted-foreground">
@@ -144,7 +145,7 @@ export function ArLadder({
             );
           })}
         </div>
-      </section>
+      </Surface>
 
       {/* Ready */}
       <Queue
@@ -185,10 +186,10 @@ export function ArLadder({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-lg border bg-card px-3 py-2">
+    <Surface pad="tight">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${tone ?? ""}`}>{value}</div>
-    </div>
+    </Surface>
   );
 }
 
@@ -209,7 +210,7 @@ function Queue({
   onRelease?: (r: ArChase) => void;
 }) {
   return (
-    <section className="rounded-lg border bg-card">
+    <Surface as="section" pad="none">
       <div className="border-b px-3 py-2">
         <h2 className="text-sm font-semibold">{title}</h2>
       </div>
@@ -306,11 +307,11 @@ function Queue({
                   >
                     <FileText className="h-3 w-3" /> Statement
                   </a>
-                  <div className="rounded-md border bg-card px-3 py-2 text-sm font-medium">
+                  <Surface pad="tight" inset className="text-sm font-medium">
                     {r.rendered_subject}
-                  </div>
-                  <div
-                    className="prose prose-sm max-w-none rounded-md border bg-card px-3 py-2 dark:prose-invert"
+                  </Surface>
+                  <Surface
+                    pad="tight" inset className="prose prose-sm max-w-none dark:prose-invert"
                     dangerouslySetInnerHTML={{ __html: r.rendered_body }}
                   />
                   {r.internal_subject && (
@@ -324,6 +325,6 @@ function Queue({
           ))}
         </div>
       )}
-    </section>
+    </Surface>
   );
 }

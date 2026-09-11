@@ -4,6 +4,7 @@ import { listPlacements } from "@/lib/talent/queries";
 import { Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { money, onDay } from "@/lib/talent/format";
 import { INVOICE_STATUS, PLACEMENT_STATUS, label } from "@/lib/talent/types";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +40,12 @@ export default async function PlacementsPage({
     <div className="space-y-4 p-6">
       <PageHeader title="Placements" count={rows.length} />
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-4">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Fees" value={money(fees)} />
         <Stat label="Not invoiced" value={money(unbilled)} tint={unbilled ? "text-amber-600 dark:text-amber-400" : undefined} />
         <Stat label="Active" value={rows.filter((r) => r.status === "active").length} />
         <Stat label="Fell off" value={rows.filter((r) => r.status === "fell_off").length} />
-      </div>
+      </Surface>
 
       <div className="flex flex-wrap gap-1">
         {[{ key: "", label: "All" }, ...Object.entries(PLACEMENT_STATUS).map(([k, v]) => ({ key: k, label: v }))]

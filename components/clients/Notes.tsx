@@ -6,6 +6,7 @@ import {
 } from "@/actions/client-notes";
 import { FIELD } from "@/lib/field-class";
 import { Pin, PinOff, Trash2, Plus } from "lucide-react";
+import { Surface } from "@/components/ui/surface";
 
 function when(iso: string | null) {
   if (!iso) return "";
@@ -192,7 +193,7 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
       ))}
 
       {writing ? (
-        <div className="space-y-2 rounded-lg border bg-card px-3 py-2">
+        <Surface pad="tight" className="space-y-2">
           <textarea
             autoFocus
             rows={3}
@@ -225,7 +226,7 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
               </button>
             </span>
           </div>
-        </div>
+        </Surface>
       ) : (
         <button
           onClick={() => setWriting(true)}

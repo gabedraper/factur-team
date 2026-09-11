@@ -9,6 +9,7 @@ import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel
 import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
 import { listClientsForSelf, listRolesForSelf } from "@/actions/self-service";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface, surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function SettingsPage() {
         <PageHeader title="Settings" />
       </div>
 
-      <section className="rounded-md border bg-card p-4 space-y-3">
+      <Surface as="section" className="space-y-3">
         <h2 className="text-sm font-medium">You</h2>
         <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
           <dt className="text-muted-foreground">Name</dt>
@@ -99,21 +100,21 @@ export default async function SettingsPage() {
           clients={myClients}
           canAssignRestricted={canAssignRestricted}
         />
-      </section>
+      </Surface>
 
-      <section className="rounded-md border bg-card p-4 space-y-3">
+      <Surface as="section" className="space-y-3">
         <h2 className="text-sm font-medium">Appearance</h2>
         <ThemePanel />
-      </section>
+      </Surface>
 
       {canPreview && (
-        <section className="rounded-md border bg-card p-4 space-y-3">
+        <Surface as="section" className="space-y-3">
           <h2 className="text-sm font-medium">Preview</h2>
           <PreviewPanel
             people={people}
             currentMemberId={previewMember}
           />
-        </section>
+        </Surface>
       )}
 
       {canManage && (
@@ -121,7 +122,7 @@ export default async function SettingsPage() {
           <h2 className="text-sm font-medium">Administration</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Link href="/settings/people"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">People</span>
@@ -131,7 +132,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/roles"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Roles &amp; permissions</span>
@@ -142,7 +143,7 @@ export default async function SettingsPage() {
             </Link>
             {canAdminTalent && (
               <Link href="/settings/talent"
-                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                    className={`${surface({ interactive: true })} flex items-start gap-3`}>
                 <Contact className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>
                   <span className="block text-sm font-medium">Talent</span>
@@ -153,7 +154,7 @@ export default async function SettingsPage() {
               </Link>
             )}
             <Link href="/integrations"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Plug className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Integrations</span>
@@ -163,7 +164,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/agreements"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Signed agreements</span>
@@ -173,7 +174,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/dialpad"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Dialpad</span>
@@ -183,7 +184,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/design"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Palette className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Design reference</span>
@@ -193,7 +194,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/performance"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Performance</span>
@@ -203,7 +204,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/agents"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Agents</span>
@@ -213,7 +214,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/nps"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Gauge className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">NPS</span>
@@ -224,7 +225,7 @@ export default async function SettingsPage() {
             </Link>
             {canEditSequences && (
               <Link href="/settings/sequences"
-                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                    className={`${surface({ interactive: true })} flex items-start gap-3`}>
                 <MailWarning className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>
                   <span className="block text-sm font-medium">Sequences</span>
@@ -236,7 +237,7 @@ export default async function SettingsPage() {
             )}
             {canEditWeights && (
               <Link href="/admin/weights"
-                    className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                    className={`${surface({ interactive: true })} flex items-start gap-3`}>
                 <SlidersHorizontal className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>
                   <span className="block text-sm font-medium">Scoring Weights</span>
@@ -247,7 +248,7 @@ export default async function SettingsPage() {
               </Link>
             )}
             <Link href="/settings/clients"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Clients</span>
@@ -257,7 +258,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/teams"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Pods</span>
@@ -267,7 +268,7 @@ export default async function SettingsPage() {
               </span>
             </Link>
             <Link href="/settings/services"
-                  className="flex items-start gap-3 rounded-md border bg-card p-4 hover:bg-accent transition-colors">
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Layers className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>
                 <span className="block text-sm font-medium">Services</span>

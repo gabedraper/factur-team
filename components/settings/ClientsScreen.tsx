@@ -7,6 +7,7 @@ import type { ClientRow, TeamRow, MemberRow } from "@/lib/org";
 import { effectiveTeamLeadId } from "@/lib/team-lead";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { CompanyLogo } from "@/components/ui/thumbnail";
+import { Surface } from "@/components/ui/surface";
 
 export function ClientsScreen({
   clients, teams, members,
@@ -123,7 +124,7 @@ export function ClientsScreen({
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -187,7 +188,7 @@ export function ClientsScreen({
             )}
           </tbody>
         </table>
-      </div>
+      </Surface>
 
       <p className="text-xs text-muted-foreground">
         Coverage is set here, not on the pod — a client has exactly one owner, and the pod screen

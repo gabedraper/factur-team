@@ -16,6 +16,7 @@ import { Avatar, Chip, Empty, Panel, Stat, Tabs } from "@/components/talent/bits
 import { ago, onDay, place } from "@/lib/talent/format";
 import { CANDIDATE_STATUS, PERSON_TYPE, RECOMMENDATION, label } from "@/lib/talent/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -135,13 +136,13 @@ export default async function PersonPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card px-4 py-3 sm:grid-cols-5">
+      <Surface pad="tight" className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <Stat label="Readiness" value={person.readiness_score ?? "—"} />
         <Stat label="In pipeline" value={pipelines.filter((p) => p.status === "active").length} />
         <Stat label="Activity" value={activities.length} />
         <Stat label="Last touched" value={ago(person.last_activity_at)} />
         <Stat label="Added" value={onDay(person.created_at)} />
-      </div>
+      </Surface>
 
       <Tabs tabs={tabs} active={tab} base={`/talent/people/${person.id}`} />
 

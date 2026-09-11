@@ -8,6 +8,7 @@ import {
   markAchRun, setCollectMethod, unmarkAchRun,
   type CollectMethod, type InvoiceRow,
 } from "@/actions/ar-register";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -156,7 +157,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
         />
       )}
 
-      <section className="rounded-lg border bg-card">
+      <Surface as="section" pad="none">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
           <div className="flex flex-wrap gap-1">
             {FILTERS.map((f) => (
@@ -235,7 +236,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
             </div>
           </div>
         </div>
-      </section>
+      </Surface>
     </div>
   );
 }
@@ -244,11 +245,11 @@ function Stat({ label, value, sub, tone }: {
   label: string; value: string; sub?: string; tone?: string;
 }) {
   return (
-    <div className="rounded-lg border bg-card px-3 py-2">
+    <Surface pad="tight">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${tone ?? ""}`}>{value}</div>
       {sub && <div className="text-xs tabular-nums text-muted-foreground">{sub}</div>}
-    </div>
+    </Surface>
   );
 }
 
@@ -259,7 +260,7 @@ function AchPanel({ title, rows, pending, action }: {
   action: (r: InvoiceRow) => React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border bg-card">
+    <Surface as="section" pad="none">
       <div className="border-b px-3 py-2">
         <h2 className="text-sm font-semibold">{title}</h2>
       </div>
@@ -280,6 +281,6 @@ function AchPanel({ title, rows, pending, action }: {
           </div>
         ))}
       </div>
-    </section>
+    </Surface>
   );
 }

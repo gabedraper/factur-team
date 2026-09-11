@@ -8,86 +8,41 @@
   "app/(dashboard)/clients/[clientId]/leads/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/clients/[clientId]/page.tsx": {
-    "card-recipe": 4
-  },
   "app/(dashboard)/clients/results/[clientId]/page.tsx": {
     "bare-table": 1
   },
   "app/(dashboard)/integrations/page.tsx": {
-    "bare-table": 5,
-    "card-recipe": 1
+    "bare-table": 5
   },
   "app/(dashboard)/opportunities/my/[clientId]/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/settings/page.tsx": {
-    "card-recipe": 18
-  },
-  "app/(dashboard)/settings/sequences/page.tsx": {
-    "card-recipe": 1
-  },
   "app/(dashboard)/talent/campaigns/[campaignId]/page.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "app/(dashboard)/talent/campaigns/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/talent/companies/[companyId]/page.tsx": {
-    "card-recipe": 1
-  },
   "app/(dashboard)/talent/companies/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/talent/deals/page.tsx": {
-    "card-recipe": 1
-  },
   "app/(dashboard)/talent/jobs/[jobId]/page.tsx": {
-    "bare-table": 2,
-    "card-recipe": 1
+    "bare-table": 2
   },
   "app/(dashboard)/talent/jobs/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/talent/page.tsx": {
-    "card-recipe": 4
-  },
   "app/(dashboard)/talent/people/[personId]/page.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "app/(dashboard)/talent/pipeline/page.tsx": {
     "bare-table": 1
   },
   "app/(dashboard)/talent/placements/page.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "app/(dashboard)/talent/reports/page.tsx": {
-    "bare-table": 2,
-    "card-recipe": 1
-  },
-  "app/(dashboard)/work/[slug]/page.tsx": {
-    "card-recipe": 1
-  },
-  "app/(dashboard)/work/browse/[containerId]/page.tsx": {
-    "card-recipe": 2
-  },
-  "app/(dashboard)/work/browse/page.tsx": {
-    "card-recipe": 1
-  },
-  "app/(dashboard)/work/page.tsx": {
-    "card-recipe": 4
-  },
-  "app/portal/[token]/page.tsx": {
-    "card-recipe": 1
-  },
-  "components/clients/AgreementPanel.tsx": {
-    "card-recipe": 2
-  },
-  "components/clients/BillingSummary.tsx": {
-    "card-recipe": 1
+    "bare-table": 2
   },
   "components/clients/ContactsPanel.tsx": {
     "bare-table": 1
@@ -96,15 +51,10 @@
     "bare-table": 1
   },
   "components/clients/HealthTable.tsx": {
-    "bare-table": 1,
-    "card-recipe": 2
+    "bare-table": 1
   },
   "components/clients/MarketReport.tsx": {
-    "bare-table": 1,
-    "card-recipe": 2
-  },
-  "components/clients/Notes.tsx": {
-    "card-recipe": 1
+    "bare-table": 1
   },
   "components/clients/NpsPanel.tsx": {
     "bare-table": 1
@@ -115,34 +65,17 @@
   "components/clients/ServicePeriods.tsx": {
     "bare-table": 1
   },
-  "components/collections/ArLadder.tsx": {
-    "card-recipe": 5
-  },
-  "components/collections/Board.tsx": {
-    "card-recipe": 1
-  },
-  "components/collections/InvoiceRegister.tsx": {
-    "card-recipe": 3
-  },
   "components/data/CompaniesSearch.tsx": {
     "bare-table": 1
   },
   "components/data/PeopleSearch.tsx": {
     "bare-table": 1
   },
-  "components/gaib/chat-reach.tsx": {
-    "card-recipe": 1
-  },
   "components/nps/NpsDashboard.tsx": {
-    "bare-table": 3,
-    "card-recipe": 5
-  },
-  "components/nps/NpsQueue.tsx": {
-    "card-recipe": 2
+    "bare-table": 3
   },
   "components/nps/NpsReadiness.tsx": {
-    "bare-table": 1,
-    "card-recipe": 3
+    "bare-table": 1
   },
   "components/pipeline/TargetAccounts.tsx": {
     "bare-table": 1
@@ -151,60 +84,34 @@
     "bare-table": 1
   },
   "components/sequences/AddContacts.tsx": {
-    "bare-table": 1,
-    "card-recipe": 4
-  },
-  "components/sequences/NewSequence.tsx": {
-    "card-recipe": 1
-  },
-  "components/sequences/SequenceBuilder.tsx": {
-    "card-recipe": 6
+    "bare-table": 1
   },
   "components/sequences/SequenceDetail.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
-  },
-  "components/sequences/SequenceList.tsx": {
-    "card-recipe": 1
-  },
-  "components/settings/AgreementImport.tsx": {
-    "card-recipe": 3
-  },
-  "components/settings/ClientDetail.tsx": {
-    "card-recipe": 2
+    "bare-table": 1
   },
   "components/settings/ClientRoleDrift.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "components/settings/ClientsScreen.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "components/settings/CodingRules.tsx": {
     "bare-table": 1
   },
   "components/settings/GoogleCheck.tsx": {
-    "bare-table": 2,
-    "card-recipe": 2
+    "bare-table": 2
   },
   "components/settings/PageUsageTable.tsx": {
     "bare-table": 1
   },
   "components/settings/PeopleTable.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   },
   "components/settings/QuickbooksLinks.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
-  },
-  "components/settings/RolesScreen.tsx": {
-    "card-recipe": 2
+    "bare-table": 1
   },
   "components/settings/SalesforceMatchScreen.tsx": {
-    "bare-table": 1,
-    "card-recipe": 2
+    "bare-table": 1
   },
   "components/settings/SelfServicePanel.tsx": {
     "bare-table": 1
@@ -212,17 +119,8 @@
   "components/settings/ServicesScreen.tsx": {
     "bare-table": 1
   },
-  "components/settings/TeamsScreen.tsx": {
-    "card-recipe": 3
-  },
   "components/settings/VoiceNumbers.tsx": {
     "bare-table": 1
-  },
-  "components/talent/JobForm.tsx": {
-    "card-recipe": 2
-  },
-  "components/talent/PersonPicker.tsx": {
-    "card-recipe": 1
   },
   "components/talent/SettingsPanels.tsx": {
     "bare-table": 1
@@ -230,11 +128,7 @@
   "components/timelines/TimelineBoard.tsx": {
     "bare-table": 1
   },
-  "components/work/ClientWorkPanel.tsx": {
-    "card-recipe": 1
-  },
   "components/work/ListView.tsx": {
-    "bare-table": 1,
-    "card-recipe": 1
+    "bare-table": 1
   }
 }

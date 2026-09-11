@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { workSequence, type AudienceRow, type SequenceRow } from "@/actions/sequence-audience";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * Who is in a sequence, and the two ways to work whatever is due.
@@ -86,7 +87,7 @@ export function SequenceDetail({
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -130,7 +131,7 @@ export function SequenceDetail({
             )}
           </tbody>
         </table>
-      </div>
+      </Surface>
     </div>
   );
 }

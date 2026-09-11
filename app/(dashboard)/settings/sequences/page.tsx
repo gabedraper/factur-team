@@ -5,6 +5,7 @@ import { myPermissions } from "@/lib/org";
 import { createServiceClient } from "@/lib/supabase/server";
 import { NewSequence } from "@/components/sequences/NewSequence";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function SequencesPage() {
         actions={<>{perms.has("org.manage") && <div className="ml-auto"><NewSequence /></div>}</>}
       />
 
-      <div className="overflow-hidden rounded-md border bg-card">
+      <Surface pad="none" className="overflow-hidden">
         {rows.map((s) => (
           <Link
             key={s.slug}
@@ -52,7 +53,7 @@ export default async function SequencesPage() {
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           </Link>
         ))}
-      </div>
+      </Surface>
     </div>
   );
 }

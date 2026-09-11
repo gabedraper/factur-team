@@ -7,6 +7,7 @@ import {
 } from "@/actions/client-agreement";
 import { FIELD } from "@/lib/field-class";
 import { FileText, Pencil } from "lucide-react";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -116,7 +117,7 @@ export function AgreementPanel({
         </p>
       )}
 
-      <div className="rounded-lg border bg-card">
+      <Surface pad="none">
         <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
           <span className="text-xs uppercase tracking-wide text-muted-foreground">
             Agreement
@@ -262,9 +263,9 @@ export function AgreementPanel({
             )}
           </div>
         )}
-      </div>
+      </Surface>
 
-      <div className="rounded-lg border bg-card">
+      <Surface pad="none">
         <div className="border-b px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
           KPIs per month
         </div>
@@ -291,7 +292,7 @@ export function AgreementPanel({
             </div>
           ))}
         </div>
-      </div>
+      </Surface>
     </div>
   );
 }

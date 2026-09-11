@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addToSequence } from "@/actions/sequence-audience";
 import { parseCsv, type Candidate } from "@/lib/sequences/audience";
+import { Surface, surface } from "@/components/ui/surface";
 
 /**
  * Pick where the people come from, then look at them before anybody is added.
@@ -83,7 +84,7 @@ export function AddContacts({
       <div className="space-y-3">
         <button
           onClick={() => load(contacts, "contacts")}
-          className="block w-full rounded-md border bg-card px-4 py-3 text-left hover:bg-muted"
+          className={`${surface({ pad: "tight", interactive: true })} block w-full text-left`}
         >
           <span className="block font-medium">Contacts in the app</span>
           <span className="block text-sm text-muted-foreground">
@@ -91,7 +92,7 @@ export function AddContacts({
           </span>
         </button>
 
-        <label className="block cursor-pointer rounded-md border bg-card px-4 py-3 hover:bg-muted">
+        <label className={`${surface({ pad: "tight", interactive: true })} block cursor-pointer`}>
           <span className="block font-medium">CSV upload</span>
           <span className="block text-sm text-muted-foreground">
             Any file with a column of email addresses
@@ -107,12 +108,12 @@ export function AddContacts({
           />
         </label>
 
-        <div className="rounded-md border bg-card px-4 py-3 opacity-60">
+        <Surface pad="tight" className="opacity-60">
           <span className="block font-medium">Salesforce list or report</span>
           <span className="block text-sm text-muted-foreground">
             Needs a Salesforce connection the app does not have yet
           </span>
-        </div>
+        </Surface>
 
         {error && (
           <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
@@ -171,7 +172,7 @@ export function AddContacts({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-md border bg-card">
+      <Surface pad="none" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -215,7 +216,7 @@ export function AddContacts({
             )}
           </tbody>
         </table>
-      </div>
+      </Surface>
     </div>
   );
 }

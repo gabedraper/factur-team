@@ -6,6 +6,7 @@ import {
   type Invitation, type Settings,
 } from "@/actions/nps-sequence";
 import RichTextEditor from "@/components/rich-text-editor";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * Who is due a survey email, and the wording that would go out.
@@ -86,7 +87,7 @@ export function NpsQueue({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-2 rounded-md border bg-card p-4">
+      <Surface className="flex flex-wrap items-end gap-2">
         <label className="text-xs text-muted-foreground">
           Campaign
           <input
@@ -112,7 +113,7 @@ export function NpsQueue({
         >
           Build invitations
         </button>
-      </div>
+      </Surface>
 
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
@@ -132,7 +133,7 @@ export function NpsQueue({
           const d = draft(r);
           const isOpen = open === key(r);
           return (
-            <div key={key(r)} className="rounded-md border bg-card">
+            <Surface key={key(r)} pad="none">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3">
                 <span className="rounded-md border px-1.5 py-0.5 text-xs tabular-nums">
                   Step {r.step_position}
@@ -184,7 +185,7 @@ export function NpsQueue({
                   </button>
                 </div>
               )}
-            </div>
+            </Surface>
           );
         })}
 

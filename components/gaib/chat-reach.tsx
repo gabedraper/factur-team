@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, MessageSquare, MessageSquareOff } from "lucide-react";
 import { openChatWith, type ChatReach } from "@/actions/gaib-admin";
+import { Surface } from "@/components/ui/surface";
 
 /*
  * Who Gaib can reach in Google Chat, and the button that fixes the rest.
@@ -42,7 +43,7 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
   }
 
   return (
-    <div className="space-y-3 rounded-md border bg-card p-4">
+    <Surface className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-medium">Google Chat</h2>
         <span className="text-xs text-muted-foreground">
@@ -172,6 +173,6 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
           {f.name}: {f.why}
         </p>
       ))}
-    </div>
+    </Surface>
   );
 }

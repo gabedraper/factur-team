@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createTeam, renameTeam, setTeamActive, setMemberTeam, setPodManager } from "@/actions/org";
 import type { TeamRow, MemberRow } from "@/lib/org";
+import { Surface, surface } from "@/components/ui/surface";
 
 export function TeamsScreen({
   teams, members,
@@ -38,7 +39,7 @@ export function TeamsScreen({
         </p>
       )}
 
-      <section className="rounded-md border bg-card p-4">
+      <Surface as="section">
         <h2 className="mb-2 text-sm font-medium">New pod</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -55,7 +56,7 @@ export function TeamsScreen({
             Create pod
           </button>
         </div>
-      </section>
+      </Surface>
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium">
@@ -63,11 +64,11 @@ export function TeamsScreen({
         </h2>
 
         {pods.length === 0 && (
-          <p className="rounded-md border bg-card p-4 text-sm text-muted-foreground">No pods yet.</p>
+          <p className={`${surface()} text-sm text-muted-foreground`}>No pods yet.</p>
         )}
 
         {pods.map((pod) => (
-          <div key={pod.id} className={`rounded-md border bg-card p-4 space-y-3 ${pod.active ? "" : "opacity-60"}`}>
+          <Surface key={pod.id} className={`space-y-3 ${pod.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm font-medium"
@@ -136,7 +137,7 @@ export function TeamsScreen({
                 )}
               </div>
             </div>
-          </div>
+          </Surface>
         ))}
       </section>
     </div>

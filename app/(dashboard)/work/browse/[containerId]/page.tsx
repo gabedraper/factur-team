@@ -8,6 +8,7 @@ import { KIND_LABEL } from "@/lib/work-tree";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -81,16 +82,16 @@ export default async function ContainerPage({
 
       {isList ? (
         items.length === 0 ? (
-          <div className="rounded-lg border bg-card px-3 py-3">
+          <Surface pad="tight">
             <p className="text-sm text-muted-foreground">No tasks mirrored.</p>
-          </div>
+          </Surface>
         ) : (
           <ListView items={items} />
         )
       ) : (
-        <div className="rounded-lg border bg-card px-3 py-1">
+        <Surface pad="tight">
           <ContainerRows items={kids} />
-        </div>
+        </Surface>
       )}
     </div>
   );

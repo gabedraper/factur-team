@@ -6,6 +6,7 @@ import { WorkRows } from "@/components/work/WorkRows";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +48,13 @@ export default async function ProcessBoardPage({
         />
       </div>
 
-      <div className="rounded-lg border bg-card px-3 py-1">
+      <Surface pad="tight">
         {items.length === 0 ? (
           <p className="py-3 text-sm text-muted-foreground">Nothing open.</p>
         ) : (
           <WorkRows items={items} show={{ client: true }} />
         )}
-      </div>
+      </Surface>
     </div>
   );
 }

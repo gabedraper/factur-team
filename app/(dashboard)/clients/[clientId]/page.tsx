@@ -24,6 +24,7 @@ import { ClientDetail } from "@/components/settings/ClientDetail";
 import { myPermissions, getClientDetail, listMembers } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { Surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -127,9 +128,9 @@ export default async function ClientPage({
           </Section>
 
           <Section title="Contacts">
-            <div className="rounded-md border bg-card p-3">
+            <Surface pad="tight">
               <ContactsPanel clientId={clientId} contacts={contacts} canEdit={admin} />
-            </div>
+            </Surface>
           </Section>
 
           {detail && (
@@ -147,25 +148,25 @@ export default async function ClientPage({
 
           {roleHistory && (
             <Section title="Who has been on this client">
-              <div className="rounded-md border bg-card p-3">
+              <Surface pad="tight">
                 <HistoryPanel spans={roleHistory} />
-              </div>
+              </Surface>
             </Section>
           )}
 
           {nps && (
             <Section title="NPS">
-              <div className="rounded-md border bg-card p-3">
+              <Surface pad="tight">
                 <NpsPanel clientId={clientId} entries={nps} canEdit={admin} />
-              </div>
+              </Surface>
             </Section>
           )}
 
           {smsTarget && (
             <Section title="Collections texting">
-              <div className="rounded-md border bg-card p-3">
+              <Surface pad="tight">
                 <CollectionsSmsPanel clientId={clientId} target={smsTarget} />
-              </div>
+              </Surface>
             </Section>
           )}
         </div>

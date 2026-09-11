@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CampaignSummary, LeadSummary, PersonSummary, ResponseDetail } from "@/lib/nps/reporting";
+import { Surface } from "@/components/ui/surface";
 
 const BAND_LABEL: Record<ResponseDetail["band"], string> = {
   promoter: "Promoter",
@@ -18,10 +19,10 @@ const BAND_CLASS: Record<ResponseDetail["band"], string> = {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-card px-3 py-2">
+    <Surface pad="tight">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="text-xl font-semibold tabular-nums">{value}</div>
-    </div>
+    </Surface>
   );
 }
 
@@ -142,7 +143,7 @@ export function NpsDashboard({
       </div>
 
       {byLead.length > 0 && (
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <Surface pad="none" className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -193,7 +194,7 @@ export function NpsDashboard({
               })}
             </tbody>
           </table>
-        </div>
+        </Surface>
       )}
 
       {byPerson.length > 0 && (
@@ -207,7 +208,7 @@ export function NpsDashboard({
               <option key={f} value={f}>{PERSON_ROLE_LABEL[f]}</option>
             ))}
           </select>
-          <div className="overflow-x-auto rounded-md border bg-card">
+          <Surface pad="none" className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -245,12 +246,12 @@ export function NpsDashboard({
                 })}
               </tbody>
             </table>
-          </div>
+          </Surface>
         </div>
       )}
 
       {campaigns.length > 0 && (
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <Surface pad="none" className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -281,7 +282,7 @@ export function NpsDashboard({
               ))}
             </tbody>
           </table>
-        </div>
+        </Surface>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -330,7 +331,7 @@ export function NpsDashboard({
 
       <div className="space-y-2">
         {shown.map((r) => (
-          <div key={r.id} className="rounded-md border bg-card px-4 py-3">
+          <Surface key={r.id} pad="tight">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-2xl font-semibold tabular-nums">{r.score}</span>
               <span className={`text-xs uppercase tracking-wide ${BAND_CLASS[r.band]}`}>
@@ -360,7 +361,7 @@ export function NpsDashboard({
             {r.comment && (
               <p className="mt-2 whitespace-pre-line text-sm">{r.comment}</p>
             )}
-          </div>
+          </Surface>
         ))}
         {shown.length === 0 && (
           <p className="text-sm text-muted-foreground">Nothing matches those filters.</p>

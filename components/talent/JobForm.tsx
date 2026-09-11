@@ -9,6 +9,7 @@ import {
   EMPLOYMENT_TYPE, JOB_KIND, JOB_STATUS, REMOTE, SALARY_PERIOD,
   type Member, type Workflow,
 } from "@/lib/talent/types";
+import { Surface } from "@/components/ui/surface";
 
 type CompanyOption = { id: string; name: string };
 
@@ -95,7 +96,7 @@ export function JobForm({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-4">
+      <Surface className="grid grid-cols-2 gap-3">
         <Row label="Title" wide>
           <input
             className={input}
@@ -276,9 +277,9 @@ export function JobForm({
             </Row>
           </>
         )}
-      </div>
+      </Surface>
 
-      <div className="grid gap-3 rounded-lg border bg-card p-4">
+      <Surface className="grid gap-3">
         <Row label="Description" wide>
           <textarea
             className={`${input} min-h-32`}
@@ -300,7 +301,7 @@ export function JobForm({
             onChange={(e) => set("internal_notes", e.target.value)}
           />
         </Row>
-      </div>
+      </Surface>
 
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">

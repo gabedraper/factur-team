@@ -5,6 +5,7 @@ import { currentMemberId } from "@/lib/org";
 import { todayFor } from "@/lib/talent/queries";
 import { Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
 import { ago, onDay, onDayTime } from "@/lib/talent/format";
+import { surface } from "@/components/ui/surface";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export default async function TalentTodayPage() {
       <PageHeader title="Today" />
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <Link href="/talent/tasks" className="rounded-lg border bg-card px-4 py-3 hover:bg-accent/40">
+        <Link href="/talent/tasks" className={surface({ pad: "tight", interactive: true })}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             <ListTodo className="h-3.5 w-3.5" />
             Tasks
@@ -43,7 +44,7 @@ export default async function TalentTodayPage() {
           )}
         </Link>
 
-        <Link href="/talent/schedule" className="rounded-lg border bg-card px-4 py-3 hover:bg-accent/40">
+        <Link href="/talent/schedule" className={surface({ pad: "tight", interactive: true })}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             <CalendarClock className="h-3.5 w-3.5" />
             Interviews
@@ -52,7 +53,7 @@ export default async function TalentTodayPage() {
           <div className="text-xs text-muted-foreground">next 7 days</div>
         </Link>
 
-        <Link href="/talent/pipeline?stale=1" className="rounded-lg border bg-card px-4 py-3 hover:bg-accent/40">
+        <Link href="/talent/pipeline?stale=1" className={surface({ pad: "tight", interactive: true })}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             <AlertTriangle className="h-3.5 w-3.5" />
             Going cold
@@ -63,7 +64,7 @@ export default async function TalentTodayPage() {
           <div className="text-xs text-muted-foreground">7 days untouched</div>
         </Link>
 
-        <Link href="/talent/applications" className="rounded-lg border bg-card px-4 py-3 hover:bg-accent/40">
+        <Link href="/talent/applications" className={surface({ pad: "tight", interactive: true })}>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             <Inbox className="h-3.5 w-3.5" />
             Applications

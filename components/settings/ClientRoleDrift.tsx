@@ -1,5 +1,6 @@
 import type { RoleDrift } from "@/lib/org";
 import Link from "next/link";
+import { Surface } from "@/components/ui/surface";
 
 /**
  * The app is the source of truth for who covers a client, so this reports
@@ -16,7 +17,7 @@ export function ClientRoleDrift({ rows }: { rows: RoleDrift[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border bg-card">
+    <Surface pad="none" className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -43,6 +44,6 @@ export function ClientRoleDrift({ rows }: { rows: RoleDrift[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </Surface>
   );
 }

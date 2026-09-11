@@ -12,6 +12,7 @@ import { AGEING_TONE } from "@/lib/ageing-colours";
 import { PauseCircle, PlayCircle, Send, FileText, FlaskConical, Download } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
 import { CompanyLogo } from "@/components/ui/thumbnail";
+import { Surface } from "@/components/ui/surface";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -385,7 +386,7 @@ export function Board({
         const w = wording(r);
 
         return (
-          <div key={key(r)} className="rounded-lg border bg-card">
+          <Surface key={key(r)} pad="none">
             <div className={`${COLS} min-h-11 px-3 py-2 text-sm`}>
               {/* Truncated rather than wrapped: a long name must not push the
                   money out of line with the row above it. */}
@@ -542,7 +543,7 @@ export function Board({
                 />
               </div>
             )}
-          </div>
+          </Surface>
         );
       })}
     </div>
