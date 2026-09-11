@@ -168,7 +168,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               <input
                 name="q"
                 defaultValue={q}
-                placeholder="Search contacts by name or email"
+                placeholder="Search by opportunity, company or contact"
                 aria-label="Search opportunities"
                 className="w-full rounded-md bg-card px-3 py-1.5 text-body outline-none ring-ring focus-visible:ring-2"
               />

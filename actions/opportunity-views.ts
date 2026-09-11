@@ -87,11 +87,23 @@ export async function listOpportunities(input: {
      an embed selected as just its id while something filters another of its
      columns is the kind of thing that works until it doesn't. */
   const filterPaths = filters.map((f) => FIELD_BY_KEY.get(f.field)!.path);
-  /* The search box is a filter on the contact, so its embed is inner-joined
-     like any other filtered one. Left, PostgREST nulls the contact and keeps
-     the row, so a search hands back the whole view with a blank Contact column
-     rather than the one person being looked for. */
-  if (input.search) { needed.contacts = true; inner.contacts = true; needed.accounts = true; }
+  /*
+   * The search box. PostgREST cannot or() across a table and its embed, so a
+   * term is answered by one side or the other: an email only ever lives on the
+   * contact, and everything else is answered by the opportunity's own name,
+   * which is "Account - Client - Contact" and so already holds the company and
+   * the person being looked for.
+   */
+  const search = (input.search ?? "").replace(/[%,()]/g, " ").trim();
+  const searchEmail = search.includes("@");
+  /* Word by word, because the three parts of a name are not always in the order
+     somebody types them, and a pasted name has to find its record either way. */
+  const searchWords = searchEmail ? [] : search.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+  /* An email searched on the contact makes its embed inner-joined like any
+     other filtered one. Left, PostgREST nulls the contact and keeps the row, so
+     a search hands back the whole view with a blank Contact column rather than
+     the one person being looked for. */
+  if (searchEmail) { needed.contacts = true; inner.contacts = true; needed.accounts = true; }
 
   const cols = new Set<string>(["id"]);
   const embedCols: Record<string, Set<string>> = {
@@ -171,16 +183,9 @@ export async function listOpportunities(input: {
     }
   }
 
-  /* One box across the two things people search by name. */
-  if (input.search) {
-    const s = input.search.replace(/[%,()]/g, " ").trim();
-    if (s) {
-      q = q.or(
-        `first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%`,
-        { referencedTable: "crm_contacts" },
-      );
-    }
-  }
+  /* One box across the two things people search by. */
+  if (searchEmail) q = q.ilike("crm_contacts.email", `%${search}%`);
+  for (const w of searchWords) q = q.ilike("name", `%${w}%`);
 
   if (sortField) {
     const [head, col] = sortField.path.split(".");
