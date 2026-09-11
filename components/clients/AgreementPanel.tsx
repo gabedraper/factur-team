@@ -21,6 +21,20 @@ function onDay(date: string | null) {
   });
 }
 
+/** "1.5% per month after 30 days". Zero is a contract that says none accrues. */
+function interest(t: Partial<Terms> | null) {
+  const pct = t?.past_due_interest_pct;
+  if (pct === null || pct === undefined) return "—";
+  if (Number(pct) === 0) return "None";
+  const per = t?.past_due_interest_period ? ` per ${t.past_due_interest_period}` : "";
+  const after = t?.past_due_interest_after_days ? ` after ${t.past_due_interest_after_days} days` : "";
+  return `${pct}%${per}${after}`;
+}
+
+const INTEREST_KEYS = [
+  "past_due_interest_pct", "past_due_interest_period", "past_due_interest_after_days",
+] as const;
+
 /** Empty means "the contract does not say", which is not the same as nought. */
 function show(v: string | number | boolean | null | undefined, as?: "money" | "date") {
   if (v === null || v === undefined || v === "") return "—";
@@ -77,7 +91,13 @@ export function AgreementPanel({
   function saveTerms() {
     setProblem("");
     startTransition(async () => {
-      const res = await saveClientTerms(clientId, draft);
+      const changed = INTEREST_KEYS.some((k) => (draft[k] ?? null) !== (terms?.[k] ?? null));
+      const res = await saveClientTerms(
+        clientId,
+        changed
+          ? { ...draft, past_due_interest_clause: null, past_due_interest_agreement_id: null }
+          : draft
+      );
       if (!res.success) {
         setProblem(res.error ?? "Couldn't save that.");
         return;
@@ -203,6 +223,55 @@ export function AgreementPanel({
                 />
                 Auto renew
               </label>
+              <div className="text-xs sm:col-span-2">
+                <span className="text-muted-foreground">Past due interest</span>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={draft.past_due_interest_pct ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        past_due_interest_pct: e.target.value === "" ? null : Number(e.target.value),
+                      }))
+                    }
+                    className={`${FIELD} w-20 px-2 py-1 text-right text-sm`}
+                  />
+                  <span>% per</span>
+                  <select
+                    value={draft.past_due_interest_period ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        past_due_interest_period:
+                          e.target.value === "" ? null : (e.target.value as "month" | "year"),
+                      }))
+                    }
+                    className={`${FIELD} px-2 py-1 text-sm`}
+                  >
+                    <option value=""></option>
+                    <option value="month">month</option>
+                    <option value="year">year</option>
+                  </select>
+                  <span>after</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={draft.past_due_interest_after_days ?? ""}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        past_due_interest_after_days:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      }))
+                    }
+                    className={`${FIELD} w-16 px-2 py-1 text-right text-sm`}
+                  />
+                  <span>days</span>
+                </div>
+              </div>
             </div>
 
             {(["opt_outs", "other_terms"] as const).map((k) => (
@@ -248,6 +317,12 @@ export function AgreementPanel({
             <div className="flex justify-between gap-2">
               <span className="text-xs text-muted-foreground">Auto renew</span>
               <span className="text-right">{show(terms?.auto_renew)}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-xs text-muted-foreground">Past due interest</span>
+              <span className="text-right" title={terms?.past_due_interest_clause ?? undefined}>
+                {interest(terms)}
+              </span>
             </div>
             {terms?.opt_outs && (
               <div className="sm:col-span-2 lg:col-span-3">

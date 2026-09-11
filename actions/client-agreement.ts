@@ -21,6 +21,13 @@ export type Terms = {
   billing_contact_phone: string | null;
   opt_outs: string | null;
   other_terms: string | null;
+  /** As the contract states it: 1.5 with "month" is 1.5% a month. Zero means it says none. */
+  past_due_interest_pct: number | null;
+  past_due_interest_period: "month" | "year" | null;
+  past_due_interest_after_days: number | null;
+  /** The sentence it came from, verbatim. Cleared when someone changes the rate by hand. */
+  past_due_interest_clause: string | null;
+  past_due_interest_agreement_id: string | null;
   source: "manual" | "contract";
   extracted_at: string | null;
   updated_at: string | null;
