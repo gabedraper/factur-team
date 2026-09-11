@@ -102,3 +102,52 @@ export function SurfaceSkeleton({ lines = 3 }: { lines?: number }) {
     </div>
   );
 }
+
+/**
+ * A list page, whole: title, the row of view chips, then the table. For a
+ * route's loading.tsx, which Next shows the moment a link is clicked and swaps
+ * for the page when it has rendered -- so it matches the list shell's spacing
+ * exactly, or the page visibly lurches when the real one lands.
+ */
+export function PageSkeleton({
+  rows = 10,
+  cols = 5,
+  identity = false,
+  chips = true,
+  stats = 0,
+}: {
+  rows?: number;
+  cols?: number;
+  /** Company lists carry a logo in the first column; people lists do not. */
+  identity?: boolean;
+  /** The view chip row. Leave off on pages that have no saved views. */
+  chips?: boolean;
+  /** Figure tiles above the table, for pages that lead with totals. */
+  stats?: number;
+}) {
+  return (
+    <div className="space-y-4 p-section" aria-busy="true">
+      <Skeleton className="h-8 w-48" />
+      {chips && (
+        <div className="flex gap-1.5">
+          {[20, 28, 24, 32].map((w, i) => (
+            <Skeleton key={i} className="h-7 rounded-md" style={{ width: `${w * 4}px` }} />
+          ))}
+        </div>
+      )}
+      {stats > 0 && (
+        <div className="grid gap-3 sm:grid-cols-4">
+          {Array.from({ length: stats }).map((_, i) => (
+            <div key={i} className="space-y-2 rounded-md bg-card p-card-tight">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-24" />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="overflow-hidden rounded-md bg-card">
+        <TableSkeleton rows={rows} cols={cols} identity={identity} />
+      </div>
+    </div>
+  );
+}

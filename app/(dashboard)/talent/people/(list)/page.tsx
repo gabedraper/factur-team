@@ -3,7 +3,8 @@ import { Ban, Linkedin, Mail, Phone } from "lucide-react";
 import { requireTalent } from "@/lib/talent/access";
 import { listMembers, listPeople, searchResumes } from "@/lib/talent/queries";
 import { AddPerson } from "@/components/talent/AddPerson";
-import { Avatar, Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
+import { Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
+import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ago, place } from "@/lib/talent/format";
 import { PERSON_TYPE, label } from "@/lib/talent/types";
@@ -112,17 +113,16 @@ export default async function PeoplePage({
           {resumeHits.length === 0 ? <Empty>Nothing matched</Empty> : (
             <ul className="divide-y">
               {resumeHits.map((p) => (
-                <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <Avatar name={p.name} />
+                <li key={p.id} className="flex items-center gap-3 px-card py-cell-y">
                   <div className="min-w-0 flex-1">
                     <Link href={`/talent/people/${p.id}`} className="font-medium hover:underline">
                       {p.name}
                     </Link>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="truncate text-meta text-muted-foreground">
                       {[p.title, p.company_name, place(p.city, p.state)].filter(Boolean).join(" · ")}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{ago(p.last_activity_at)}</span>
+                  <span className="shrink-0 text-meta text-muted-foreground">{ago(p.last_activity_at)}</span>
                 </li>
               ))}
             </ul>
@@ -131,64 +131,58 @@ export default async function PeoplePage({
       ) : (
         <Panel>
           {people.length === 0 ? <Empty>Nobody here yet</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Name</th>
-                  <th className="px-4 py-2 font-medium">Company</th>
-                  <th className="px-4 py-2 font-medium">Location</th>
-                  <th className="px-4 py-2 font-medium">Type</th>
-                  <th className="px-4 py-2 text-right font-medium">Pipelines</th>
-                  <th className="px-4 py-2 text-right font-medium">Ready</th>
-                  <th className="px-4 py-2 font-medium">Last activity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {people.map((p) => (
-                  <tr key={p.id} className="hover:bg-accent/40">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar name={p.name} />
-                        <div className="min-w-0">
-                          <Link href={`/talent/people/${p.id}`} className="font-medium hover:underline">
-                            {p.name}
-                          </Link>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="truncate">{p.title ?? "—"}</span>
-                            {p.primary_email && <Mail className="h-3 w-3 shrink-0" aria-label="Has an email address" />}
-                            {p.primary_phone && <Phone className="h-3 w-3 shrink-0" aria-label="Has a phone number" />}
-                            {p.linkedin_url && <Linkedin className="h-3 w-3 shrink-0" aria-label="Has a LinkedIn profile" />}
-                            {p.do_not_contact && <Ban className="h-3 w-3 shrink-0 text-red-500" aria-label="Do not contact" />}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {p.company_id ? (
-                        <Link href={`/talent/companies/${p.company_id}`} className="hover:underline">
-                          {p.company}
+            <TableScroll>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Name</TH>
+                    <TH>Company</TH>
+                    <TH>Location</TH>
+                    <TH>Type</TH>
+                    <TH numeric>Pipelines</TH>
+                    <TH numeric>Ready</TH>
+                    <TH>Last activity</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {people.map((p) => (
+                    <TR key={p.id} interactive>
+                      {/* A people list: the name is the whole cell, no avatar. */}
+                      <TD>
+                        <Link href={`/talent/people/${p.id}`} className="font-medium hover:underline">
+                          {p.name}
                         </Link>
-                      ) : p.company ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{place(p.city, p.state)}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="flex flex-wrap gap-1">
-                        {p.person_types.map((t) => (
-                          <Chip key={t}>{label(PERSON_TYPE, t)}</Chip>
-                        ))}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {p.active_pipeline_count || "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {p.readiness_score ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{ago(p.last_activity_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <div className="flex items-center gap-1.5 text-meta text-muted-foreground">
+                          <span className="truncate">{p.title ?? "—"}</span>
+                          {p.primary_email && <Mail className="h-3 w-3 shrink-0" aria-label="Has an email address" />}
+                          {p.primary_phone && <Phone className="h-3 w-3 shrink-0" aria-label="Has a phone number" />}
+                          {p.linkedin_url && <Linkedin className="h-3 w-3 shrink-0" aria-label="Has a LinkedIn profile" />}
+                          {p.do_not_contact && <Ban className="h-3 w-3 shrink-0 text-destructive" aria-label="Do not contact" />}
+                        </div>
+                      </TD>
+                      <TD className="text-muted-foreground">
+                        {p.company_id ? (
+                          <Link href={`/talent/companies/${p.company_id}`} className="hover:underline">
+                            {p.company}
+                          </Link>
+                        ) : p.company ?? "—"}
+                      </TD>
+                      <TD className="text-muted-foreground">{place(p.city, p.state)}</TD>
+                      <TD>
+                        <span className="flex flex-wrap gap-1">
+                          {p.person_types.map((t) => (
+                            <Chip key={t}>{label(PERSON_TYPE, t)}</Chip>
+                          ))}
+                        </span>
+                      </TD>
+                      <TD numeric>{p.active_pipeline_count || "—"}</TD>
+                      <TD numeric className="text-muted-foreground">{p.readiness_score ?? "—"}</TD>
+                      <TD className="text-muted-foreground">{ago(p.last_activity_at)}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </TableScroll>
           )}
         </Panel>
       )}

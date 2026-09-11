@@ -3,6 +3,8 @@ import { Surface } from "@/components/ui/surface";
 import { Table, TableScroll, THead, TBody, TR, TH, TD, TDIdentity } from "@/components/ui/table";
 import { Skeleton, TableSkeleton, SurfaceSkeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Field, FieldSet } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { CompanyLogo, Avatar } from "@/components/ui/thumbnail";
 import { Suspense } from "react";
 import { ListDemo } from "./ListDemo";
@@ -110,6 +112,33 @@ export default async function DesignPage() {
         <NoMatches noun="clients" activeFilters={["Stage: Quote sent"]} clearHref="#" />
         <LoadFailed noun="clients" detail="statement timeout" />
       </div>
+
+      <Surface title="Form">
+        <div className="grid max-w-md gap-2">
+          <Field label="Client name">
+            <Input defaultValue="Acme Precision" />
+          </Field>
+          <Field label="Website" hint="Used to find the logo.">
+            <Input placeholder="acme.com" />
+          </Field>
+          <Field label="Monthly fee" error="Enter an amount in dollars.">
+            <Input defaultValue="twelve" aria-invalid />
+          </Field>
+          <FieldSet label="Billing">
+            <div className="flex gap-4 text-body">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="billing" defaultChecked /> Monthly
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="billing" /> Quarterly
+              </label>
+            </div>
+          </FieldSet>
+          <div>
+            <Button>Save client</Button>
+          </div>
+        </div>
+      </Surface>
 
       <Surface title="People">
         <div className="flex flex-wrap items-center gap-4">

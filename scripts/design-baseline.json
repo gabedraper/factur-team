@@ -227,9 +227,6 @@
     "card-recipe": 1,
     "hand-h1": 2
   },
-  "app/(dashboard)/talent/people/page.tsx": {
-    "bare-table": 1
-  },
   "app/(dashboard)/talent/pipeline/page.tsx": {
     "bare-table": 1
   },

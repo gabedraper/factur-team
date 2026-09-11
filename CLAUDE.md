@@ -29,7 +29,8 @@ value is how that starts again.
 | Any list of records | `<Table>` + `<TableScroll>` | a bare `<table>` |
 | A company logo | `<CompanyLogo>` | `<img className="rounded-full">` |
 | A person | `<Avatar>` | as above |
-| Loading | `<Skeleton>` / `<TableSkeleton>` | a spinner |
+| A form field | `<Field label hint error>` | a label beside the box, or none |
+| Loading | `<Skeleton>` / `<TableSkeleton>` / `<PageSkeleton>` | a spinner |
 
 ### The build enforces this
 
@@ -203,8 +204,13 @@ goes unnoticed for a week.
 ### Forms
 
 Label above the field, always. It survives any width, reads fastest, and needs
-no fixed label column. Every field reserves space for its error message so the
-form does not jump when validation fires.
+no fixed label column. Use `<Field>` from `@/components/ui/field` — it does
+all of this, and `<FieldSet>` does it for a group of radios or checkboxes.
+
+The line under every field is always reserved: it holds the hint, and the
+error replaces the hint when validation fires, so the form never jumps. Stack
+fields with `gap-2`; the reserved line supplies the rest. Pass `aria-invalid`
+to the input when there is an error and its border turns red on its own.
 
 ### Loading
 
@@ -213,7 +219,14 @@ the real content, so nothing jumps when data lands — `<TableSkeleton>` takes
 row and column counts for exactly that reason.
 
 Only give a view a skeleton if it is actually slow. One that flashes for 80ms
-is worse than none.
+is worse than none. A slow page gets a `loading.tsx` that returns
+`<PageSkeleton>` with the page's real row and column counts.
+
+**A `loading.tsx` covers every page nested under it.** Put one beside
+`clients/page.tsx` and a single client's page flashes a list-shaped
+placeholder. When a list has record pages under it, move the list into a
+`(list)` folder — brackets keep it out of the URL — and put the loading file
+there. `clients`, `talent/people` and `opportunities/my` already do this.
 
 Skeletons are `aria-hidden`; the container carries `aria-busy`. A screen reader
 should hear the content, not a description of grey boxes.
