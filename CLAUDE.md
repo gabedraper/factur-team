@@ -25,12 +25,16 @@ value is how that starts again.
 | Need | Use | Never |
 |---|---|---|
 | A block of content | `<Surface>` | `rounded-md border bg-card p-4` |
-| Top of a page | `<PageHeader>` | a hand-styled `<h1>` |
+| A box inside a card | `<Surface inset>` | a border to make it show |
+| A link or label that is a card | `className={surface({ interactive: true })}` | the recipe typed out |
+| Top of a page | `<PageHeader title back actions count>` | a hand-styled `<h1>`, a hand-drawn "< Back" link |
 | Any list of records | `<Table>` + `<TableScroll>` | a bare `<table>` |
 | A company logo | `<CompanyLogo>` | `<img className="rounded-full">` |
 | A person | `<Avatar>` | as above |
 | A form field | `<Field label hint error>` | a label beside the box, or none |
 | Loading | `<Skeleton>` / `<TableSkeleton>` / `<PageSkeleton>` | a spinner |
+| View chips on a list | `<ViewSwitcher>` (+ `lib/list-views`) | filters in component state |
+| Table or board | `<RendererSwitch>` | a toggle held in state |
 
 ### The build enforces this
 
@@ -50,30 +54,23 @@ while you work rather than waiting for the commit to tell you.
 A fresh clone needs the hook turned on once:
 `git config core.hooksPath .githooks`.
 
-It is a ratchet, not a ban. About 280 old violations are recorded in
-`scripts/design-baseline.json`; a file there may keep its count but not raise
-it, and a file not there may have none. So new work must comply, and old work
-can only get better.
+**There are no old violations.** The whole app was moved over on 2026-09-10
+and `scripts/design-baseline.json` is `{}`. It began as a ratchet — old files
+could keep their count — but with nothing left to grandfather it is simply a
+ban: any violation anywhere fails the build.
 
 - `npm run lint` — run the check.
-- `npm run design:report` — what is left, per rule.
-- `npm run design:update` — **after** retrofitting a file, lock the lower count
-  in so it cannot creep back. Never run it to make a failure go away: that
-  accepts the new violation into the baseline, which is the one thing the
-  check exists to stop.
-
-  **Not in a dirty tree.** It rescans the whole working folder, and another
-  session's uncommitted edits live in that folder too — so it would bake their
-  unfinished work into the baseline. Check `git status` first; if files you
-  did not touch are modified, lower your own entries in
-  `scripts/design-baseline.json` by hand instead.
+- `npm run design:report` — totals per rule. They should all be 0.
+- **Never add to the baseline.** `npm run design:update` exists for the
+  ratchet; running it now would only accept a new violation, which is the one
+  thing the check exists to stop. Fix the code or mark a real exception.
 - A genuine exception is marked on the line, or the line above, with
-  `design-ok: <reason>`. The reason is required — `design-ok:` alone is ignored.
-  Current exceptions: the login page (single-theme by design) and the agreement
-  PDF frame (a PDF renders on white).
-
-If you are editing a file that already has old violations, moving it over is
-welcome — then run `design:update`.
+  `design-ok: <reason>` (in JSX, `{/* design-ok: <reason> */}`). The reason is
+  required — `design-ok:` alone is ignored. The ones that exist: the login page
+  (single-theme by design), the agreement PDF frame (a PDF renders on white),
+  public pages outside the app shell (careers, portal, legal, the NPS form),
+  the centred error and no-access messages, titles printed over a course
+  cover image, and the timeline board's own table.
 
 ### Separation is colour, not lines
 
