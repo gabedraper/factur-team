@@ -194,5 +194,8 @@ export async function postTodaysTest(
     return { ok: false, reason: sent.reason };
   }
 
+  await db.from("gaib_room_tests").update({ thread_name: sent.threadName ?? null })
+    .eq("space_name", spaceName).eq("for_date", forDate);
+
   return { ok: true, track: track.name, subject: pick.subject };
 }

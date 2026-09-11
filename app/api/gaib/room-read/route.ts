@@ -8,7 +8,8 @@ import { readRoom } from "@/lib/gaib/room-reader";
  *
  * Until a Workspace admin approves chat.app.messages.readonly this does
  * nothing but record, per room, that it is waiting -- Google refuses the
- * listing, and a refusal is not an empty room.
+ * listing, and a refusal is not an empty room. For an app that is already
+ * installed, approving a new scope means reinstalling it.
  */
 
 export const maxDuration = 300;

@@ -95,15 +95,15 @@ async function drainOutbox(): Promise<{ sent: number; failed: number }> {
   const db = createServiceClient();
   const { data } = await db
     .from("gaib_outbox")
-    .select("id,space_name,text")
+    .select("id,space_name,text,thread_name")
     .is("sent_at", null)
     .order("queued_at", { ascending: true })
     .limit(10);
 
   let sent = 0;
   let failed = 0;
-  for (const m of (data ?? []) as { id: number; space_name: string; text: string }[]) {
-    const r = await postToSpace(m.space_name, m.text);
+  for (const m of (data ?? []) as { id: number; space_name: string; text: string; thread_name: string | null }[]) {
+    const r = await postToSpace(m.space_name, m.text, m.thread_name);
     if (r.ok) {
       await db.from("gaib_outbox").update({ sent_at: new Date().toISOString(), error: null }).eq("id", m.id);
       sent++;

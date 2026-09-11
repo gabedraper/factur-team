@@ -6,7 +6,8 @@ import { actAs, findMemberByEmail } from "./act-as";
 import { defaultAgent, myRoleIds, mayUse } from "./agents";
 import { runTurn, type TurnImage } from "./chat";
 import {
-  listRoomMessages, postToSpace, postGifToSpace, downloadAttachment, type RoomMessage,
+  listRoomMessages, postToSpace, postGifToSpace, downloadAttachment, threadContext,
+  type RoomMessage, type ThreadContext,
 } from "./chat-post";
 import { lookUpPeople } from "@/lib/google/people";
 
@@ -37,7 +38,12 @@ const Gate = z.object({
   reason: z.string().describe("A few words on why, for the log."),
 });
 
-async function shouldRespond(text: string, todaysTest: string | null, hasImage: boolean): Promise<z.infer<typeof Gate>> {
+async function shouldRespond(
+  text: string,
+  todaysTest: string | null,
+  hasImage: boolean,
+  thread: ThreadContext | null
+): Promise<z.infer<typeof Gate>> {
   const client = new Anthropic();
   try {
     const res = await client.messages.parse({
@@ -50,14 +56,16 @@ async function shouldRespond(text: string, todaysTest: string | null, hasImage: 
         "1. reports something broken, confusing, slow or missing in the app;\n" +
         "2. asks a question about the app or how to do something at work that an assistant could answer;\n" +
         "3. is someone reporting back on today's test;\n" +
-        "4. is a genuinely big win or an absurd failure worth a one-line reaction.\n" +
+        "4. is a genuinely big win or an absurd failure worth a one-line reaction;\n" +
+        "5. answers, pushes back on, or follows up something Gaib said or asked earlier in the thread.\n" +
         "Say no to people talking to each other, logistics, greetings, thanks, jokes between colleagues, " +
-        "and anything addressed to a specific person. When unsure, say no -- a quiet assistant is " +
-        "fine, a noisy one gets muted.",
+        "and anything addressed to a specific person other than Gaib. When unsure, say no -- a quiet " +
+        "assistant is fine, a noisy one gets muted.",
       messages: [{
         role: "user",
         content:
           (todaysTest ? `Today's test in this room: ${todaysTest}\n\n` : "") +
+          (thread ? `Earlier in this thread (lines from Gaib are the assistant):\n${thread.text}\n\n` : "") +
           `Message${hasImage ? " (with a screenshot)" : ""}: ${text || "(no text)"}`,
       }],
     });
@@ -119,7 +127,12 @@ async function roomSession(userId: string, agentId: string, space: string): Prom
 }
 
 /** Answer one message in the room, as the person who sent it. */
-async function answer(space: string, m: RoomMessage, email: string): Promise<boolean> {
+async function answer(
+  space: string,
+  m: RoomMessage,
+  email: string,
+  thread: ThreadContext | null
+): Promise<boolean> {
   const person = await findMemberByEmail(email);
   if (!person) return false;
   const agent = await defaultAgent();
@@ -150,7 +163,7 @@ async function answer(space: string, m: RoomMessage, email: string): Promise<boo
       channel: "google_chat",
       pageUrl: null,
       person: { name: person.fullName ?? email, role: null },
-      room: { name: space },
+      room: { name: space, thread: thread?.text ?? null },
       images,
     })) {
       if (e.type === "text") said.push(e.text);
@@ -218,7 +231,8 @@ export async function readRoom(space: string, lookupAs: string): Promise<ReadRes
       continue;
     }
 
-    const gate = await shouldRespond(m.text, test, m.attachments.length > 0);
+    const thread = m.threadName ? await threadContext(space, m.threadName, m.name) : null;
+    const gate = await shouldRespond(m.text, test, m.attachments.length > 0, thread);
     await db.from("gaib_room_seen")
       .update({ decided: `${gate.respond ? "respond" : "quiet"}: ${gate.reason}` })
       .eq("message_name", m.name);
@@ -227,7 +241,7 @@ export async function readRoom(space: string, lookupAs: string): Promise<ReadRes
     const email = await emailFor(m.senderUser, lookupAs);
     if (!email) continue;
 
-    if (await answer(space, m, email)) answered++;
+    if (await answer(space, m, email, thread)) answered++;
   }
 
   await db.from("gaib_rooms")

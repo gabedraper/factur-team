@@ -4,7 +4,7 @@ import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
 import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn, type TurnImage } from "@/lib/gaib/chat";
-import { postToSpace, downloadAttachment, postGifToSpace } from "@/lib/gaib/chat-post";
+import { postToSpace, downloadAttachment, postGifToSpace, threadContext } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 import { gifsEnabled } from "@/lib/gaib/gif";
 import { vary } from "@/lib/gaib/vary";
@@ -314,6 +314,9 @@ async function answer(event: ChatEvent) {
     const inRoom = !event.isDirectMessage;
     await rememberWho(event, inRoom);
     const sessionId = await conversationFor(person.userId, agent.id, event.spaceName, inRoom);
+    const thread = inRoom && event.spaceName && event.threadName
+      ? await threadContext(event.spaceName, event.threadName, event.messageName)
+      : null;
 
     const turn = runTurn({
       agent,
@@ -326,7 +329,7 @@ async function answer(event: ChatEvent) {
       channel: "google_chat",
       pageUrl: null,
       person: { name: person.fullName ?? acting.session.email, role: null },
-      room: inRoom ? { name: event.spaceName } : null,
+      room: inRoom ? { name: event.spaceName, thread: thread?.text ?? null } : null,
     });
 
     /*

@@ -98,7 +98,11 @@ export type TurnInput = {
    * Set when the conversation is a shared space rather than one person and
    * Gaib. Changes what it may reach for -- see GROUP_SAFE_TOOLS.
    */
-  room?: { name: string | null } | null;
+  room?: {
+    name: string | null;
+    /** What others said earlier in the thread, "Name: text" per line. */
+    thread?: string | null;
+  } | null;
   /**
    * Screenshots sent with this message. Seen on this turn only -- see the note
    * where they are used.
@@ -377,6 +381,10 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
         inRoom ? ROOM_NOTE : "",
         inRoom ? await todaysTest(input.room?.name ?? null) : "",
         `Today is ${new Date().toISOString().slice(0, 10)}.`,
+        inRoom && input.room?.thread
+          ? "\n\nEarlier in this thread, oldest first (lines from Gaib are things you said). " +
+            "Read it so you answer the conversation, not just the last message:\n" + input.room.thread
+          : "",
       ].filter(Boolean).join(" "),
     },
   ];

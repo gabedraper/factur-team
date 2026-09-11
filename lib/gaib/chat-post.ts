@@ -25,7 +25,7 @@ import { readKey } from "./service-key";
 const SCOPE = "https://www.googleapis.com/auth/chat.bot";
 
 export type PostResult =
-  | { ok: true; messageName: string }
+  | { ok: true; messageName: string; threadName?: string | null }
   | { ok: false; reason: string };
 
 function credentials(): { client_email: string; private_key: string } | null {
@@ -123,6 +123,68 @@ export async function listRoomMessages(
   };
 }
 
+export type ThreadContext = {
+  /** The thread so far, one "Name: text" line each, oldest first. */
+  text: string;
+  /** Whether Gaib has already said something in it. */
+  gaibSpoke: boolean;
+};
+
+/**
+ * What has been said in a thread before the message Gaib is answering.
+ *
+ * Without it he answered each message as if it arrived alone: tagged halfway
+ * down a thread, he had no idea what the thread was about, and a reply to
+ * something he had just said read to him as a fresh remark. Needs the same
+ * room-wide scope as the reader, so until that is granted this returns null
+ * and he answers as before.
+ */
+export async function threadContext(
+  spaceName: string,
+  threadName: string,
+  /** The message being answered, left out so it is not read twice. */
+  excludeMessage?: string | null
+): Promise<ThreadContext | null> {
+  const access = await token(READ_ROOM_SCOPE).catch(() => null);
+  if (!access) return null;
+
+  try {
+    const filter = encodeURIComponent(`thread.name = ${threadName}`);
+    const res = await fetch(
+      `https://chat.googleapis.com/v1/${spaceName}/messages?pageSize=20&orderBy=createTime%20desc&filter=${filter}`,
+      { headers: { Authorization: `Bearer ${access}` } }
+    );
+    if (!res.ok) return null;
+
+    const body = (await res.json()) as {
+      messages?: { name: string; text?: string; sender?: { name?: string; type?: string } }[];
+    };
+    const messages = (body.messages ?? [])
+      .filter((m) => m.name !== excludeMessage && m.text?.trim())
+      .reverse();
+    if (messages.length === 0) return null;
+
+    // App-authenticated listings carry the sender's id and never their name.
+    const ids = [...new Set(messages.map((m) => m.sender?.name).filter((n): n is string => !!n))];
+    const { data: people } = await createServiceClient()
+      .from("gaib_chat_people").select("chat_user,display_name").in("chat_user", ids);
+    const names = new Map(
+      ((people ?? []) as { chat_user: string; display_name: string | null }[])
+        .map((p) => [p.chat_user, p.display_name ?? "Someone"])
+    );
+
+    const lines = messages.map((m) => {
+      const who = m.sender?.type === "BOT" ? "Gaib" : names.get(m.sender?.name ?? "") ?? "Someone";
+      const said = m.text!.trim().replace(/\s+/g, " ");
+      return `${who}: ${said.length > 400 ? `${said.slice(0, 400)}…` : said}`;
+    });
+
+    return { text: lines.join("\n"), gaibSpoke: messages.some((m) => m.sender?.type === "BOT") };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Put a message in a space.
  *
@@ -156,8 +218,8 @@ export async function postToSpace(
     if (!res.ok) {
       return { ok: false, reason: `Chat ${res.status}: ${(await res.text()).slice(0, 200)}` };
     }
-    const body = (await res.json()) as { name?: string };
-    return { ok: true, messageName: body.name ?? "(unnamed)" };
+    const body = (await res.json()) as { name?: string; thread?: { name?: string } };
+    return { ok: true, messageName: body.name ?? "(unnamed)", threadName: body.thread?.name ?? null };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "unknown error" };
   }
@@ -193,14 +255,21 @@ export { readKey } from "./service-key";
 export async function downloadAttachment(
   resourceName: string
 ): Promise<{ ok: true; data: string } | { ok: false; reason: string }> {
-  const access = await token().catch(() => null);
-  if (!access) return { ok: false, reason: "no posting key" };
-
+  /*
+   * chat.bot covers pictures in messages that were sent to Gaib. One in a
+   * room message nobody tagged him in needs the room-wide scope, so that is
+   * tried when the first is refused.
+   */
+  const mediaUrl = `https://chat.googleapis.com/v1/media/${resourceName}?alt=media`;
   try {
-    const res = await fetch(
-      `https://chat.googleapis.com/v1/media/${resourceName}?alt=media`,
-      { headers: { Authorization: `Bearer ${access}` } }
-    );
+    let res: Response | null = null;
+    for (const scope of [SCOPE, READ_ROOM_SCOPE]) {
+      const access = await token(scope).catch(() => null);
+      if (!access) continue;
+      res = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${access}` } });
+      if (res.ok) break;
+    }
+    if (!res) return { ok: false, reason: "no posting key" };
     if (!res.ok) return { ok: false, reason: `Chat ${res.status}` };
 
     const bytes = Buffer.from(await res.arrayBuffer());
@@ -241,8 +310,8 @@ export async function postGifToSpace(
       }),
     });
     if (!res.ok) return { ok: false, reason: `Chat ${res.status}: ${(await res.text()).slice(0, 200)}` };
-    const body = (await res.json()) as { name?: string };
-    return { ok: true, messageName: body.name ?? "(unnamed)" };
+    const body = (await res.json()) as { name?: string; thread?: { name?: string } };
+    return { ok: true, messageName: body.name ?? "(unnamed)", threadName: body.thread?.name ?? null };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "unknown error" };
   }

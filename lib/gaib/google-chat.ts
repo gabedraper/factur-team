@@ -62,6 +62,8 @@ export type ChatEvent = {
   spaceName: string | null;
   /** Set for a message in a thread, so the reply lands in the same thread. */
   threadName: string | null;
+  /** This message's own name, so reading its thread can leave it out. */
+  messageName: string | null;
   /** True for a one-to-one chat with Gaib rather than a group space. */
   isDirectMessage: boolean;
   /**
@@ -243,6 +245,7 @@ function read(body: unknown): ChatEvent | null {
     text,
     spaceName: space?.name ?? null,
     threadName: message?.thread?.name ?? null,
+    messageName: (message as { name?: string } | undefined)?.name ?? null,
     isDirectMessage: spaceType === "DM" || spaceType === "DIRECT_MESSAGE" || Boolean(space?.singleUserBotDm),
     images: (message?.attachment ?? [])
       .filter((a) => a.source !== "DRIVE_FILE" && a.attachmentDataRef?.resourceName)
