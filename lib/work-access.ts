@@ -4,36 +4,68 @@ import { previewedMember } from "@/lib/org";
 import { getAuthedUser } from "@/lib/supabase/session";
 
 /**
- * The ClickUp spaces the current viewer may not see.
+ * What the current viewer may see of the ClickUp mirror.
  *
- * The mirror reads through one personal token that sees every private space,
- * so access has to be re-applied here or it simply does not exist: fifteen of
- * twenty-three spaces are private over there, Finance and People Ops among
- * them. Every read path asks this first.
+ * The mirror reads through one admin token that sees everything, so access
+ * has to be re-applied here or it does not exist. The decision itself is made
+ * in SQL, by work_access_for, from what ClickUp says about each list:
  *
- * Returns the set to hide rather than to show, because the common case -- a
- * viewer who is in every private space they could have work in, or a space
- * list with nothing private -- is then an empty set that costs nothing.
+ *   ClickUp owner or admin -> everything
+ *   anyone else            -> the lists ClickUp lets them open
+ *   no ClickUp account     -> public spaces only
  *
- * Respects role preview: previewing someone has to narrow what you see to what
- * they would see, or the preview is lying about exactly the thing it exists to
- * check.
+ * It comes back as the sets to hide, in two tiers: whole spaces, then folders
+ * and lists inside the spaces the viewer does see. The first tier keeps the
+ * second small -- a median of one list -- which is what makes it safe to pass
+ * as a query filter.
+ *
+ * Respects role preview: a preview that does not narrow access is lying about
+ * exactly the thing it exists to check.
  */
-export const hiddenSpaceIds = cache(async (): Promise<string[]> => {
-  const { email } = await viewer();
+export type Access = {
+  seeAll: boolean;
+  hiddenSpaces: string[];
+  hiddenFolders: string[];
+  hiddenLists: string[];
+};
 
-  /* No identity means no private space membership, so everything private is
-   * hidden -- never the other way round. */
-  const { data } = await createServiceClient().rpc("work_hidden_space_ids", { p_email: email ?? "" });
-  return ((data ?? []) as unknown[]).map((r) =>
-    typeof r === "string" ? r : String((r as Record<string, unknown>).work_hidden_space_ids ?? "")
-  ).filter(Boolean);
+/* Nobody signed in, or an answer that did not arrive: every private space is
+ * hidden. Access fails shut, never open. */
+const SHUT = async (): Promise<Access> => {
+  const { data } = await createServiceClient()
+    .from("work_containers").select("clickup_id").eq("kind", "space").eq("private", true);
+  return {
+    seeAll: false,
+    hiddenSpaces: ((data ?? []) as { clickup_id: string }[]).map((r) => r.clickup_id),
+    hiddenFolders: [],
+    hiddenLists: [],
+  };
+};
+
+export const access = cache(async (): Promise<Access> => {
+  const { memberId } = await viewer();
+  if (!memberId) return SHUT();
+
+  const { data, error } = await createServiceClient()
+    .rpc("work_access_for", { p_member: memberId }).single();
+  if (error || !data) return SHUT();
+
+  const row = data as {
+    see_all: boolean; hidden_spaces: string[] | null;
+    hidden_folders: string[] | null; hidden_lists: string[] | null;
+  };
+  return {
+    seeAll: row.see_all,
+    hiddenSpaces: row.hidden_spaces ?? [],
+    hiddenFolders: row.hidden_folders ?? [],
+    hiddenLists: row.hidden_lists ?? [],
+  };
 });
 
 /**
  * Who is asking, as far as the mirror is concerned: the previewed person when
  * previewing, otherwise the signed-in one. One answer for every access check,
- * so a grant and a space membership can never be judged for different people.
+ * so a grant and a list membership can never be judged for different people.
  */
 export const viewer = cache(async (): Promise<{ memberId: string | null; email: string | null }> => {
   const previewing = await previewedMember();
@@ -62,16 +94,41 @@ export function inList(ids: string[]): string {
   return `(${ids.map((id) => `"${id.replace(/"/g, "")}"`).join(",")})`;
 }
 
-/**
- * Drop rows in spaces the viewer may not see from a work_items or
- * work_containers query. Applied in the query, not after it, so a limit cannot
- * be spent on rows that are then thrown away.
- *
- * `column` is the space id column: space_clickup_id on items and on folders and
- * lists, clickup_id on the spaces themselves.
- */
-export function withoutHidden<Q>(query: Q, hidden: string[], column = "space_clickup_id"): Q {
-  if (hidden.length === 0) return query;
-  return (query as unknown as { not: (c: string, op: string, v: string) => Q })
-    .not(column, "in", inList(hidden));
+type Notable<Q> = { not: (column: string, op: string, value: string) => Q };
+
+function exclude<Q>(query: Q, column: string, ids: string[]): Q {
+  return ids.length ? (query as unknown as Notable<Q>).not(column, "in", inList(ids)) : query;
 }
+
+/**
+ * Drop what the viewer may not see from a query, in the query -- not after it,
+ * so a page of results is never spent on rows that are then thrown away.
+ *
+ *   "items"      work_items: hidden spaces, then hidden lists
+ *   "spaces"     work_containers where kind = 'space'
+ *   "containers" folders and lists: hidden spaces, then hidden folders/lists
+ */
+export function withoutHidden<Q>(query: Q, a: Access, target: "items" | "spaces" | "containers" = "items"): Q {
+  if (a.seeAll) return query;
+  if (target === "spaces") return exclude(query, "clickup_id", a.hiddenSpaces);
+  const q = exclude(query, "space_clickup_id", a.hiddenSpaces);
+  return target === "items"
+    ? exclude(q, "clickup_list_id", a.hiddenLists)
+    : exclude(q, "clickup_id", [...a.hiddenFolders, ...a.hiddenLists]);
+}
+
+/** Whether one container is hidden -- for a page that has already fetched it. */
+export function isHidden(a: Access, c: { kind: string; clickup_id: string; space_clickup_id: string | null }): boolean {
+  if (a.seeAll) return false;
+  const space = c.kind === "space" ? c.clickup_id : c.space_clickup_id;
+  if (!space || a.hiddenSpaces.includes(space)) return true;
+  return a.hiddenFolders.includes(c.clickup_id) || a.hiddenLists.includes(c.clickup_id);
+}
+
+/**
+ * The earlier name, kept so code written against it keeps working. It now
+ * returns the full Access rather than a list of space ids, and withoutHidden
+ * reads it the same way -- so a caller written for space-level filtering gets
+ * list-level filtering without changing a line. Prefer access() in new code.
+ */
+export const hiddenSpaceIds = access;

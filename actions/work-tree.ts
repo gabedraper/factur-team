@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
-import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
+import { access, withoutHidden, isHidden } from "@/lib/work-access";
 import { everyRow, inSlices } from "@/lib/supabase/every-row.mjs";
 import type { Container, ContainerKind, Crumb, ListItem, FieldValue } from "@/lib/work-tree";
 import type { WorkItem } from "@/lib/work";
@@ -72,8 +72,8 @@ export async function spaces(): Promise<Container[]> {
       .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
       .eq("kind", "space")
       .eq("archived", false),
-    await hiddenSpaceIds(),
-    "clickup_id"
+    await access(),
+    "spaces"
   )
     .order("orderindex", { nullsFirst: false })
     .order("name");
@@ -95,7 +95,8 @@ export async function children(clickupId: string): Promise<Container[]> {
       .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
       .eq("parent_clickup_id", clickupId)
       .eq("archived", false),
-    await hiddenSpaceIds()
+    await access(),
+    "containers"
   )
     .order("kind", { ascending: true })
     .order("orderindex", { nullsFirst: false })
@@ -125,9 +126,7 @@ export async function containerWithPath(
 
   /* Not found, rather than forbidden: a page that says "you may not see this"
    * has already told you it exists. */
-  const hidden = await hiddenSpaceIds();
-  const spaceId = row.kind === "space" ? row.clickup_id : row.space_clickup_id;
-  if (!spaceId || hidden.includes(spaceId)) return null;
+  if (isHidden(await access(), row)) return null;
   const [node] = await decorate([row]);
 
   /* At most two hops -- list to folder to space -- so a loop is cheaper and
@@ -160,7 +159,7 @@ export async function listItems(listClickupId: string): Promise<ListItem[]> {
   const db = createServiceClient();
 
   /* Paged: the largest lists run past the API's 1,000-row page. */
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
   const data = await everyRow(() =>
     withoutHidden(
       db.from("work_items")

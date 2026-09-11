@@ -113,9 +113,48 @@ async function syncPeople() {
   for (const r of loose) console.log(`    ${r.username ?? "?"} <${r.email ?? "no email"}>`);
 }
 
+/*
+ * Lists that tasks point at but the tree never recorded -- archived lists, in
+ * the first case found: the tree walk asks ClickUp for unarchived lists only,
+ * while tasks keep the list they were filed in. With no container a list has no
+ * access rows, and its tasks fall outside every access decision. Each is looked
+ * up and recorded, archived or not.
+ */
+async function backfillOrphanLists() {
+  const known = new Set((await everyRow(() =>
+    db.from("work_containers").select("clickup_id").eq("kind", "list").order("clickup_id"))).map((r) => r.clickup_id));
+  const referenced = new Set((await everyRow(() =>
+    db.from("work_items").select("clickup_list_id").not("clickup_list_id", "is", null).order("clickup_list_id")))
+    .map((r) => r.clickup_list_id));
+  const orphans = [...referenced].filter((id) => !known.has(id));
+  if (orphans.length === 0) return;
+
+  console.log(`\n${orphans.length} lists referenced by tasks but missing from the tree`);
+  for (const id of orphans) {
+    try {
+      const l = await get(`/list/${id}`);
+      /* A folderless list comes back inside a hidden folder; its real parent is
+       * the space. */
+      const parent = l.folder && !l.folder.hidden ? l.folder.id : l.space?.id;
+      await db.from("work_containers").upsert({
+        clickup_id: String(l.id), kind: "list", name: l.name ?? "(unnamed)",
+        parent_clickup_id: parent ? String(parent) : null,
+        space_clickup_id: l.space?.id ? String(l.space.id) : null,
+        orderindex: Number.isFinite(Number(l.orderindex)) ? Number(l.orderindex) : null,
+        task_count: Number(l.task_count ?? 0), archived: Boolean(l.archived),
+        statuses: l.statuses ?? null, synced_at: new Date().toISOString(),
+      }, { onConflict: "clickup_id" });
+      console.log(`  + ${l.name}${l.archived ? " (archived)" : ""}`);
+    } catch (e) {
+      console.log(`  ! ${id}: ${e.message}`);
+    }
+  }
+}
+
 async function syncLists() {
   const lists = await everyRow(() => {
-    let q = db.from("work_containers").select("clickup_id,name").eq("kind", "list").eq("archived", false).order("clickup_id");
+    /* Archived lists included: their tasks are still in the mirror. */
+    let q = db.from("work_containers").select("clickup_id,name").eq("kind", "list").order("clickup_id");
     if (MISSING_ONLY) q = q.is("access_synced_at", null);
     return q;
   });
@@ -146,4 +185,7 @@ async function syncLists() {
 }
 
 await syncPeople();
-if (!PEOPLE_ONLY) await syncLists();
+if (!PEOPLE_ONLY) {
+  await backfillOrphanLists();
+  await syncLists();
+}

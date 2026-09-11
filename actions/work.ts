@@ -3,7 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions, previewedMemberId } from "@/lib/org";
 import { getAuthedUser } from "@/lib/supabase/session";
-import { hiddenSpaceIds, withoutHidden, viewer } from "@/lib/work-access";
+import { access, withoutHidden, viewer } from "@/lib/work-access";
 import { everyRow, inSlices } from "@/lib/supabase/every-row.mjs";
 import type { WorkItem, WorkGroup, SyncState } from "@/lib/work";
 import { PRIORITY_ORDER } from "@/lib/work";
@@ -97,7 +97,7 @@ async function mayView(): Promise<boolean> {
 export async function clientWork(clientId: string): Promise<WorkGroup[]> {
   if (!(await mayView())) return [];
 
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
   const { data } = await withoutHidden(
     createServiceClient()
       .from("work_items")
@@ -144,7 +144,7 @@ export async function myWork(): Promise<WorkItem[]> {
   const ids = mine.map((r) => r.work_item_id);
   if (ids.length === 0) return [];
 
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
   const rows = await inSlices(ids, async (slice) => {
     const { data } = await withoutHidden(
       db.from("work_items").select(SELECT).in("id", slice).in("status_type", ["open", "custom"]),
@@ -173,7 +173,7 @@ export async function processWork(slug: string): Promise<WorkItem[]> {
 
   /* Client Onboarding alone has 1,679 open tasks; a board capped at the API's
    * 1,000 would quietly lose the rest. */
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
   const processId = (process as { id: string }).id;
   const rows = await everyRow<Row>(() =>
     withoutHidden(
@@ -214,6 +214,15 @@ export async function syncState(): Promise<SyncState | null> {
   };
 }
 
+/* Counts that agree with what the viewer sees: hidden spaces and hidden lists
+ * both, or nothing hidden for an admin. */
+function countsByProcess(a: Awaited<ReturnType<typeof access>>) {
+  return createServiceClient().rpc("work_open_counts_by_process", {
+    p_hidden_spaces: a.seeAll ? [] : a.hiddenSpaces,
+    p_hidden_lists: a.seeAll ? [] : a.hiddenLists,
+  });
+}
+
 /** The processes that actually have open work, for the board picker. */
 export async function processesWithWork(): Promise<{ slug: string; name: string; open: number }[]> {
   if (!(await mayView())) return [];
@@ -223,7 +232,7 @@ export async function processesWithWork(): Promise<{ slug: string; name: string;
   const db = createServiceClient();
   const [{ data: processes }, { data: tallies }] = await Promise.all([
     db.from("work_processes").select("id,slug,name,position").eq("active", true).order("position"),
-    db.rpc("work_open_counts_by_process", { p_hidden_spaces: await hiddenSpaceIds() }),
+    countsByProcess(await access()),
   ]);
 
   const counts = new Map<string, number>(
@@ -305,7 +314,7 @@ export async function myBlocked(): Promise<Blocked[]> {
     clickup_id: string; title: string; clickup_url: string;
     status: string; status_type: string | null;
   };
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
   const blockers = await inSlices([...new Set(rows.map((r) => r.depends_on_clickup_id))], async (slice) => {
     const { data } = await withoutHidden(
       db.from("work_items").select("clickup_id,title,clickup_url,status,status_type").in("clickup_id", slice),

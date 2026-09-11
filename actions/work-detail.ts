@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
-import { hiddenSpaceIds, withoutHidden, grantedTaskIds } from "@/lib/work-access";
+import { access, withoutHidden, grantedTaskIds } from "@/lib/work-access";
 import { clickup } from "@/lib/clickup/api";
 import { displayValue } from "@/lib/clickup/fields.mjs";
 import type { TaskDetail, Person, RelatedTask, Comment, CommentSegment } from "@/lib/work-detail";
@@ -90,7 +90,7 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
   if (!perms.has("work.view") && !perms.has("org.manage")) return null;
 
   const db = createServiceClient();
-  const hidden = await hiddenSpaceIds();
+  const hidden = await access();
 
   const COLUMNS = `
     clickup_id, clickup_url, title, status, status_type, priority,
