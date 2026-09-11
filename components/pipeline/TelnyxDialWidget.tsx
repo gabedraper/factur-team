@@ -10,7 +10,7 @@ import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { Keypad } from "@/components/pipeline/Keypad";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber, getTelnyxVoiceToken, sendSms } from "@/actions/dialer";
-import { useCallTarget } from "@/components/work-panel/dialer-context";
+import { useCallTarget, usePlaceRequestedCall } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
 
 /*
@@ -133,14 +133,12 @@ export function TelnyxDialWidget() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!requestedCall) return;
-    void placeCall(requestedCall, { adHoc: false });
-    clearRequestedCall();
-    // placeCall/clearRequestedCall close over this render's state, which is
-    // what we want -- only requestedCall itself should trigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedCall]);
+  usePlaceRequestedCall({
+    target, release, requestedCall, clearRequestedCall,
+    live: callState === "dialing" || callState === "ringing",
+    place: (n) => void placeCall(n, { adHoc: false }),
+    refuse: setError,
+  });
 
   /**
    * overrideNumber comes from either the keypad (an arbitrary number, kept

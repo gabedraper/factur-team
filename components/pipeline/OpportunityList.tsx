@@ -11,6 +11,8 @@ import { Chip } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
 import { STAGE_GROUPS } from "@/lib/pipeline/picklists";
 import { progressTone } from "@/lib/pipeline/targets";
+import { toE164 } from "@/lib/phone";
+import { useDialer } from "@/components/work-panel/dialer-context";
 import type { ListField } from "@/lib/pipeline/list-views";
 
 /*
@@ -80,7 +82,40 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
   if (field.type === "picklist" && typeof v === "string" && v) {
     return <Chip colour={progressTone(v)}>{v}</Chip>;
   }
+  if (field.key === "contact_phone" && typeof v === "string" && v) {
+    return <PhoneCell row={row} value={v} />;
+  }
   return <span className="text-muted-foreground">{text(row, field)}</span>;
+}
+
+/*
+ * The number itself is the button. It dials as this opportunity -- the panel
+ * switches to this contact, and the call is tagged and logged against this
+ * record -- rather than as a bare number, which would leave the panel showing
+ * whoever was opened last and offer to log the call against them.
+ *
+ * toE164 decides what is dialable, the same as every other phone field:
+ * Salesforce numbers carry extensions, ".0" import artifacts and two numbers
+ * in one box, and those stay plain text rather than a button that fails.
+ */
+function PhoneCell({ row, value }: { row: Row; value: string }) {
+  const { callOpportunity } = useDialer();
+  const dialable = toE164(value);
+  if (!dialable) {
+    return <span className="text-muted-foreground" title="Not a dialable number">{value}</span>;
+  }
+  return (
+    <button
+      type="button"
+      title={`Call ${contactName(row) || dialable}`}
+      onClick={() =>
+        callOpportunity({ opportunityId: String(row.id), phoneNumber: value, contactName: contactName(row) })
+      }
+      className="tabular-nums text-primary underline-offset-2 hover:underline"
+    >
+      {value}
+    </button>
+  );
 }
 
 export function OpportunityTable({ rows, columns }: { rows: Row[]; columns: ListField[] }) {

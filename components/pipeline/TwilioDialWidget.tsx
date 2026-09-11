@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Panel, NotConnected, Chip, Empty } from "@/components/pipeline/bits";
 import { CallDispositionDialog } from "@/components/pipeline/CallDispositionDialog";
 import { claimOutboundNumber, getTwilioVoiceToken } from "@/actions/dialer";
-import { useCallTarget } from "@/components/work-panel/dialer-context";
+import { useCallTarget, usePlaceRequestedCall } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
 
 /*
@@ -88,14 +88,12 @@ export function TwilioDialWidget() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!requestedCall) return;
-    void placeCall(requestedCall);
-    clearRequestedCall();
-    // placeCall/clearRequestedCall close over this render's state, which is
-    // what we want -- only requestedCall itself should trigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestedCall]);
+  usePlaceRequestedCall({
+    target, release, requestedCall, clearRequestedCall,
+    live: callState === "dialing" || callState === "ringing",
+    place: (n) => void placeCall(n),
+    refuse: setError,
+  });
 
   /**
    * overrideNumber comes from something outside this panel asking to dial a
