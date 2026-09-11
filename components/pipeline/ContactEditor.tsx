@@ -17,13 +17,14 @@ import { toE164 } from "@/lib/phone";
  * panel doesn't own; wrong numbers get fixed in Salesforce.
  */
 export function ContactEditor({
-  opportunityId, contactName, phone, email, industry,
+  opportunityId, contactName, phone, email, industry, domain,
 }: {
   opportunityId: string;
   contactName: string;
   phone: string | null;
   email: string | null;
   industry: string | null;
+  domain: string | null;
 }) {
   // This is the Opportunity's own contact, so the call is tagged with it and
   // logged against it -- callOpportunity, not the ad hoc requestCall.
@@ -55,6 +56,27 @@ export function ContactEditor({
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Email</dt>
           <dd className="truncate">{email ?? "—"}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">Website</dt>
+          {/* crm_accounts stores a bare domain, so the scheme goes back on for
+              the href while the text stays the domain -- nobody wants to read
+              "https://" in a panel. Blank reads as an em dash like the rest of
+              these rows: the company is real, we just don't hold its site. */}
+          <dd className="truncate">
+            {domain ? (
+              <a
+                href={`https://${domain}`}
+                target="_blank"
+                rel="noreferrer"
+                className="underline-offset-2 hover:underline"
+              >
+                {domain}
+              </a>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Industry</dt>
