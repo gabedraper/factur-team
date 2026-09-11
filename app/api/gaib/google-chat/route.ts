@@ -195,6 +195,33 @@ export async function POST(request: NextRequest) {
   if (event.kind === "REMOVED_FROM_SPACE") return NextResponse.json({});
 
   if (event.kind === "ADDED_TO_SPACE") {
+    /*
+     * A room says hello differently, and says what it will not do here.
+     *
+     * People in a shared space need to know two things a direct message never
+     * raises: that Gaib only hears messages that mention it, and that anything
+     * private belongs in a direct message. Said once, on arrival, rather than
+     * discovered when somebody asks about their inbox in front of their team.
+     */
+    if (!event.isDirectMessage && event.spaceName) {
+      await createServiceClient()
+        .from("gaib_rooms")
+        .upsert({ space_name: event.spaceName, last_seen: new Date().toISOString() },
+                { onConflict: "space_name" })
+        .then(() => {}, () => {});
+
+      return NextResponse.json(
+        reply(
+          "Hi everyone — I'm Gaib. Mention me (type @Gaib) and I'll answer, and if " +
+            "something in the app is broken or annoying, tell me here and I'll raise it " +
+            "and come back to this space when it's fixed.\n\n" +
+            "One thing: this is a shared space, so I won't talk about clients, money, or " +
+            "anyone's own email or files in here. Ask me those in a direct message.",
+          event
+        )
+      );
+    }
+
     return NextResponse.json(
       reply(
         "Hello. Ask me about the app, your clients, or anything you can see in it — " +
@@ -258,7 +285,9 @@ async function answer(event: ChatEvent) {
   let finishing = false;
 
   try {
-    const sessionId = await conversationFor(person.userId, agent.id, event.spaceName);
+    const inRoom = !event.isDirectMessage;
+    await rememberWho(event, inRoom);
+    const sessionId = await conversationFor(person.userId, agent.id, event.spaceName, inRoom);
 
     const turn = runTurn({
       agent,
@@ -270,6 +299,7 @@ async function answer(event: ChatEvent) {
       channel: "google_chat",
       pageUrl: null,
       person: { name: person.fullName ?? acting.session.email, role: null },
+      room: inRoom ? { name: event.spaceName } : null,
     });
 
     /*
@@ -386,21 +416,55 @@ async function answer(event: ChatEvent) {
  */
 const RESUME_WITHIN_HOURS = 12;
 
+/*
+ * Learn how to mention this person, and note the room if this is one.
+ *
+ * A message mentions somebody with their Chat id, not their email, and the
+ * only place Gaib ever learns that id is a message they send. So it is kept
+ * the first time it is seen, and the daily test post can ping them by name.
+ */
+async function rememberWho(event: ChatEvent, inRoom: boolean) {
+  try {
+    const db = createServiceClient();
+    if (event.senderUser && event.senderEmail) {
+      await db.from("gaib_chat_people").upsert({
+        email: event.senderEmail.toLowerCase(),
+        chat_user: event.senderUser,
+        display_name: event.senderName,
+        seen_at: new Date().toISOString(),
+      });
+    }
+    if (inRoom && event.spaceName) {
+      await db.from("gaib_rooms").upsert(
+        { space_name: event.spaceName, last_seen: new Date().toISOString() },
+        { onConflict: "space_name", ignoreDuplicates: false }
+      );
+    }
+  } catch {
+    // Bookkeeping. Never the reason somebody does not get an answer.
+  }
+}
+
 async function conversationFor(
   userId: string,
   agentId: string,
-  spaceName: string | null
+  spaceName: string | null,
+  inRoom: boolean
 ): Promise<string> {
   const db = createServiceClient();
 
   // Remembered so Gaib can speak first later. A direct message space does not
   // exist until somebody opens one, so this is the only moment it can be known.
   //
+  // Direct messages only. A room is not anybody's private channel: recording
+  // one here meant the first time somebody spoke to Gaib in a shared space,
+  // their private notices started going to everyone in it.
+  //
   // The conflict target is named because the table no longer has user_id for
   // its primary key -- it is keyed on a surrogate id so that somebody without
   // an app account can still have a conversation. Left to the default, this
   // would insert a second row for the same person on every message.
-  if (spaceName) {
+  if (spaceName && !inRoom) {
     await db.from("gaib_chat_spaces").upsert(
       {
         user_id: userId,
@@ -413,12 +477,28 @@ async function conversationFor(
 
   const since = new Date(Date.now() - RESUME_WITHIN_HOURS * 3600_000).toISOString();
 
-  const { data: existing } = await db
+  /*
+   * A room keeps its own conversation, and a private one never picks up a room.
+   *
+   * This resumed whatever the person had open most recently, wherever it was.
+   * Somebody who had been asking Gaib privately about a client and then
+   * mentioned it in a shared space would have had that private conversation
+   * carried into the room -- in the history Gaib reads before answering
+   * everyone.
+   */
+  const roomRef = spaceName ? `room:${spaceName}` : null;
+  let query = db
     .from("gaib_sessions")
     .select("id")
     .eq("user_id", userId)
     .eq("status", "open")
-    .gte("last_message_at", since)
+    .gte("last_message_at", since);
+
+  query = inRoom && roomRef
+    ? query.eq("channel_ref", roomRef)
+    : query.not("channel_ref", "like", "room:%");
+
+  const { data: existing } = await query
     .order("last_message_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -433,7 +513,7 @@ async function conversationFor(
       agent_id: agentId,
       opened_by: "user",
       channel: "google_chat",
-      channel_ref: spaceName ?? "chat",
+      channel_ref: inRoom && roomRef ? roomRef : (spaceName ?? "chat"),
     })
     .select("id")
     .single();

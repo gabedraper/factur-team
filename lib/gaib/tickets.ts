@@ -105,9 +105,26 @@ export type NewTicket = {
 export async function createTicket(input: NewTicket): Promise<Ticket> {
   const db = createServiceClient();
 
+  /*
+   * Raised in a shared space? Then the space hears how it went.
+   *
+   * Somebody who reports a bug in front of their team should see it closed in
+   * front of their team -- that is what makes a testing room work, because the
+   * next person can see their report did something. Read off the session, which
+   * marks a room conversation "room:<space>".
+   */
+  let originSpace: string | null = null;
+  if (input.sessionId) {
+    const { data: session } = await db
+      .from("gaib_sessions").select("channel_ref").eq("id", input.sessionId).maybeSingle();
+    const ref = (session as { channel_ref: string | null } | null)?.channel_ref ?? "";
+    if (ref.startsWith("room:")) originSpace = ref.slice("room:".length);
+  }
+
   const { data, error } = await db
     .from("gaib_tickets")
     .insert({
+      origin_space: originSpace,
       session_id: input.sessionId,
       raised_by: input.raisedBy,
       kind: input.kind,

@@ -77,6 +77,26 @@ async function greetNewStarters(): Promise<{ opened: number; greeted: number }> 
   };
 }
 
+/**
+ * How to address somebody in a shared space.
+ *
+ * <users/123> pings them; a name on its own is only text. The Chat id is only
+ * known once they have messaged Gaib, so until then this falls back to their
+ * name -- the update still reaches the room, it just does not notify them.
+ */
+async function mentionFor(userId: string): Promise<string> {
+  const db = createServiceClient();
+  const { data: member } = await db
+    .from("org_members").select("email,full_name").eq("auth_user_id", userId).maybeSingle();
+  const m = member as { email: string | null; full_name: string | null } | null;
+  if (!m?.email) return m?.full_name ?? "Someone";
+
+  const { data: person } = await db
+    .from("gaib_chat_people").select("chat_user").eq("email", m.email.toLowerCase()).maybeSingle();
+  const chatUser = (person as { chat_user: string } | null)?.chat_user;
+  return chatUser ? `<${chatUser}>` : (m.full_name ?? "Someone");
+}
+
 export async function POST(request: NextRequest) {
   /*
    * A shared secret, because this posts to people. Anybody who could trigger it
@@ -111,12 +131,12 @@ export async function POST(request: NextRequest) {
 
   const { data } = await db
     .from("gaib_ticket_notices")
-    .select("id,user_id,to_status,note,gaib_tickets(ref,title,kind)")
+    .select("id,user_id,to_status,note,gaib_tickets(ref,title,kind,origin_space)")
     .is("delivered_at", null)
     .order("created_at", { ascending: true })
     .limit(PER_RUN);
 
-  type Ticket = { ref: number; title: string; kind: "bug" | "idea" };
+  type Ticket = { ref: number; title: string; kind: "bug" | "idea"; origin_space: string | null };
   type Row = {
     id: string; user_id: string; to_status: string; note: string | null;
     gaib_tickets: Ticket | Ticket[] | null;
@@ -137,7 +157,16 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    const space = await spaceFor(row.user_id);
+    /*
+     * Back where it was raised.
+     *
+     * A ticket from a shared space is answered in that space, with the person
+     * who reported it mentioned so they are still notified. Not the room and a
+     * direct message as well: that is two pings for one piece of news, and the
+     * room is where they chose to say it.
+     */
+    const room = ticket.origin_space;
+    const space = room ?? (await spaceFor(row.user_id));
     if (!space) {
       // Perfectly ordinary. They have never messaged Gaib, so there is nowhere
       // to put this and the panel will tell them when they next look.
@@ -154,7 +183,11 @@ export async function POST(request: NextRequest) {
       note: row.note,
     };
 
-    const sent = await postToSpace(space, phrase(notice));
+    const text = room
+      ? `${await mentionFor(row.user_id)} — ${phrase(notice)}`
+      : phrase(notice);
+
+    const sent = await postToSpace(space, text);
     if (sent.ok) delivered.push(row.id);
     else failed.push(`${row.id}: ${sent.reason}`);
   }

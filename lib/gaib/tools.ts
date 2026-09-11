@@ -37,6 +37,11 @@ export type ToolContext = {
   db: SupabaseClient;
   sessionId: string;
   pageUrl: string | null;
+  /**
+   * The answer will be read by a room, not just the asker. Tools that would
+   * otherwise use the asker's own access hold back what the room may not see.
+   */
+  publicOnly?: boolean;
 };
 
 export type GaibTool = {
@@ -716,6 +721,12 @@ const searchHandbookTool: GaibTool = {
     const { data, error } = await ctx.db.rpc("handbook_search", {
       p_query: query,
       p_limit: 6,
+      /*
+       * In a shared space, pay and finance material stays out even when the
+       * person asking may read it -- the answer is read by everybody there,
+       * and their permissions are not the asker's.
+       */
+      p_public_only: Boolean(ctx.publicOnly),
     });
     if (error) return `Could not search the handbook: ${error.message}`;
 

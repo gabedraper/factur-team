@@ -91,7 +91,47 @@ export type TurnInput = {
   /** Where this turn is being had, so a transcript shows where each line was said. */
   channel?: "app" | "google_chat";
   person: { name: string; role: string | null };
+  /**
+   * Set when the conversation is a shared space rather than one person and
+   * Gaib. Changes what it may reach for -- see GROUP_SAFE_TOOLS.
+   */
+  room?: { name: string | null } | null;
 };
+
+/*
+ * What Gaib may use when more than one person can read the answer.
+ *
+ * Every tool acts as the person who asked. In a direct message that is the
+ * whole safety model: you see what you are allowed to see. In a room it breaks
+ * -- the answer lands in front of everybody, so Gaib reading as the CEO and
+ * replying to a room of prospectors is the CEO's access handed to the room.
+ * Someone asking "what did Acme say in my last email" would get their inbox
+ * posted to their colleagues.
+ *
+ * So in a room the rule is: only what everyone there could already see. That
+ * is the handbook (with restricted material held back regardless of who
+ * asked), and the ticket tools, which are what a testing room is for. Mailbox,
+ * Chat, Drive, billing and the open-ended data query are withheld, and Gaib is
+ * told to invite the person to ask in a direct message instead.
+ */
+/** Said to the model whenever the conversation is a shared space. */
+const ROOM_NOTE = [
+  "This message came from a shared Google Chat space, not a private conversation:",
+  "everyone in the space reads your reply.",
+  "Keep replies short and conversational -- a room, not a report.",
+  "Address the person who asked by name.",
+  "Never answer anything about a specific client, money, or anyone's own mail, chat or files here,",
+  "even if you could work it out: say you will happily answer that privately and ask them to message you directly.",
+  "Bugs and ideas raised here are welcome -- raise them as normal.",
+].join(" ");
+
+const GROUP_SAFE_TOOLS = new Set([
+  "search_handbook",
+  "search_tickets",
+  "raise_ticket",
+  "answer_ticket_question",
+  "ask_reporter",
+]);
 
 /** A short line for the transcript while a tool runs, so a pause has a reason. */
 function working(toolName: string): string {
@@ -178,10 +218,39 @@ async function pendingQuestions(userId: string): Promise<string> {
   ].join(" ");
 }
 
+/*
+ * What Gaib asked this room to test today, if anything.
+ *
+ * Without it, somebody replying "@Gaib tried it, the export button does
+ * nothing" is answered by an assistant with no idea what they were asked to
+ * try. With it, the reply is a conversation about the test -- and a report
+ * that the test failed becomes a ticket on the spot.
+ */
+async function todaysTest(space: string | null): Promise<string> {
+  if (!space) return "";
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_room_tests")
+    .select("track,subject,message")
+    .eq("space_name", space)
+    .eq("for_date", new Date().toISOString().slice(0, 10))
+    .maybeSingle();
+  const t = data as { track: string; subject: string; message: string } | null;
+  if (!t) return "";
+  return (
+    `Earlier today you posted this test for the ${t.track} group here ("${t.subject}"): ` +
+    `${t.message.replace(/<users\/[^>]+>/g, "").trim()} ` +
+    "If someone is replying about it, thank them, and raise a ticket for anything that did not work as described."
+  );
+}
+
 export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const client = new Anthropic();
   const messages = await history(input.sessionId);
-  const tools = toolsFor(input.agent.tools);
+  const inRoom = Boolean(input.room);
+  const tools = toolsFor(input.agent.tools).filter(
+    (t) => !inRoom || GROUP_SAFE_TOOLS.has(t.name)
+  );
 
   if (input.message) {
     await save(input.sessionId, "user", input.message, null, input.pageUrl, input.channel);
@@ -217,6 +286,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
     db: input.db,
     sessionId: input.sessionId,
     pageUrl: input.pageUrl,
+    publicOnly: inRoom,
   };
 
   /*
@@ -241,6 +311,8 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
         `You are speaking with ${input.person.name}${input.person.role ? `, ${input.person.role}` : ""}.`,
         `Their email address, for anything that needs to match a person to a record, is ${input.email}.`,
         input.pageUrl ? `They are on ${input.pageUrl}.` : "",
+        inRoom ? ROOM_NOTE : "",
+        inRoom ? await todaysTest(input.room?.name ?? null) : "",
         `Today is ${new Date().toISOString().slice(0, 10)}.`,
       ].filter(Boolean).join(" "),
     },

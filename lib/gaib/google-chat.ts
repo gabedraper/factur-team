@@ -53,6 +53,11 @@ export type ChatEvent = {
   /** Verified by Google, not read from the body. The whole model rests on it. */
   senderEmail: string;
   senderName: string | null;
+  /**
+   * Chat's own id for the sender, "users/1234...". The only way to @mention
+   * somebody in a message -- an email address does not work there.
+   */
+  senderUser: string | null;
   text: string;
   spaceName: string | null;
   /** Set for a message in a thread, so the reply lands in the same thread. */
@@ -155,7 +160,7 @@ async function verifySignature(bearer: string): Promise<boolean> {
 type Message = {
   text?: string;
   argumentText?: string;
-  sender?: { email?: string; displayName?: string };
+  sender?: { name?: string; email?: string; displayName?: string };
   thread?: { name?: string };
 };
 type Space = { name?: string; type?: string; spaceType?: string; singleUserBotDm?: boolean };
@@ -222,6 +227,7 @@ function read(body: unknown): ChatEvent | null {
     isAddOn: Boolean(chat),
     senderEmail: email,
     senderName: message?.sender?.displayName ?? chat?.user?.displayName ?? p.user?.displayName ?? null,
+    senderUser: message?.sender?.name ?? (chat?.user as { name?: string } | undefined)?.name ?? null,
     text,
     spaceName: space?.name ?? null,
     threadName: message?.thread?.name ?? null,
