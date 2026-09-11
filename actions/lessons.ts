@@ -1,9 +1,81 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export type LessonType = "video" | "text" | "quiz" | "file";
+
+/*
+ * Where a video uploaded into a lesson lives.
+ *
+ * The same shape as the talent bucket: private, with every play going through a
+ * fresh signed URL, because a recorded internal call is not something to leave
+ * sitting at a permanent public address. The file goes from the browser straight
+ * into storage -- a half-gigabyte recording through a server action body would
+ * be refused -- so the server's only job is to hand out a one-shot upload
+ * ticket and, later, a link to watch.
+ */
+const VIDEO_BUCKET = "lesson-videos";
+
+export async function lessonVideoUploadTicket(
+  lessonId: string,
+  fileName: string
+) {
+  const supabase = await createClient();
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("id")
+    .eq("id", lessonId)
+    .single();
+
+  if (!lesson) return { success: false as const, error: "Lesson not found" };
+
+  const admin = createServiceClient();
+
+  // Made on first use. Nothing else in the app uploads video, so "already
+  // exists" is the normal answer from the second recording onwards.
+  await admin.storage.createBucket(VIDEO_BUCKET, {
+    public: false,
+    fileSizeLimit: 2147483648,
+    allowedMimeTypes: ["video/mp4", "video/quicktime", "video/webm"],
+  });
+
+  const safe = fileName.replace(/[^\w.\-]+/g, "_");
+  const path = `${lessonId}/${Date.now()}-${safe}`;
+
+  const { data, error } = await admin.storage
+    .from(VIDEO_BUCKET)
+    .createSignedUploadUrl(path);
+
+  if (error) return { success: false as const, error: error.message };
+
+  return { success: true as const, bucket: VIDEO_BUCKET, path, token: data.token };
+}
+
+export async function lessonVideoUrl(lessonId: string, path: string) {
+  const supabase = await createClient();
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("id")
+    .eq("id", lessonId)
+    .single();
+
+  // The path is checked against the lesson it was asked for, so a signed link
+  // to one lesson's recording cannot be talked out of another lesson's folder.
+  if (!lesson || !path.startsWith(`${lessonId}/`)) {
+    return { success: false as const, error: "Video not found" };
+  }
+
+  const { data, error } = await createServiceClient()
+    .storage.from(VIDEO_BUCKET)
+    .createSignedUrl(path, 3600);
+
+  if (error || !data) {
+    return { success: false as const, error: error?.message || "Video not found" };
+  }
+
+  return { success: true as const, url: data.signedUrl };
+}
 
 export async function createLesson(
   moduleId: string,

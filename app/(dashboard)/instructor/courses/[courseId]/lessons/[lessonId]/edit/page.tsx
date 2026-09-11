@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { updateLesson } from "@/actions/lessons";
+import { updateLesson, lessonVideoUploadTicket } from "@/actions/lessons";
 import {
   Card,
   CardContent,
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -34,6 +34,8 @@ interface QuizQuestion {
 
 interface LessonContent {
   url?: string;
+  videoPath?: string;
+  videoName?: string;
   body?: string;
   fileUrl?: string;
   fileName?: string;
@@ -63,6 +65,11 @@ export default function LessonEditPage() {
   const [type, setType] = useState("text");
   const [duration, setDuration] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPath, setVideoPath] = useState("");
+  const [videoName, setVideoName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const videoFile = useRef<HTMLInputElement>(null);
   const [textBody, setTextBody] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [fileName, setFileName] = useState("");
@@ -95,6 +102,8 @@ export default function LessonEditPage() {
       const c = data.content as LessonContent | null;
       if (c) {
         setVideoUrl(c.url || "");
+        setVideoPath(c.videoPath || "");
+        setVideoName(c.videoName || "");
         setTextBody(c.body || "");
         setFileUrl(c.fileUrl || "");
         setFileName(c.fileName || "");
@@ -106,7 +115,9 @@ export default function LessonEditPage() {
   function buildContent(): LessonContent {
     switch (type) {
       case "video":
-        return { url: videoUrl };
+        // An uploaded file and a link are alternatives, never both: whichever
+        // was set last is the one the lesson holds.
+        return videoPath ? { videoPath, videoName } : { url: videoUrl };
       case "text":
         return { body: textBody };
       case "file":
@@ -115,6 +126,35 @@ export default function LessonEditPage() {
         return { questions };
       default:
         return {};
+    }
+  }
+
+  async function uploadVideo(chosen: File) {
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const ticket = await lessonVideoUploadTicket(lessonId, chosen.name);
+      if (!ticket.success) throw new Error(ticket.error);
+
+      // Straight from the browser into storage on a one-shot ticket, so the
+      // recording never has to fit through a server action body.
+      const { error } = await supabase.storage
+        .from(ticket.bucket)
+        .uploadToSignedUrl(ticket.path, ticket.token, chosen, {
+          contentType: chosen.type || undefined,
+        });
+      if (error) throw new Error(error.message);
+
+      setVideoPath(ticket.path);
+      setVideoName(chosen.name);
+      setVideoUrl("");
+    } catch (e) {
+      setUploadError(
+        e instanceof Error ? e.message : "Could not upload that video"
+      );
+    } finally {
+      setUploading(false);
+      if (videoFile.current) videoFile.current.value = "";
     }
   }
 
@@ -234,17 +274,67 @@ export default function LessonEditPage() {
             <CardHeader>
               <CardTitle>Video Content</CardTitle>
               <CardDescription>
-                Enter a direct video URL or YouTube embed URL
+                Upload the video file, or point at one already hosted somewhere
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Video File</Label>
+                <input
+                  ref={videoFile}
+                  type="file"
+                  className="hidden"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={(e) =>
+                    e.target.files?.[0] && uploadVideo(e.target.files[0])
+                  }
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => videoFile.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading
+                      ? "Uploading..."
+                      : videoPath
+                        ? "Replace Video"
+                        : "Upload Video"}
+                  </Button>
+                  {videoPath && (
+                    <span className="text-sm text-muted-foreground truncate">
+                      {videoName || "Uploaded video"}
+                    </span>
+                  )}
+                </div>
+                <p
+                  className={
+                    uploadError
+                      ? "text-sm text-red-600 dark:text-red-400"
+                      : "text-sm text-muted-foreground"
+                  }
+                >
+                  {uploadError ||
+                    "MP4, MOV or WebM. Save the lesson once it has uploaded."}
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label>Video URL</Label>
                 <Input
                   value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
+                  onChange={(e) => {
+                    setVideoUrl(e.target.value);
+                    setVideoPath("");
+                    setVideoName("");
+                  }}
                   placeholder="https://www.youtube.com/embed/... or direct .mp4 URL"
+                  disabled={uploading}
                 />
+                <p className="text-sm text-muted-foreground">
+                  A Loom, Vidyard or YouTube address. Paste the address itself,
+                  not the embed code.
+                </p>
               </div>
             </CardContent>
           </Card>
