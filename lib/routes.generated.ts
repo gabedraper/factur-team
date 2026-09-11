@@ -68,6 +68,7 @@ export const ROUTES: readonly string[] = [
   "/scoreboard/hustle-points",
   "/scoreboard/hustle-points/[repId]/activities",
   "/scoreboard/retention",
+  "/search",
   "/sequences",
   "/sequences/[slug]",
   "/sequences/[slug]/add",
