@@ -200,8 +200,10 @@ export async function readRoom(space: string, lookupAs: string): Promise<ReadRes
 
   const listed = await listRoomMessages(space, since);
   if (!listed.ok) {
+    // Google's own words kept alongside, so "not approved" and "approved but
+    // something else is wrong" can be told apart without redeploying.
     const status = listed.status === 403
-      ? "waiting for admin approval of chat.app.messages.readonly"
+      ? `waiting for admin approval of chat.app.messages.readonly (${listed.reason.slice(0, 160)})`
       : listed.reason;
     await db.from("gaib_rooms").update({ read_status: status }).eq("space_name", space);
     return { space, status, read: 0, answered: 0 };

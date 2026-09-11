@@ -133,7 +133,7 @@ export type TurnImage = {
  * told to invite the person to ask in a direct message instead.
  */
 /** Said to the model whenever the conversation is a shared space. */
-const ROOM_NOTE = [
+export const ROOM_NOTE = [
   "This message came from a shared Google Chat space, not a private conversation:",
   "everyone in the space reads your reply.",
   "Keep replies short and conversational -- a room, not a report.",
@@ -143,7 +143,24 @@ const ROOM_NOTE = [
   "Bugs and ideas raised here are welcome -- raise them as normal.",
 ].join(" ");
 
-const GROUP_SAFE_TOOLS = new Set([
+/**
+ * What Gaib can see of a room, from the reader's own last attempt.
+ *
+ * Asked "can you see messages I don't tag you in?", Gaib answered from
+ * nothing and guessed. The reader writes down every minute whether Google let
+ * it list the room, so the true answer is one row away.
+ */
+export async function roomReach(space: string | null): Promise<string> {
+  if (!space) return "";
+  const { data } = await createServiceClient()
+    .from("gaib_rooms").select("read_status").eq("space_name", space).maybeSingle();
+  const status = (data as { read_status: string | null } | null)?.read_status ?? "";
+  return status === "reading"
+    ? "You read every message in this room, tagged or not, and reply in the thread when someone reports a problem, asks something, answers you, or reacts to the daily test. If asked, say so."
+    : "Right now you only see messages in this room that tag you: reading the whole room is switched on but still waiting on Google to approve it. If asked, say exactly that, and that it will start on its own once approved.";
+}
+
+export const GROUP_SAFE_TOOLS = new Set([
   "add_gif",
   "search_handbook",
   "search_tickets",
@@ -222,7 +239,7 @@ function worthRetrying(e: unknown): boolean {
  * conversation gets asked when there is a natural moment -- which for "why did
  * you want this" is nearly always a better answer.
  */
-async function pendingQuestions(userId: string): Promise<string> {
+export async function pendingQuestions(userId: string): Promise<string> {
   const db = createServiceClient();
   const { data } = await db.rpc("gaib_open_questions_for", { p_user: userId });
   const open = (data ?? []) as {
@@ -249,7 +266,7 @@ async function pendingQuestions(userId: string): Promise<string> {
  * try. With it, the reply is a conversation about the test -- and a report
  * that the test failed becomes a ticket on the spot.
  */
-async function todaysTest(space: string | null): Promise<string> {
+export async function todaysTest(space: string | null): Promise<string> {
   if (!space) return "";
   const db = createServiceClient();
   const { data } = await db
@@ -380,6 +397,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
         input.pageUrl ? `They are on ${input.pageUrl}.` : "",
         inRoom ? ROOM_NOTE : "",
         inRoom ? await todaysTest(input.room?.name ?? null) : "",
+        inRoom ? await roomReach(input.room?.name ?? null) : "",
         `Today is ${new Date().toISOString().slice(0, 10)}.`,
         inRoom && input.room?.thread
           ? "\n\nEarlier in this thread, oldest first (lines from Gaib are things you said). " +
