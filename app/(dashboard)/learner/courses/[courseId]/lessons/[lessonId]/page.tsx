@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { markLessonComplete } from "@/actions/progress";
+import { lessonVideoUrl } from "@/actions/lessons";
 import {
   Card,
   CardContent,
@@ -33,6 +34,8 @@ interface QuizQuestion {
 
 interface LessonContent {
   url?: string;
+  videoPath?: string;
+  videoName?: string;
   body?: string;
   fileUrl?: string;
   fileName?: string;
@@ -71,6 +74,7 @@ export default function LessonViewerPage() {
   const [progress, setProgress] = useState(0);
   const [courseComplete, setCourseComplete] = useState(false);
   const [marking, setMarking] = useState(false);
+  const [uploadedVideoSrc, setUploadedVideoSrc] = useState("");
 
   // Quiz state
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
@@ -105,6 +109,12 @@ export default function LessonViewerPage() {
       const content = data.content as LessonContent | null;
       if (content?.questions) {
         setQuizAnswers(new Array(content.questions.length).fill(-1));
+      }
+      // An uploaded video sits in a private bucket, so the address to play it
+      // from is minted here rather than stored on the lesson.
+      if (content?.videoPath) {
+        const signed = await lessonVideoUrl(lessonId, content.videoPath);
+        if (signed.success) setUploadedVideoSrc(signed.url);
       }
     }
 
@@ -210,6 +220,30 @@ export default function LessonViewerPage() {
     return /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
   }
 
+  // The url field is for an address, but an embed snippet has been pasted into
+  // it before now -- raw HTML handed to a player is a dead lesson. Take the
+  // frame's own address out of it and use that.
+  const isIframeSnippet = (url: string) => /<iframe[\s>]/i.test(url);
+
+  function fromIframeSnippet(url: string): string {
+    const src = url.match(/<iframe[^>]*\ssrc=["']([^"']+)["']/i);
+    if (!src) return url;
+    // Embed codes commonly leave the scheme off: //play.vidyard.com/...
+    return src[1].startsWith("//") ? `https:${src[1]}` : src[1];
+  }
+
+  const videoAddress = content?.url ? fromIframeSnippet(content.url) : "";
+  const framed =
+    !!content?.url &&
+    (isIframeSnippet(content.url) ||
+      isYouTube(videoAddress) ||
+      isLoom(videoAddress));
+  const frameSrc = isLoom(videoAddress)
+    ? toLoomEmbed(videoAddress)
+    : isYouTube(videoAddress)
+      ? toYouTubeEmbed(videoAddress)
+      : videoAddress;
+
   return (
     <div className="p-6 max-w-4xl pb-20">
       {/* Breadcrumb */}
@@ -309,40 +343,44 @@ export default function LessonViewerPage() {
 
       {/* Lesson content */}
       <div className="mb-6">
-        {lesson.type === "video" && content?.url && (
+        {lesson.type === "video" && (content?.videoPath || content?.url) && (
           <>
             <div className="rounded-lg overflow-hidden bg-black aspect-video">
-              {isYouTube(content.url) || isLoom(content.url) ? (
+              {content.videoPath ? (
+                <video
+                  src={uploadedVideoSrc}
+                  controls
+                  className="w-full h-full"
+                />
+              ) : framed ? (
                 <iframe
-                  src={
-                    isLoom(content.url)
-                      ? toLoomEmbed(content.url)
-                      : toYouTubeEmbed(content.url)
-                  }
+                  src={frameSrc}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
               ) : (
                 <video
-                  src={content.url}
+                  src={videoAddress}
                   controls
                   className="w-full h-full"
                 />
               )}
             </div>
             {/* Always show the address, so a player that won't load isn't a dead end */}
-            <p className="mt-2 text-sm text-muted-foreground">
-              Trouble playing? Watch it here instead:{" "}
-              <a
-                href={toExternalHref(content.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline break-all hover:text-foreground"
-              >
-                {content.url}
-              </a>
-            </p>
+            {content.url && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Trouble playing? Watch it here instead:{" "}
+                <a
+                  href={toExternalHref(videoAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline break-all hover:text-foreground"
+                >
+                  {videoAddress}
+                </a>
+              </p>
+            )}
           </>
         )}
 
