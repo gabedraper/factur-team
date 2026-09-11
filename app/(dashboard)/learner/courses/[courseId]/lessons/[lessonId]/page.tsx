@@ -193,6 +193,17 @@ export default function LessonViewerPage() {
     return url;
   }
 
+  const isLoom = (url: string) => url.includes("loom.com");
+
+  function toLoomEmbed(url: string): string {
+    // Already an embed URL
+    if (url.includes("loom.com/embed/")) return url;
+    // loom.com/share/VIDEO_ID
+    const shareMatch = url.match(/loom\.com\/share\/([^?&/]+)/);
+    if (shareMatch) return `https://www.loom.com/embed/${shareMatch[1]}`;
+    return url;
+  }
+
   // Saved addresses often have no scheme (play.vidyard.com/...), which would
   // make the link relative to this page instead of pointing at the video.
   function toExternalHref(url: string): string {
@@ -301,9 +312,13 @@ export default function LessonViewerPage() {
         {lesson.type === "video" && content?.url && (
           <>
             <div className="rounded-lg overflow-hidden bg-black aspect-video">
-              {isYouTube(content.url) ? (
+              {isYouTube(content.url) || isLoom(content.url) ? (
                 <iframe
-                  src={toYouTubeEmbed(content.url)}
+                  src={
+                    isLoom(content.url)
+                      ? toLoomEmbed(content.url)
+                      : toYouTubeEmbed(content.url)
+                  }
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
