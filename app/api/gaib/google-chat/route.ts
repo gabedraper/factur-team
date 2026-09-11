@@ -6,6 +6,7 @@ import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn, type TurnImage } from "@/lib/gaib/chat";
 import { postToSpace, downloadAttachment, postGifToSpace } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
+import { gifsEnabled } from "@/lib/gaib/gif";
 
 /*
  * Gaib, reachable from Google Chat.
@@ -161,6 +162,10 @@ export async function GET() {
     projectNumberSet: configured,
     expectedAudience: process.env.GOOGLE_CHAT_PROJECT_NUMBER ?? null,
     agent: agent ? agent.name : null,
+    // Whether GIPHY_API_KEY reached this deployment. A variable saved in
+    // Vercel only applies to deployments made after it, so "I added the key"
+    // and "GIFs work" are two different facts -- this says which.
+    gifs: gifsEnabled(),
     postingKey,
     messagesSeen: seen.length,
     lastArrivals: seen,
