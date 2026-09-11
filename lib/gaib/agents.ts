@@ -93,6 +93,24 @@ export async function myRoleIds(userId: string): Promise<string[]> {
 }
 
 /**
+ * Whether any of this person's roles carries a permission.
+ *
+ * For code with no signed-in request to hang myPermissions() on -- a ticket
+ * raised from Chat, a background task -- which still has to answer to the
+ * same roles Settings shows.
+ */
+export async function holdsPermission(userId: string, key: string): Promise<boolean> {
+  const roleIds = await myRoleIds(userId);
+  if (roleIds.length === 0) return false;
+  const { count } = await createServiceClient()
+    .from("org_role_permissions")
+    .select("role_id", { count: "exact", head: true })
+    .in("role_id", roleIds)
+    .eq("permission_key", key);
+  return (count ?? 0) > 0;
+}
+
+/**
  * Whether this person may open this agent.
  *
  * An agent with no roles listed is open to everyone, which is the default

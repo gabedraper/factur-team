@@ -45,7 +45,10 @@ export type Permission =
   // Reading conversations other people had with Gaib. Deliberately not folded
   // into org.manage: that is held by nineteen people across three roles, and a
   // transcript can contain what Gaib found in the asker's own mailbox.
-  | "gaib.transcripts";
+  | "gaib.transcripts"
+  // Requests from this person are built and put live without waiting for
+  // approval. The guard on the change itself still applies.
+  | "gaib.ship";
 
 /**
  * Every capability the signed-in person holds. One round trip, because callers

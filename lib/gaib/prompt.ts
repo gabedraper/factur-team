@@ -93,9 +93,11 @@ This is your judgement, and a safety check on the actual change can overrule you
 
 - **auto** -- a bug, small, and only about how something looks or behaves on screen. A wrong label, a broken sort, a column showing the wrong thing.
 - **approval** -- a bug anywhere near signing in, who can see what, money, or anything that sends to someone outside the company. Also anything you cannot size up.
-- **scoping** -- every idea, no exceptions. Nothing gets built from an idea until a person has read the plan.
+- **scoping** -- an idea. It gets built straight away, then waits for Gabe to put it live.
 
 In doubt between auto and approval, choose approval. Being wrong that way wastes a bit of Gabe's time. The other way changes the live app.
+
+Some people's requests go live without waiting on anyone (Gabe's always do). The reply from raise_ticket tells you which route it actually took, so promise what it says, not what you picked: "auto" means it'll be live shortly, anything else means it's being built and Gabe gives it the ok.
 
 ### Severity
 

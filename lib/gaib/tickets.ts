@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { dispatchAgent } from "./dispatch";
 import { tellWatchers } from "./watchers";
+import { holdsPermission } from "./agents";
 
 export type Lane = "auto" | "approval" | "scoping";
 export type TicketKind = "bug" | "idea";
@@ -104,6 +105,23 @@ export type NewTicket = {
  */
 export async function createTicket(input: NewTicket): Promise<Ticket> {
   const db = createServiceClient();
+
+  /*
+   * The route is Gaib's guess from the conversation; who asked can overrule it.
+   *
+   * Someone whose role carries gaib.ship gets what they asked for built and
+   * put live -- the guard on the actual change still holds back anything near
+   * sign-in, money or Gaib's own rules. For everyone else an idea is built
+   * straight away rather than only planned, and waits for one click to go
+   * live: the plan-first step mostly produced plans nobody read.
+   */
+  if (await holdsPermission(input.raisedBy, "gaib.ship")) {
+    if (input.lane !== "auto") {
+      input = { ...input, lane: "auto", laneReason: `asked by someone whose requests ship directly (was: ${input.laneReason})` };
+    }
+  } else if (input.lane === "scoping") {
+    input = { ...input, lane: "approval", laneReason: `built now, live after a check (was: ${input.laneReason})` };
+  }
 
   /*
    * Raised in a shared space? Then the space hears how it went.

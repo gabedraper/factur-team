@@ -35,7 +35,7 @@ export type ChatEvent =
  * steps now -- describe the tables, query, notice the query was wrong, query
  * again. Low enough that a loop costs pennies rather than a bill.
  */
-const MAX_STEPS = 12;
+const MAX_STEPS = 25;
 
 type Row = { role: "user" | "assistant"; content: string; blocks: unknown };
 

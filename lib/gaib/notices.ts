@@ -182,5 +182,5 @@ export const WHAT_HAPPENS_NEXT = {
   bug_approval:
     "Gabe needs to sign this one off before anything changes, because it's near something we don't touch without a person looking. I'll let you know either way.",
   idea:
-    "I'll work out what this would take and put it in front of Gabe. I'll come back to you whether he says yes or no.",
+    "I'll build this now and Gabe gives it the ok before it goes live. I'll come back to you either way.",
 } as const;
