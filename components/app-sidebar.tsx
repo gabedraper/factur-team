@@ -10,16 +10,25 @@ import { Separator } from "@/components/ui/separator";
 const STORAGE_KEY = "factur-nav-collapsed";
 const GROUPS_KEY = "factur-nav-groups";
 
-export type NavItem = { href: string; label: string; icon: React.ReactNode };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  /** A count worth seeing before clicking, like tickets waiting on you. */
+  badge?: number;
+};
 export type NavGroup = { label: string; items: NavItem[] };
 
 export function AppSidebar({
   groups,
+  home,
   brand,
   profile,
   footer,
 }: {
   groups: NavGroup[];
+  /** The one link above every group: the page everyone lands on. */
+  home?: NavItem;
   brand: React.ReactNode;
   profile: React.ReactNode;
   footer: React.ReactNode;
@@ -96,6 +105,22 @@ export function AppSidebar({
       <Separator />
 
       <nav className="flex-1 overflow-y-auto px-3 py-2">
+        {home && (
+          <Link
+            href={home.href}
+            title={collapsed ? home.label : undefined}
+            className={`mb-2 flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+              collapsed ? "justify-center px-0" : ""
+            } ${
+              pathname === home.href
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
+          >
+            <span className="shrink-0">{home.icon}</span>
+            {!collapsed && home.label}
+          </Link>
+        )}
         {groups.map((group, i) => {
           // Group collapsing only applies to the expanded sidebar; in icon mode
           // there are no headers to click, so everything stays reachable.
@@ -144,8 +169,18 @@ export function AppSidebar({
                             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                         }`}
                       >
-                        <span className="shrink-0">{item.icon}</span>
+                        <span className="relative shrink-0">
+                          {item.icon}
+                          {collapsed && item.badge ? (
+                            <span className="absolute -right-1.5 -top-1.5 h-2 w-2 rounded-full bg-primary" />
+                          ) : null}
+                        </span>
                         {!collapsed && item.label}
+                        {!collapsed && item.badge ? (
+                          <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-medium tabular-nums text-primary-foreground">
+                            {item.badge}
+                          </span>
+                        ) : null}
                       </Link>
                     );
                   })}

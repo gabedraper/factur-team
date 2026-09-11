@@ -62,14 +62,38 @@ const STATUS: Record<string, string> = {
   duplicate: "Duplicate",
 };
 
+export type TicketEvent = {
+  actor: string;
+  event: string;
+  detail: string | null;
+  created_at: string;
+};
+
+/** Who did the thing, in the words used on the card. */
+const ACTOR: Record<string, string> = { gaib: "Gaib", agent: "the builder", system: "", user: "you" };
+
+/** One event, as a sentence fragment: "opened a pull request 12m ago". */
+function describe(e: TicketEvent): string {
+  const who = ACTOR[e.actor] ?? e.actor;
+  return `${who ? `${who} ` : ""}${e.event.replace(/_/g, " ")}`;
+}
+
+/** A detail that is a link gets shown as one; anything else is a note. */
+function isLink(s: string | null): s is string {
+  return !!s && /^https?:\/\//.test(s);
+}
+
 export function TicketCard({
-  ticket, raisedByName, decidable = false,
+  ticket, raisedByName, decidable = false, history = [],
 }: {
   ticket: Ticket;
   /** Who reported it. The first thing worth knowing before deciding anything. */
   raisedByName?: string | null;
   decidable?: boolean;
+  /** Everything that has happened to it, oldest first. */
+  history?: TicketEvent[];
 }) {
+  const latest = history[history.length - 1];
   const [open, setOpen] = useState(false);
   const [why, setWhy] = useState("");
   const [question, setQuestion] = useState("");
@@ -168,6 +192,17 @@ export function TicketCard({
           </div>
 
           {/*
+            The last thing that happened, without opening the card. A status
+            word says where it is; this says what it is doing and since when,
+            which is what somebody scanning the queue is actually asking.
+          */}
+          {latest && (
+            <p className="mt-1.5 text-xs text-muted-foreground" title={new Date(latest.created_at).toLocaleString()}>
+              {describe(latest)} · {submitted(latest.created_at)}
+            </p>
+          )}
+
+          {/*
             The guard overruling Gaib is the one thing on this card that is
             always worth reading, so it is shown without opening anything.
           */}
@@ -206,6 +241,37 @@ export function TicketCard({
       {open && (
         <div className="mt-4 space-y-4 border-t pt-4">
           <div className="whitespace-pre-wrap text-sm">{ticket.body}</div>
+
+          {/*
+            The whole history, so "where did it go" has an answer on the card:
+            raised, handed over, started, built, shipped -- each with its time
+            and, where there is one, the link to the thing it produced.
+          */}
+          {history.length > 0 && (
+            <ol className="space-y-1 border-l-2 border-muted-foreground/30 pl-3">
+              {history.map((e, i) => (
+                <li key={i} className="text-xs text-muted-foreground">
+                  <span className="tabular-nums">
+                    {new Date(e.created_at).toLocaleString(undefined, {
+                      day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+                    })}
+                  </span>
+                  {" "}
+                  {describe(e)}
+                  {isLink(e.detail) ? (
+                    <>
+                      {" "}
+                      <a href={e.detail} target="_blank" rel="noreferrer" className="hover:underline">
+                        {/pull\//.test(e.detail) ? "pull request" : /actions\/runs/.test(e.detail) ? "run" : "link"}
+                      </a>
+                    </>
+                  ) : e.detail && !/^[0-9a-f]{40}$/.test(e.detail) ? (
+                    <span className="text-muted-foreground/70">{" · "}{e.detail}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          )}
 
           {/*
             What has already been asked, so the same question is not put twice

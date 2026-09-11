@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getAuthedUser, getProfile } from "@/lib/supabase/session";
+import { createServiceClient } from "@/lib/supabase/server";
 import { signOut } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar } from "@/components/ui/thumbnail";
 import Image from "next/image";
 import {
+  Bot,
+  MessagesSquare,
   BookOpen,
   LayoutDashboard,
   Layers,
@@ -82,7 +85,7 @@ const HIDDEN_TALENT_SECTIONS = new Set([
   "/talent/reports",
 ]);
 
-function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
+function getNavGroups(perms: Set<string>, collections: boolean, gaibWaiting: number): NavGroup[] {
   const groups: NavGroup[] = [];
 
   // Built from what someone may do, so adding a permission to a role in
@@ -236,7 +239,34 @@ function getNavGroups(perms: Set<string>, collections: boolean): NavGroup[] {
     });
   }
 
+  /*
+   * Where the tickets go. The queue only existed as a URL, so the people who
+   * decide on tickets found out about them from a Chat message or not at all.
+   * The count is what is waiting on the reader, not the total.
+   */
+  if (perms.has("org.manage")) {
+    groups.push({
+      label: "Gaib",
+      items: [
+        { href: "/gaib", label: "Tickets", icon: <Bot className="h-4 w-4" />, badge: gaibWaiting },
+        ...(perms.has("gaib.transcripts")
+          ? [{ href: "/gaib/transcripts", label: "Conversations", icon: <MessagesSquare className="h-4 w-4" /> }]
+          : []),
+      ],
+    });
+  }
+
   return groups;
+}
+
+/** Tickets that move nowhere until somebody looks: decisions and failures. */
+async function gaibWaitingCount(perms: Set<string>): Promise<number> {
+  if (!perms.has("org.manage")) return 0;
+  const { count } = await createServiceClient()
+    .from("gaib_tickets")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["awaiting_review", "failed"]);
+  return count ?? 0;
 }
 
 export default async function DashboardLayout({
@@ -287,9 +317,11 @@ export default async function DashboardLayout({
 
   const navGroups = getNavGroups(
     perms as Set<string>,
-    collectionsVisibility.can_see_all || collectionsVisibility.attached
+    collectionsVisibility.can_see_all || collectionsVisibility.attached,
+    await gaibWaitingCount(perms as Set<string>)
   );
-  const homeHref = perms.has("timelines.view") ? "/timelines/quick-response" : "/learner";
+  // The logo goes home, and home is the same page for everyone now.
+  const homeHref = "/";
   const showWorkPanel = perms.has("timelines.view");
   /* Empty, cheaply, for anyone without the grant or before the first sync. */
   const work = await myWork();
@@ -300,6 +332,7 @@ export default async function DashboardLayout({
       <PageTiming />
       <AppSidebar
         groups={navGroups}
+        home={{ href: "/", label: "Home", icon: <Home className="h-4 w-4" /> }}
         brand={
           <Link href={homeHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image

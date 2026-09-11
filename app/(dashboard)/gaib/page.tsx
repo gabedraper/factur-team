@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import type { Ticket } from "@/lib/gaib/tickets";
-import { TicketCard } from "@/components/gaib/ticket-card";
+import { TicketCard, type TicketEvent } from "@/components/gaib/ticket-card";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,28 @@ export default async function GaibPage() {
     ((people ?? []) as { id: string; full_name: string | null }[])
       .map((p) => [p.id, p.full_name])
   );
+  // Everything that happened to each ticket, one query for the page.
+  const { data: events } = await db
+    .from("gaib_ticket_events")
+    .select("ticket_id,actor,event,detail,created_at")
+    .in("ticket_id", tickets.map((t) => t.id))
+    .order("created_at", { ascending: true });
+  const history = new Map<string, TicketEvent[]>();
+  for (const e of (events ?? []) as (TicketEvent & { ticket_id: string })[]) {
+    const list = history.get(e.ticket_id) ?? [];
+    list.push(e);
+    history.set(e.ticket_id, list);
+  }
+  const card = (t: Ticket, decidable = false) => (
+    <TicketCard
+      key={t.id}
+      ticket={t}
+      raisedByName={names.get(t.raised_by ?? "")}
+      decidable={decidable}
+      history={history.get(t.id) ?? []}
+    />
+  );
+
   const waiting = tickets.filter((t) => t.status === "awaiting_review");
   const broken = tickets.filter((t) => t.status === "failed");
   const moving = tickets.filter((t) => ["new", "queued", "running"].includes(t.status));
@@ -50,21 +72,21 @@ export default async function GaibPage() {
       <PageHeader title="Gaib" />
 
       <Section title="Waiting on you" count={waiting.length}>
-        {waiting.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} decidable />)}
+        {waiting.map((t) => card(t, true))}
       </Section>
 
       {broken.length > 0 && (
         <Section title="Failed" count={broken.length}>
-          {broken.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} decidable />)}
+          {broken.map((t) => card(t, true))}
         </Section>
       )}
 
       <Section title="In flight" count={moving.length}>
-        {moving.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} />)}
+        {moving.map((t) => card(t))}
       </Section>
 
       <Section title="Closed" count={done.length}>
-        {done.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} />)}
+        {done.map((t) => card(t))}
       </Section>
     </div>
   );
