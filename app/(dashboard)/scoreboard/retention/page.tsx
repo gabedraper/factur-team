@@ -62,17 +62,17 @@ function StatsRow({
           <>
             {rep.display_name}
             {rep.isManager && (
-              <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+              <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                 Team aggregate
               </span>
             )}
           </>
         )}
       </span>
-      <span className="w-16 text-right text-sm text-slate-400">{rep.renewed}</span>
-      <span className="w-12 text-right text-sm text-slate-400">{rep.lost + rep.earlyTerminated}</span>
-      <span className="w-16 text-right text-sm text-slate-400">{rep.earlyTerminated}</span>
-      <span className="w-14 text-right text-sm text-slate-400">{rep.total}</span>
+      <span className="w-16 text-right text-sm text-muted-foreground">{rep.renewed}</span>
+      <span className="w-12 text-right text-sm text-muted-foreground">{rep.lost + rep.earlyTerminated}</span>
+      <span className="w-16 text-right text-sm text-muted-foreground">{rep.earlyTerminated}</span>
+      <span className="w-14 text-right text-sm text-muted-foreground">{rep.total}</span>
       <span className="w-16 text-right text-sm font-medium">
         {rep.renewalPct === null ? "—" : `${rep.renewalPct.toFixed(0)}%`}
       </span>
@@ -235,15 +235,15 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
           title="Retention"
           description="Renewed, lost, and early-terminated clients per person"
         />
-        <div className="flex gap-2">
+        <div className="inline-flex self-start rounded-md bg-muted p-0.5">
           {RETENTION_PERIODS.map((p) => (
             <Link
               key={p}
               href={`/scoreboard/retention?period=${p}`}
-              className={`flex items-center justify-center rounded-md px-3 py-1.5 text-center text-sm ${
+              className={`flex items-center justify-center rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
                 period === p
-                  ? "bg-white text-slate-900"
-                  : "bg-slate-900 text-slate-400 hover:text-slate-100"
+                  ? "bg-card text-foreground shadow-raised"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {RETENTION_PERIOD_LABEL[p]}
@@ -258,8 +258,8 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
         </p>
       )}
 
-      <div className="divide-y divide-slate-900">
-        <div className="flex items-center gap-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div className="divide-y">
+        <div className="flex items-center gap-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <span className="flex-1">Rep</span>
           <span className="w-16 text-right">Renewed</span>
           <span className="w-12 text-right">Lost</span>
@@ -271,11 +271,11 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
           <Fragment key={rep.rep_id}>
             {avgSplit && i === avgSplit.insertAt && (
               <div className="flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-slate-800" />
-                <span className="shrink-0 text-xs font-medium text-slate-500">
+                <span className="h-px flex-1 bg-muted" />
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">
                   Company Average — {Math.round(avgSplit.average)}%
                 </span>
-                <span className="h-px flex-1 bg-slate-800" />
+                <span className="h-px flex-1 bg-muted" />
               </div>
             )}
             <StatsRow rep={rep} maskRow={masking && rep.rep_id !== viewerRepId} avatars={avatars} />
@@ -283,22 +283,22 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
         ))}
         {avgSplit && avgSplit.insertAt === ranked.length && (
           <div className="flex items-center gap-3 py-2">
-            <span className="h-px flex-1 bg-slate-800" />
-            <span className="shrink-0 text-xs font-medium text-slate-500">
+            <span className="h-px flex-1 bg-muted" />
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
               Company Average — {Math.round(avgSplit.average)}%
             </span>
-            <span className="h-px flex-1 bg-slate-800" />
+            <span className="h-px flex-1 bg-muted" />
           </div>
         )}
         {ranked.length === 0 && !error && (
-          <p className="py-6 text-center text-sm text-slate-500">
+          <p className="py-6 text-center text-sm text-muted-foreground">
             No one has {MIN_OPPORTUNITIES_TO_RANK} or more renewal opportunities in this period yet.
           </p>
         )}
 
         {unranked.length > 0 && (
           <>
-            <div className="border-t-2 border-slate-700 py-3 text-center text-xs text-slate-500">
+            <div className="border-t-2 py-3 text-center text-xs text-muted-foreground">
               Retention Ranking begins after {MIN_OPPORTUNITIES_TO_RANK} opportunities
             </div>
             {unranked.map((rep) => (

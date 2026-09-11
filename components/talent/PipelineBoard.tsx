@@ -158,7 +158,7 @@ export function PipelineBoard({
                     onDragStart={() => setDragging(c.candidate_id)}
                     onDragEnd={() => { setDragging(null); setOver(null); }}
                     className={cn(
-                      "group rounded-md border bg-card p-2.5 text-sm shadow-sm",
+                      "group rounded-md bg-card p-card-tight text-body transition-shadow duration-base ease-out hover:shadow-overlay",
                       canEdit && "cursor-grab active:cursor-grabbing",
                       dragging === c.candidate_id && "opacity-40",
                       c.status === "rejected" && "opacity-60"

@@ -1,7 +1,4 @@
 {
-  "app/(dashboard)/admin/courses/page.tsx": {
-    "raw-shadow": 1
-  },
   "app/(dashboard)/admin/enrollments/page.tsx": {
     "bare-table": 1
   },
@@ -21,27 +18,8 @@
     "bare-table": 5,
     "card-recipe": 1
   },
-  "app/(dashboard)/learner/certificates/page.tsx": {
-    "bg-white": 1
-  },
-  "app/(dashboard)/learner/courses/[courseId]/lessons/[lessonId]/page.tsx": {
-    "bg-white": 1
-  },
   "app/(dashboard)/opportunities/my/[clientId]/page.tsx": {
     "bare-table": 1
-  },
-  "app/(dashboard)/scoreboard/deals/page.tsx": {
-    "bg-white": 1
-  },
-  "app/(dashboard)/scoreboard/hustle-points/[repId]/activities/page.tsx": {
-    "bg-white": 1
-  },
-  "app/(dashboard)/scoreboard/hustle-points/page.tsx": {
-    "bg-white": 1,
-    "raw-shadow": 2
-  },
-  "app/(dashboard)/scoreboard/retention/page.tsx": {
-    "bg-white": 1
   },
   "app/(dashboard)/settings/page.tsx": {
     "card-recipe": 18
@@ -155,9 +133,6 @@
   "components/gaib/chat-reach.tsx": {
     "card-recipe": 1
   },
-  "components/gaib/gaib-widget.tsx": {
-    "raw-shadow": 1
-  },
   "components/nps/NpsDashboard.tsx": {
     "bare-table": 3,
     "card-recipe": 5
@@ -170,20 +145,10 @@
     "card-recipe": 3
   },
   "components/pipeline/TargetAccounts.tsx": {
-    "bare-table": 1,
-    "raw-shadow": 1
+    "bare-table": 1
   },
   "components/pipeline/TargetContacts.tsx": {
     "bare-table": 1
-  },
-  "components/scoreboard/MaskedBlurb.tsx": {
-    "raw-shadow": 1
-  },
-  "components/scoreboard/SourceRecordsBlurb.tsx": {
-    "raw-shadow": 1
-  },
-  "components/scoreboard/TeamBlurb.tsx": {
-    "raw-shadow": 1
   },
   "components/sequences/AddContacts.tsx": {
     "bare-table": 1,
@@ -253,42 +218,11 @@
   "components/settings/VoiceNumbers.tsx": {
     "bare-table": 1
   },
-  "components/talent/AddPerson.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
-  "components/talent/AddToJob.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
-  "components/talent/CompanyForm.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
-  "components/talent/DealsBoard.tsx": {
-    "raw-shadow": 1
-  },
-  "components/talent/EmailPerson.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
-  "components/talent/JobActions.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
   "components/talent/JobForm.tsx": {
     "card-recipe": 2
   },
-  "components/talent/NewCampaign.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
-  },
   "components/talent/PersonPicker.tsx": {
     "card-recipe": 1
-  },
-  "components/talent/PipelineBoard.tsx": {
-    "card-recipe": 1,
-    "raw-shadow": 1
   },
   "components/talent/SettingsPanels.tsx": {
     "bare-table": 1

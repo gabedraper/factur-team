@@ -45,8 +45,8 @@ export function ActivityTypePicker({
         value={value}
         disabled={pending}
         onChange={(e) => submit(e.target.value)}
-        className={`rounded border bg-slate-950 px-1.5 py-0.5 text-[11px] ${
-          overridden ? "border-amber-700 text-amber-300" : "border-slate-800 text-slate-300"
+        className={`rounded border bg-field px-1.5 py-0.5 text-[11px] ${
+          overridden ? "border-amber-700 text-amber-300" : " text-foreground"
         } disabled:opacity-50`}
       >
         {types.map((t) => (
@@ -57,7 +57,7 @@ export function ActivityTypePicker({
       </select>
 
       {hasSubject && (
-        <label className="flex items-center gap-1 text-[10px] text-slate-500">
+        <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <input
             type="checkbox"
             checked={applyToSubject}
@@ -74,7 +74,7 @@ export function ActivityTypePicker({
           type="button"
           disabled={pending}
           onClick={() => submit(null)}
-          className="text-[10px] text-slate-500 underline decoration-dotted hover:text-slate-300 disabled:opacity-50"
+          className="text-[10px] text-muted-foreground underline decoration-dotted hover:text-foreground disabled:opacity-50"
           title={
             [originalEffortSource ? `Was ${originalEffortSource}` : null, setByEmail]
               .filter(Boolean)

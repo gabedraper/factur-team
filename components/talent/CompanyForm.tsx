@@ -88,7 +88,7 @@ export function CompanyForm({
 
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-20">
-      <div className="w-full max-w-lg space-y-3 rounded-lg border bg-card p-4 shadow-xl">
+      <div className="w-full max-w-lg space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center">
           <h2 className="text-sm font-semibold">{company ? "Edit company" : "Add company"}</h2>
           <button

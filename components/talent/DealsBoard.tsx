@@ -86,7 +86,7 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
                     onDragStart={() => setDragging(d.id)}
                     onDragEnd={() => { setDragging(null); setOver(null); }}
                     className={cn(
-                      "rounded-md border-l-4 border bg-card p-2.5 text-sm shadow-sm",
+                      "rounded-md border-l-4 bg-card p-card-tight text-body transition-shadow duration-base ease-out hover:shadow-overlay",
                       TONE[stage],
                       canEdit && "cursor-grab active:cursor-grabbing",
                       dragging === d.id && "opacity-40"

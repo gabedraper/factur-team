@@ -13,23 +13,23 @@ export function ReportSpec({
 }) {
   return (
     <div className="mb-4 last:mb-0">
-      {title && <p className="mb-1.5 font-medium text-slate-400">{title}</p>}
+      {title && <p className="mb-1.5 font-medium text-muted-foreground">{title}</p>}
       <p>
-        <span className="text-slate-500">Report Type: </span>
+        <span className="text-muted-foreground">Report Type: </span>
         {reportType}
       </p>
-      <p className="text-slate-500">Filters:</p>
+      <p className="text-muted-foreground">Filters:</p>
       <ul className="ml-4 list-disc space-y-0.5">
         {filters.map((f, i) => (
           <li key={i}>{f}</li>
         ))}
       </ul>
       <p className="mt-1">
-        <span className="text-slate-500">Grouping: </span>
+        <span className="text-muted-foreground">Grouping: </span>
         {grouping}
       </p>
       <p>
-        <span className="text-slate-500">Sorting: </span>
+        <span className="text-muted-foreground">Sorting: </span>
         {sorting}
       </p>
     </div>

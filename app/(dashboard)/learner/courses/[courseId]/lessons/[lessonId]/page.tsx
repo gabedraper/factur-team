@@ -265,6 +265,7 @@ export default function LessonViewerPage() {
             <div className="absolute inset-0 bg-black/50" />
             <div className="relative z-10 p-6 w-full">
               <div className="flex items-center gap-2 mb-2">
+                {/* design-ok: printed over the cover image */}
                 <Badge className="bg-white/20 text-white border-white/30 capitalize backdrop-blur-sm">
                   {lesson.type}
                 </Badge>

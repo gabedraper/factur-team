@@ -318,8 +318,8 @@ function AccountPanel({
     // full width, unconditionally: this panel is what overlays it.
     <aside
       style={full ? undefined : { width }}
-      className={`absolute inset-y-0 right-0 z-10 flex flex-col overflow-hidden border-l bg-background shadow-lg ${
-        dragging ? "" : "transition-[width] duration-200"
+      className={`absolute inset-y-0 right-0 z-10 flex flex-col overflow-hidden bg-card shadow-modal ${
+        dragging ? "" : "transition-[width] duration-base ease-out"
       } ${full ? "left-0" : ""}`}
     >
         {!full && (

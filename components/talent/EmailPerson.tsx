@@ -83,7 +83,7 @@ export function EmailPerson({
 
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-20">
-      <div className="w-full max-w-2xl space-y-3 rounded-lg border bg-card p-4 shadow-xl">
+      <div className="w-full max-w-2xl space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Email {personName}</h2>
           <button

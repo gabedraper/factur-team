@@ -52,7 +52,7 @@ export default async function CertificatesPage() {
                     <Award className="h-8 w-8 text-yellow-500" />
                     <Badge
                       variant="outline"
-                      className="text-xs bg-white border-yellow-300"
+                      className="text-meta bg-card border-warning/40"
                     >
                       Completed
                     </Badge>

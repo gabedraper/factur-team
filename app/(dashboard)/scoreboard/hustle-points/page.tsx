@@ -142,8 +142,8 @@ export default async function HustlePointsPage(
       <div className="mb-4 group relative inline-block">
         <PageHeader title="Hustle Points" />
 
-        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-          <p className="mb-2 font-medium uppercase tracking-wide text-slate-500">
+        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md bg-popover p-3 text-xs opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
+          <p className="mb-2 font-medium uppercase tracking-wide text-muted-foreground">
             Points per activity
           </p>
           {sortedWeights
@@ -151,10 +151,10 @@ export default async function HustlePointsPage(
             .map((w) => (
             <div
               key={w.effort_source}
-              className="flex items-center justify-between gap-2 py-0.5 text-slate-400"
+              className="flex items-center justify-between gap-2 py-0.5 text-muted-foreground"
             >
               <span className="truncate">{w.effort_source}</span>
-              <span className="shrink-0 font-medium text-slate-300">
+              <span className="shrink-0 font-medium text-foreground">
                 {Number(w.points).toFixed(2)}
               </span>
             </div>
@@ -162,15 +162,15 @@ export default async function HustlePointsPage(
         </div>
       </div>
 
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 inline-flex rounded-md bg-muted p-0.5">
         {periodButtons.map((btn) => (
           <Link
             key={btn.key}
             href={`/scoreboard/hustle-points?period=${btn.key}`}
-            className={`flex items-center justify-center rounded-md px-3 py-1.5 text-center text-sm ${
+            className={`flex items-center justify-center rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
               periodKey === btn.key
-                ? "bg-white text-slate-900"
-                : "bg-slate-900 text-slate-400 hover:text-slate-100"
+                ? "bg-card text-foreground shadow-raised"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {btn.label}
@@ -178,12 +178,12 @@ export default async function HustlePointsPage(
         ))}
       </div>
 
-      <p className="mb-6 flex items-center justify-end gap-3 text-right text-xs text-slate-500">
+      <p className="mb-6 flex items-center justify-end gap-3 text-right text-xs text-muted-foreground">
         <a
           href="https://app.coupler.io/app/dataflows/32e79f15-7a56-4018-9493-5fe58138e8d4/edit"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline decoration-dotted hover:text-slate-300"
+          className="underline decoration-dotted hover:text-foreground"
         >
           Source report ↗
         </a>
@@ -197,7 +197,7 @@ export default async function HustlePointsPage(
       )}
 
       <div>
-        <ol className="divide-y divide-slate-900">
+        <ol className="divide-y">
           {ranked.map((rep, i) => {
             const isOwnRow = rep.rep_id === viewerRepId;
             const maskRow = masking && !isOwnRow;
@@ -206,17 +206,17 @@ export default async function HustlePointsPage(
               <Fragment key={rep.rep_id}>
               {avgSplit && i === avgSplit.insertAt && (
                 <li className="flex items-center gap-3 py-2">
-                  <span className="h-px flex-1 bg-slate-800" />
-                  <span className="shrink-0 text-xs font-medium text-slate-500">
+                  <span className="h-px flex-1 bg-muted" />
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
                     Company Average — {Math.round(avgSplit.average)}
                   </span>
-                  <span className="h-px flex-1 bg-slate-800" />
+                  <span className="h-px flex-1 bg-muted" />
                 </li>
               )}
               <li
                 className="group relative flex items-center gap-4 py-3"
               >
-                <span className="w-6 text-sm text-slate-500">{i + 1}</span>
+                <span className="w-6 text-sm text-muted-foreground">{i + 1}</span>
                 {/* Never on a masked row: a face names somebody just as well
                     as their name does, and would undo the masking entirely. */}
                 {!maskRow && (
@@ -233,7 +233,7 @@ export default async function HustlePointsPage(
                     <>
                       {rep.display_name}
                       {rep.isManager && (
-                        <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+                        <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           Manager avg
                         </span>
                       )}
@@ -265,25 +265,25 @@ export default async function HustlePointsPage(
                   <MaskedBlurb side="right" />
                 ) : (
                   <div className="pointer-events-none absolute left-full top-1/2 z-10 -translate-y-1/2 pl-3 group-hover:pointer-events-auto">
-                    <div className="relative w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-slate-800 bg-slate-900" />
-                      <p className="mb-2 truncate font-medium text-slate-100">
+                    <div className="relative w-56 rounded-md bg-popover p-3 text-xs opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
+                      <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-popover" />
+                      <p className="mb-2 truncate font-medium text-foreground">
                         {rep.display_name}
                       </p>
                       {BUCKETS.map((b) => (
-                        <div key={b} className="flex justify-between py-0.5 text-slate-400">
+                        <div key={b} className="flex justify-between py-0.5 text-muted-foreground">
                           <span>{b}</span>
                           <span>{rep.isManager ? Math.round(rep.counts[b]) : rep.counts[b]}</span>
                         </div>
                       ))}
-                      <div className="mt-1 flex justify-between border-t border-slate-800 pt-1 font-medium text-slate-100">
+                      <div className="mt-1 flex justify-between border-t pt-1 font-medium text-foreground">
                         <span>{rep.isManager ? "Team Avg Points" : "Hustle Points"}</span>
                         <span>{rep.totalPoints.toFixed(1)}</span>
                       </div>
                       {!rep.isManager && (
                         <Link
                           href={`/scoreboard/hustle-points/${rep.rep_id}/activities?period=${periodKey}`}
-                          className="mt-2 block border-t border-slate-800 pt-2 text-slate-400 underline decoration-dotted hover:text-slate-100"
+                          className="mt-2 block border-t pt-2 text-muted-foreground underline decoration-dotted hover:text-foreground"
                         >
                           Activities
                         </Link>
@@ -297,15 +297,15 @@ export default async function HustlePointsPage(
           })}
           {avgSplit && avgSplit.insertAt === ranked.length && (
             <li className="flex items-center gap-3 py-2">
-              <span className="h-px flex-1 bg-slate-800" />
-              <span className="shrink-0 text-xs font-medium text-slate-500">
+              <span className="h-px flex-1 bg-muted" />
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">
                 Company Average — {Math.round(avgSplit.average)}
               </span>
-              <span className="h-px flex-1 bg-slate-800" />
+              <span className="h-px flex-1 bg-muted" />
             </li>
           )}
           {ranked.length === 0 && !error && (
-            <li className="py-6 text-center text-sm text-slate-500">
+            <li className="py-6 text-center text-sm text-muted-foreground">
               No activity in this period.
             </li>
           )}

@@ -41,7 +41,7 @@ export function AddCandidate({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div className="w-80 rounded-lg border bg-card p-3 shadow-lg">
+    <div className="w-80 rounded-md bg-popover p-3 shadow-overlay">
       <div className="mb-2 flex items-center">
         <span className="text-sm font-medium">Add candidate</span>
         <button

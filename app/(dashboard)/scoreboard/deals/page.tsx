@@ -140,15 +140,15 @@ export default async function DealsPage(props: ScoreboardPageProps) {
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <PageHeader title="Deals" description="New Customers closed per person" />
-        <div className="flex gap-2">
+        <div className="inline-flex self-start rounded-md bg-muted p-0.5">
           {DEAL_PERIODS.map((p) => (
             <Link
               key={p}
               href={`/scoreboard/deals?period=${p}`}
-              className={`flex items-center justify-center rounded-md px-3 py-1.5 text-center text-sm ${
+              className={`flex items-center justify-center rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
                 period === p
-                  ? "bg-white text-slate-900"
-                  : "bg-slate-900 text-slate-400 hover:text-slate-100"
+                  ? "bg-card text-foreground shadow-raised"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {DEAL_PERIOD_LABEL[p]}
@@ -163,7 +163,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
         </p>
       )}
 
-      <ol className="divide-y divide-slate-900">
+      <ol className="divide-y">
         {ranked.map((rep, i) => {
           const isOwnRow = rep.rep_id === viewerRepId;
           const maskRow = masking && !isOwnRow;
@@ -172,15 +172,15 @@ export default async function DealsPage(props: ScoreboardPageProps) {
             <Fragment key={rep.rep_id}>
             {avgSplit && i === avgSplit.insertAt && (
               <li className="flex items-center gap-3 py-2">
-                <span className="h-px flex-1 bg-slate-800" />
-                <span className="shrink-0 text-xs font-medium text-slate-500">
+                <span className="h-px flex-1 bg-muted" />
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">
                   Company Average — {Math.round(avgSplit.average)}
                 </span>
-                <span className="h-px flex-1 bg-slate-800" />
+                <span className="h-px flex-1 bg-muted" />
               </li>
             )}
             <li className="group relative flex items-center gap-4 py-3">
-              <span className="w-6 text-sm text-slate-500">{i + 1}</span>
+              <span className="w-6 text-sm text-muted-foreground">{i + 1}</span>
               {/* Never on a masked row -- a face names somebody as well as
                   their name does. */}
               {!maskRow && (
@@ -193,7 +193,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
                   <>
                     {rep.display_name}
                     {rep.isManager && (
-                      <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+                      <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         Manager avg
                       </span>
                     )}
@@ -224,15 +224,15 @@ export default async function DealsPage(props: ScoreboardPageProps) {
         })}
         {avgSplit && avgSplit.insertAt === ranked.length && (
           <li className="flex items-center gap-3 py-2">
-            <span className="h-px flex-1 bg-slate-800" />
-            <span className="shrink-0 text-xs font-medium text-slate-500">
+            <span className="h-px flex-1 bg-muted" />
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
               Company Average — {Math.round(avgSplit.average)}
             </span>
-            <span className="h-px flex-1 bg-slate-800" />
+            <span className="h-px flex-1 bg-muted" />
           </li>
         )}
         {ranked.length === 0 && !error && (
-          <li className="py-6 text-center text-sm text-slate-500">
+          <li className="py-6 text-center text-sm text-muted-foreground">
             No deals in this period.
           </li>
         )}

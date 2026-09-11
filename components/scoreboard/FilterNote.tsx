@@ -6,8 +6,8 @@
  */
 export function FilterNote({ children }: { children: React.ReactNode }) {
   return (
-    <details className="mt-8 border-t border-slate-900 pt-4 text-xs leading-relaxed text-slate-600">
-      <summary className="cursor-pointer select-none list-none font-medium text-slate-400 hover:text-slate-200">
+    <details className="mt-8 border-t pt-4 text-xs leading-relaxed text-muted-foreground">
+      <summary className="cursor-pointer select-none list-none font-medium text-muted-foreground hover:text-foreground">
         <span className="inline-block transition-transform [details[open]_&]:rotate-90">▸</span>{" "}
         Data Criteria
       </summary>

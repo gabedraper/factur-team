@@ -113,7 +113,7 @@ export default function AdminCoursesPage() {
             <Link
               key={course.id}
               href={`/admin/courses/${course.id}`}
-              className="group rounded-xl border overflow-hidden hover:shadow-md transition-shadow bg-card flex flex-col"
+              className="group flex flex-col overflow-hidden rounded-md bg-card transition-shadow duration-base ease-out hover:shadow-overlay"
             >
               {/* Gradient header with title */}
               <div

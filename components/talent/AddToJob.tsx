@@ -30,7 +30,7 @@ export function AddToJob({ personId }: { personId: string }) {
   }
 
   return (
-    <div className="w-72 rounded-lg border bg-card p-2 shadow-lg">
+    <div className="w-72 rounded-md bg-popover p-2 shadow-overlay">
       {note && <p className="px-2 pb-2 text-xs text-muted-foreground">{note}</p>}
       <ul className="max-h-64 divide-y overflow-y-auto">
         {jobs.map((j) => (

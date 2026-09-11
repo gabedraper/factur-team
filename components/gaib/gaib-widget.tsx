@@ -470,7 +470,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
           ref={frame}
           role="complementary"
           aria-label="Gaib"
-          className="fixed bottom-4 right-4 z-50 flex h-[30rem] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col rounded-xl border bg-background shadow-2xl sm:w-96"
+          className="fixed bottom-4 right-4 z-50 flex h-[30rem] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] flex-col rounded-md bg-card shadow-modal sm:w-96"
           // Once it has been moved, the corner it was pinned to has to let go:
           // left and right both set would stretch it rather than place it.
           style={
