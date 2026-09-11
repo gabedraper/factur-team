@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { updateLesson } from "@/actions/lessons";
+import { lessonVideoUploadTarget, updateLesson } from "@/actions/lessons";
 import {
   Card,
   CardContent,
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -71,6 +71,9 @@ export default function LessonEditPage() {
   const [allUsers, setAllUsers] = useState<{ id: string; full_name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const videoFile = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadLesson();
@@ -115,6 +118,32 @@ export default function LessonEditPage() {
         return { questions };
       default:
         return {};
+    }
+  }
+
+  // The file goes from the browser straight into storage on a one-off signed
+  // URL -- a recording is far too big to pass through a server action -- and
+  // only the address it landed on comes back into the form.
+  async function uploadVideo(chosen: File) {
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const target = await lessonVideoUploadTarget(lessonId, chosen.name);
+      if (!target.success) throw new Error(target.error);
+
+      const { error } = await supabase.storage
+        .from(target.bucket)
+        .uploadToSignedUrl(target.path, target.token, chosen, {
+          contentType: chosen.type || undefined,
+        });
+      if (error) throw new Error(error.message);
+
+      setVideoUrl(target.publicUrl);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Could not upload that file");
+    } finally {
+      setUploading(false);
+      if (videoFile.current) videoFile.current.value = "";
     }
   }
 
@@ -234,10 +263,11 @@ export default function LessonEditPage() {
             <CardHeader>
               <CardTitle>Video Content</CardTitle>
               <CardDescription>
-                Enter a direct video URL or YouTube embed URL
+                Upload a video file, or enter a direct video URL or YouTube
+                embed URL
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Video URL</Label>
                 <Input
@@ -245,6 +275,35 @@ export default function LessonEditPage() {
                   onChange={(e) => setVideoUrl(e.target.value)}
                   placeholder="https://www.youtube.com/embed/... or direct .mp4 URL"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Or upload a video file</Label>
+                <input
+                  ref={videoFile}
+                  type="file"
+                  className="hidden"
+                  accept="video/*"
+                  onChange={(e) =>
+                    e.target.files?.[0] && uploadVideo(e.target.files[0])
+                  }
+                />
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => videoFile.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? "Uploading video..." : "Upload video file"}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  An MP4 from this computer. A long recording takes a while; the
+                  URL above fills in when it lands, then Save Changes.
+                </p>
+                {uploadError && (
+                  <p className="text-sm text-destructive">{uploadError}</p>
+                )}
               </div>
             </CardContent>
           </Card>
