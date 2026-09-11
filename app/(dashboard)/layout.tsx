@@ -357,19 +357,24 @@ export default async function DashboardLayout({
         <main className="flex min-w-0 flex-1 flex-col overflow-auto">
           {/* Presence is the real signed-in person, not the previewed one -- the
               point of it is who is actually at a keyboard. */}
-          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-4">
+          {/* Three columns with the outer two equal, so the search sits at the
+              true centre however many people are online beside it. */}
+          <header className="sticky top-0 z-20 grid h-12 shrink-0 grid-cols-[1fr_minmax(0,36rem)_1fr] items-center gap-4 border-b bg-card px-4">
+            <div aria-hidden />
             {/* Every record the viewer can see, whatever list they are on. It
                 reads the URL, which needs a Suspense boundary. */}
-            <Suspense fallback={<div className="h-8 w-full max-w-xl" />}>
+            <Suspense fallback={<div className="h-8 w-full" />}>
               <HeaderSearch allowed={searchable} />
             </Suspense>
-            <OnlineUsers
-              me={{
-                id: user.id,
-                name: profile.full_name ?? user.email ?? "User",
-                avatarUrl: profile.avatar_url ?? null,
-              }}
-            />
+            <div className="flex justify-end">
+              <OnlineUsers
+                me={{
+                  id: user.id,
+                  name: profile.full_name ?? user.email ?? "User",
+                  avatarUrl: profile.avatar_url ?? null,
+                }}
+              />
+            </div>
           </header>
           <MaintenanceAlert canSee={perms.has("org.manage")} />
           {previewing && (
