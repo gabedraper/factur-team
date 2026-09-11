@@ -41,6 +41,7 @@ export function PeopleTable(
 
   const managerRole = roles.find((r) => r.slug === "manager");
   const adminRole = roles.find((r) => r.slug === "app-admin");
+  const betaRole = roles.find((r) => r.slug === "beta-tester");
 
   // People who have left are kept, not deleted, so their history still reads
   // correctly -- but they are not who this screen is usually about, so they sit
@@ -70,6 +71,7 @@ export function PeopleTable(
     manager: (m) => rows.find((r) => r.id === m.manager_member_id)?.full_name,
     mgr: (m) => (managerRole ? m.roleIds.includes(managerRole.id) : false),
     admin: (m) => (adminRole ? m.roleIds.includes(adminRole.id) : false),
+    beta: (m) => (betaRole ? m.roleIds.includes(betaRole.id) : false),
     active: (m) => m.active,
   });
 
@@ -122,6 +124,7 @@ export function PeopleTable(
               <SortHeader className="px-3 py-2" {...sortProps("manager")}>Manager</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("mgr")}>Mgr</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("admin")}>Admin</SortHeader>
+              <SortHeader className="px-3 py-2" align="center" {...sortProps("beta")}>Beta</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("active")}>Active</SortHeader>
             </TR>
           </THead>
@@ -180,7 +183,7 @@ export function PeopleTable(
                            .map((r) => <option key={r.id} value={r.id}>{r.full_name ?? r.email}</option>)}
                     </select>
                   </TD>
-                  {([["manager", managerRole], ["app-admin", adminRole]] as const).map(([slug, role]) => {
+                  {([["manager", managerRole], ["app-admin", adminRole], ["beta-tester", betaRole]] as const).map(([slug, role]) => {
                     const on = role ? m.roleIds.includes(role.id) : false;
                     return (
                       <TD key={slug} className="text-center">

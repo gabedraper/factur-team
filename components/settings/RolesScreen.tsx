@@ -2,11 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
-  createRole, updateRole, deleteRole, setRolePermission, setRoleClientAssignable,
+  createRole, updateRole, deleteRoles, setRolePermission, setRolePermissions, setRoleClientAssignable,
 } from "@/actions/org";
 import { isStandaloneRole } from "@/lib/org-roles";
 import type { RoleDetail } from "@/lib/org";
 import { Surface } from "@/components/ui/surface";
+import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 
 type Service = { id: string; name: string };
 type Perm = {
@@ -24,6 +25,39 @@ export function RolesScreen({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [draft, setDraft] = useState({ name: "", serviceId: "", description: "" });
+  // Built-in roles cannot be deleted, so they cannot be selected either --
+  // otherwise "select all" would tick boxes the delete then has to skip.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const deletable = useMemo(() => roles.filter((r) => !isStandaloneRole(r.slug)), [roles]);
+  const allSelected = deletable.length > 0 && deletable.every((r) => selected.has(r.id));
+  const someSelected = deletable.some((r) => selected.has(r.id));
+
+  function toggleAll(on: boolean) {
+    setSelected(on ? new Set(deletable.map((r) => r.id)) : new Set());
+  }
+  function toggleOne(id: string, on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
+
+  function deleteSelected() {
+    const picked = roles.filter((r) => selected.has(r.id));
+    if (!picked.length) return;
+    const holders = picked.reduce((n, r) => n + r.holders, 0);
+    const names = picked.map((r) => `"${r.name}"`).join(", ");
+    const what = picked.length === 1 ? `Delete ${names}?` : `Delete ${picked.length} roles (${names})?`;
+    const who = holders === 0 ? "" :
+      ` ${holders === 1 ? "1 person holds" : `${holders} people hold`} ${picked.length === 1 ? "this role" : "these roles"} and will lose ${picked.length === 1 ? "it" : "them"}. Anyone whose job it was is flagged for review.`;
+    if (!window.confirm(what + who)) return;
+    run(async () => {
+      const res = await deleteRoles(picked.map((r) => r.id));
+      if (res.success) setSelected(new Set());
+      return res;
+    });
+  }
 
   const grouped = useMemo(() => {
     const byCategory = new Map<string, Perm[]>();
@@ -45,6 +79,7 @@ export function RolesScreen({
     startTransition(async () => {
       const res = await fn();
       if (!res.success) setError(res.error ?? "Something went wrong");
+      else if (res.error) setError(res.error);
     });
   }
 
@@ -82,15 +117,33 @@ export function RolesScreen({
         </div>
         <p className="text-xs text-muted-foreground">
           A role tied to a service is a job someone does and counts towards their allocation. A role
-          with no service — like Manager — only says what they may see.
+          with no service — like Manager or Beta Tester — only says what they may see.
         </p>
       </Surface>
 
+      {someSelected ? (
+        <BulkBar count={selected.size} noun="role" onClear={() => toggleAll(false)}>
+          <BulkAction danger onClick={deleteSelected}>Delete roles</BulkAction>
+        </BulkBar>
+      ) : (
+        <label className="flex items-center gap-2 px-1 text-meta text-muted-foreground">
+          <SelectAllBox checked={allSelected} indeterminate={someSelected}
+                        onChange={toggleAll} label="Select all roles" />
+          Select all roles
+        </label>
+      )}
+
       {roles.map((r) => {
         const builtIn = isStandaloneRole(r.slug);
+        const allKeys = permissions.map((p) => p.key);
         return (
           <Surface as="section" key={r.id} className={`space-y-3 ${r.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
+              <input type="checkbox" aria-label={`Select ${r.name}`}
+                     className="h-3.5 w-3.5 cursor-pointer accent-[hsl(var(--primary))] disabled:cursor-default disabled:opacity-40"
+                     checked={selected.has(r.id)} disabled={builtIn}
+                     title={builtIn ? "Built in" : undefined}
+                     onChange={(e) => toggleOne(r.id, e.target.checked)} />
               <input className="h-8 min-w-40 rounded-md border bg-field px-2 text-sm font-medium"
                      defaultValue={r.name}
                      onBlur={(e) => { if (e.target.value.trim() !== r.name) run(() => updateRole(r.id, { name: e.target.value })); }} />
@@ -126,15 +179,37 @@ export function RolesScreen({
               </label>
               <button
                 className="h-8 rounded-md border px-2 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
-                disabled={builtIn || r.holders > 0 || pending}
-                title={builtIn ? "Built in" : r.holders ? "Someone holds it" : "Delete"}
-                onClick={() => run(() => deleteRole(r.id))}
+                disabled={builtIn || pending}
+                title={builtIn ? "Built in" : "Delete role"}
+                onClick={() => {
+                  const who = r.holders === 1 ? "1 person holds" : `${r.holders} people hold`;
+                  const msg = r.holders
+                    ? `Delete "${r.name}"? ${who} this role and will lose it. Anyone whose job it was is flagged for review.`
+                    : `Delete "${r.name}"?`;
+                  if (!window.confirm(msg)) return;
+                  run(() => deleteRoles([r.id]));
+                }}
               >
-                Delete
+                Delete role
               </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex items-center gap-3 text-meta text-muted-foreground">
+              <span>{r.permissionKeys.length} of {allKeys.length} permissions</span>
+              <button type="button" className="underline-offset-2 hover:underline disabled:opacity-40"
+                      disabled={pending || r.permissionKeys.length === allKeys.length}
+                      onClick={() => run(() => setRolePermissions(r.id, allKeys, true))}>
+                Select all
+              </button>
+              <button type="button" className="underline-offset-2 hover:underline disabled:opacity-40"
+                      disabled={pending || r.permissionKeys.length === 0}
+                      onClick={() => run(() => setRolePermissions(r.id, allKeys, false))}>
+                Clear all
+              </button>
+            </div>
+
+            <div key={r.permissionKeys.slice().sort().join(",")}
+                 className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {grouped.map(({ category, perms }) => (
                 <div key={category}>
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">

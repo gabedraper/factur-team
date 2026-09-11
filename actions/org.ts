@@ -426,27 +426,58 @@ export async function updateRole(
 }
 
 /** Refused while anyone holds it: deleting would silently strip their access. */
-export async function deleteRole(roleId: string) {
+/**
+ * Delete several roles at once -- the roles screen selects rows and acts on
+ * all of them, like every other list.
+ *
+ * Deleting a role deletes its assignments with it (the foreign key cascades).
+ * Anyone whose job that was is left with no job, so they are flagged for
+ * review on the People screen rather than quietly dropping off every list that
+ * filters by role. The screen confirms the holder count before calling this.
+ *
+ * Built-in roles (manager, app-admin, beta-tester) are never deleted: the code
+ * looks them up by slug.
+ */
+export async function deleteRoles(roleIds: string[]) {
   try {
     await requireOrgManage();
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
   }
+  if (!roleIds.length) return { success: false, error: "Nothing selected." };
   const db = createServiceClient();
 
-  const { data: role } = await db.from("org_roles").select("slug").eq("id", roleId).maybeSingle();
-  const slug = (role as { slug: string } | null)?.slug;
-  if (slug && isStandaloneRole(slug)) {
-    return { success: false, error: "That role is built in and cannot be deleted." };
+  const { data: roles } = await db.from("org_roles").select("id,slug,name").in("id", roleIds);
+  const found = (roles ?? []) as { id: string; slug: string; name: string }[];
+  const builtIn = found.filter((r) => isStandaloneRole(r.slug));
+  const ids = found.filter((r) => !isStandaloneRole(r.slug)).map((r) => r.id);
+  if (!ids.length) {
+    return {
+      success: false,
+      error: builtIn.length === 1
+        ? `${builtIn[0].name} is built in and cannot be deleted.`
+        : "Those roles are built in and cannot be deleted.",
+    };
   }
 
-  const { count } = await db.from("org_assignments")
-    .select("id", { count: "exact", head: true }).eq("role_id", roleId);
-  if (count) return { success: false, error: `${count} people hold this role. Move them first.` };
+  const { data: held } = await db.from("org_assignments")
+    .select("member_id").in("role_id", ids);
+  const memberIds = [...new Set(((held ?? []) as { member_id: string }[]).map((a) => a.member_id))];
 
-  const { error } = await db.from("org_roles").delete().eq("id", roleId);
+  const { error } = await db.from("org_roles").delete().in("id", ids);
   if (error) return { success: false, error: error.message };
+
+  if (memberIds.length) {
+    await db.from("org_members").update({ needs_review: true }).in("id", memberIds);
+  }
   revalidatePath("/settings/roles");
+  revalidatePath("/settings/people");
+  if (builtIn.length) {
+    return {
+      success: true,
+      error: `Deleted ${ids.length}. Left alone because built in: ${builtIn.map((r) => r.name).join(", ")}.`,
+    };
+  }
   return { success: true };
 }
 
@@ -464,6 +495,29 @@ export async function setRolePermission(roleId: string, permissionKey: string, o
   } else {
     await db.from("org_role_permissions")
       .delete().eq("role_id", roleId).eq("permission_key", permissionKey);
+  }
+  revalidatePath("/settings/roles");
+  return { success: true };
+}
+
+/** Tick or clear every listed permission on a role in one go. */
+export async function setRolePermissions(roleId: string, permissionKeys: string[], on: boolean) {
+  try {
+    await requireOrgManage();
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Forbidden: org.manage required" };
+  }
+  if (!permissionKeys.length) return { success: true };
+  const db = createServiceClient();
+  if (on) {
+    const { error } = await db.from("org_role_permissions")
+      .upsert(permissionKeys.map((permission_key) => ({ role_id: roleId, permission_key })),
+              { onConflict: "role_id,permission_key", ignoreDuplicates: true });
+    if (error) return { success: false, error: error.message };
+  } else {
+    const { error } = await db.from("org_role_permissions")
+      .delete().eq("role_id", roleId).in("permission_key", permissionKeys);
+    if (error) return { success: false, error: error.message };
   }
   revalidatePath("/settings/roles");
   return { success: true };
