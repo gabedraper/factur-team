@@ -87,6 +87,33 @@ function normaliseUrl(website: string): string | null {
   }
 }
 
+/**
+ * One public page as text, for Gaib.
+ *
+ * The same reader the client enrichment uses, so a page reads the same
+ * whichever of them asked. Private addresses are refused before any request
+ * is made: a page fetcher on the app's own server that would follow a link to
+ * localhost or the database is a door left open.
+ */
+export async function readPage(url: string): Promise<{ ok: true; text: string } | { ok: false; reason: string }> {
+  let parsed: URL;
+  try {
+    parsed = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+  } catch {
+    return { ok: false, reason: "not a usable web address" };
+  }
+  const host = parsed.hostname.toLowerCase();
+  if (
+    host === "localhost" || host.endsWith(".local") || host.endsWith(".internal") ||
+    /^(\d+\.){3}\d+$/.test(host) || host.includes(":")
+  ) {
+    return { ok: false, reason: "that address is not a public website" };
+  }
+  const text = await fetchText(parsed.toString());
+  if (!text) return { ok: false, reason: "that page did not answer, or is not a readable web page" };
+  return { ok: true, text: text.slice(0, MAX_CHARS) };
+}
+
 /** The readable text of one page, or null if it did not answer. */
 async function fetchText(url: string): Promise<string | null> {
   const stop = AbortSignal.timeout(FETCH_TIMEOUT_MS);

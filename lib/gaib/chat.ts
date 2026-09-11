@@ -162,6 +162,8 @@ export async function roomReach(space: string | null): Promise<string> {
 
 export const GROUP_SAFE_TOOLS = new Set([
   "add_gif",
+  // A public page is public.
+  "read_web_page",
   "search_handbook",
   "search_tickets",
   "raise_ticket",
