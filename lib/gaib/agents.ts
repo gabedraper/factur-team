@@ -17,6 +17,8 @@ export type Agent = {
   name: string;
   tagline: string | null;
   instructions: string;
+  /** How it sounds -- Gabe's style, learned from his own messages. */
+  voice: string | null;
   model: string;
   effort: "low" | "medium" | "high" | "xhigh" | "max";
   enabled: boolean;
@@ -28,7 +30,7 @@ export type Agent = {
 
 type Row = {
   id: string; slug: string; name: string; tagline: string | null;
-  instructions: string; model: string; effort: Agent["effort"];
+  instructions: string; voice: string | null; model: string; effort: Agent["effort"];
   enabled: boolean; is_default: boolean;
   gaib_agent_tools: { tool: string }[];
   gaib_agent_roles: { role_id: string }[];
@@ -44,6 +46,7 @@ function shape(row: Row): Agent {
     // preamble alone, which is a coherent but characterless assistant. Falling
     // back to the seed is the kinder failure.
     instructions: row.instructions?.trim() || GAIB_SYSTEM,
+    voice: row.voice?.trim() || null,
     model: row.model,
     effort: row.effort,
     enabled: row.enabled,

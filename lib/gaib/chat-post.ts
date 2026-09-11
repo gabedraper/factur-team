@@ -138,3 +138,38 @@ export async function downloadAttachment(
     return { ok: false, reason: e instanceof Error ? e.message : "download failed" };
   }
 }
+
+/**
+ * Post a GIF as an image card, in the same thread as the reply it belongs to.
+ *
+ * A card rather than a bare link: Chat does not reliably unfurl links in
+ * messages from apps, so a pasted URL often arrives as just a URL.
+ */
+export async function postGifToSpace(
+  spaceName: string,
+  imageUrl: string,
+  threadName?: string | null
+): Promise<PostResult> {
+  const access = await token().catch(() => null);
+  if (!access) return { ok: false, reason: "no posting key" };
+
+  const query = threadName ? "?messageReplyOption=REPLY_MESSAGE_FALLBACK_TO_NEW_THREAD" : "";
+  try {
+    const res = await fetch(`https://chat.googleapis.com/v1/${spaceName}/messages${query}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${access}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...(threadName ? { thread: { name: threadName } } : {}),
+        cardsV2: [{
+          cardId: "gif",
+          card: { sections: [{ widgets: [{ image: { imageUrl, altText: "GIF" } }] }] },
+        }],
+      }),
+    });
+    if (!res.ok) return { ok: false, reason: `Chat ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    const body = (await res.json()) as { name?: string };
+    return { ok: true, messageName: body.name ?? "(unnamed)" };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unknown error" };
+  }
+}

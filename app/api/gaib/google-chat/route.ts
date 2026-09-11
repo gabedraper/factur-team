@@ -4,7 +4,7 @@ import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
 import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn, type TurnImage } from "@/lib/gaib/chat";
-import { postToSpace, downloadAttachment } from "@/lib/gaib/chat-post";
+import { postToSpace, downloadAttachment, postGifToSpace } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 
 /*
@@ -324,14 +324,24 @@ async function answer(event: ChatEvent) {
      * no answer was ever coming. It runs to the end either way; the only
      * question is whether anyone is still on the line to receive it.
      */
+    const gifs: string[] = [];
     const work = (async () => {
       const said: string[] = [];
       for await (const e of turn) {
         if (e.type === "text") said.push(e.text);
         if (e.type === "error") said.push(`Something went wrong: ${e.message}`);
+        if (e.type === "gif") gifs.push(e.url);
       }
       return said.join("").trim();
     })();
+
+    /** The GIF, if Gaib chose one, posted under the reply once it has gone. */
+    const sendGifs = async () => {
+      if (!event.spaceName) return;
+      for (const url of gifs) {
+        await postGifToSpace(event.spaceName, url, event.threadName).catch(() => {});
+      }
+    };
 
     /*
      * Answer if it is quick, promise if it is not.
@@ -349,6 +359,9 @@ async function answer(event: ChatEvent) {
     ]);
 
     if (quick.ready) {
+      // After the response has gone, so the words land first and the GIF
+      // follows as the punchline rather than arriving ahead of the joke.
+      if (gifs.length) after(sendGifs);
       return reply(quick.text || "I do not have an answer for that.", event);
     }
 
@@ -372,6 +385,7 @@ async function answer(event: ChatEvent) {
             text ||
               "I could not get to the bottom of that one. Ask me again and I will try a different way."
           );
+          await sendGifs();
         } catch {
           // Say something rather than nothing: a promise to reply that goes
           // quiet is worse than the original timeout.

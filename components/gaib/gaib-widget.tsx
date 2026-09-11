@@ -53,6 +53,7 @@ type Line =
   | { kind: "working"; text: string }
   | { kind: "ticket"; ref: number; title: string; lane: string }
   | { kind: "offer-notify" }
+  | { kind: "gif"; url: string }
   | { kind: "error"; text: string };
 
 type Event =
@@ -60,6 +61,7 @@ type Event =
   | { type: "text"; text: string }
   | { type: "working"; what: string }
   | { type: "ticket"; ref: number; title: string; lane: string }
+  | { type: "gif"; url: string }
   | { type: "error"; message: string }
   | { type: "done" };
 
@@ -280,6 +282,9 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                  */
                 ...(canAsk() ? [{ kind: "offer-notify" as const }] : []),
               ]);
+            } else if (event.type === "gif") {
+              streaming = false;
+              setLines((l) => [...l, { kind: "gif", url: event.url }]);
             } else if (event.type === "error") {
               setLines((l) => [...l, { kind: "error", text: event.message }]);
             }
@@ -627,6 +632,17 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {lines.map((line, i) => {
+              if (line.kind === "gif") {
+                return (
+                  <img
+                    key={i}
+                    src={line.url}
+                    alt="GIF"
+                    className="w-fit max-w-[70%] rounded-lg"
+                    loading="lazy"
+                  />
+                );
+              }
               if (line.kind === "said") {
                 return (
                   <div

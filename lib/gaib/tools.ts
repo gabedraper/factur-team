@@ -5,6 +5,7 @@ import { createTicket, searchTickets, type Lane, type Severity, type TicketKind 
 import { fetchMail, fetchBody } from "@/lib/google/gmail";
 import { fetchChat } from "@/lib/google/chat";
 import { searchDrive, fetchDocText } from "@/lib/google/drive";
+import { findGif, gifsEnabled } from "./gif";
 
 /*
  * What an agent can actually do.
@@ -42,6 +43,8 @@ export type ToolContext = {
    * otherwise use the asker's own access hold back what the room may not see.
    */
   publicOnly?: boolean;
+  /** GIFs chosen during the turn, shown after the reply. */
+  gifs?: string[];
 };
 
 export type GaibTool = {
@@ -163,6 +166,15 @@ export const READABLE_TABLES: Record<string, string[]> = {
    * I meant to be working on" was a question it could not answer about a list
    * sitting on the same screen.
    */
+  /*
+   * The CRM. Gaib once told Matt a company was not on file when it was in
+   * Salesforce twice -- it could not see these, and reported its blind spot as
+   * an absence. Accounts and contacts are readable by any Factur user;
+   * opportunities are scoped to what the asker may see.
+   */
+  "Companies, contacts and opportunities": [
+    "crm_accounts", "crm_contacts", "opportunities",
+  ],
   "Tasks and projects": [
     "work_items", "work_item_assignees", "work_containers", "work_processes",
   ],
@@ -749,12 +761,52 @@ const searchHandbookTool: GaibTool = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Personality
+// ---------------------------------------------------------------------------
+
+const addGifTool: GaibTool = {
+  name: "add_gif",
+  label: "Send a GIF",
+  blurb: "Adds a GIF after the reply, for really good or really bad news.",
+  definition: {
+    name: "add_gif",
+    description:
+      "Attach one GIF to your reply. Rare, not routine -- most replies should not have one. Use it when " +
+      "something is genuinely great (a fix landed, a deal closed, someone nailed a test) or genuinely " +
+      "awful in a way that is funny (the app did something absurd). Never for someone who is frustrated, " +
+      "never about something that cost them real time or money, and never twice in a conversation. " +
+      "The GIF appears after your words; do not describe or mention it.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        search: {
+          type: "string",
+          description: "Two or three words to search for, e.g. \"nailed it\", \"this is fine\", \"slow clap\".",
+        },
+      },
+      required: ["search"],
+      additionalProperties: false,
+    },
+  },
+  async run(ctx, input) {
+    // One a turn. The tool says no rather than trusting the instruction to.
+    if ((ctx.gifs?.length ?? 0) >= 1) return "One GIF per reply is plenty. Skipped.";
+    const gif = await findGif(String(input.search ?? ""));
+    if (!gif) return "No suitable GIF found. Carry on without one.";
+    ctx.gifs?.push(gif.url);
+    return `Added a GIF ("${gif.title}"). It will show after your reply -- do not mention it.`;
+  },
+};
+
 export const TOOLS: GaibTool[] = [
   searchTicketsTool,
   raiseTicketTool,
   answerQuestionTool,
   askReporterTool,
   searchHandbookTool,
+  addGifTool,
   describeDataTool,
   queryDataTool,
   clientBillingTool,
@@ -768,5 +820,10 @@ export const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** The tools an agent actually gets, ignoring any granted name the registry does not know. */
 export function toolsFor(granted: string[]): GaibTool[] {
-  return granted.map((n) => TOOL_BY_NAME.get(n)).filter((t): t is GaibTool => !!t);
+  return granted
+    .map((n) => TOOL_BY_NAME.get(n))
+    .filter((t): t is GaibTool => !!t)
+    // No key, no tool: a GIF tool that always fails would teach the model to
+    // stop trying, and then it would not try once the key arrived.
+    .filter((t) => t.name !== "add_gif" || gifsEnabled());
 }

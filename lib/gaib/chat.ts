@@ -23,6 +23,8 @@ export type ChatEvent =
   | { type: "working"; what: string }
   | { type: "ticket"; ref: number; title: string; lane: string }
   | { type: "error"; message: string }
+  /** A GIF to show after the reply. Chat posts it as its own card; the panel draws it. */
+  | { type: "gif"; url: string }
   | { type: "done" };
 
 /**
@@ -137,6 +139,7 @@ const ROOM_NOTE = [
 ].join(" ");
 
 const GROUP_SAFE_TOOLS = new Set([
+  "add_gif",
   "search_handbook",
   "search_tickets",
   "raise_ticket",
@@ -330,6 +333,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
     sessionId: input.sessionId,
     pageUrl: input.pageUrl,
     publicOnly: inRoom,
+    gifs: [],
   };
 
   /*
@@ -343,7 +347,18 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const system: Anthropic.TextBlockParam[] = [
     {
       type: "text",
-      text: `${AGENT_PREAMBLE}\n\n---\n\n${input.agent.instructions}`,
+      /*
+       * The voice sits in the cached block with the instructions: it is the
+       * same for every person and every turn, so it costs nothing after the
+       * first request -- and it goes after the instructions so that when the
+       * two pull in different directions, how Gabe talks wins over how the
+       * default was written.
+       */
+      text: [
+        AGENT_PREAMBLE,
+        input.agent.instructions,
+        input.agent.voice ? `## How you sound\n\n${input.agent.voice}` : "",
+      ].filter(Boolean).join("\n\n---\n\n"),
       cache_control: { type: "ephemeral" },
     },
     {
@@ -451,7 +466,10 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
         // The widget draws a ticket as a card rather than as a sentence, so the
         // reference number is pulled back out of the tool's own reply.
         if (call.name === "raise_ticket") {
-          const ref = out.match(/Gaib (\d+)/)?.[1];
+          // [Ticket 28] since the rename. This read "Gaib 28" and stopped
+          // matching the day the wording changed, and the card silently
+          // stopped appearing -- nothing errors when a regex finds nothing.
+          const ref = out.match(/\[Ticket (\d+)\]/)?.[1];
           const lane = (call.input as { lane?: string }).lane ?? "approval";
           if (ref) {
             yield {
@@ -475,6 +493,9 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   }
 
   await title(input.sessionId, client, input.agent.model);
+  // After the words, never before: a GIF lands as the punchline to what was
+  // said, and on its own it is just a moving picture with no context.
+  for (const url of ctx.gifs ?? []) yield { type: "gif", url };
   yield { type: "done" };
 }
 
