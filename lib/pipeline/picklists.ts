@@ -11,7 +11,7 @@ export const STAGE_GROUPS: { label: string; values: string[] }[] = [
     label: "Prospecting",
     values: [
       "Prospecting: Pipeline Cold", "Prospecting: Cold Call List", "Prospecting: Cold Referral",
-      "Prospecting: Warm Referral", "Prospecting: Referred", "Lead Generated", "Lead Generated: Scheduled",
+      "Prospecting: Warm Referral", "Prospecting: Referred", "Lead Generated",
     ],
   },
   {
