@@ -5,7 +5,10 @@ import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
 import { runTurn, type TurnImage } from "@/lib/gaib/chat";
 import { postToSpace, downloadAttachment, postGifToSpace, threadContext } from "@/lib/gaib/chat-post";
-import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
+import { defaultAgent, myRoleIds, mayUse, type Agent } from "@/lib/gaib/agents";
+import {
+  usesWorker, workerFor, sendTurn, awaitTurn, claimInline, forChat,
+} from "@/lib/gaib/worker/engine";
 import { gifsEnabled } from "@/lib/gaib/gif";
 import { vary } from "@/lib/gaib/vary";
 
@@ -318,6 +321,26 @@ async function answer(event: ChatEvent) {
       ? await threadContext(event.spaceName, event.threadName, event.messageName)
       : null;
 
+    /*
+     * The Managed Agents engine, for whoever it is switched on for. It acts as
+     * the person through its own tool endpoint, so the borrowed session here is
+     * not needed and is released as normal. If it cannot start, the message
+     * falls through to the chat engine below rather than going unanswered.
+     */
+    if (await usesWorker(agent, acting.session.email)) {
+      const handled = await answerWithWorker({
+        event, agent, sessionId, inRoom,
+        userId: person.userId,
+        email: acting.session.email,
+        name: person.fullName ?? acting.session.email,
+        thread: thread?.text ?? null,
+      }).catch((e) => {
+        console.error("gaib worker", e);
+        return null;
+      });
+      if (handled) return handled;
+    }
+
     const turn = runTurn({
       agent,
       sessionId,
@@ -443,6 +466,59 @@ async function answer(event: ChatEvent) {
     // after the response needs the session, and releases it itself.
     if (!finishing) await acting.session.release();
   }
+}
+
+/**
+ * One message, answered by Gaib on Managed Agents.
+ *
+ * Same shape as the chat engine's promise-or-answer: a quick answer goes back
+ * in-line; anything longer gets the promise now and is posted into the same
+ * conversation when it lands -- by this request if it is still alive, or by
+ * the minute-by-minute poll if the task outlives it. Returns null if the
+ * worker could not be started, so the caller can fall back.
+ */
+async function answerWithWorker(o: {
+  event: ChatEvent;
+  agent: Agent;
+  sessionId: string;
+  inRoom: boolean;
+  userId: string;
+  email: string;
+  name: string;
+  thread: string | null;
+}) {
+  const startedAt = Date.now();
+  const worker = await workerFor({
+    agent: o.agent,
+    gaibSessionId: o.sessionId,
+    userId: o.userId,
+    email: o.email,
+    name: o.name,
+    mode: o.inRoom ? "room" : "private",
+    replySpace: o.event.spaceName,
+    replyThread: o.inRoom ? o.event.threadName : null,
+  });
+
+  await sendTurn(worker, {
+    name: o.name,
+    text: o.event.text || "(sent a screenshot without saying anything)",
+    images: await fetchImages(o.event),
+    thread: o.thread,
+    channel: "google_chat",
+  });
+
+  // Starting a fresh sandbox eats into Chat's thirty seconds, so the wait is
+  // cut short rather than added on top.
+  const deadline = Math.min(Date.now() + ANSWER_OR_PROMISE_MS, startedAt + 18_000);
+  const quick = await awaitTurn(worker, deadline, { post: false });
+  if (quick.done && quick.text && (await claimInline(worker, quick.text))) {
+    return reply(forChat(quick.text), o.event);
+  }
+
+  after(async () => {
+    await awaitTurn(worker, Date.now() + 280_000).catch(() => {});
+  });
+  return reply(vary("promise", PROMISES), o.event);
 }
 
 /*
