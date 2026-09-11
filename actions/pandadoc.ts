@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import {
-  listCompleted, details, pdf, money, whole, isoDate, serviceFromName,
+  listCompleted, details, money, whole, isoDate, serviceFromName,
 } from "@/lib/pandadoc/client";
-import { extractFromPdf } from "@/lib/pandadoc/extract";
+import { readAgreement, writeTerms } from "@/lib/pandadoc/apply";
 
 export type ImportReport = {
   looked_at: number;
@@ -118,38 +118,33 @@ export async function importAgreements(batch = 40): Promise<ImportReport> {
 
         /*
          * Only what the document says. An absent token leaves the field alone
-         * rather than blanking whatever somebody typed, so running this again
-         * cannot undo a correction.
+         * rather than blanking whatever somebody typed, and writeTerms keeps a
+         * person's own figures, so running this again cannot undo a correction.
          */
         const t = d.tokens;
-        const filled: Record<string, unknown> = {};
-        const put = (k: string, v: unknown) => {
-          if (v !== null && v !== undefined && v !== "") filled[k] = v;
-        };
-
-        put("total_project_fee", money(t["Total_Project_Fee__c"]));
-        put("setup_fee", money(t["One_Time_Setup_fee__c"]));
-        put("term_months", whole(t["Contract_Length__c"]));
-        put("term_start", isoDate(t["Contract_Start_Date__c"]));
-        put("billing_contact_name", t["Client_Contact__r.Name"]);
-        put("billing_contact_email", t["Client_Contact__r.Email"]);
-        put("billing_contact_phone", t["ContactPhone__c"]);
-        put("service", serviceFromName(d.name));
-
-        if (Object.keys(filled).length > 0) {
-          const { error: termsError } = await db.from("client_terms").upsert(
+        try {
+          const { wrote } = await writeTerms(
+            db,
             {
-              client_id: hit.client_id,
-              agreement_id: (inserted as { id: string } | null)?.id ?? null,
-              ...filled,
-              source: "contract",
-              extracted_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              updated_by: me,
+              clientId: hit.client_id,
+              agreementId: (inserted as { id: string } | null)?.id ?? null,
+              signedOn: d.date_completed ? d.date_completed.slice(0, 10) : null,
             },
-            { onConflict: "client_id" }
+            {
+              total_project_fee: money(t["Total_Project_Fee__c"]),
+              setup_fee: money(t["One_Time_Setup_fee__c"]),
+              term_months: whole(t["Contract_Length__c"]),
+              term_start: isoDate(t["Contract_Start_Date__c"]),
+              billing_contact_name: t["Client_Contact__r.Name"],
+              billing_contact_email: t["Client_Contact__r.Email"],
+              billing_contact_phone: t["ContactPhone__c"],
+              service: serviceFromName(d.name),
+            },
+            me
           );
-          if (!termsError) report.terms_filled++;
+          if (wrote) report.terms_filled++;
+        } catch {
+          // The agreement is in. One failed terms write should not stop the batch.
         }
       }
     }
@@ -197,9 +192,9 @@ export type ExtractReport = {
 /**
  * Read the agreements the merge fields could not answer for.
  *
- * Only agreements matched to a client, and only where a person has not already
- * written the terms by hand -- a reading of a PDF should never overwrite
- * somebody's correction.
+ * Only agreements matched to a client. What gets written is decided in
+ * writeTerms: a person's own figures are never replaced, and an older document
+ * cannot put back terms a newer one superseded.
  *
  * A batch at a time, and a small one: each document is a whole contract through
  * a large model, which is neither quick nor free.
@@ -222,7 +217,7 @@ export async function extractAgreementTerms(batch = 5): Promise<ExtractReport> {
    */
   const { data: candidates, error } = await db
     .from("client_agreements")
-    .select("id,external_id,name,client_id")
+    .select("id,external_id,name,client_id,signed_on")
     .eq("source", "pandadoc")
     .not("client_id", "is", null)
     .is("pdf_read_at", null)
@@ -232,98 +227,21 @@ export async function extractAgreementTerms(batch = 5): Promise<ExtractReport> {
   if (error) return { ...report, problem: error.message };
 
   const todo = ((candidates ?? []) as {
-    id: string; external_id: string; name: string; client_id: string;
+    id: string; external_id: string; name: string; client_id: string; signed_on: string | null;
   }[]);
 
   if (todo.length === 0) return { ...report, finished: true };
 
   for (const row of todo) {
-    try {
-      const res = await pdf(row.external_id);
-      const bytes = Buffer.from(await res.arrayBuffer());
-      report.read++;
-
-      const out = await extractFromPdf(row.name, bytes.toString("base64"));
-      if (!out.ok) {
-        report.problems.push(`${row.name}: ${out.reason}`);
-        report.skipped++;
-        await db.from("client_agreements")
-          .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: out.reason })
-          .eq("id", row.id);
-        continue;
-      }
-
-      const c = out.contract;
-      const terms: Record<string, unknown> = {};
-      const put = (k: string, v: unknown) => {
-        if (v !== null && v !== undefined && v !== "") terms[k] = v;
-      };
-
-      put("service", c.service);
-      put("billing_amount", c.billing_amount);
-      put("billing_frequency", c.billing_frequency);
-      put("total_project_fee", c.total_project_fee);
-      put("setup_fee", c.setup_fee);
-      put("payment_terms", c.payment_terms);
-      put("term_months", c.term_months);
-      put("term_start", c.term_start);
-      put("term_end", c.term_end);
-      put("notice_days", c.notice_days);
-      put("billing_contact_name", c.billing_contact_name);
-      put("billing_contact_email", c.billing_contact_email);
-      put("billing_contact_phone", c.billing_contact_phone);
-      put("opt_outs", c.opt_outs);
-      if (c.auto_renew !== null) terms.auto_renew = c.auto_renew;
-
-      /*
-       * Anything the model could not read cleanly is written where a person
-       * will see it rather than dropped, since a figure nobody knows is
-       * doubtful is more dangerous than one flagged.
-       */
-      const notes = [c.other_terms, ...(c.ambiguities ?? []).map((a) => `Unclear: ${a}`)]
-        .filter(Boolean)
-        .join("\n");
-      put("other_terms", notes);
-
-      await db.from("client_terms").upsert(
-        {
-          client_id: row.client_id,
-          agreement_id: row.id,
-          ...terms,
-          source: "contract",
-          extracted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          updated_by: me,
-        },
-        { onConflict: "client_id" }
-      );
-      report.filled++;
-      await db.from("client_agreements")
-        .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: null })
-        .eq("id", row.id);
-
-      for (const k of c.kpis) {
-        await db.from("client_kpi_targets").upsert(
-          {
-            client_id: row.client_id,
-            metric: k.metric,
-            target_per_month: k.target_per_month,
-            source: "contract",
-            updated_at: new Date().toISOString(),
-            updated_by: me,
-          },
-          { onConflict: "client_id,metric" }
-        );
-        report.kpis_found++;
-      }
-    } catch (e) {
-      const reason = e instanceof Error ? e.message : "failed";
-      report.problems.push(`${row.name}: ${reason}`);
+    report.read++;
+    const out = await readAgreement(db, row, me);
+    if (!out.ok) {
+      report.problems.push(`${row.name}: ${out.reason}`);
       report.skipped++;
-      await db.from("client_agreements")
-        .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: reason })
-        .eq("id", row.id);
+      continue;
     }
+    if (out.wrote) report.filled++;
+    report.kpis_found += out.kpis;
   }
 
   revalidatePath("/settings/agreements");

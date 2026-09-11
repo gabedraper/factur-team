@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
-  listCompleted, details, pdf, money, whole, isoDate, serviceFromName,
+  listCompleted, details, money, whole, isoDate, serviceFromName,
 } from "@/lib/pandadoc/client";
-import { extractFromPdf } from "@/lib/pandadoc/extract";
+import { readAgreement, writeTerms } from "@/lib/pandadoc/apply";
 
 /*
  * Keeping the signed agreements current, a few at a time.
@@ -88,32 +88,28 @@ export async function POST(request: NextRequest) {
       if (!hit) continue;
 
       const t = d.tokens;
-      const filled: Record<string, unknown> = {};
-      const put = (k: string, v: unknown) => {
-        if (v !== null && v !== undefined && v !== "") filled[k] = v;
-      };
-      put("total_project_fee", money(t["Total_Project_Fee__c"]));
-      put("setup_fee", money(t["One_Time_Setup_fee__c"]));
-      put("term_months", whole(t["Contract_Length__c"]));
-      put("term_start", isoDate(t["Contract_Start_Date__c"]));
-      put("billing_contact_name", t["Client_Contact__r.Name"]);
-      put("billing_contact_email", t["Client_Contact__r.Email"]);
-      put("billing_contact_phone", t["ContactPhone__c"]);
-      put("service", serviceFromName(d.name));
-
-      if (Object.keys(filled).length > 0) {
-        await db.from("client_terms").upsert(
+      try {
+        await writeTerms(
+          db,
           {
-            client_id: hit.client_id,
-            agreement_id: (saved as { id: string } | null)?.id ?? null,
-            ...filled,
-            source: "contract",
-            extracted_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            updated_by: "sync",
+            clientId: hit.client_id,
+            agreementId: (saved as { id: string } | null)?.id ?? null,
+            signedOn: d.date_completed ? d.date_completed.slice(0, 10) : null,
           },
-          { onConflict: "client_id" }
+          {
+            total_project_fee: money(t["Total_Project_Fee__c"]),
+            setup_fee: money(t["One_Time_Setup_fee__c"]),
+            term_months: whole(t["Contract_Length__c"]),
+            term_start: isoDate(t["Contract_Start_Date__c"]),
+            billing_contact_name: t["Client_Contact__r.Name"],
+            billing_contact_email: t["Client_Contact__r.Email"],
+            billing_contact_phone: t["ContactPhone__c"],
+            service: serviceFromName(d.name),
+          },
+          "sync"
         );
+      } catch (e) {
+        problems.push(`${d.name}: ${e instanceof Error ? e.message : "terms not written"}`);
       }
     }
   } catch (e) {
@@ -123,7 +119,7 @@ export async function POST(request: NextRequest) {
   // Then a couple of unread documents, newest first.
   const { data: unread } = await db
     .from("client_agreements")
-    .select("id,external_id,name,client_id")
+    .select("id,external_id,name,client_id,signed_on")
     .eq("source", "pandadoc")
     .not("client_id", "is", null)
     .is("pdf_read_at", null)
@@ -131,83 +127,11 @@ export async function POST(request: NextRequest) {
     .limit(READ);
 
   for (const row of (unread ?? []) as {
-    id: string; external_id: string; name: string; client_id: string;
+    id: string; external_id: string; name: string; client_id: string; signed_on: string | null;
   }[]) {
-    try {
-      const res = await pdf(row.external_id);
-      const bytes = Buffer.from(await res.arrayBuffer());
-      const out = await extractFromPdf(row.name, bytes.toString("base64"));
-
-      if (!out.ok) {
-        await db.from("client_agreements")
-          .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: out.reason })
-          .eq("id", row.id);
-        problems.push(`${row.name}: ${out.reason}`);
-        continue;
-      }
-
-      const c = out.contract;
-      const terms: Record<string, unknown> = {};
-      const put = (k: string, v: unknown) => {
-        if (v !== null && v !== undefined && v !== "") terms[k] = v;
-      };
-      put("service", c.service);
-      put("billing_amount", c.billing_amount);
-      put("billing_frequency", c.billing_frequency);
-      put("total_project_fee", c.total_project_fee);
-      put("setup_fee", c.setup_fee);
-      put("payment_terms", c.payment_terms);
-      put("term_months", c.term_months);
-      put("term_start", c.term_start);
-      put("term_end", c.term_end);
-      put("notice_days", c.notice_days);
-      put("billing_contact_name", c.billing_contact_name);
-      put("billing_contact_email", c.billing_contact_email);
-      put("billing_contact_phone", c.billing_contact_phone);
-      put("opt_outs", c.opt_outs);
-      if (c.auto_renew !== null) terms.auto_renew = c.auto_renew;
-      put("other_terms",
-        [c.other_terms, ...(c.ambiguities ?? []).map((a) => `Unclear: ${a}`)]
-          .filter(Boolean).join("\n"));
-
-      await db.from("client_terms").upsert(
-        {
-          client_id: row.client_id,
-          agreement_id: row.id,
-          ...terms,
-          source: "contract",
-          extracted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          updated_by: "sync",
-        },
-        { onConflict: "client_id" }
-      );
-
-      for (const k of c.kpis) {
-        await db.from("client_kpi_targets").upsert(
-          {
-            client_id: row.client_id,
-            metric: k.metric,
-            target_per_month: k.target_per_month,
-            source: "contract",
-            updated_at: new Date().toISOString(),
-            updated_by: "sync",
-          },
-          { onConflict: "client_id,metric" }
-        );
-      }
-
-      await db.from("client_agreements")
-        .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: null })
-        .eq("id", row.id);
-      read.push(row.name);
-    } catch (e) {
-      const reason = e instanceof Error ? e.message : "failed";
-      await db.from("client_agreements")
-        .update({ pdf_read_at: new Date().toISOString(), pdf_read_problem: reason })
-        .eq("id", row.id);
-      problems.push(`${row.name}: ${reason}`);
-    }
+    const out = await readAgreement(db, row, "sync");
+    if (out.ok) read.push(row.name);
+    else problems.push(`${row.name}: ${out.reason}`);
   }
 
   return NextResponse.json({ imported, read, problems });

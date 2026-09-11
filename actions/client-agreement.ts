@@ -87,6 +87,9 @@ export async function getClientAgreement(clientId: string): Promise<Agreement | 
  * Everything is optional and an empty box means "not stated", not nought. A
  * contract silent on a setup fee should leave the field empty rather than claim
  * it is free -- somebody decides what to invoice off this.
+ *
+ * Saving marks the row manual. From then on a reading of an agreement may only
+ * fill the fields left empty here; it never replaces what a person typed.
  */
 export async function saveClientTerms(clientId: string, terms: Partial<Terms>) {
   if (!(await mayRead())) return { success: false, error: "Not permitted." };
@@ -97,6 +100,7 @@ export async function saveClientTerms(clientId: string, terms: Partial<Terms>) {
       {
         client_id: clientId,
         ...terms,
+        source: "manual",
         updated_at: new Date().toISOString(),
         updated_by: await whoAmI(),
       },
@@ -108,7 +112,10 @@ export async function saveClientTerms(clientId: string, terms: Partial<Terms>) {
   return { success: true };
 }
 
-/** A target of null clears it, which is different from a target of nought. */
+/**
+ * A target of null clears it, which is different from a target of nought.
+ * Either way it is now a person's, and a reading of an agreement will leave it.
+ */
 export async function saveKpiTarget(
   clientId: string,
   metric: string,
@@ -122,6 +129,7 @@ export async function saveKpiTarget(
       client_id: clientId,
       metric,
       target_per_month: target,
+      source: "manual",
       updated_at: new Date().toISOString(),
       updated_by: await whoAmI(),
     },
