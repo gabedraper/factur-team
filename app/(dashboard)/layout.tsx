@@ -55,6 +55,9 @@ import { PageTiming } from "@/components/PageTiming";
 import { DialerProvider } from "@/components/work-panel/dialer-context";
 import { WorkPanel } from "@/components/work-panel/WorkPanel";
 import { myWork } from "@/actions/work";
+import { Suspense } from "react";
+import { HeaderSearch } from "@/components/search/HeaderSearch";
+import { searchableObjects } from "@/actions/search";
 
 /*
  * The talent sections Factur actually works in.
@@ -290,6 +293,7 @@ export default async function DashboardLayout({
   const showWorkPanel = perms.has("timelines.view");
   /* Empty, cheaply, for anyone without the grant or before the first sync. */
   const work = await myWork();
+  const searchable = await searchableObjects();
 
   return (
     <div className="flex h-screen bg-background">
@@ -353,7 +357,12 @@ export default async function DashboardLayout({
         <main className="flex min-w-0 flex-1 flex-col overflow-auto">
           {/* Presence is the real signed-in person, not the previewed one -- the
               point of it is who is actually at a keyboard. */}
-          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-end border-b bg-card px-4">
+          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-4">
+            {/* Every record the viewer can see, whatever list they are on. It
+                reads the URL, which needs a Suspense boundary. */}
+            <Suspense fallback={<div className="h-8 w-full max-w-xl" />}>
+              <HeaderSearch allowed={searchable} />
+            </Suspense>
             <OnlineUsers
               me={{
                 id: user.id,

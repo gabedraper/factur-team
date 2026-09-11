@@ -38,7 +38,7 @@ function shortDate(v: string | null) {
 }
 
 export function TargetAccounts({
-  clientId, clientName, initial, initialTotal, stageFields = BOTH_STAGE_FIELDS,
+  clientId, clientName, initial, initialTotal, initialSearch, initialSelected, stageFields = BOTH_STAGE_FIELDS,
 }: {
   clientId: string;
   clientName: string;
@@ -47,13 +47,17 @@ export function TargetAccounts({
      server render to seed it -- it fetches its own first page instead. */
   initial?: TargetAccount[];
   initialTotal?: number;
+  /* Arriving from the header search: the list already narrowed to the company,
+     and its panel open. */
+  initialSearch?: string;
+  initialSelected?: TargetAccount | null;
 }) {
   const [rows, setRows] = useState<TargetAccount[]>(initial ?? []);
   const [total, setTotal] = useState(initialTotal ?? 0);
   const [stages, setStages] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch ?? "");
   const [page, setPage] = useState(0);
-  const [selected, setSelected] = useState<TargetAccount | null>(null);
+  const [selected, setSelected] = useState<TargetAccount | null>(initialSelected ?? null);
   const [loading, start] = useTransition();
   // The box the account panel is allowed to fill -- its right edge is
   // wherever the work panel currently begins, so the account panel's own

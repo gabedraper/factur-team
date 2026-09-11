@@ -25,11 +25,14 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientTargetAccountsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clientId: string }>;
+  searchParams: Promise<{ account?: string }>;
 }) {
   await requirePipeline();
   const { clientId } = await params;
+  const { account: accountId } = await searchParams;
 
   const db = await createClient();
   const { data: client } = await db
@@ -40,10 +43,20 @@ export default async function ClientTargetAccountsPage({
 
   if (!client) notFound();
 
+  /* ?account= is where the header search sends a target company: this
+     client's list, narrowed to that company by name, with its panel open. The
+     name is the search because the list searches by name -- and the same
+     name can belong to two companies, so the panel opens on the id. */
+  const { data: account } = accountId
+    ? await db.from("crm_accounts").select("id, name").eq("id", accountId).maybeSingle()
+    : { data: null };
+  const initialSearch = account?.name ?? "";
+
   const [{ rows, total }, { data: fieldRows }] = await Promise.all([
-    listTargetAccounts({ clientId, limit: 50, offset: 0 }),
+    listTargetAccounts({ clientId, search: initialSearch || undefined, limit: 50, offset: 0 }),
     db.rpc("my_stage_fields"),
   ]);
+  const initialSelected = account ? rows.find((r) => r.account_id === account.id) ?? null : null;
   const stageFields = ((fieldRows ?? [])[0] ?? BOTH_STAGE_FIELDS) as StageFields;
 
   return (
@@ -59,10 +72,13 @@ export default async function ClientTargetAccountsPage({
       <PageHeader title={client.name} count={total} />
 
       <TargetAccounts
+        key={accountId ?? ""}
         clientId={clientId}
         clientName={client.name}
         initial={rows}
         initialTotal={total}
+        initialSearch={initialSearch}
+        initialSelected={initialSelected}
         stageFields={stageFields}
       />
     </div>
