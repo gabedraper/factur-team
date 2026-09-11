@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { getAuthedUser } from "@/lib/supabase/session";
 import { myRealPermissions } from "@/lib/org";
 import { isJobRole } from "@/lib/org-roles";
@@ -237,13 +238,6 @@ export async function listClientsForSelf(): Promise<
   const mine = await me();
   if (!mine) return [];
 
-  const db = createServiceClient();
-  const { data } = await db
-    .from("org_clients")
-    .select("id, name, member_id, org_members!org_clients_member_id_fkey(full_name, email)")
-    .eq("active", true)
-    .order("name");
-
   type Row = {
     id: string;
     name: string;
@@ -251,7 +245,16 @@ export async function listClientsForSelf(): Promise<
     org_members: { full_name: string | null; email: string } | null;
   };
 
-  return ((data ?? []) as unknown as Row[]).map((c) => ({
+  const db = createServiceClient();
+  // Paged: "active" is every client, and the API stops at 1,000 rows silently.
+  const data = await everyRow<Row>(() => db
+    .from("org_clients")
+    .select("id, name, member_id, org_members!org_clients_member_id_fkey(full_name, email)")
+    .eq("active", true)
+    .order("name")
+    .order("id"));
+
+  return data.map((c) => ({
     id: c.id,
     name: c.name,
     heldBy: c.org_members?.full_name ?? c.org_members?.email ?? null,

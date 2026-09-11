@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { getAuthedUser } from "@/lib/supabase/session";
 import { isJobRole } from "@/lib/org-roles";
 
@@ -240,13 +241,14 @@ export type TeamRow = {
  * logo is not worth that risk to a function that decides who gets chased.
  */
 export async function clientDomains(): Promise<Record<string, string>> {
-  const { data } = await createServiceClient()
-    .from("org_clients")
-    .select("id,email_domain")
-    .not("email_domain", "is", null);
+  const db = createServiceClient();
+  // Logos only, so a failure costs the logos and nothing else.
+  const data = await everyRow<{ id: string; email_domain: string }>(() =>
+    db.from("org_clients").select("id,email_domain").not("email_domain", "is", null).order("id")
+  ).catch(() => []);
 
   const out: Record<string, string> = {};
-  for (const c of (data ?? []) as { id: string; email_domain: string }[]) {
+  for (const c of data) {
     out[c.id] = c.email_domain;
   }
   return out;
@@ -263,9 +265,11 @@ export async function clientDomains(): Promise<Record<string, string>> {
 export async function clientStrategists(): Promise<Record<string, string>> {
   const db = createServiceClient();
 
-  const [{ data: clients }, { data: members }] = await Promise.all([
-    db.from("org_clients").select("id,marketing_strategist_id")
-      .not("marketing_strategist_id", "is", null),
+  const [clients, { data: members }] = await Promise.all([
+    everyRow<{ id: string; marketing_strategist_id: string }>(() =>
+      db.from("org_clients").select("id,marketing_strategist_id")
+        .not("marketing_strategist_id", "is", null).order("id")
+    ).catch(() => []),
     db.from("org_members").select("id,full_name"),
   ]);
 
@@ -275,7 +279,7 @@ export async function clientStrategists(): Promise<Record<string, string>> {
   );
 
   const out: Record<string, string> = {};
-  for (const c of (clients ?? []) as { id: string; marketing_strategist_id: string }[]) {
+  for (const c of clients) {
     const name = nameById.get(c.marketing_strategist_id);
     if (name) out[c.id] = name;
   }
@@ -338,12 +342,12 @@ export { effectiveTeamLeadId } from "./team-lead";
 export async function listPodsAndClients() {
   const db = createServiceClient();
 
-  const [{ data: teams }, { data: assignments }, { data: clients }] = await Promise.all([
+  const [{ data: teams }, { data: assignments }, clients] = await Promise.all([
     db.from("org_teams").select("id,service_id,name,slug,kind,active,manager_member_id").order("name"),
     db.from("org_assignments").select("member_id,team_id").not("team_id", "is", null),
-    db.from("org_clients")
+    everyRow<ClientRow>(() => db.from("org_clients")
       .select("id,salesforce_client_id,name,status,team_id,member_id,active,account_manager_id,team_lead_id,email_domain")
-      .order("name"),
+      .order("name").order("id")),
   ]);
 
   const membersByTeam = new Map<string, string[]>();
@@ -351,7 +355,7 @@ export async function listPodsAndClients() {
     membersByTeam.set(a.team_id, [...(membersByTeam.get(a.team_id) ?? []), a.member_id]);
   }
 
-  const rows = (clients ?? []) as ClientRow[];
+  const rows = clients;
   const clientsByTeam = new Map<string, { id: string; name: string }[]>();
   for (const c of rows.filter((c) => c.team_id)) {
     clientsByTeam.set(c.team_id!, [...(clientsByTeam.get(c.team_id!) ?? []), { id: c.id, name: c.name }]);

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { currentMemberId } from "@/lib/org";
 import {
   ENTITIES, LIVE_CLIENT_STATUSES, systemViews, viewKey,
@@ -133,14 +134,16 @@ export async function clientIdsForScope(
   const db = await createClient();
   const fn = scope === "team" ? "my_client_ids" : "my_client_ids_direct";
   const [scoped, live] = await Promise.all([
-    db.rpc(fn),
+    // Paged: a manager at the top reaches close to a thousand clients, and the
+    // API stops at 1,000 rows without saying so.
+    everyRow<{ client_id: string }>(() => db.rpc(fn).order("client_id"))
+      .catch((e: Error) => { throw new Error(`${fn}: ${e.message}`); }),
     liveOnly
       ? db.from("org_clients").select("id").in("status", LIVE_CLIENT_STATUSES as unknown as string[])
       : Promise.resolve({ data: null, error: null }),
   ]);
-  if (scoped.error) throw new Error(`${fn}: ${scoped.error.message}`);
   if (live.error) throw new Error(`live clients: ${live.error.message}`);
-  const ids = ((scoped.data ?? []) as { client_id: string }[]).map((r) => r.client_id);
+  const ids = scoped.map((r) => r.client_id);
   if (!liveOnly) return ids;
   /*
    * Callers put these ids in a query string, and the API gateway refuses one

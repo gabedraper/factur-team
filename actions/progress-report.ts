@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyAuthUser } from "@/lib/supabase/auth-users";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { roleLabelsForUsers } from "@/lib/org";
 
 export async function getProgressReport() {
@@ -30,9 +32,8 @@ export async function getProgressReport() {
     .order("full_name");
 
   // Auth emails
-  const { data: authData } = await supabase.auth.admin.listUsers();
   const emailMap: Record<string, string> = {};
-  authData?.users?.forEach((u) => { emailMap[u.id] = u.email || ""; });
+  (await everyAuthUser(supabase)).forEach((u) => { emailMap[u.id] = u.email || ""; });
 
   // All role-course assignments
   const { data: roleCourses } = await supabase
@@ -44,19 +45,20 @@ export async function getProgressReport() {
     // a broken query.
     .select("role_id, course_id, courses(id, title)");
 
-  // All lesson_progress rows (bulk fetch — cheaper than per-user queries)
-  const { data: allProgress } = await supabase
-    .from("lesson_progress")
-    .select("user_id, lesson_id");
+  // All lesson_progress rows (bulk fetch — cheaper than per-user queries).
+  // Paged, as is the lesson list: both outgrow the API's silent 1,000-row stop.
+  const allProgress = await everyRow<{ user_id: string; lesson_id: string }>(() =>
+    supabase.from("lesson_progress").select("user_id, lesson_id").order("id")
+  );
 
   // All lessons grouped by course
   const { data: allModules } = await supabase
     .from("modules")
     .select("id, course_id");
 
-  const { data: allLessons } = await supabase
-    .from("lessons")
-    .select("id, module_id");
+  const allLessons = await everyRow<{ id: string; module_id: string }>(() =>
+    supabase.from("lessons").select("id, module_id").order("id")
+  );
 
   // Build lookup: courseId → lessonIds
   const modulesByCourse: Record<string, string[]> = {};

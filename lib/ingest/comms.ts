@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { fetchBillingMail } from "@/lib/google/gmail";
 import { fetchChat } from "@/lib/google/chat";
 import { fetchTranscripts } from "@/lib/google/drive";
@@ -79,14 +80,17 @@ export async function ingestBillingMailFor(
    * what lets an internal reply attach: the client's own message came in on
    * the same thread, possibly weeks earlier.
    */
-  const { data: knownThreads } = await db
+  // Paged: every attributed message, which passes the API's silent 1,000-row
+  // stop, and a thread lost there would leave its replies unattached.
+  const knownThreads = await everyRow<{ thread_id: string; client_id: string }>(() => db
     .from("comm_messages")
     .select("thread_id,client_id")
     .not("thread_id", "is", null)
-    .not("client_id", "is", null);
+    .not("client_id", "is", null)
+    .order("id"));
 
   const clientByThread = new Map<string, string>();
-  for (const t of (knownThreads ?? []) as { thread_id: string; client_id: string }[]) {
+  for (const t of knownThreads) {
     clientByThread.set(t.thread_id, t.client_id);
   }
 

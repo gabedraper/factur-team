@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
@@ -55,18 +56,20 @@ export default async function ClientActivitiesPage({
 
   const accountId = (roster as any)?.salesforce_account_id ?? null;
 
-  const { data: rows } = accountId
-    ? await supabase
+  // Paged, because the API stops at 1,000 rows without saying so; the page
+  // still shows at most the first 2,000.
+  const rows = accountId
+    ? await everyRow(() => supabase
         .from("raw_activities")
         .select("activity_date,activity_type,email_category,subject,owner_name")
         .eq("account_id", accountId)
         .gte("activity_date", start)
         .lt("activity_date", nextMonth(start))
         .order("activity_date", { ascending: false })
-        .limit(2000)
-    : { data: [] };
+        .order("id"))
+    : [];
 
-  const activities = (rows ?? []) as any[];
+  const activities = (rows as any[]).slice(0, 2000);
 
   return (
     <div className="max-w-5xl space-y-4 p-6">

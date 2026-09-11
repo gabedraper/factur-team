@@ -128,6 +128,8 @@ export async function rebuildSummaries(): Promise<{
       // of these leads have no prospecting status at all.
       .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`)
       .order("createddate", { ascending: false })
+      // Ties on createddate would let a row repeat or vanish between pages.
+      .order("id")
       .range(from, from + PAGE - 1)
   );
 
@@ -154,6 +156,7 @@ export async function rebuildSummaries(): Promise<{
             .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name")
             .in("whatid", slice)
             .order("createddate", { ascending: true })
+            .order("id")
             .range(from, from + PAGE - 1);
           if (error) throw new Error(`summary activity query failed: ${error.message}`);
           const page = (data ?? []) as unknown as TaskRow[];

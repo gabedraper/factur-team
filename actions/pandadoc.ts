@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 import {
   listCompleted, details, money, whole, isoDate, serviceFromName,
@@ -54,13 +55,17 @@ export async function importAgreements(batch = 40): Promise<ImportReport> {
   const db = createServiceClient();
   const me = await whoAmI();
 
-  const { data: seen } = await db
-    .from("client_agreements")
-    .select("external_id")
-    .eq("source", "pandadoc");
-  const already = new Set(
-    ((seen ?? []) as { external_id: string | null }[]).map((r) => r.external_id)
-  );
+  // Paged: there are more agreements than the API's silent 1,000-row stop, and
+  // any it missed would look new and be imported again.
+  let seen: { external_id: string | null }[];
+  try {
+    seen = await everyRow<{ external_id: string | null }>(() =>
+      db.from("client_agreements").select("external_id").eq("source", "pandadoc").order("id")
+    );
+  } catch (e) {
+    return { ...report, problem: `Could not read existing agreements: ${(e as Error).message}` };
+  }
+  const already = new Set(seen.map((r) => r.external_id));
 
   try {
     // Walk the pages until the batch is full or the list runs out.

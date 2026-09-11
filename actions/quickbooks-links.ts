@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 
 export type UnmatchedCustomer = {
@@ -19,9 +20,11 @@ export async function listUnmatchedQuickbooks(): Promise<UnmatchedCustomer[]> {
   if (!perms.has("clients.health") && !perms.has("org.manage")) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_unmatched_quickbooks");
-  if (error) throw new Error(`unmatched customers failed: ${error.message}`);
-  return (data ?? []) as UnmatchedCustomer[];
+  // Paged: there are over two thousand QuickBooks customers, and the API stops
+  // at 1,000 rows without saying so.
+  return everyRow<UnmatchedCustomer>(() =>
+    supabase.rpc("get_unmatched_quickbooks").order("qb_customer_name")
+  ).catch((e: Error) => { throw new Error(`unmatched customers failed: ${e.message}`); });
 }
 
 /**
@@ -55,20 +58,25 @@ export async function listClientsForLinking(): Promise<LinkableClient[]> {
   if (!perms.has("org.manage")) return [];
 
   const db = createServiceClient();
-  const [{ data: clients }, { data: taken }] = await Promise.all([
-    db.from("org_clients").select("id,name,active,status").order("name"),
-    db.rpc("get_client_quickbooks", { p_include_inactive: true }),
+  type Row = { id: string; name: string; active: boolean; status: string | null };
+  // Both paged: every client ever, and every customer tied to one, can each
+  // pass the API's silent 1,000-row stop.
+  const [clients, taken] = await Promise.all([
+    everyRow<Row>(() => db.from("org_clients").select("id,name,active,status").order("name").order("id")),
+    everyRow<{ client_id: string; qb_customer_name: string }>(() =>
+      db.rpc("get_client_quickbooks", { p_include_inactive: true })
+        .order("client_id").order("qb_customer_name")
+    ),
   ]);
 
   // A client can hold more than one customer through a hand-made link, so the
   // names are gathered rather than the last one winning.
   const spoken_for = new Map<string, string[]>();
-  for (const t of (taken ?? []) as { client_id: string; qb_customer_name: string }[]) {
+  for (const t of taken) {
     spoken_for.set(t.client_id, [...(spoken_for.get(t.client_id) ?? []), t.qb_customer_name]);
   }
 
-  type Row = { id: string; name: string; active: boolean; status: string | null };
-  return ((clients ?? []) as Row[])
+  return clients
     .map((c) => ({
       id: c.id,
       name: c.name,

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { draftAs, sendAs } from "@/lib/google/compose";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 import { fill, type Candidate } from "@/lib/sequences/audience";
 
@@ -114,15 +115,19 @@ export async function listSequences(): Promise<SequenceRow[]> {
 export async function contactCandidates(): Promise<Candidate[]> {
   if (!(await mayRun())) return [];
 
-  const { data } = await createServiceClient()
-    .from("client_contact_current")
-    .select("email,first_name,last_name,client_id,org_clients(name)")
-    .order("email");
-
-  return ((data ?? []) as unknown as {
+  const db = createServiceClient();
+  // Paged: there are more contacts than the API's silent 1,000-row stop, which
+  // cut this list off partway through the alphabet.
+  const data = await everyRow<{
     email: string; first_name: string | null; last_name: string | null;
     client_id: string; org_clients: { name: string } | null;
-  }[]).map((c) => ({
+  }>(() => db
+    .from("client_contact_current")
+    .select("email,first_name,last_name,client_id,org_clients(name)")
+    .order("email")
+    .order("id"));
+
+  return data.map((c) => ({
     email: c.email,
     firstName: c.first_name,
     lastName: c.last_name,

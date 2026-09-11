@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { getAuthedUser } from "@/lib/supabase/session";
 import { roleLabelsForUsers } from "@/lib/org";
 import { Trophy, Medal } from "lucide-react";
@@ -16,10 +17,11 @@ export default async function LeaderboardPage() {
     .from("profiles")
     .select("id, full_name, avatar_url");
 
-  // Get lesson completion counts per user
-  const { data: progress } = await supabase
-    .from("lesson_progress")
-    .select("user_id");
+  // Get lesson completion counts per user. Paged: every completion ever
+  // outgrows the API's silent 1,000-row stop.
+  const progress = await everyRow<{ user_id: string }>(() =>
+    supabase.from("lesson_progress").select("user_id").order("id")
+  );
 
   // Count completions per user
   const countMap: Record<string, number> = {};

@@ -1,6 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { everyAuthUser } from "@/lib/supabase/auth-users";
 import { requireAdmin } from "@/lib/supabase/require-admin";
 import { revalidatePath } from "next/cache";
 
@@ -13,10 +14,10 @@ export async function getUsersWithEmails() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const { data: authUsers } = await supabase.auth.admin.listUsers();
+  const authUsers = await everyAuthUser(supabase);
 
   const emailMap: Record<string, string> = {};
-  authUsers?.users?.forEach((u) => {
+  authUsers.forEach((u) => {
     emailMap[u.id] = u.email || "";
   });
 
@@ -46,8 +47,7 @@ export async function preassignRole(email: string, role: string) {
 
   if (error) return { success: false, error: error.message };
 
-  const { data: existing } = await supabase.auth.admin.listUsers();
-  const already = existing?.users?.find(
+  const already = (await everyAuthUser(supabase)).find(
     (u) => u.email?.toLowerCase() === normalized
   );
   if (already) {

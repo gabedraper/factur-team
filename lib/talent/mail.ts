@@ -1,5 +1,6 @@
 import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { fetchMail, TALENT_QUERY, type GmailMessage } from "@/lib/google/gmail";
 
 /**
@@ -62,17 +63,12 @@ export async function syncTalentMail(sinceDaysOverride?: number): Promise<MailSy
 
   // email -> person, built once. A person with four addresses appears four
   // times here, which is what makes the per-message lookup a single get.
+  // Ordered, so no row repeats or goes missing between pages.
   const byEmail = new Map<string, string>();
-  let from = 0;
-  for (;;) {
-    const { data } = await db
-      .from("tal_person_emails").select("person_id,email").range(from, from + 999);
-    for (const r of (data ?? []) as { person_id: string; email: string }[]) {
-      byEmail.set(r.email, r.person_id);
-    }
-    if (!data || data.length < 1000) break;
-    from += 1000;
-  }
+  const emails = await everyRow<{ person_id: string; email: string }>(() =>
+    db.from("tal_person_emails").select("person_id,email").order("person_id").order("email")
+  );
+  for (const r of emails) byEmail.set(r.email, r.person_id);
   if (!byEmail.size) return accounts.map((a) => ({
     account: a, matching: 0, fetched: 0, attached: 0, alreadyHad: 0,
     hitCap: false, problem: "Nobody in the database has an email address yet",

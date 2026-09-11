@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import type {
   Activity, ActivityType, Company, Integration, Job, JobSummary, Member,
   Person, PersonSummary, PipelineRow, TalentSettings, Task, Workflow, WorkflowStage,
@@ -487,13 +488,14 @@ export async function activityReport(from: string, to: string) {
 
 export async function duplicatePeople() {
   const supabase = await db();
-  const { data, error } = await supabase.rpc("tal_duplicate_people");
-  if (error) throw new Error(`Could not check for duplicates: ${error.message}`);
-  return rows<{
+  // Paged: pairs across eighteen thousand people can pass the API's silent
+  // 1,000-row stop.
+  return everyRow<{
     a_id: string; a_name: string; a_email: string | null; a_created: string;
     b_id: string; b_name: string; b_email: string | null; b_created: string;
     basis: string; confidence: string;
-  }>(data);
+  }>(() => supabase.rpc("tal_duplicate_people").order("a_id").order("b_id").order("basis"))
+    .catch((e: Error) => { throw new Error(`Could not check for duplicates: ${e.message}`); });
 }
 
 // ---------------------------------------------------------------------------
@@ -626,7 +628,9 @@ export async function todayFor(memberId: string | null) {
  * org_clients is governed by the app's own rules, not the talent ones.
  */
 export async function listOrgClients(): Promise<{ id: string; name: string }[]> {
-  const { data } = await createServiceClient()
-    .from("org_clients").select("id,name").eq("active", true).order("name");
-  return rows<{ id: string; name: string }>(data);
+  const db = createServiceClient();
+  // Paged: "active" is every client, and the API stops at 1,000 rows silently.
+  return everyRow<{ id: string; name: string }>(() =>
+    db.from("org_clients").select("id,name").eq("active", true).order("name").order("id")
+  ).catch(() => []);
 }

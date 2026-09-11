@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
@@ -50,9 +51,11 @@ export default async function ClientLeadsPage({
 
   const salesforceId = (client as any).salesforce_client_id as string | null;
 
-  const [{ data: rows }, { data: counted }] = await Promise.all([
+  const [rows, { data: counted }] = await Promise.all([
+    // Paged, so the rows add up to the card even past the API's silent
+    // 1,000-row stop.
     salesforceId
-      ? supabase
+      ? everyRow(() => supabase
           .from("sf_opp_leads_raw")
           .select("name,stagename,createddate,account_name,account_contact_name__c,contact_title__c,owner_name")
           .eq("client__c", salesforceId)
@@ -61,8 +64,8 @@ export default async function ClientLeadsPage({
           .gte("createddate", start)
           .lt("createddate", nextMonth(start))
           .order("createddate", { ascending: false })
-          .limit(2000)
-      : { data: [] },
+          .order("id"))
+      : [],
     supabase
       .from("client_lead_months_by_client")
       .select("leads")
@@ -71,7 +74,7 @@ export default async function ClientLeadsPage({
       .maybeSingle(),
   ]);
 
-  const leads = (rows ?? []) as any[];
+  const leads = rows as any[];
   const expected = (counted as any)?.leads ?? null;
 
   return (

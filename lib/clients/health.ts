@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import type { ClientHealth } from "./health-score";
 import { terciles } from "./health-score";
 
@@ -151,7 +152,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   // with the service key there is no token to read, so it would answer "not a
   // Factur user" and return nothing at all.
   const supabase = await createClient();
-  const [{ data, error }, { data: perf }, { data: nps }, { data: months }, { data: leadMonths }] =
+  const [{ data, error }, perf, { data: nps }, months, leadMonths] =
     await Promise.all([
     supabase.rpc("get_client_health"),
     /*
@@ -159,7 +160,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      * get_client_health's return type, which would mean rewriting five
      * kilobytes of scoring logic to add five display-only columns.
      */
-    supabase.from("client_performance_by_client").select("*"),
+    everyRow<Perf>(() => supabase.from("client_performance_by_client").select("*").order("client_id")),
     /*
      * Every NPS response, so the card can show the whole series rather than
      * the latest and the one before it. Fifteen rows today; one survey per
@@ -171,17 +172,17 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      * Activity by month. raw_activities accumulates rather than rolling, so
      * this deepens on its own -- about ten weeks today.
      */
-    supabase.from("client_activity_months_by_client")
+    everyRow<MonthRow>(() => supabase.from("client_activity_months_by_client")
       .select("client_id,month_start,activities")
-      .order("month_start", { ascending: false }),
+      .order("month_start", { ascending: false }).order("client_id")),
     /*
      * Leads by calendar month. From client_monthly_results, which is the
      * definition Client Results settled on -- delivered opportunities, plus
      * anything carrying quote or PO evidence.
      */
-    supabase.from("client_lead_months_by_client")
+    everyRow<LeadMonthRow>(() => supabase.from("client_lead_months_by_client")
       .select("client_id,month_start,leads,source,computed_at")
-      .order("month_start", { ascending: false }),
+      .order("month_start", { ascending: false }).order("client_id")),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
 

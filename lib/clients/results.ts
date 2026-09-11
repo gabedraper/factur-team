@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import type { ClientResult, MonthRow, ServiceSeries, ServicePeriod } from "./result-metrics";
 import { serviceHeadline } from "./result-metrics";
 
@@ -72,11 +73,11 @@ type AttributeLists = {
 
 async function attributeLists(): Promise<Map<string, AttributeLists>> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("client_attribute_lists").select("*").range(0, 4999);
-  return new Map(
-    ((data ?? []) as AttributeLists[]).map((r) => [r.salesforce_client_id, r])
-  );
+  // Supplementary, so a failure leaves the lists empty rather than the page.
+  const rows = await everyRow<AttributeLists>(() =>
+    supabase.from("client_attribute_lists").select("*").order("salesforce_client_id")
+  ).catch(() => [] as AttributeLists[]);
+  return new Map(rows.map((r) => [r.salesforce_client_id, r]));
 }
 
 function withAttributes(client: ClientResult, lists: AttributeLists | undefined): ClientResult {
@@ -99,15 +100,17 @@ function withAttributes(client: ClientResult, lists: AttributeLists | undefined)
 export async function getClientResults(): Promise<ClientResult[]> {
   const supabase = await createClient();
   /*
-   * The default PostgREST page is 1,000 rows and there are 987 clients, which
-   * is close enough that a handful of new ones would silently truncate the list.
+   * Paged: the API stops at 1,000 rows per request, silently, and there are
+   * nearly that many clients. The id breaks ties between equal names so no
+   * client falls between two pages.
    */
-  const [{ data, error }, lists] = await Promise.all([
-    supabase.from("client_results_summary").select("*").order("name").range(0, 4999),
+  const [data, lists] = await Promise.all([
+    everyRow<any>(() =>
+      supabase.from("client_results_summary").select("*").order("name").order("salesforce_client_id")
+    ),
     attributeLists(),
   ]);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => withAttributes(toClient(r), lists.get(r.salesforce_client_id)));
+  return data.map((r) => withAttributes(toClient(r), lists.get(r.salesforce_client_id)));
 }
 
 export async function getClient(id: string): Promise<ClientResult | null> {

@@ -48,13 +48,20 @@ export async function POST(request: NextRequest) {
    * run would re-read the whole archive every few minutes to find nothing.
    */
   try {
-    const { data: seen } = await db
-      .from("client_agreements").select("external_id").eq("source", "pandadoc");
+    const docs = await listCompleted(1);
+    // Asked about this page's documents only. Reading every agreement ever
+    // imported hit the API's silent 1,000-row stop, and any it missed could
+    // look new and be imported again.
+    const { data: seen, error: seenError } = docs.length
+      ? await db.from("client_agreements").select("external_id")
+          .eq("source", "pandadoc").in("external_id", docs.map((d) => d.id))
+      : { data: [], error: null };
+    if (seenError) throw new Error(seenError.message);
     const already = new Set(
       ((seen ?? []) as { external_id: string | null }[]).map((r) => r.external_id)
     );
 
-    for (const doc of await listCompleted(1)) {
+    for (const doc of docs) {
       if (imported.length >= IMPORT) break;
       if (already.has(doc.id)) continue;
 

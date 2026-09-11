@@ -551,7 +551,9 @@ export async function getCollectionsSmsTarget(clientId: string): Promise<SmsTarg
     db.from("org_clients").select("name").eq("id", clientId).maybeSingle(),
     db.from("client_sms_consent").select("client_id").eq("client_id", clientId).maybeSingle(),
     db.from("client_terms").select("billing_contact_phone").eq("client_id", clientId).maybeSingle(),
-    db.rpc("get_client_quickbooks"),
+    // Filtered to this client in the query, not after: the full list can pass
+    // the API's silent 1,000-row stop and lose the one being looked for.
+    db.rpc("get_client_quickbooks").eq("client_id", clientId).limit(1),
   ]);
   if (!client) return null;
 

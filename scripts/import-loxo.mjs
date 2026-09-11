@@ -411,7 +411,7 @@ async function existingMap(table) {
   for (;;) {
     const { data, error } = await db
       .from(table).select("id,external_id")
-      .eq("external_source", SOURCE).range(from, from + 999);
+      .eq("external_source", SOURCE).order("id").range(from, from + 999);
     if (error) throw new Error(`${table}: ${error.message}`);
     for (const r of data) map.set(r.external_id, r.id);
     if (data.length < 1000) return map;
@@ -798,6 +798,7 @@ async function importResumeFiles() {
       .from("tal_people")
       .select("id,external_id")
       .eq("external_source", SOURCE)
+      .order("id")
       .range(from, from + 999);
     if (error) throw new Error(`tal_people: ${error.message}`);
     people.push(...data);
@@ -809,7 +810,7 @@ async function importResumeFiles() {
   from = 0;
   for (;;) {
     const { data } = await db
-      .from("tal_documents").select("person_id").eq("kind", "resume").range(from, from + 999);
+      .from("tal_documents").select("person_id").eq("kind", "resume").order("id").range(from, from + 999);
     for (const d of data ?? []) have.add(d.person_id);
     if (!data || data.length < 1000) break;
     from += 1000;
@@ -1200,7 +1201,7 @@ async function importSchedule() {
     let from = 0;
     for (;;) {
       const { data } = await db
-        .from("tal_person_emails").select("person_id,email").range(from, from + 999);
+        .from("tal_person_emails").select("person_id,email").order("person_id").order("email").range(from, from + 999);
       for (const r of data ?? []) byEmail.set(r.email, r.person_id);
       if (!data || data.length < 1000) break;
       from += 1000;

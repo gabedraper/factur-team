@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 
 export type CollectMethod = "auto" | "we_charge" | "they_pay" | null;
@@ -43,9 +44,11 @@ export async function getInvoiceRegister(days = 120): Promise<InvoiceRow[]> {
   if (!(await mayRun())) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_invoice_register", { p_days: days });
-  if (error) throw new Error(`invoice register failed: ${error.message}`);
-  return (data ?? []) as InvoiceRow[];
+  // Paged: 180 days is over a thousand invoices, and the API stops at 1,000
+  // rows without saying so.
+  return everyRow<InvoiceRow>(() =>
+    supabase.rpc("get_invoice_register", { p_days: days }).order("qb_invoice_id")
+  ).catch((e: Error) => { throw new Error(`invoice register failed: ${e.message}`); });
 }
 
 /**

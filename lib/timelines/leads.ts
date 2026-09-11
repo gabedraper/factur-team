@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
@@ -58,6 +59,8 @@ export async function getLeads(filters: LeadFilters = {}) {
           "referred_by_name__c"
       )
       .order("createddate", { ascending: false })
+      // Ties on createddate would let a row repeat or vanish between pages.
+      .order("id")
       .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString())
       .neq("ownerid", DELIVERED_LEADS_OWNER)
       .neq("stagename", NURTURE_STAGE)
@@ -104,6 +107,7 @@ export async function getLeads(filters: LeadFilters = {}) {
         .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name")
         .in("whatid", slice)
         .order("createddate", { ascending: true })
+        .order("id")
         .range(from, from + 999);
       if (taskErr) throw new Error(`activity query failed: ${taskErr.message}`);
       const page = (data ?? []) as unknown as TaskRow[];
@@ -193,13 +197,26 @@ export async function getFilterOptions() {
 
   // Clients still come from the leads: a client with nothing to show is not a
   // useful filter, and the list is only meaningful in terms of the visible rows.
+  // So it reads the same window and exclusions getLeads does, paged -- the
+  // API stops at 1,000 rows without saying so, and the window holds more.
   const supabase = await createClient();
-  let leadQuery = supabase.from("sf_opp_leads_raw").select("client__r_name").limit(6000);
-  if (owners !== null) leadQuery = leadQuery.in("ownerid", owners);
-  const { data } = await leadQuery;
+  const since = new Date(Date.now() - METRICS_DAYS * 86400000).toISOString();
+  const data = await everyRow<{ client__r_name: string | null }>(() => {
+    let leadQuery = supabase
+      .from("sf_opp_leads_raw")
+      .select("client__r_name")
+      .gte("createddate", since)
+      .neq("ownerid", DELIVERED_LEADS_OWNER)
+      .neq("stagename", NURTURE_STAGE)
+      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`)
+      .not("client__r_name", "is", null)
+      .order("id");
+    if (owners !== null) leadQuery = leadQuery.in("ownerid", owners);
+    return leadQuery;
+  });
 
   const clients = new Set<string>();
-  for (const r of (data ?? []) as { client__r_name: string | null }[]) {
+  for (const r of data) {
     if (r.client__r_name) clients.add(r.client__r_name);
   }
 

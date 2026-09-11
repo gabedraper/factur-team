@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
@@ -148,22 +149,25 @@ async function loadClients({
       if (ids.length === 0) return { rows: [], error: null };
     }
 
-    let query = db
-      .from("org_clients")
-      .select("id,name,status,email_domain,account_manager_id")
-      .order("name");
-
-    if (status === "live") query = query.in("status", LIVE_CLIENT_STATUSES as unknown as string[]);
-    else if (status !== "all") query = query.eq("status", status);
-    if (q) query = query.ilike("name", `%${q.replace(/[%_]/g, "\\$&")}%`);
-
-    const { data, error } = await query;
-    if (error) return { rows: [], error: error.message };
-
     type Raw = {
       id: string; name: string; status: string | null;
       email_domain: string | null; account_manager_id: string | null;
     };
+    // Paged: "All" is every client, and the API stops at 1,000 rows silently.
+    const build = () => {
+      let query = db
+        .from("org_clients")
+        .select("id,name,status,email_domain,account_manager_id")
+        .order("name")
+        .order("id");
+      if (status === "live") query = query.in("status", LIVE_CLIENT_STATUSES as unknown as string[]);
+      else if (status !== "all") query = query.eq("status", status);
+      if (q) query = query.ilike("name", `%${q.replace(/[%_]/g, "\\$&")}%`);
+      return query;
+    };
+
+    const data = await everyRow<Raw>(build);
+
     /*
      * Scope is applied here, not in the query. The ids would have to travel in
      * the query string, and a manager at the top of the reporting line has
@@ -171,7 +175,7 @@ async function loadClients({
      * clients" failed for them. There are only ~1,000 clients to filter.
      */
     const inScope = ids ? new Set(ids) : null;
-    const raw = ((data ?? []) as Raw[]).filter((r) => !inScope || inScope.has(r.id));
+    const raw = data.filter((r) => !inScope || inScope.has(r.id));
 
     /*
      * Two reads rather than an embedded join. org_clients and org_members are

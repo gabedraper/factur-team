@@ -1,16 +1,21 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { revalidatePath } from "next/cache";
 
 export async function getCoursesWithStats() {
   const supabase = createServiceClient();
 
-  const [coursesRes, modulesRes, lessonsRes, enrollmentsRes, profilesRes] = await Promise.all([
+  // Lessons and enrollments paged: both grow without bound, and the API stops
+  // at 1,000 rows without saying so.
+  const [coursesRes, modulesRes, lessons, enrollments, profilesRes] = await Promise.all([
     supabase.from("courses").select("id, title, is_published, instructor_id").order("title"),
     supabase.from("modules").select("id, course_id"),
-    supabase.from("lessons").select("id, module_id"),
-    supabase.from("enrollments").select("course_id, completed_at"),
+    everyRow<{ id: string; module_id: string }>(() =>
+      supabase.from("lessons").select("id, module_id").order("id")),
+    everyRow<{ course_id: string; completed_at: string | null }>(() =>
+      supabase.from("enrollments").select("course_id, completed_at").order("id")),
     supabase.from("profiles").select("id, full_name"),
   ]);
 
@@ -23,7 +28,7 @@ export async function getCoursesWithStats() {
 
   // lesson count per course
   const lessonCount: Record<string, number> = {};
-  (lessonsRes.data || []).forEach((l) => {
+  lessons.forEach((l) => {
     const courseId = moduleMap[l.module_id];
     if (courseId) lessonCount[courseId] = (lessonCount[courseId] || 0) + 1;
   });
@@ -31,7 +36,7 @@ export async function getCoursesWithStats() {
   // enrolled + completed per course
   const enrolledCount: Record<string, number> = {};
   const completedCount: Record<string, number> = {};
-  (enrollmentsRes.data || []).forEach((e) => {
+  enrollments.forEach((e) => {
     enrolledCount[e.course_id] = (enrolledCount[e.course_id] || 0) + 1;
     if (e.completed_at) completedCount[e.course_id] = (completedCount[e.course_id] || 0) + 1;
   });
