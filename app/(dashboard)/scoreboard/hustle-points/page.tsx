@@ -162,12 +162,12 @@ export default async function HustlePointsPage(
         </div>
       </div>
 
-      <div className="mb-4 inline-flex rounded-md bg-muted p-0.5">
+      <div className="mb-4 inline-flex max-w-full overflow-x-auto rounded-md bg-muted p-0.5">
         {periodButtons.map((btn) => (
           <Link
             key={btn.key}
             href={`/scoreboard/hustle-points?period=${btn.key}`}
-            className={`flex items-center justify-center rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
+            className={`flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
               periodKey === btn.key
                 ? "bg-card text-foreground shadow-raised"
                 : "text-muted-foreground hover:text-foreground"

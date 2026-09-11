@@ -140,12 +140,12 @@ export default async function DealsPage(props: ScoreboardPageProps) {
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <PageHeader title="Deals" description="New Customers closed per person" />
-        <div className="inline-flex self-start rounded-md bg-muted p-0.5">
+        <div className="inline-flex max-w-full self-start overflow-x-auto rounded-md bg-muted p-0.5">
           {DEAL_PERIODS.map((p) => (
             <Link
               key={p}
               href={`/scoreboard/deals?period=${p}`}
-              className={`flex items-center justify-center rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
+              className={`flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-center text-meta transition-colors duration-fast ease-out ${
                 period === p
                   ? "bg-card text-foreground shadow-raised"
                   : "text-muted-foreground hover:text-foreground"
