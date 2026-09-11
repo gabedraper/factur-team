@@ -87,7 +87,11 @@ export async function listOpportunities(input: {
      an embed selected as just its id while something filters another of its
      columns is the kind of thing that works until it doesn't. */
   const filterPaths = filters.map((f) => FIELD_BY_KEY.get(f.field)!.path);
-  if (input.search) { needed.contacts = true; needed.accounts = true; }
+  /* The search box is a filter on the contact, so its embed is inner-joined
+     like any other filtered one. Left, PostgREST nulls the contact and keeps
+     the row, so a search hands back the whole view with a blank Contact column
+     rather than the one person being looked for. */
+  if (input.search) { needed.contacts = true; inner.contacts = true; needed.accounts = true; }
 
   const cols = new Set<string>(["id"]);
   const embedCols: Record<string, Set<string>> = {
