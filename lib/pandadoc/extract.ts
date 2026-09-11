@@ -29,17 +29,21 @@ export const CONTRACT_MODEL = "claude-opus-5";
 const METRICS = ["leads", "appointments", "quotes", "pos", "project_completion"] as const;
 
 /*
- * No field in this schema is nullable. The API compiles the schema into a
- * grammar, and every nullable field is a union that doubles the work -- past
- * sixteen it refuses the request outright, which is how every agreement failed
- * before this. So a field the contract does not state is left out of the answer
- * instead of sent as null. Absent and null mean the same thing here, and the
- * writer treats them alike: the column stays empty.
+ * No field in this schema is nullable or optional. The API compiles the schema
+ * into a grammar before it reads anything, and every field that may be null or
+ * absent multiplies what it has to compile: seventeen nullable fields were
+ * refused outright, and nineteen optional ones were worked on for four minutes
+ * and then refused as too complex. So a term the contract may or may not state
+ * is a list -- empty when it does not, one value when it does. Every field is
+ * always there, in order, and the grammar stays a straight line.
+ *
+ * Empty still means what null meant: the contract does not say, and the column
+ * stays empty.
  */
 
 const Kpi = z.object({
   metric: z.enum(METRICS),
-  /** A promise with no number is not a KPI, so this is never absent. */
+  /** A promise with no number is not a KPI, so this is always a number. */
   target_per_month: z.number(),
   /** The sentence promising it. Without one, the target is dropped. */
   quote: z.string(),
@@ -48,41 +52,52 @@ const Kpi = z.object({
 const PastDueInterest = z.object({
   /** As stated: 1.5% a month is 1.5 with "month", never annualised. Zero when it says none accrues. */
   pct: z.number(),
-  period: z.enum(["month", "year"]).optional(),
+  period: z.array(z.enum(["month", "year"])),
   /** Days after the invoice before interest starts, where the clause says. */
-  after_days: z.number().int().optional(),
+  after_days: z.array(z.number().int()),
   /** The sentence itself. Without one, the rate is dropped. */
   clause: z.string(),
 });
 
 const Contract = z.object({
-  service: z.string().optional(),
-  billing_amount: z.number().optional(),
-  billing_frequency: z.string().optional(),
-  total_project_fee: z.number().optional(),
-  setup_fee: z.number().optional(),
-  payment_terms: z.string().optional(),
-  term_months: z.number().optional(),
-  term_start: z.string().optional(),
-  term_end: z.string().optional(),
-  auto_renew: z.boolean().optional(),
-  notice_days: z.number().optional(),
-  billing_contact_name: z.string().optional(),
-  billing_contact_email: z.string().optional(),
-  billing_contact_phone: z.string().optional(),
+  service: z.array(z.string()),
+  billing_amount: z.array(z.number()),
+  billing_frequency: z.array(z.string()),
+  total_project_fee: z.array(z.number()),
+  setup_fee: z.array(z.number()),
+  payment_terms: z.array(z.string()),
+  term_months: z.array(z.number()),
+  term_start: z.array(z.string()),
+  term_end: z.array(z.string()),
+  auto_renew: z.array(z.boolean()),
+  notice_days: z.array(z.number()),
+  billing_contact_name: z.array(z.string()),
+  billing_contact_email: z.array(z.string()),
+  billing_contact_phone: z.array(z.string()),
   /** What they are not getting, or are excused from. Empty when it says none. */
-  opt_outs: z.string().optional(),
+  opt_outs: z.array(z.string()),
   /** Anything unusual a person should read before acting on this client. */
-  other_terms: z.string().optional(),
-  past_due_interest: PastDueInterest.optional(),
+  other_terms: z.array(z.string()),
+  past_due_interest: z.array(PastDueInterest),
   kpis: z.array(Kpi),
   /** Where a figure was stated in a way that could be read two ways. */
   ambiguities: z.array(z.string()),
 });
 
-export type Contract = z.infer<typeof Contract>;
 export const CONTRACT_FORMAT = zodOutputFormat(Contract);
-export type PastDueInterest = z.infer<typeof PastDueInterest>;
+
+/** Past due interest once checked: a rate, the period it is against, and the sentence. */
+export type PastDue = {
+  pct: number;
+  period: "month" | "year" | null;
+  after_days: number | null;
+  clause: string;
+};
+
+/** Every term list holds at most one value by the time it leaves this file. */
+export type Contract = Omit<z.infer<typeof Contract>, "past_due_interest"> & {
+  past_due_interest: PastDue | null;
+};
 
 const SYSTEM = `You are reading a signed services agreement between Factur, a
 manufacturing sales agency, and a client. Record only what the document
@@ -90,30 +105,30 @@ actually states.
 
 Rules, in order of importance:
 
-1. A field the contract does not state is left out of your answer. Never infer,
-   average, or carry a figure across from a similar contract. Leaving a field
-   out is a correct answer.
+1. Every term is a list. A term the contract does not state is an empty list; a
+   term it states is a list of exactly one value. Never infer, average, or carry
+   a figure across from a similar contract. An empty list is a correct answer.
 2. Never derive one figure from another. If the contract gives a total project
-   fee and a term but no monthly amount, leave billing_amount out -- dividing
+   fee and a term but no monthly amount, billing_amount is empty -- dividing
    them is a guess, and the total often bundles a setup fee.
 3. Money is a plain number with no symbol or separators: $4,500.00 is 4500.
 4. Dates are YYYY-MM-DD. A date written only as a month, or as "on signature",
-   is left out.
+   is left empty.
 5. A KPI is a number the agreement promises to deliver -- leads, appointments,
    quotes, purchase orders, completed projects -- expressed per month. If it is
    quoted per quarter or per term, convert it to a monthly figure and say so in
    the quote. Every KPI needs the sentence that promises it, verbatim.
 6. opt_outs is what this client is excluded from or has declined: services not
    taken, clauses struck out, obligations waived. Not a summary of the contract.
-7. past_due_interest is the interest the agreement charges on a late invoice.
-   pct is the rate exactly as written, with the period it is written against:
-   "1.5% per month" is pct 1.5, period month -- never convert it to a yearly
-   rate. after_days is how long after the invoice interest begins, only if the
-   clause says. clause is the sentence, verbatim. A contract that says no
-   interest accrues is pct 0. A flat late fee is not interest; put it in
-   other_terms. A contract silent on late payment leaves past_due_interest out.
-8. If a figure is stated in a way that could be read two ways, leave it out and
-   describe the problem in ambiguities.
+7. past_due_interest is the interest the agreement charges on a late invoice,
+   and is empty if the contract is silent on it. pct is the rate exactly as
+   written, with the period it is written against: "1.5% per month" is pct 1.5,
+   period ["month"] -- never convert it to a yearly rate. after_days is how long
+   after the invoice interest begins, and is empty unless the clause says.
+   clause is the sentence, verbatim. A contract that says no interest accrues is
+   pct 0. A flat late fee is not interest; put it in other_terms.
+8. If a figure is stated in a way that could be read two ways, leave it empty
+   and describe the problem in ambiguities.
 
 Aspirational language is not a promise. "We aim to", "typically", "up to" and
 "our clients often see" are not KPIs. Only record a KPI where the agreement
@@ -163,8 +178,8 @@ export async function extractFromPdf(
     if (res.stop_reason === "refusal") {
       return { ok: false, reason: "the model declined to read this document", retry: false };
     }
-    const contract = res.parsed_output;
-    if (!contract) {
+    const parsed = res.parsed_output;
+    if (!parsed) {
       return { ok: false, reason: "the model returned nothing usable", retry: false };
     }
 
@@ -172,26 +187,44 @@ export async function extractFromPdf(
      * The instruction does most of the work; this catches the rest, because
      * "usually obeys" is not a property to build a billing figure on. A KPI or
      * an interest rate without a real sentence behind it is discarded rather
-     * than trusted.
+     * than trusted, and a term given two values is treated as not stated.
      */
-    const kpis = contract.kpis.filter((k) => k.quote.trim().length > 12);
+    const ambiguities = [...parsed.ambiguities];
+    const { past_due_interest: rates, kpis: promised, ...terms } = parsed;
 
-    const ambiguities = [...contract.ambiguities];
-    let past_due_interest = contract.past_due_interest;
-    if (past_due_interest) {
-      const p = past_due_interest;
-      if (p.clause.trim().length <= 12 || p.pct < 0 || p.pct > 100) {
-        past_due_interest = undefined;
-      } else if (p.pct > 0 && !p.period) {
+    for (const [k, v] of Object.entries(terms)) {
+      if (Array.isArray(v) && v.length > 1) {
+        ambiguities.push(`${k} is given more than once: ${v.join(" / ")}`);
+        (terms as Record<string, unknown[]>)[k] = [];
+      }
+    }
+
+    const kpis = promised.filter((k) => k.quote.trim().length > 12);
+
+    let past_due_interest: PastDue | null = null;
+    if (rates.length > 1) {
+      ambiguities.push(`More than one past due interest clause: ${rates.map((r) => `"${r.clause}"`).join(" / ")}`);
+    } else if (rates.length === 1) {
+      const r = rates[0];
+      const period = r.period.length === 1 ? r.period[0] : null;
+      if (r.clause.trim().length <= 12 || r.pct < 0 || r.pct > 100) {
+        // Unquoted or impossible: dropped.
+      } else if (r.pct > 0 && !period) {
         // 1.5 a month and 1.5 a year are twelve times apart. Not a guess to make.
-        ambiguities.push(`Past due interest of ${p.pct}% with no period: "${p.clause}"`);
-        past_due_interest = undefined;
+        ambiguities.push(`Past due interest of ${r.pct}% with no period: "${r.clause}"`);
+      } else {
+        past_due_interest = {
+          pct: r.pct,
+          period,
+          after_days: r.after_days.length === 1 ? r.after_days[0] : null,
+          clause: r.clause,
+        };
       }
     }
 
     return {
       ok: true,
-      contract: { ...contract, kpis, past_due_interest, ambiguities },
+      contract: { ...terms, kpis, past_due_interest, ambiguities },
       model: CONTRACT_MODEL,
     };
   } catch (e) {

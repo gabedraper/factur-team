@@ -1,6 +1,6 @@
 import type { createServiceClient } from "@/lib/supabase/server";
 import { pdf } from "@/lib/pandadoc/client";
-import { extractFromPdf, type Contract, type PastDueInterest } from "@/lib/pandadoc/extract";
+import { extractFromPdf, type Contract, type PastDue } from "@/lib/pandadoc/extract";
 
 /*
  * Writing what an agreement says onto the client.
@@ -47,7 +47,7 @@ export async function writeTerms(
   target: TermsTarget,
   stated: Record<string, unknown>,
   who: string | null,
-  pastDue?: PastDueInterest
+  pastDue?: PastDue | null
 ): Promise<TermsWritten> {
   const { data: existing, error: readError } = await db
     .from("client_terms")
@@ -121,25 +121,25 @@ export async function writeTerms(
 function statedTerms(c: Contract): Record<string, unknown> {
   // Anything the model could not read cleanly is kept where a person will see
   // it: a figure nobody knows is doubtful is more dangerous than one flagged.
-  const notes = [c.other_terms, ...c.ambiguities.map((a) => `Unclear: ${a}`)]
+  const notes = [c.other_terms[0], ...c.ambiguities.map((a) => `Unclear: ${a}`)]
     .filter(Boolean)
     .join("\n");
   return {
-    service: c.service,
-    billing_amount: c.billing_amount,
-    billing_frequency: c.billing_frequency,
-    total_project_fee: c.total_project_fee,
-    setup_fee: c.setup_fee,
-    payment_terms: c.payment_terms,
-    term_months: c.term_months,
-    term_start: c.term_start,
-    term_end: c.term_end,
-    auto_renew: c.auto_renew,
-    notice_days: c.notice_days,
-    billing_contact_name: c.billing_contact_name,
-    billing_contact_email: c.billing_contact_email,
-    billing_contact_phone: c.billing_contact_phone,
-    opt_outs: c.opt_outs,
+    service: c.service[0],
+    billing_amount: c.billing_amount[0],
+    billing_frequency: c.billing_frequency[0],
+    total_project_fee: c.total_project_fee[0],
+    setup_fee: c.setup_fee[0],
+    payment_terms: c.payment_terms[0],
+    term_months: c.term_months[0],
+    term_start: c.term_start[0],
+    term_end: c.term_end[0],
+    auto_renew: c.auto_renew[0],
+    notice_days: c.notice_days[0],
+    billing_contact_name: c.billing_contact_name[0],
+    billing_contact_email: c.billing_contact_email[0],
+    billing_contact_phone: c.billing_contact_phone[0],
+    opt_outs: c.opt_outs[0],
     other_terms: notes,
   };
 }
