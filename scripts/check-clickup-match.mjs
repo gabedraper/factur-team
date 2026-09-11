@@ -17,7 +17,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildMatcher } from "./sync-clickup.mjs";
+import { buildMatcher } from "../lib/clickup/match.mjs";
+import { everyRow } from "../lib/supabase/every-row.mjs";
 
 function env(name) {
   if (process.env[name]) return process.env[name];
@@ -36,20 +37,9 @@ const db = createClient(env("NEXT_PUBLIC_SUPABASE_URL"), env("SUPABASE_SERVICE_R
   auth: { persistSession: false },
 });
 
-/* Supabase caps a select at 1,000 rows, and there are more clients than that. */
-async function all(table, columns) {
-  const rows = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from(table).select(columns).range(from, from + 999);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    rows.push(...(data ?? []));
-    if ((data ?? []).length < 1000) return rows;
-  }
-}
-
 const [clients, aliases] = await Promise.all([
-  all("org_clients", "id,name"),
-  all("client_aliases", "alias,client_name"),
+  everyRow(() => db.from("org_clients").select("id,name").order("id")),
+  everyRow(() => db.from("client_aliases").select("alias,client_name").order("alias")),
 ]);
 
 const matcher = buildMatcher({ clients, aliases });

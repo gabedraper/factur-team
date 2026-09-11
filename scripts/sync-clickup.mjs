@@ -39,6 +39,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { norm, folderName, buildMatcher } from "../lib/clickup/match.mjs";
 import { packFields, packDependencies } from "../lib/clickup/fields.mjs";
+import { everyRow, inSlices } from "../lib/supabase/every-row.mjs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -154,12 +155,14 @@ async function main() {
 
   // --- reference data -------------------------------------------------------
 
-  const [{ data: processes }, { data: clients }, { data: aliases }, { data: members }] =
+  /* Paged: org_clients is at 993 rows and grows hourly, and past 1,000 an
+   * unpaged read would silently drop clients from the matcher. */
+  const [{ data: processes }, clients, aliases, members] =
     await Promise.all([
       db.from("work_processes").select("id,slug,name,match_prefixes,position").eq("active", true).order("position"),
-      db.from("org_clients").select("id,name"),
-      db.from("client_aliases").select("alias,client_name"),
-      db.from("org_members").select("id,email,full_name,active"),
+      everyRow(() => db.from("org_clients").select("id,name").order("id")),
+      everyRow(() => db.from("client_aliases").select("alias,client_name").order("alias")),
+      everyRow(() => db.from("org_members").select("id,email,full_name,active").order("id")),
     ]);
 
   const matcher = buildMatcher({ clients: clients ?? [], aliases: aliases ?? [] });
@@ -420,11 +423,13 @@ async function main() {
         written += chunk.length;
       }
 
-      const { data: ids } = await db
-        .from("work_items")
-        .select("id,clickup_id")
-        .in("clickup_id", rows.map((r) => r.clickup_id));
-      const idFor = new Map((ids ?? []).map((r) => [r.clickup_id, r.id]));
+      /* Sliced: a list of more than 1,000 tasks would otherwise lose the ids of
+       * the overflow, and with them its assignees and dependencies. */
+      const ids = await inSlices(rows.map((r) => r.clickup_id), async (slice) => {
+        const { data } = await db.from("work_items").select("id,clickup_id").in("clickup_id", slice);
+        return data ?? [];
+      });
+      const idFor = new Map(ids.map((r) => [r.clickup_id, r.id]));
 
       await db.from("work_item_assignees").delete().in("work_item_id", [...idFor.values()]);
       const links = assignees

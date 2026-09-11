@@ -3,6 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
+import { everyRow, inSlices } from "@/lib/supabase/every-row.mjs";
 import type { Container, ContainerKind, Crumb, ListItem, FieldValue } from "@/lib/work-tree";
 import type { WorkItem } from "@/lib/work";
 
@@ -30,25 +31,21 @@ async function mayView(): Promise<boolean> {
   return perms.has("work.view") || perms.has("org.manage");
 }
 
-/** Open items per list, for the lists being shown. One round trip. */
+/**
+ * Open items per list, for the lists being shown.
+ *
+ * Counted in SQL. Pulling the rows and counting them here stopped at the API's
+ * 1,000-row page, so a folder with more open work than that under-reported
+ * every list in it. No space filter is needed: a list the viewer can see is
+ * wholly in a space they can see.
+ */
 async function openCounts(listIds: string[]): Promise<Map<string, number>> {
   if (listIds.length === 0) return new Map();
-  const { data } = await withoutHidden(
-    createServiceClient()
-      .from("work_items")
-      .select("clickup_list_id")
-      .in("clickup_list_id", listIds)
-      .in("status_type", ["open", "custom"]),
-    await hiddenSpaceIds()
-  ).limit(50000);
-
-  const counts = new Map<string, number>();
-  for (const r of (data ?? []) as { clickup_list_id: string | null }[]) {
-    if (r.clickup_list_id) {
-      counts.set(r.clickup_list_id, (counts.get(r.clickup_list_id) ?? 0) + 1);
-    }
-  }
-  return counts;
+  const { data } = await createServiceClient()
+    .rpc("work_open_counts_by_list", { p_list_ids: listIds });
+  return new Map(
+    ((data ?? []) as { list_clickup_id: string; open: number }[]).map((r) => [r.list_clickup_id, Number(r.open)])
+  );
 }
 
 async function decorate(rows: Row[]): Promise<Container[]> {
@@ -162,18 +159,21 @@ export async function listItems(listClickupId: string): Promise<ListItem[]> {
   if (!(await mayView())) return [];
   const db = createServiceClient();
 
+  /* Paged: the largest lists run past the API's 1,000-row page. */
   const hidden = await hiddenSpaceIds();
-  const { data } = await withoutHidden(
-    db.from("work_items")
-      .select(`
-        id, clickup_id, clickup_url, title, status, status_type, priority,
-        start_at, due_at, time_estimate_ms, fields, parent_clickup_id, client_id,
-        org_clients(name), work_item_assignees(name),
-        work_item_dependencies(depends_on_clickup_id, relation)
-      `)
-      .eq("clickup_list_id", listClickupId),
-    hidden
-  ).limit(2000);
+  const data = await everyRow(() =>
+    withoutHidden(
+      db.from("work_items")
+        .select(`
+          id, clickup_id, clickup_url, title, status, status_type, priority,
+          start_at, due_at, time_estimate_ms, fields, parent_clickup_id, client_id,
+          org_clients(name), work_item_assignees(name),
+          work_item_dependencies(depends_on_clickup_id, relation)
+        `)
+        .eq("clickup_list_id", listClickupId),
+      hidden
+    ).order("clickup_id")
+  );
 
   type Row = {
     id: string; clickup_id: string; clickup_url: string; title: string;
@@ -193,13 +193,14 @@ export async function listItems(listClickupId: string): Promise<ListItem[]> {
     (r.work_item_dependencies ?? []).map((d) => d.depends_on_clickup_id)))];
   const titles = new Map<string, string>();
   if (wanted.length) {
-    const { data: others } = await withoutHidden(
-      db.from("work_items").select("clickup_id,title").in("clickup_id", wanted),
-      hidden
-    );
-    for (const o of (others ?? []) as { clickup_id: string; title: string }[]) {
-      titles.set(o.clickup_id, o.title);
-    }
+    const others = await inSlices(wanted, async (slice) => {
+      const { data } = await withoutHidden(
+        db.from("work_items").select("clickup_id,title").in("clickup_id", slice),
+        hidden
+      );
+      return (data ?? []) as { clickup_id: string; title: string }[];
+    });
+    for (const o of others) titles.set(o.clickup_id, o.title);
   }
 
   return rows.map((r) => ({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { buildMatcher } from "@/lib/clickup/match.mjs";
 import { packFields, packDependencies } from "@/lib/clickup/fields.mjs";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
 
 /*
  * Keeping the ClickUp mirror current, incrementally.
@@ -93,12 +94,12 @@ export async function POST(request: NextRequest) {
       : Date.now() - COLD_START_DAYS * 86_400_000;
 
     /* Reference data, same rules the full sync uses. */
-    const [{ data: processes }, { data: clients }, { data: aliases }, { data: members },
-           { data: spaceRows }] = await Promise.all([
+    const [{ data: processes }, clients, aliases, members, { data: spaceRows }] = await Promise.all([
       db.from("work_processes").select("id,slug,match_prefixes,position").eq("active", true).order("position"),
-      db.from("org_clients").select("id,name"),
-      db.from("client_aliases").select("alias,client_name"),
-      db.from("org_members").select("id,email,full_name,active"),
+      everyRow<{ id: string; name: string }>(() => db.from("org_clients").select("id,name").order("id")),
+      everyRow<{ alias: string; client_name: string }>(() => db.from("client_aliases").select("alias,client_name").order("alias")),
+      everyRow<{ id: string; email: string | null; full_name: string | null; active: boolean }>(
+        () => db.from("org_members").select("id,email,full_name,active").order("id")),
       db.from("work_containers").select("clickup_id,name").eq("kind", "space"),
     ]);
 

@@ -27,8 +27,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { everyRow } from "../lib/supabase/every-row.mjs";
 
 const PEOPLE_ONLY = process.argv.includes("--people");
+/* Only lists whose access has never been read -- to fill gaps without re-reading 1,000. */
+const MISSING_ONLY = process.argv.includes("--missing");
 
 function env(name) {
   if (process.env[name]) return process.env[name];
@@ -60,9 +63,9 @@ async function syncPeople() {
   const team = (await get("/team")).teams?.[0];
   const users = (team.members ?? []).map((m) => m.user).filter(Boolean);
 
-  const [{ data: members }, { data: existing }] = await Promise.all([
-    db.from("org_members").select("id,email,full_name,active"),
-    db.from("work_people").select("clickup_user_id,member_id,match"),
+  const [members, existing] = await Promise.all([
+    everyRow(() => db.from("org_members").select("id,email,full_name,active").order("id")),
+    everyRow(() => db.from("work_people").select("clickup_user_id,member_id,match").order("clickup_user_id")),
   ]);
 
   /* Active wins where an address or a name appears twice; a name shared by two
@@ -111,7 +114,11 @@ async function syncPeople() {
 }
 
 async function syncLists() {
-  const { data: lists } = await db.from("work_containers").select("clickup_id,name").eq("kind", "list").eq("archived", false);
+  const lists = await everyRow(() => {
+    let q = db.from("work_containers").select("clickup_id,name").eq("kind", "list").eq("archived", false).order("clickup_id");
+    if (MISSING_ONLY) q = q.is("access_synced_at", null);
+    return q;
+  });
   console.log(`\n${lists.length} lists`);
 
   let done = 0, failed = 0;

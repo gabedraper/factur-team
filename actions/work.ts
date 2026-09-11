@@ -3,7 +3,8 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions, previewedMemberId } from "@/lib/org";
 import { getAuthedUser } from "@/lib/supabase/session";
-import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
+import { hiddenSpaceIds, withoutHidden, viewer } from "@/lib/work-access";
+import { everyRow, inSlices } from "@/lib/supabase/every-row.mjs";
 import type { WorkItem, WorkGroup, SyncState } from "@/lib/work";
 import { PRIORITY_ORDER } from "@/lib/work";
 
@@ -129,45 +130,30 @@ export async function clientWork(clientId: string): Promise<WorkGroup[]> {
 export async function myWork(): Promise<WorkItem[]> {
   if (!(await mayView())) return [];
 
-  const db = createServiceClient();
-  const preview = await previewedMemberId();
-
-  /*
-   * The signed-in user comes from the cookie client, not this one: a service
-   * client carries no session, so asking it who you are always answers nobody.
-   */
-  let memberId = preview;
-  if (!memberId) {
-    const user = await getAuthedUser();
-    if (!user) return [];
-    const { data: row } = await db
-      .from("org_members")
-      .select("id")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-    memberId = (row as { id: string } | null)?.id ?? null;
-  }
+  /* One answer to "who is asking", shared with every access check. */
+  const { memberId } = await viewer();
   if (!memberId) return [];
 
-  const { data: mine } = await db
-    .from("work_item_assignees")
-    .select("work_item_id")
-    .eq("member_id", memberId)
-    .limit(2000);
+  const db = createServiceClient();
 
-  const ids = (mine ?? []).map((r) => (r as { work_item_id: string }).work_item_id);
+  /* Assignments include finished work, so a long-serving person easily has
+   * more than the API's 1,000-row page. */
+  const mine = await everyRow<{ work_item_id: string }>(() =>
+    db.from("work_item_assignees").select("work_item_id").eq("member_id", memberId).order("work_item_id")
+  );
+  const ids = mine.map((r) => r.work_item_id);
   if (ids.length === 0) return [];
 
   const hidden = await hiddenSpaceIds();
-  const { data } = await withoutHidden(
-    db.from("work_items")
-      .select(SELECT)
-      .in("id", ids)
-      .in("status_type", ["open", "custom"]),
-    hidden
-  ).limit(1000);
+  const rows = await inSlices(ids, async (slice) => {
+    const { data } = await withoutHidden(
+      db.from("work_items").select(SELECT).in("id", slice).in("status_type", ["open", "custom"]),
+      hidden
+    );
+    return (data ?? []) as unknown as Row[];
+  });
 
-  return ((data ?? []) as unknown as Row[]).map(toItem).sort(inWorkingOrder);
+  return rows.map(toItem).sort(inWorkingOrder);
 }
 
 /**
@@ -185,16 +171,21 @@ export async function processWork(slug: string): Promise<WorkItem[]> {
     .maybeSingle();
   if (!process) return [];
 
+  /* Client Onboarding alone has 1,679 open tasks; a board capped at the API's
+   * 1,000 would quietly lose the rest. */
   const hidden = await hiddenSpaceIds();
-  const { data } = await withoutHidden(
-    db.from("work_items")
-      .select(SELECT)
-      .eq("process_id", (process as { id: string }).id)
-      .in("status_type", ["open", "custom"]),
-    hidden
-  ).limit(1000);
+  const processId = (process as { id: string }).id;
+  const rows = await everyRow<Row>(() =>
+    withoutHidden(
+      db.from("work_items")
+        .select(SELECT)
+        .eq("process_id", processId)
+        .in("status_type", ["open", "custom"]),
+      hidden
+    ).order("clickup_id")
+  );
 
-  return ((data ?? []) as unknown as Row[]).map(toItem).sort(inWorkingOrder);
+  return rows.map(toItem).sort(inWorkingOrder);
 }
 
 /** What the mirror knows, and when it last knew it. */
@@ -227,19 +218,17 @@ export async function syncState(): Promise<SyncState | null> {
 export async function processesWithWork(): Promise<{ slug: string; name: string; open: number }[]> {
   if (!(await mayView())) return [];
 
+  /* Counted in SQL: pulling every open row to count it here stopped at the
+   * API's 1,000-row page and undercounted without saying so. */
   const db = createServiceClient();
-  const [{ data: processes }, { data: items }] = await Promise.all([
+  const [{ data: processes }, { data: tallies }] = await Promise.all([
     db.from("work_processes").select("id,slug,name,position").eq("active", true).order("position"),
-    withoutHidden(
-      db.from("work_items").select("process_id").in("status_type", ["open", "custom"]),
-      await hiddenSpaceIds()
-    ).limit(20000),
+    db.rpc("work_open_counts_by_process", { p_hidden_spaces: await hiddenSpaceIds() }),
   ]);
 
-  const counts = new Map<string, number>();
-  for (const i of (items ?? []) as { process_id: string | null }[]) {
-    if (i.process_id) counts.set(i.process_id, (counts.get(i.process_id) ?? 0) + 1);
-  }
+  const counts = new Map<string, number>(
+    ((tallies ?? []) as { process_id: string; open: number }[]).map((t) => [t.process_id, Number(t.open)])
+  );
 
   return ((processes ?? []) as { id: string; slug: string; name: string }[])
     .map((p) => ({ slug: p.slug, name: p.name, open: counts.get(p.id) ?? 0 }))
@@ -299,30 +288,33 @@ export async function myBlocked(): Promise<Blocked[]> {
   if (mine.length === 0) return [];
 
   const db = createServiceClient();
-  const { data: edges } = await db
-    .from("work_item_dependencies")
-    .select("work_item_id, depends_on_clickup_id")
-    .eq("relation", "waiting_on")
-    .in("work_item_id", mine.map((i) => i.id));
-
-  const rows = (edges ?? []) as { work_item_id: string; depends_on_clickup_id: string }[];
+  type Edge = { work_item_id: string; depends_on_clickup_id: string };
+  const rows = await inSlices(mine.map((i) => i.id), async (slice) => {
+    const { data } = await db
+      .from("work_item_dependencies")
+      .select("work_item_id, depends_on_clickup_id")
+      .eq("relation", "waiting_on")
+      .in("work_item_id", slice);
+    return (data ?? []) as Edge[];
+  });
   if (rows.length === 0) return [];
 
   /* A blocker in a space you cannot see stays unseen: its title is exactly
    * the kind of thing the space was made private to protect. */
-  const { data: blockers } = await withoutHidden(
-    db.from("work_items")
-      .select("clickup_id,title,clickup_url,status,status_type")
-      .in("clickup_id", [...new Set(rows.map((r) => r.depends_on_clickup_id))]),
-    await hiddenSpaceIds()
-  );
+  type Blocker = {
+    clickup_id: string; title: string; clickup_url: string;
+    status: string; status_type: string | null;
+  };
+  const hidden = await hiddenSpaceIds();
+  const blockers = await inSlices([...new Set(rows.map((r) => r.depends_on_clickup_id))], async (slice) => {
+    const { data } = await withoutHidden(
+      db.from("work_items").select("clickup_id,title,clickup_url,status,status_type").in("clickup_id", slice),
+      hidden
+    );
+    return (data ?? []) as Blocker[];
+  });
 
-  const byId = new Map(
-    ((blockers ?? []) as {
-      clickup_id: string; title: string; clickup_url: string;
-      status: string; status_type: string | null;
-    }[]).map((b) => [b.clickup_id, b])
-  );
+  const byId = new Map(blockers.map((b) => [b.clickup_id, b]));
   const byItem = new Map(mine.map((i) => [i.id, i]));
 
   const out: Blocked[] = [];
