@@ -220,6 +220,8 @@ export async function readAgreement(
             client_id: row.client_id,
             metric: k.metric,
             target_per_month: k.target_per_month,
+            // Kept so a figure on a client can be checked against the contract.
+            quote: k.quote,
             source: "contract",
             updated_at: new Date().toISOString(),
             updated_by: who,

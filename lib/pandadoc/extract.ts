@@ -123,6 +123,10 @@ Rules, in order of importance:
    the quote. Every KPI needs the sentence that promises it, verbatim. A
    promise that offers alternatives ("4 sessions or 20 appointments") or
    depends on a condition is not a KPI; describe it in ambiguities.
+   A promise that rises over the term -- nothing in the first quarter, then 10
+   a quarter, then 13, then 15 -- is averaged over the whole term, counting a
+   period that guarantees nothing as nought. Say in the quote that it rises,
+   and give the figures, so the average can be checked.
 6. opt_outs is what this client is excluded from or has declined: services not
    taken, clauses struck out, obligations waived, early exits it may take. Not a
    summary of the contract. One item per point.

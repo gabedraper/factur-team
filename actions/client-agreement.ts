@@ -129,6 +129,8 @@ export async function saveKpiTarget(
       client_id: clientId,
       metric,
       target_per_month: target,
+      // Their figure, not a quotation from the contract.
+      quote: null,
       source: "manual",
       updated_at: new Date().toISOString(),
       updated_by: await whoAmI(),
