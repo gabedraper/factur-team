@@ -210,7 +210,7 @@ export function OpportunityTable({ rows, columns }: { rows: Row[]; columns: List
  *
  * Every stage gets a column, including empty ones, because an empty column is
  * still somewhere a card can be moved to. Empty columns are drawn narrow so
- * twenty-two stages do not push the busy ones off the screen.
+ * twenty-one stages do not push the busy ones off the screen.
  */
 export function OpportunityBoard({ rows }: { rows: Row[] }) {
   const [items, setItems] = useState(rows);
