@@ -86,6 +86,9 @@ const Contract = z.object({
 
 export const CONTRACT_FORMAT = zodOutputFormat(Contract);
 
+/** Terms that are a list of points by nature. Several values are joined, not doubted. */
+const PROSE = ["payment_terms", "opt_outs", "other_terms"] as const;
+
 /** Past due interest once checked: a rate, the period it is against, and the sentence. */
 export type PastDue = {
   pct: number;
@@ -117,9 +120,17 @@ Rules, in order of importance:
 5. A KPI is a number the agreement promises to deliver -- leads, appointments,
    quotes, purchase orders, completed projects -- expressed per month. If it is
    quoted per quarter or per term, convert it to a monthly figure and say so in
-   the quote. Every KPI needs the sentence that promises it, verbatim.
+   the quote. Every KPI needs the sentence that promises it, verbatim. A
+   promise that offers alternatives ("4 sessions or 20 appointments") or
+   depends on a condition is not a KPI; describe it in ambiguities.
 6. opt_outs is what this client is excluded from or has declined: services not
-   taken, clauses struck out, obligations waived. Not a summary of the contract.
+   taken, clauses struck out, obligations waived, early exits it may take. Not a
+   summary of the contract. One item per point.
+   other_terms is only what is unusual about this client's agreement -- a
+   special price, a guarantee, a clause added or changed for them. Standard
+   wording every agreement carries (payment methods, card fees, collection
+   costs, non-solicitation, confidentiality) is not an other_term. Usually
+   empty; one item per point.
 7. past_due_interest is the interest the agreement charges on a late invoice,
    and is empty if the contract is silent on it. pct is the rate exactly as
    written, with the period it is written against: "1.5% per month" is pct 1.5,
@@ -183,50 +194,7 @@ export async function extractFromPdf(
       return { ok: false, reason: "the model returned nothing usable", retry: false };
     }
 
-    /*
-     * The instruction does most of the work; this catches the rest, because
-     * "usually obeys" is not a property to build a billing figure on. A KPI or
-     * an interest rate without a real sentence behind it is discarded rather
-     * than trusted, and a term given two values is treated as not stated.
-     */
-    const ambiguities = [...parsed.ambiguities];
-    const { past_due_interest: rates, kpis: promised, ...terms } = parsed;
-
-    for (const [k, v] of Object.entries(terms)) {
-      if (Array.isArray(v) && v.length > 1) {
-        ambiguities.push(`${k} is given more than once: ${v.join(" / ")}`);
-        (terms as Record<string, unknown[]>)[k] = [];
-      }
-    }
-
-    const kpis = promised.filter((k) => k.quote.trim().length > 12);
-
-    let past_due_interest: PastDue | null = null;
-    if (rates.length > 1) {
-      ambiguities.push(`More than one past due interest clause: ${rates.map((r) => `"${r.clause}"`).join(" / ")}`);
-    } else if (rates.length === 1) {
-      const r = rates[0];
-      const period = r.period.length === 1 ? r.period[0] : null;
-      if (r.clause.trim().length <= 12 || r.pct < 0 || r.pct > 100) {
-        // Unquoted or impossible: dropped.
-      } else if (r.pct > 0 && !period) {
-        // 1.5 a month and 1.5 a year are twelve times apart. Not a guess to make.
-        ambiguities.push(`Past due interest of ${r.pct}% with no period: "${r.clause}"`);
-      } else {
-        past_due_interest = {
-          pct: r.pct,
-          period,
-          after_days: r.after_days.length === 1 ? r.after_days[0] : null,
-          clause: r.clause,
-        };
-      }
-    }
-
-    return {
-      ok: true,
-      contract: { ...terms, kpis, past_due_interest, ambiguities },
-      model: CONTRACT_MODEL,
-    };
+    return { ok: true, contract: settle(parsed), model: CONTRACT_MODEL };
   } catch (e) {
     const reason = e instanceof Error ? e.message : "extraction failed";
     /*
@@ -243,4 +211,52 @@ export async function extractFromPdf(
       e instanceof Anthropic.PermissionDeniedError;
     return { ok: false, reason, retry };
   }
+}
+
+/**
+ * What the model said, made safe to write.
+ *
+ * The instruction does most of the work; this catches the rest, because
+ * "usually obeys" is not a property to build a billing figure on. A KPI or an
+ * interest rate without a real sentence behind it is discarded rather than
+ * trusted, and a figure given two values is treated as not stated.
+ */
+export function settle(parsed: z.infer<typeof Contract>): Contract {
+  const { past_due_interest: rates, kpis: promised, ambiguities: unclear, ...terms } = parsed;
+  const ambiguities = [...unclear];
+
+  for (const [k, v] of Object.entries(terms) as [string, unknown[]][]) {
+    if (v.length <= 1) continue;
+    if ((PROSE as readonly string[]).includes(k)) {
+      (terms as Record<string, unknown[]>)[k] = [v.join("\n")];
+    } else {
+      ambiguities.push(`${k} is given more than once: ${v.join(" / ")}`);
+      (terms as Record<string, unknown[]>)[k] = [];
+    }
+  }
+
+  const kpis = promised.filter((k) => k.quote.trim().length > 12);
+
+  let past_due_interest: PastDue | null = null;
+  if (rates.length > 1) {
+    ambiguities.push(`More than one past due interest clause: ${rates.map((r) => `"${r.clause}"`).join(" / ")}`);
+  } else if (rates.length === 1) {
+    const r = rates[0];
+    const period = r.period.length === 1 ? r.period[0] : null;
+    if (r.clause.trim().length <= 12 || r.pct < 0 || r.pct > 100) {
+      // Unquoted or impossible: dropped.
+    } else if (r.pct > 0 && !period) {
+      // 1.5 a month and 1.5 a year are twelve times apart. Not a guess to make.
+      ambiguities.push(`Past due interest of ${r.pct}% with no period: "${r.clause}"`);
+    } else {
+      past_due_interest = {
+        pct: r.pct,
+        period,
+        after_days: r.after_days.length === 1 ? r.after_days[0] : null,
+        clause: r.clause,
+      };
+    }
+  }
+
+  return { ...terms, kpis, past_due_interest, ambiguities };
 }
