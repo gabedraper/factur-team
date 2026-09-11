@@ -22,6 +22,32 @@ export const STAGE_GROUPS: { label: string; values: string[] }[] = [
       "Pipeline Hot: Supplier forms / NDA", "Pipeline Hot: Appointment set",
     ],
   },
+  /*
+   * Client-led: the prospect is being carried by our client rather than by
+   * Factur. It happens both before a quote and after one, so it sits between
+   * Pipeline and Closed rather than at a fixed point in the funnel -- the
+   * pursuit is open, we are just not the one moving it. Leaving these in a
+   * Pipeline stage was reading as Factur actively working a deal it is not.
+   *
+   * The reason is the sub-stage rather than a field of its own, which is the
+   * shape every other stage here already has: one picklist value carrying the
+   * stage and what it is about. It also means a reason filters like any stage
+   * and is kept in opportunity_history like any stage change, so which reasons
+   * actually convert is answerable later without anything else being built.
+   *
+   * These are new values -- Salesforce's own picklist has to be given them
+   * before Skyvia can sync a pursuit that has been set to one.
+   */
+  {
+    label: "Client-led",
+    values: [
+      "Client-led: Existing buyer relationship", "Client-led: Engineer to engineer",
+      "Client-led: Supplier qualification", "Client-led: Plant tour or site visit",
+      "Client-led: NDA / ITAR / confidentiality", "Client-led: Pricing and terms",
+      "Client-led: Large quote or capital project", "Client-led: Multi-plant or program",
+      "Client-led: Asked to deal direct", "Client-led: Named key target",
+    ],
+  },
   {
     label: "Closed",
     values: ["Closed: Closed Won", "Closed: Closed Lost", "Closed: DQ Contact", "Closed: DQ Company", "Closed: No Quote"],
