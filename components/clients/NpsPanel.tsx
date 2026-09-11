@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { recordNps, deleteNps, type NpsEntry } from "@/actions/nps";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /**
  * The NPS log for one client: every response, newest first, plus a way to add
@@ -92,25 +93,25 @@ export function NpsPanel({
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No NPS recorded yet.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Score</th>
-              <th className="px-3 py-2 font-medium">Change</th>
-              <th className="px-3 py-2 font-medium">Who</th>
-              <th className="px-3 py-2 font-medium">Comment</th>
-              {canEdit && <th className="px-3 py-2" />}
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Date</TH>
+              <TH>Score</TH>
+              <TH>Change</TH>
+              <TH>Who</TH>
+              <TH>Comment</TH>
+              {canEdit && <TH  />}
+            </TR>
+          </THead>
+          <TBody>
             {rows.map((r, i) => {
               const d = change(i);
               return (
-                <tr key={r.id} className="border-b last:border-0">
-                  <td className="px-3 py-2 tabular-nums">{r.collected_on}</td>
-                  <td className="px-3 py-2 font-semibold tabular-nums">{r.score}</td>
-                  <td className="px-3 py-2 tabular-nums">
+                <TR key={r.id} >
+                  <TD className="tabular-nums">{r.collected_on}</TD>
+                  <TD className="font-semibold tabular-nums">{r.score}</TD>
+                  <TD className="tabular-nums">
                     {d === null ? (
                       <span className="text-muted-foreground">—</span>
                     ) : (
@@ -120,22 +121,22 @@ export function NpsPanel({
                         {d > 0 ? `+${d}` : d}
                       </span>
                     )}
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">{r.respondent ?? "—"}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{r.comment ?? "—"}</td>
+                  </TD>
+                  <TD className="text-muted-foreground">{r.respondent ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{r.comment ?? "—"}</TD>
                   {canEdit && (
-                    <td className="px-3 py-2 text-right">
+                    <TD numeric>
                       <button onClick={() => remove(r.id)} disabled={pending}
                               className="text-xs text-muted-foreground underline hover:text-destructive">
                         remove
                       </button>
-                    </td>
+                    </TD>
                   )}
-                </tr>
+                </TR>
               );
             })}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       )}
     </div>
   );

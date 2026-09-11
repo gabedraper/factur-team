@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Chip } from "@/components/pipeline/bits";
 import { addVoiceNumber, setVoiceNumberStatus, type VoiceNumberRow, type VoiceProvider } from "@/actions/dialer";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const STATUS_COLOUR = { active: "emerald", paused: "slate", flagged: "rose" } as const;
 const PROVIDER_LABEL: Record<VoiceProvider, string> = { dialpad: "Dialpad", twilio: "Twilio", telnyx: "Telnyx" };
@@ -119,34 +120,34 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
         <Button size="sm" onClick={add} className="gap-1"><Plus className="h-4 w-4" /> Add number</Button>
       </div>
 
-      <table className="w-full text-sm">
-        <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2 font-medium">Number</th>
-            <th className="px-3 py-2 font-medium">Provider</th>
-            <th className="px-3 py-2 font-medium">Assigned to</th>
-            <th className="px-3 py-2 font-medium">Calls placed</th>
-            <th className="px-3 py-2 font-medium">Last used</th>
-            <th className="px-3 py-2 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
+      <Table>
+        <THead>
+          <TR>
+            <TH>Number</TH>
+            <TH>Provider</TH>
+            <TH>Assigned to</TH>
+            <TH>Calls placed</TH>
+            <TH>Last used</TH>
+            <TH>Status</TH>
+          </TR>
+        </THead>
+        <TBody>
           {rows.map((r) => (
-            <tr key={r.id}>
-              <td className="px-3 py-2 tabular-nums">{r.e164}{r.label && <span className="ml-2 text-xs text-muted-foreground">{r.label}</span>}</td>
-              <td className="px-3 py-2 text-muted-foreground">{PROVIDER_LABEL[r.provider]}</td>
-              <td className="px-3 py-2 text-muted-foreground">{r.assigned_member_name ?? "Shared pool"}</td>
-              <td className="px-3 py-2 tabular-nums">{r.calls_placed}</td>
-              <td className="px-3 py-2 text-muted-foreground">{r.last_used_at ? new Date(r.last_used_at).toLocaleString() : "Never"}</td>
-              <td className="px-3 py-2">
+            <TR key={r.id}>
+              <TD className="tabular-nums">{r.e164}{r.label && <span className="ml-2 text-xs text-muted-foreground">{r.label}</span>}</TD>
+              <TD className="text-muted-foreground">{PROVIDER_LABEL[r.provider]}</TD>
+              <TD className="text-muted-foreground">{r.assigned_member_name ?? "Shared pool"}</TD>
+              <TD className="tabular-nums">{r.calls_placed}</TD>
+              <TD className="text-muted-foreground">{r.last_used_at ? new Date(r.last_used_at).toLocaleString() : "Never"}</TD>
+              <TD>
                 <button type="button" onClick={() => cycleStatus(r)}>
                   <Chip colour={STATUS_COLOUR[r.status]}>{r.status}</Chip>
                 </button>
-              </td>
-            </tr>
+              </TD>
+            </TR>
           ))}
-        </tbody>
-      </table>
+        </TBody>
+      </Table>
     </div>
   );
 }

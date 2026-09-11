@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { money, onDay } from "@/lib/talent/format";
 import { STAGE_KIND, label } from "@/lib/talent/types";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -75,30 +76,30 @@ export default async function ReportsPage({
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Activity">
           {activity.length === 0 ? <Empty>Nothing logged in this window</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Person</th>
-                  <th className="px-4 py-2 text-right font-medium">Calls</th>
-                  <th className="px-4 py-2 text-right font-medium">Emails</th>
-                  <th className="px-4 py-2 text-right font-medium">Meetings</th>
-                  <th className="px-4 py-2 text-right font-medium">Subs</th>
-                  <th className="px-4 py-2 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Person</TH>
+                  <TH numeric>Calls</TH>
+                  <TH numeric>Emails</TH>
+                  <TH numeric>Meetings</TH>
+                  <TH numeric>Subs</TH>
+                  <TH numeric>Total</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {activity.map((a) => (
-                  <tr key={a.member_id}>
-                    <td className="px-4 py-2">{a.member_name ?? "—"}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{a.calls}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{a.emails}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{a.meetings}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{a.submissions}</td>
-                    <td className="px-4 py-2 text-right font-medium tabular-nums">{a.total}</td>
-                  </tr>
+                  <TR key={a.member_id}>
+                    <TD>{a.member_name ?? "—"}</TD>
+                    <TD numeric>{a.calls}</TD>
+                    <TD numeric>{a.emails}</TD>
+                    <TD numeric>{a.meetings}</TD>
+                    <TD numeric>{a.submissions}</TD>
+                    <TD numeric className="font-medium">{a.total}</TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
 
@@ -125,39 +126,39 @@ export default async function ReportsPage({
 
         <Panel title="Jobs by activity" className="lg:col-span-2">
           {jobs.length === 0 ? <Empty>No open jobs</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Job</th>
-                  <th className="px-4 py-2 font-medium">Owner</th>
-                  <th className="px-4 py-2 text-right font-medium">Active</th>
-                  <th className="px-4 py-2 text-right font-medium">Submitted</th>
-                  <th className="px-4 py-2 text-right font-medium">Interview</th>
-                  <th className="px-4 py-2 text-right font-medium">Hired</th>
-                  <th className="px-4 py-2 font-medium">Opened</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Job</TH>
+                  <TH>Owner</TH>
+                  <TH numeric>Active</TH>
+                  <TH numeric>Submitted</TH>
+                  <TH numeric>Interview</TH>
+                  <TH numeric>Hired</TH>
+                  <TH>Opened</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {jobs.map((j) => (
-                  <tr key={j.id}>
-                    <td className="px-4 py-2">
+                  <TR key={j.id}>
+                    <TD>
                       <Link href={`/talent/jobs/${j.id}?tab=reports`} className="hover:underline">
                         {j.title}
                       </Link>
                       {j.active_count === 0 && (
                         <Chip colour="rose" className="ml-2">empty</Chip>
                       )}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">{j.owner_name ?? "—"}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{j.active_count}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{j.submitted_count}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{j.interview_count}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{j.hired_count}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{onDay(j.opened_on)}</td>
-                  </tr>
+                    </TD>
+                    <TD className="text-muted-foreground">{j.owner_name ?? "—"}</TD>
+                    <TD numeric>{j.active_count}</TD>
+                    <TD numeric>{j.submitted_count}</TD>
+                    <TD numeric>{j.interview_count}</TD>
+                    <TD numeric>{j.hired_count}</TD>
+                    <TD className="text-muted-foreground">{onDay(j.opened_on)}</TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
       </div>

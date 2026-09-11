@@ -5,6 +5,7 @@ import { Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { money, onDay } from "@/lib/talent/format";
 import { INVOICE_STATUS, PLACEMENT_STATUS, label } from "@/lib/talent/types";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -66,25 +67,25 @@ export default async function PlacementsPage({
 
       <Panel>
         {rows.length === 0 ? <Empty>No placements</Empty> : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Person</th>
-                <th className="px-4 py-2 font-medium">Job</th>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Started</th>
-                <th className="px-4 py-2 font-medium">Guarantee</th>
-                <th className="px-4 py-2 text-right font-medium">Salary</th>
-                <th className="px-4 py-2 text-right font-medium">Fee</th>
-                <th className="px-4 py-2 font-medium">Invoice</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Person</TH>
+                <TH>Job</TH>
+                <TH>Company</TH>
+                <TH>Started</TH>
+                <TH>Guarantee</TH>
+                <TH numeric>Salary</TH>
+                <TH numeric>Fee</TH>
+                <TH>Invoice</TH>
+              </TR>
+            </THead>
+            <TBody>
               {rows.map((r) => {
                 const inGuarantee = r.guarantee_ends_on && r.guarantee_ends_on >= today;
                 return (
-                  <tr key={r.id} className="hover:bg-accent/40">
-                    <td className="px-4 py-2.5">
+                  <TR key={r.id} >
+                    <TD>
                       {r.tal_people ? (
                         <Link href={`/talent/people/${r.tal_people.id}`} className="font-medium hover:underline">
                           {r.tal_people.name}
@@ -93,38 +94,38 @@ export default async function PlacementsPage({
                       <div className="mt-0.5">
                         <Chip colour={TONE[r.status]}>{label(PLACEMENT_STATUS, r.status)}</Chip>
                       </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
+                    </TD>
+                    <TD className="text-muted-foreground">
                       {r.tal_jobs ? (
                         <Link href={`/talent/jobs/${r.tal_jobs.id}`} className="hover:underline">
                           {r.tal_jobs.title}
                         </Link>
                       ) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{r.tal_companies?.name ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{onDay(r.started_on)}</td>
-                    <td className={`px-4 py-2.5 ${inGuarantee ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                    </TD>
+                    <TD className="text-muted-foreground">{r.tal_companies?.name ?? "—"}</TD>
+                    <TD className="text-muted-foreground">{onDay(r.started_on)}</TD>
+                    <TD className={`${inGuarantee ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
                       {onDay(r.guarantee_ends_on)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                    </TD>
+                    <TD numeric className="text-muted-foreground">
                       {money(r.salary)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
+                    </TD>
+                    <TD numeric>
                       {money(r.fee_amount)}
                       {r.fee_percent ? (
                         <span className="ml-1 text-xs text-muted-foreground">{r.fee_percent}%</span>
                       ) : null}
-                    </td>
-                    <td className="px-4 py-2.5">
+                    </TD>
+                    <TD>
                       <Chip colour={r.invoice_status === "paid" ? "emerald" : r.invoice_status === "invoiced" ? "sky" : "slate"}>
                         {label(INVOICE_STATUS, r.invoice_status)}
                       </Chip>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 );
               })}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

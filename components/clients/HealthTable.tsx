@@ -7,6 +7,7 @@ import { band, type ClientHealth } from "@/lib/clients/health-score";
 import { AGEING_TONE } from "@/lib/ageing-colours";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
 
 const BAND_CLASS: Record<string, string> = {
   good: "text-emerald-600 dark:text-emerald-400",
@@ -333,9 +334,9 @@ export function HealthTable({
       </div>
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <Table>
+          <THead>
+            <TR>
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("am")}>Account manager</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("strategist")}>Marketing strategist</SortHeader>
@@ -356,56 +357,56 @@ export function HealthTable({
               </SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("measured")}>Inputs</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("manual")}>In Salesforce</SortHeader>
-            </tr>
-          </thead>
-          <tbody>
+            </TR>
+          </THead>
+          <TBody>
             {/* An empty list is an answer, not a page still loading. */}
             {sorted.length === 0 && (
-              <tr>
-                <td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
+              <TR>
+                <TD colSpan={12} className="py-6 text-center text-muted-foreground">
                   No clients to show.
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
             {sorted.map((c) => (
               <>
-                <tr
+                <TR
                   key={c.clientId}
-                  className={`cursor-pointer border-b last:border-0 hover:bg-muted/40 ${
+                  className={`cursor-pointer hover:bg-muted/40 ${
                     disagrees(c) ? "bg-amber-50/60 dark:bg-amber-950/20" : ""
                   }`}
                   onClick={() => setOpen(open === c.clientId ? null : c.clientId)}
                 >
-                  <td className="px-3 py-2 font-medium">
+                  <TD className="font-medium">
                     <span className="flex items-center gap-2">
                       <CompanyLogo name={c.name} domain={domains?.[c.clientId]} size={20} />
                       {c.name}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.accountManager ?? ""}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{strategists?.[c.clientId] ?? ""}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.teamLead ?? ""}</td>
-                  <td className="px-3 py-2 text-right" title={HEALTH_BLURB}><Score value={c.overall} /></td>
-                  <td className="px-3 py-2 text-right"><Score value={at(c, "lead_flow")} /></td>
-                  <td className="px-3 py-2 text-right">
+                  </TD>
+                  <TD className="text-muted-foreground">{c.accountManager ?? ""}</TD>
+                  <TD className="text-muted-foreground">{strategists?.[c.clientId] ?? ""}</TD>
+                  <TD className="text-muted-foreground">{c.teamLead ?? ""}</TD>
+                  <TD numeric title={HEALTH_BLURB}><Score value={c.overall} /></TD>
+                  <TD numeric><Score value={at(c, "lead_flow")} /></TD>
+                  <TD numeric>
                     <RankedScore value={at(c, "activity")} bands={actBands} title={ACTIVITY_BLURB} />
-                  </td>
-                  <td className="px-3 py-2 text-right"><Score value={at(c, "nps")} /></td>
-                  <td className="px-3 py-2 text-right">
+                  </TD>
+                  <TD numeric><Score value={at(c, "nps")} /></TD>
+                  <TD numeric>
                     <RankedScore value={at(c, "engagement")} bands={perfBands} title={PERFORMANCE_BLURB} />
-                  </td>
-                  <td className="px-3 py-2 text-right" title={AR_BLURB}>
+                  </TD>
+                  <TD numeric title={AR_BLURB}>
                     <Score value={at(c, "receivables")} />
-                  </td>
-                  <td className="px-3 py-2 text-center text-muted-foreground tabular-nums">
+                  </TD>
+                  <TD className="text-center text-muted-foreground tabular-nums">
                     {c.inputsMeasured} of 5
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.manualHealth ?? ""}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{c.manualHealth ?? ""}</TD>
+                </TR>
 
                 {open === c.clientId && (
-                  <tr key={`${c.clientId}-detail`} className="border-b bg-muted/30 last:border-0">
-                    <td colSpan={12} className="px-3 py-3">
+                  <TR key={`${c.clientId}-detail`} className="bg-muted/30">
+                    <TD colSpan={12} className="py-3">
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                         {c.inputs.map((i) => (
                           <Surface key={i.key} pad="tight" inset>
@@ -503,13 +504,13 @@ export function HealthTable({
                       >
                         Client record
                       </Link>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 )}
               </>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
     </div>
   );

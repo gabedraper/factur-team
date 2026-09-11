@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addToSequence } from "@/actions/sequence-audience";
 import { parseCsv, type Candidate } from "@/lib/sequences/audience";
 import { Surface, surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /**
  * Pick where the people come from, then look at them before anybody is added.
@@ -173,49 +174,49 @@ export function AddContacts({
       </div>
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 w-8" />
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Email</th>
-              <th className="px-3 py-2 font-medium">Company</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH className="w-8" />
+              <TH>Name</TH>
+              <TH>Email</TH>
+              <TH>Company</TH>
+            </TR>
+          </THead>
+          <TBody>
             {shown.map((r) => (
-              <tr key={r.email} className="border-b last:border-0">
-                <td className="px-3 py-2">
+              <TR key={r.email} >
+                <TD>
                   <input
                     type="checkbox"
                     checked={chosen.has(r.email)}
                     disabled={!!r.problem}
                     onChange={() => toggle(r.email)}
                   />
-                </td>
-                <td className="px-3 py-2">
+                </TD>
+                <TD>
                   {[r.firstName, r.lastName].filter(Boolean).join(" ") || (
                     <span className="text-muted-foreground">—</span>
                   )}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
+                </TD>
+                <TD className="text-muted-foreground">
                   {r.email}
                   {r.problem && (
                     <span className="ml-2 text-red-600 dark:text-red-400">{r.problem}</span>
                   )}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">{r.company ?? "—"}</td>
-              </tr>
+                </TD>
+                <TD className="text-muted-foreground">{r.company ?? "—"}</TD>
+              </TR>
             ))}
             {shown.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+              <TR>
+                <TD colSpan={4} className="py-6 text-center text-muted-foreground">
                   Nothing matches.
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
     </div>
   );

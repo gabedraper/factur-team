@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { checkNpsSenders, type Coverage, type SenderCheck } from "@/actions/nps-readiness";
 import { Surface, surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
@@ -86,35 +87,35 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
 
         {result && result.senders.length > 0 && (
           <Surface pad="none" className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Team lead</th>
-                  <th className="px-3 py-2 text-right font-medium">Clients</th>
-                  <th className="px-3 py-2 font-medium">Can send as</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Team lead</TH>
+                  <TH numeric>Clients</TH>
+                  <TH>Can send as</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {result.senders.map((s: SenderCheck) => (
-                  <tr key={s.email} className="border-b last:border-0 align-top">
-                    <td className="px-3 py-2">
+                  <TR key={s.email} className="align-top">
+                    <TD>
                       <div>{s.name ?? s.email}</div>
                       {s.name && (
                         <div className="text-xs text-muted-foreground">{s.email}</div>
                       )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{s.clients}</td>
-                    <td className="px-3 py-2">
+                    </TD>
+                    <TD numeric>{s.clients}</TD>
+                    <TD>
                       {s.ok ? (
                         <span className="text-emerald-600 dark:text-emerald-400">Yes</span>
                       ) : (
                         <span className="text-red-600 dark:text-red-400">{s.problem}</span>
                       )}
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </Surface>
         )}
 

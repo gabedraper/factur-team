@@ -8,6 +8,7 @@ import { PageHeader, Panel, Empty, Chip, stageTone, AlphaFilter } from "@/compon
 import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
 import { OpportunityListFilters } from "@/components/pipeline/OpportunityListFilters";
 import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -138,32 +139,32 @@ export default async function ClientOpportunitiesPage({
         {rows.length === 0 ? (
           <Empty>Nothing matches that filter.</Empty>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Contact</th>
-                <th className="px-4 py-2 font-medium">Account</th>
-                <th className="px-4 py-2 font-medium">Stage</th>
-                <th className="px-4 py-2 font-medium">Lead status</th>
-                <th className="px-4 py-2 font-medium">Next action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Contact</TH>
+                <TH>Account</TH>
+                <TH>Stage</TH>
+                <TH>Lead status</TH>
+                <TH>Next action</TH>
+              </TR>
+            </THead>
+            <TBody>
               {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-2.5">
+                <TR key={r.id} >
+                  <TD>
                     <Link href={`/opportunities/${r.id}`} className="font-medium hover:underline">
                       {[r.crm_contacts?.first_name, r.crm_contacts?.last_name].filter(Boolean).join(" ") || r.name}
                     </Link>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.crm_accounts?.name ?? "—"}</td>
-                  <td className="px-4 py-2.5"><Chip colour={stageTone(r.stage)}>{r.stage}</Chip></td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.lead_status ?? "—"}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.next_action_date ?? "—"}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{r.crm_accounts?.name ?? "—"}</TD>
+                  <TD><Chip colour={stageTone(r.stage)}>{r.stage}</Chip></TD>
+                  <TD className="text-muted-foreground">{r.lead_status ?? "—"}</TD>
+                  <TD className="tabular-nums text-muted-foreground">{r.next_action_date ?? "—"}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

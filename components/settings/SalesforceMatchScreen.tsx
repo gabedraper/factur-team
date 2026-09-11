@@ -5,6 +5,7 @@ import { linkSalesforceUser } from "@/actions/org";
 import type { MatchSuggestion } from "@/lib/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { Surface, surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSuggestion[] }) {
   const [rows, setRows] = useState(suggestions);
@@ -50,35 +51,35 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
       )}
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <Table>
+          <THead>
+            <TR>
               <SortHeader className="px-3 py-2" {...sortProps("member")}>In the app</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("match")}>Best Salesforce match</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("confidence")}>Confidence</SortHeader>
-              <th className="px-3 py-2 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
+              <TH></TH>
+            </TR>
+          </THead>
+          <TBody>
             {sorted.map((s) => {
               const b = band(s.score);
               return (
-                <tr key={s.memberId} className="border-b last:border-0">
-                  <td className="px-3 py-2">
+                <TR key={s.memberId} >
+                  <TD>
                     <div className="font-medium">{s.fullName ?? s.email}</div>
                     <div className="text-xs text-muted-foreground">{s.email}</div>
-                  </td>
-                  <td className="px-3 py-2">
+                  </TD>
+                  <TD>
                     <div>{s.sfName}</div>
                     <div className="text-xs text-muted-foreground">{s.sfEmail}</div>
-                  </td>
-                  <td className="px-3 py-2">
+                  </TD>
+                  <TD>
                     <span className={b.cls}>{b.label}</span>
                     <span className="ml-1 text-xs text-muted-foreground">
                       {s.score?.toFixed(2)} · {s.basis}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
+                  </TD>
+                  <TD numeric>
                     <button
                       className="h-7 rounded-md border px-2 text-xs disabled:opacity-50"
                       disabled={pending}
@@ -86,17 +87,17 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
                     >
                       Link
                     </button>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
             })}
             {withCandidate.length === 0 && (
-              <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+              <TR><TD colSpan={4} className="py-6 text-center text-muted-foreground">
                 Nothing left to review.
-              </td></tr>
+              </TD></TR>
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
 
       {without.length > 0 && (

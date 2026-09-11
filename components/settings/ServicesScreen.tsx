@@ -6,6 +6,7 @@ import {
   createService, updateService, deleteService, moveService,
 } from "@/actions/org";
 import type { ServiceRow } from "@/lib/org";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 function Field({
   value, onChange, placeholder, className = "",
@@ -54,26 +55,26 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="w-8 px-2 py-2" />
-              <th className="px-3 py-2 font-medium">Service</th>
-              <th className="px-3 py-2 font-medium">Description</th>
-              <th className="px-3 py-2 font-medium">Roles</th>
-              <th className="px-3 py-2 font-medium">Pods</th>
-              <th className="px-3 py-2 font-medium">In dropdown</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
+              <TH className="w-8" />
+              <TH>Service</TH>
+              <TH>Description</TH>
+              <TH>Roles</TH>
+              <TH>Pods</TH>
+              <TH>In dropdown</TH>
+              <TH  />
+            </TR>
+          </THead>
+          <TBody>
             {services.map((s, i) => {
               const inUse = s.roles + s.pods > 0;
               const isEditing = editing === s.id;
               return (
-                <tr key={s.id} className="border-t align-middle">
-                  <td className="px-2 py-1.5">
+                <TR key={s.id} className="border-t align-middle">
+                  <TD>
                     <div className="flex flex-col">
                       <button
                         aria-label="Move up"
@@ -92,38 +93,38 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                         <ArrowDown className="h-3 w-3" />
                       </button>
                     </div>
-                  </td>
+                  </TD>
 
                   {isEditing ? (
                     <>
-                      <td className="px-3 py-1.5">
+                      <TD>
                         <Field
                           value={draft.name}
                           onChange={(v) => setDraft({ ...draft, name: v })}
                           placeholder="Name"
                           className="w-48"
                         />
-                      </td>
-                      <td className="px-3 py-1.5" colSpan={4}>
+                      </TD>
+                      <TD  colSpan={4}>
                         <Field
                           value={draft.description}
                           onChange={(v) => setDraft({ ...draft, description: v })}
                           placeholder="Description"
                           className="w-full"
                         />
-                      </td>
+                      </TD>
                     </>
                   ) : (
                     <>
-                      <td className="px-3 py-1.5">
+                      <TD>
                         <button onClick={() => beginEdit(s)} className="hover:underline">
                           {s.name}
                         </button>
-                      </td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{s.description ?? "—"}</td>
-                      <td className="px-3 py-1.5 tabular-nums">{s.roles || "—"}</td>
-                      <td className="px-3 py-1.5 tabular-nums">{s.pods || "—"}</td>
-                      <td className="px-3 py-1.5">
+                      </TD>
+                      <TD className="text-muted-foreground">{s.description ?? "—"}</TD>
+                      <TD className="tabular-nums">{s.roles || "—"}</TD>
+                      <TD className="tabular-nums">{s.pods || "—"}</TD>
+                      <TD>
                         <input
                           type="checkbox"
                           checked={s.active}
@@ -132,11 +133,11 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                             run(() => updateService(s.id, { active: e.target.checked }))
                           }
                         />
-                      </td>
+                      </TD>
                     </>
                   )}
 
-                  <td className="px-3 py-1.5">
+                  <TD>
                     <div className="flex items-center justify-end gap-2">
                       {isEditing ? (
                         <>
@@ -177,31 +178,31 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                         </button>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
             })}
 
             {adding && (
-              <tr className="border-t bg-muted/20">
-                <td className="px-2 py-1.5" />
-                <td className="px-3 py-1.5">
+              <TR className="border-t bg-muted/20">
+                <TD  />
+                <TD>
                   <Field
                     value={fresh.name}
                     onChange={(v) => setFresh({ ...fresh, name: v })}
                     placeholder="Name"
                     className="w-48"
                   />
-                </td>
-                <td className="px-3 py-1.5" colSpan={4}>
+                </TD>
+                <TD  colSpan={4}>
                   <Field
                     value={fresh.description}
                     onChange={(v) => setFresh({ ...fresh, description: v })}
                     placeholder="Description"
                     className="w-full"
                   />
-                </td>
-                <td className="px-3 py-1.5">
+                </TD>
+                <TD>
                   <div className="flex items-center justify-end gap-2">
                     <button
                       aria-label="Save"
@@ -224,12 +225,12 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
 
       {!adding && (
         <button

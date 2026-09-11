@@ -6,6 +6,7 @@ import { Chip, PageHeader, Panel, Empty } from "@/components/talent/bits";
 import { Button } from "@/components/ui/button";
 import { ago, place, salaryRange } from "@/lib/talent/format";
 import { JOB_KIND, JOB_STATUS, label } from "@/lib/talent/types";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -98,23 +99,23 @@ export default async function JobsPage({
         {jobs.length === 0 ? (
           <Empty>No jobs</Empty>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Job</th>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Owner</th>
-                <th className="px-4 py-2 text-right font-medium">Active</th>
-                <th className="px-4 py-2 text-right font-medium">Submitted</th>
-                <th className="px-4 py-2 text-right font-medium">Interview</th>
-                <th className="px-4 py-2 font-medium">Pay</th>
-                <th className="px-4 py-2 font-medium">Last activity</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Job</TH>
+                <TH>Company</TH>
+                <TH>Owner</TH>
+                <TH numeric>Active</TH>
+                <TH numeric>Submitted</TH>
+                <TH numeric>Interview</TH>
+                <TH>Pay</TH>
+                <TH>Last activity</TH>
+              </TR>
+            </THead>
+            <TBody>
               {jobs.map((j) => (
-                <tr key={j.id} className="hover:bg-accent/40">
-                  <td className="px-4 py-2.5">
+                <TR key={j.id} >
+                  <TD>
                     <Link href={`/talent/jobs/${j.id}`} className="font-medium hover:underline">
                       {j.title}
                     </Link>
@@ -130,26 +131,26 @@ export default async function JobsPage({
                         <Globe className="h-3 w-3 text-emerald-600" aria-label="On the careers page" />
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">
+                  </TD>
+                  <TD className="text-muted-foreground">
                     {j.company_id ? (
                       <Link href={`/talent/companies/${j.company_id}`} className="hover:underline">
                         {j.company_name}
                       </Link>
                     ) : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{j.owner_name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{j.active_count}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{j.submitted_count}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{j.interview_count}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">
+                  </TD>
+                  <TD className="text-muted-foreground">{j.owner_name ?? "—"}</TD>
+                  <TD numeric>{j.active_count}</TD>
+                  <TD numeric className="text-muted-foreground">{j.submitted_count}</TD>
+                  <TD numeric className="text-muted-foreground">{j.interview_count}</TD>
+                  <TD className="text-muted-foreground">
                     {salaryRange(j.salary_min, j.salary_max)}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{ago(j.last_activity_at)}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{ago(j.last_activity_at)}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

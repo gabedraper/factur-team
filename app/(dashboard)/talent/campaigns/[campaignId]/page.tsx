@@ -6,6 +6,7 @@ import { CampaignEditor } from "@/components/talent/CampaignEditor";
 import { Chip, Empty, NotConnected, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { ago } from "@/lib/talent/format";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -76,40 +77,40 @@ export default async function CampaignPage({
 
       <Panel title="Enrolled">
         {members.length === 0 ? <Empty>Nobody enrolled</Empty> : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Person</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 text-right font-medium">Step</th>
-                <th className="px-4 py-2 font-medium">Enrolled</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Person</TH>
+                <TH>Email</TH>
+                <TH>Status</TH>
+                <TH numeric>Step</TH>
+                <TH>Enrolled</TH>
+              </TR>
+            </THead>
+            <TBody>
               {members.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-4 py-2">
+                <TR key={m.id}>
+                  <TD>
                     {m.tal_people ? (
                       <Link href={`/talent/people/${m.tal_people.id}`} className="hover:underline">
                         {m.tal_people.name}
                       </Link>
                     ) : "—"}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">{m.tal_people?.primary_email ?? "—"}</td>
-                  <td className="px-4 py-2">
+                  </TD>
+                  <TD className="text-muted-foreground">{m.tal_people?.primary_email ?? "—"}</TD>
+                  <TD>
                     <Chip colour={m.status === "replied" ? "emerald" : m.status === "active" ? "sky" : "slate"}>
                       {m.status}
                     </Chip>
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD numeric className="text-muted-foreground">
                     {m.current_position < 0 ? "—" : m.current_position + 1}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">{ago(m.enrolled_at)}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{ago(m.enrolled_at)}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

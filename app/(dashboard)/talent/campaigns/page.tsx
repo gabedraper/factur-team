@@ -4,6 +4,7 @@ import { integrationStatus, listCampaigns, listJobs } from "@/lib/talent/queries
 import { NewCampaign } from "@/components/talent/NewCampaign";
 import { Chip, Empty, NotConnected, PageHeader, Panel } from "@/components/talent/bits";
 import { ago } from "@/lib/talent/format";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -40,21 +41,21 @@ export default async function CampaignsPage() {
 
       <Panel>
         {rows.length === 0 ? <Empty>No campaigns</Empty> : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Campaign</th>
-                <th className="px-4 py-2 font-medium">Job</th>
-                <th className="px-4 py-2 font-medium">Audience</th>
-                <th className="px-4 py-2 text-right font-medium">Steps</th>
-                <th className="px-4 py-2 text-right font-medium">Enrolled</th>
-                <th className="px-4 py-2 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Campaign</TH>
+                <TH>Job</TH>
+                <TH>Audience</TH>
+                <TH numeric>Steps</TH>
+                <TH numeric>Enrolled</TH>
+                <TH>Created</TH>
+              </TR>
+            </THead>
+            <TBody>
               {rows.map((c) => (
-                <tr key={c.id} className="hover:bg-accent/40">
-                  <td className="px-4 py-2.5">
+                <TR key={c.id} >
+                  <TD>
                     <Link href={`/talent/campaigns/${c.id}`} className="font-medium hover:underline">
                       {c.name}
                     </Link>
@@ -62,26 +63,26 @@ export default async function CampaignsPage() {
                       <Chip colour={TONE[c.status]}>{c.status}</Chip>
                       <Chip>{c.mode === "full" ? "automatic" : "semi"}</Chip>
                     </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">
+                  </TD>
+                  <TD className="text-muted-foreground">
                     {c.tal_jobs ? (
                       <Link href={`/talent/jobs/${c.tal_jobs.id}`} className="hover:underline">
                         {c.tal_jobs.title}
                       </Link>
                     ) : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.audience}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
+                  </TD>
+                  <TD className="text-muted-foreground">{c.audience}</TD>
+                  <TD numeric>
                     {c.tal_campaign_steps?.[0]?.count ?? 0}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
+                  </TD>
+                  <TD numeric>
                     {c.tal_campaign_members?.[0]?.count ?? 0}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{ago(c.created_at)}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{ago(c.created_at)}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

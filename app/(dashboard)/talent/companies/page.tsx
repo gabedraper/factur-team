@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ago, place } from "@/lib/talent/format";
 import { COMPANY_KIND, label } from "@/lib/talent/types";
 import { CompanyLogo } from "@/components/ui/thumbnail";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -50,21 +51,21 @@ export default async function CompaniesPage({
 
       <Panel>
         {companies.length === 0 ? <Empty>No companies</Empty> : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Industry</th>
-                <th className="px-4 py-2 font-medium">Location</th>
-                <th className="px-4 py-2 text-right font-medium">People</th>
-                <th className="px-4 py-2 text-right font-medium">Jobs</th>
-                <th className="px-4 py-2 font-medium">Last activity</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Company</TH>
+                <TH>Industry</TH>
+                <TH>Location</TH>
+                <TH numeric>People</TH>
+                <TH numeric>Jobs</TH>
+                <TH>Last activity</TH>
+              </TR>
+            </THead>
+            <TBody>
               {companies.map((c) => (
-                <tr key={c.id} className="hover:bg-accent/40">
-                  <td className="px-4 py-2.5">
+                <TR key={c.id} >
+                  <TD>
                     <Link
                       href={`/talent/companies/${c.id}`}
                       className="flex items-center gap-2 font-medium hover:underline"
@@ -78,20 +79,20 @@ export default async function CompaniesPage({
                       </Chip>
                       {c.domain && <span className="text-xs text-muted-foreground">{c.domain}</span>}
                     </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.industry ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{place(c.city, c.state)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD className="text-muted-foreground">{c.industry ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{place(c.city, c.state)}</TD>
+                  <TD numeric className="text-muted-foreground">
                     {c.tal_people?.[0]?.count ?? 0}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD numeric className="text-muted-foreground">
                     {c.tal_jobs?.[0]?.count ?? 0}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{ago(c.last_activity_at)}</td>
-                </tr>
+                  </TD>
+                  <TD className="text-muted-foreground">{ago(c.last_activity_at)}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

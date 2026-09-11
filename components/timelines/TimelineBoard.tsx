@@ -370,6 +370,7 @@ export function TimelineBoard({
           </div>
         ) : (
           <div className="board">
+            {/* design-ok: styled by .board in app/(dashboard)/timelines/timelines.css, with the sticky header and sort controls a list table does not have */}
             <table>
               <thead>
                 <tr>

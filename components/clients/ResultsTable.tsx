@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { HEADLINE_LABEL, type ClientResult } from "@/lib/clients/result-metrics";
 import { CompanyLogo } from "@/components/ui/thumbnail";
+import { TableScroll, Table, THead, TBody, TR, TD } from "@/components/ui/table";
 
 const nf = new Intl.NumberFormat("en-US");
 const money = new Intl.NumberFormat("en-US", {
@@ -282,10 +283,10 @@ export function ResultsTable({
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
               <SortHeader {...sortProps("name")}><span title={HINTS.client}>Client</span></SortHeader>
               <SortHeader {...sortProps("status")}><span title={HINTS.status}>Status</span></SortHeader>
               <SortHeader {...sortProps("service")}><span title={HINTS.service}>Service</span></SortHeader>
@@ -301,12 +302,12 @@ export function ResultsTable({
               <SortHeader {...sortProps("poAmount")}><span title={HINTS.poAmount}>PO value</span></SortHeader>
               <SortHeader {...sortProps("perMonth")}><span title={HINTS.perMonth}>Leads / mo</span></SortHeader>
               <SortHeader {...sortProps("first3")}><span title={HINTS.first3}>First 3 mo</span></SortHeader>
-            </tr>
-          </thead>
-          <tbody>
+            </TR>
+          </THead>
+          <TBody>
             {sorted.map((c) => (
-              <tr key={c.id} className="border-t hover:bg-muted/30">
-                <td className="px-3 py-2">
+              <TR key={c.id} className="border-t">
+                <TD>
                   <Link
                     href={`/clients/results/${c.id}`}
                     className="flex items-center gap-2 hover:underline"
@@ -314,11 +315,11 @@ export function ResultsTable({
                     <CompanyLogo name={c.name} domain={domains?.[c.id]} size={20} />
                     {c.name}
                   </Link>
-                </td>
-                <td className={`px-3 py-2 ${STATUS_CLASS[c.status ?? ""] ?? ""}`}>
+                </TD>
+                <TD className={`${STATUS_CLASS[c.status ?? ""] ?? ""}`}>
                   {c.status ?? "—"}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
+                </TD>
+                <TD className="whitespace-nowrap">
                   {c.servicesDelivered.length
                     ? c.servicesDelivered.join(" → ")
                     : c.primaryService ?? "—"}
@@ -327,15 +328,15 @@ export function ResultsTable({
                       {HEADLINE_LABEL[c.headlineMetric]}
                     </span>
                   )}
-                </td>
-                <td className="max-w-56 truncate px-3 py-2" title={c.businessType ?? ""}>
+                </TD>
+                <TD className="max-w-56 truncate" title={c.businessType ?? ""}>
                   {c.businessType
                     ? c.businessTypeInferred
                       ? <Inferred>{c.businessType}</Inferred>
                       : c.businessType
                     : "—"}
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">
+                </TD>
+                <TD className="whitespace-nowrap">
                   {c.sizeBand ? (
                     c.sizeInferred ? (
                       <Inferred>{SIZE_LABEL[c.sizeBand]}</Inferred>
@@ -345,32 +346,32 @@ export function ResultsTable({
                   ) : (
                     "—"
                   )}
-                </td>
-                <td className="px-3 py-2 tabular-nums whitespace-nowrap">
+                </TD>
+                <TD className="tabular-nums whitespace-nowrap">
                   {c.clientSince ?? "—"}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{c.monthsWithResults || "—"}</td>
-                <td className="px-3 py-2 tabular-nums">{c.leads ? nf.format(c.leads) : "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">{c.monthsWithResults || "—"}</TD>
+                <TD className="tabular-nums">{c.leads ? nf.format(c.leads) : "—"}</TD>
+                <TD className="tabular-nums">
                   {c.appointments ? nf.format(c.appointments) : "—"}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{c.quotes ? nf.format(c.quotes) : "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">{c.quotes ? nf.format(c.quotes) : "—"}</TD>
+                <TD className="tabular-nums">
                   {c.quoteAmount ? money.format(c.quoteAmount) : "—"}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{c.pos ? nf.format(c.pos) : "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">{c.pos ? nf.format(c.pos) : "—"}</TD>
+                <TD className="tabular-nums">
                   {c.poAmount ? money.format(c.poAmount) : "—"}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{c.leadsPerMonth ?? "—"}</td>
-                <td className="px-3 py-2 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">{c.leadsPerMonth ?? "—"}</TD>
+                <TD className="tabular-nums">
                   {c.first3.leads ? nf.format(c.first3.leads) : "—"}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
     </div>
   );
 }

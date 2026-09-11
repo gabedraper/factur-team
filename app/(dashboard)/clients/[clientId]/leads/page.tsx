@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -84,50 +85,50 @@ export default async function ClientLeadsPage({
         description={<>{leads.length.toLocaleString()} leads</>}
       />
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Created</th>
-              <th className="px-3 py-2 font-medium">Opportunity</th>
-              <th className="px-3 py-2 font-medium">Company</th>
-              <th className="px-3 py-2 font-medium">Contact</th>
-              <th className="px-3 py-2 font-medium">Stage</th>
-              <th className="px-3 py-2 font-medium">Owner</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
+              <TH>Created</TH>
+              <TH>Opportunity</TH>
+              <TH>Company</TH>
+              <TH>Contact</TH>
+              <TH>Stage</TH>
+              <TH>Owner</TH>
+            </TR>
+          </THead>
+          <TBody>
             {leads.map((l, i) => (
-              <tr key={i} className="border-t">
-                <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
+              <TR key={i} className="border-t">
+                <TD className="whitespace-nowrap tabular-nums text-muted-foreground">
                   {dayLabel.format(new Date(l.createddate))}
-                </td>
-                <td className="max-w-xs truncate px-3 py-1.5" title={l.name ?? ""}>
+                </TD>
+                <TD className="max-w-xs truncate" title={l.name ?? ""}>
                   {l.name ?? ""}
-                </td>
-                <td className="max-w-xs truncate px-3 py-1.5">{l.account_name ?? ""}</td>
-                <td className="px-3 py-1.5 text-muted-foreground">
+                </TD>
+                <TD className="max-w-xs truncate">{l.account_name ?? ""}</TD>
+                <TD className="text-muted-foreground">
                   {l.account_contact_name__c ?? ""}
                   {l.contact_title__c ? `, ${l.contact_title__c}` : ""}
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5">{l.stagename ?? ""}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">
+                </TD>
+                <TD className="whitespace-nowrap">{l.stagename ?? ""}</TD>
+                <TD className="whitespace-nowrap text-muted-foreground">
                   {l.owner_name ?? ""}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
             {!leads.length && (
-              <tr>
-                <td colSpan={6} className="px-3 py-4 text-muted-foreground">
+              <TR>
+                <TD colSpan={6} className="py-4 text-muted-foreground">
                   {expected
                     ? `${expected} leads are counted for this month, but the lead sync does not cover this client, so the individual records are not here.`
                     : "No leads recorded for this month."}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
     </div>
   );
 }

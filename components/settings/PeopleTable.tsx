@@ -6,6 +6,7 @@ import type { MemberRow } from "@/lib/org";
 import { isJobRole } from "@/lib/org-roles";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
 type Service = { id: string; name: string };
@@ -113,30 +114,30 @@ export function PeopleTable(
       )}
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <Table>
+          <THead>
+            <TR>
               <SortHeader className="px-3 py-2" {...sortProps("person")}>Person</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("role")}>Role</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("manager")}>Manager</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("mgr")}>Mgr</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("admin")}>Admin</SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("active")}>Active</SortHeader>
-            </tr>
-          </thead>
-          <tbody>
+            </TR>
+          </THead>
+          <TBody>
             {sorted.map((m) => {
               const roleId = m.roleIds.find((id) => jobRoles.some((r) => r.id === id)) ?? "";
               // A role they hold that the list above leaves out, because it was
               // retired. Shown so the picker reflects reality.
               const retired = jobRoles.find((r) => r.id === roleId && !r.active);
               return (
-                <tr key={m.id} className={`border-b last:border-0 ${m.needs_review ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
-                  <td className="px-3 py-2">
+                <TR key={m.id} className={`${m.needs_review ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
+                  <TD>
                     <div className="font-medium">{m.full_name ?? m.email}</div>
                     <div className="text-xs text-muted-foreground">{m.email}</div>
-                  </td>
-                  <td className="px-3 py-2">
+                  </TD>
+                  <TD>
                     <select
                       className="h-8 rounded-md border bg-field px-2 text-sm"
                       value={roleId}
@@ -160,8 +161,8 @@ export function PeopleTable(
                         </optgroup>
                       ))}
                     </select>
-                  </td>
-                  <td className="px-3 py-2">
+                  </TD>
+                  <TD>
                     <select
                       className="h-8 max-w-48 rounded-md border bg-field px-2 text-sm"
                       value={m.manager_member_id ?? ""}
@@ -178,11 +179,11 @@ export function PeopleTable(
                            .sort((a, b) => (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email))
                            .map((r) => <option key={r.id} value={r.id}>{r.full_name ?? r.email}</option>)}
                     </select>
-                  </td>
+                  </TD>
                   {([["manager", managerRole], ["app-admin", adminRole]] as const).map(([slug, role]) => {
                     const on = role ? m.roleIds.includes(role.id) : false;
                     return (
-                      <td key={slug} className="px-3 py-2 text-center">
+                      <TD key={slug} className="text-center">
                         <input
                           type="checkbox"
                           checked={on}
@@ -198,10 +199,10 @@ export function PeopleTable(
                             );
                           }}
                         />
-                      </td>
+                      </TD>
                     );
                   })}
-                  <td className="px-3 py-2 text-center">
+                  <TD className="text-center">
                     <input
                       type="checkbox"
                       checked={m.active}
@@ -213,15 +214,15 @@ export function PeopleTable(
                         );
                       }}
                     />
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
             })}
             {shown.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Nobody matches.</td></tr>
+              <TR><TD colSpan={6} className="py-6 text-center text-muted-foreground">Nobody matches.</TD></TR>
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
 
       <p className="text-xs text-muted-foreground">

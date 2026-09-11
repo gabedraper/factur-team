@@ -12,6 +12,7 @@ import {
   TARGET_STAGES, TARGET_STAGE_TONE as STAGE_TONE, BOTH_STAGE_FIELDS,
   type StageFields, type TargetContact,
 } from "@/lib/pipeline/targets";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /*
  * A client's people, grouped by the company they work at.
@@ -111,22 +112,22 @@ export function TargetContacts({
         {rows.length === 0 ? (
           <Empty>{loading ? "Loading…" : "No contacts match."}</Empty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Contact</th>
-                  <th className="px-4 py-2 font-medium">Title</th>
-                  <th className="px-4 py-2 font-medium">Phone</th>
-                  <th className="px-4 py-2 font-medium">Email</th>
-                  <th className="px-4 py-2 font-medium">
+          <TableScroll>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Contact</TH>
+                  <TH>Title</TH>
+                  <TH>Phone</TH>
+                  <TH>Email</TH>
+                  <TH>
                     {showBoth ? "Stage / lead status" : stageFields.show_stage ? "Stage" : "Lead status"}
-                  </th>
-                  <th className="px-4 py-2 font-medium">Next action</th>
-                  <th className="px-4 py-2 font-medium">Updates</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TH>
+                  <TH>Next action</TH>
+                  <TH>Updates</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {rows.map((r, i) => {
                   /* The header is drawn wherever the company changes, which is
                      what makes the sort order do the grouping. */
@@ -134,47 +135,47 @@ export function TargetContacts({
                   return (
                     <Fragment key={r.opportunity_id}>
                       {newCompany && (
-                        <tr className="border-b bg-muted/20">
-                          <td colSpan={7} className="px-4 py-1.5">
+                        <TR className="bg-muted/20">
+                          <TD colSpan={7} >
                             <span className="flex items-center gap-2 text-xs font-semibold">
                               <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                               {r.account_name ?? "No company"}
                             </span>
-                          </td>
-                        </tr>
+                          </TD>
+                        </TR>
                       )}
-                      <tr className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2">
+                      <TR>
+                        <TD>
                           <a href={`/opportunities/${r.opportunity_id}`} className="font-medium hover:underline">
                             {[r.first_name, r.last_name].filter(Boolean).join(" ") || r.email || "—"}
                           </a>
-                        </td>
-                        <td className="max-w-[14rem] px-4 py-2 text-muted-foreground">
+                        </TD>
+                        <TD className="max-w-[14rem] text-muted-foreground">
                           <div className="truncate" title={r.title ?? undefined}>{r.title}</div>
-                        </td>
-                        <td className="px-4 py-2"><PhoneCell value={r.phone} /></td>
-                        <td className="max-w-[16rem] px-4 py-2 text-muted-foreground">
+                        </TD>
+                        <TD><PhoneCell value={r.phone} /></TD>
+                        <TD className="max-w-[16rem] text-muted-foreground">
                           <div className="truncate" title={r.email ?? undefined}>{r.email}</div>
-                        </td>
-                        <td className="px-4 py-2">
+                        </TD>
+                        <TD>
                           <Chip colour={STAGE_TONE[r.target_stage] ?? "slate"}>
                             {stageFields.show_stage ? r.stage : (r.lead_status ?? r.stage)}
                           </Chip>
                           {showBoth && r.lead_status && (
                             <div className="mt-0.5 text-xs text-muted-foreground">{r.lead_status}</div>
                           )}
-                        </td>
-                        <td className="px-4 py-2 tabular-nums">{shortDate(r.next_action_date)}</td>
-                        <td className="max-w-[24rem] px-4 py-2 text-xs text-muted-foreground">
+                        </TD>
+                        <TD className="tabular-nums">{shortDate(r.next_action_date)}</TD>
+                        <TD className="max-w-[24rem] text-xs text-muted-foreground">
                           <div className="truncate" title={r.updates ?? undefined}>{r.updates}</div>
-                        </td>
-                      </tr>
+                        </TD>
+                      </TR>
                     </Fragment>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TBody>
+            </Table>
+          </TableScroll>
         )}
       </Panel>
 

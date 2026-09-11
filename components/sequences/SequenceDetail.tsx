@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { workSequence, type AudienceRow, type SequenceRow } from "@/actions/sequence-audience";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /**
  * Who is in a sequence, and the two ways to work whatever is due.
@@ -88,49 +89,49 @@ export function SequenceDetail({
       )}
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Email</th>
-              <th className="px-3 py-2 font-medium">Company</th>
-              <th className="px-3 py-2 font-medium">From</th>
-              <th className="px-3 py-2 font-medium">In sequence</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Name</TH>
+              <TH>Email</TH>
+              <TH>Company</TH>
+              <TH>From</TH>
+              <TH>In sequence</TH>
+            </TR>
+          </THead>
+          <TBody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
-                <td className="px-3 py-2">
+              <TR key={r.id} >
+                <TD>
                   {[r.firstName, r.lastName].filter(Boolean).join(" ") || (
                     <span className="text-muted-foreground">—</span>
                   )}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">{r.email}</td>
-                <td className="px-3 py-2 text-muted-foreground">
+                </TD>
+                <TD className="text-muted-foreground">{r.email}</TD>
+                <TD className="text-muted-foreground">
                   {r.clientName ?? r.company ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
+                </TD>
+                <TD className="text-muted-foreground">
                   {r.source === "csv" ? "CSV" : "App contacts"}
-                </td>
-                <td className="px-3 py-2">
+                </TD>
+                <TD>
                   {r.enrolled ? (
                     <span className="text-emerald-600 dark:text-emerald-400">Active</span>
                   ) : (
                     <span className="text-muted-foreground">Finished</span>
                   )}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
             {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+              <TR>
+                <TD colSpan={5} className="py-6 text-center text-muted-foreground">
                   Nobody in this sequence yet.
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
     </div>
   );

@@ -6,6 +6,7 @@ import {
   addServicePeriod, updateServicePeriod, deleteServicePeriod, switchService,
 } from "@/actions/org";
 import type { ServicePeriod } from "@/lib/clients/result-metrics";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -193,27 +194,27 @@ export function ServicePeriods({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Service</th>
-              <th className="px-3 py-2 font-medium">From</th>
-              <th className="px-3 py-2 font-medium">To</th>
-              <th className="px-3 py-2 font-medium">Rate</th>
-              <th className="px-3 py-2 font-medium">Tier</th>
-              <th className="px-3 py-2 font-medium">Note</th>
-              <th className="px-3 py-2 font-medium">Source</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
+              <TH>Service</TH>
+              <TH>From</TH>
+              <TH>To</TH>
+              <TH>Rate</TH>
+              <TH>Tier</TH>
+              <TH>Note</TH>
+              <TH>Source</TH>
+              <TH  />
+            </TR>
+          </THead>
+          <TBody>
             {periods.map((p) =>
               editing === p.id ? (
-                <tr key={p.id} className="border-t bg-muted/20">
+                <TR key={p.id} className="border-t bg-muted/20">
                   {fields(draft, setDraft)}
-                  <td className="px-3 py-1.5 text-muted-foreground">manual</td>
-                  <td className="px-3 py-1.5">
+                  <TD className="text-muted-foreground">manual</TD>
+                  <TD>
                     <div className="flex items-center justify-end gap-2">
                       <button
                         aria-label="Save"
@@ -244,22 +245,22 @@ export function ServicePeriods({
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ) : (
-                <tr key={p.id} className="border-t">
-                  <td className="px-3 py-1.5">{p.service}</td>
-                  <td className="px-3 py-1.5 tabular-nums">{p.startedOn}</td>
-                  <td className="px-3 py-1.5 tabular-nums">
+                <TR key={p.id} className="border-t">
+                  <TD>{p.service}</TD>
+                  <TD className="tabular-nums">{p.startedOn}</TD>
+                  <TD className="tabular-nums">
                     {p.endedOn ?? <span className="text-emerald-600 dark:text-emerald-400">open</span>}
-                  </td>
-                  <td className="px-3 py-1.5 tabular-nums">
+                  </TD>
+                  <TD className="tabular-nums">
                     {p.monthlyRate === null ? "—" : money.format(p.monthlyRate)}
-                  </td>
-                  <td className="px-3 py-1.5">{p.tier ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">{p.note ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">{p.source}</td>
-                  <td className="px-3 py-1.5">
+                  </TD>
+                  <TD>{p.tier ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{p.note ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{p.source}</TD>
+                  <TD>
                     <div className="flex items-center justify-end gap-2">
                       <button
                         aria-label="Edit"
@@ -277,16 +278,16 @@ export function ServicePeriods({
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ),
             )}
 
             {adding && (
-              <tr className="border-t bg-muted/20">
+              <TR className="border-t bg-muted/20">
                 {fields(fresh, setFresh)}
-                <td className="px-3 py-1.5 text-muted-foreground">manual</td>
-                <td className="px-3 py-1.5">
+                <TD className="text-muted-foreground">manual</TD>
+                <TD>
                   <div className="flex items-center justify-end gap-2">
                     <button
                       aria-label="Save"
@@ -317,20 +318,20 @@ export function ServicePeriods({
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
 
             {!periods.length && !adding && (
-              <tr>
-                <td colSpan={8} className="px-3 py-3 text-muted-foreground">
+              <TR>
+                <TD colSpan={8} className="py-3 text-muted-foreground">
                   No service periods recorded.
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
     </div>
   );
 }

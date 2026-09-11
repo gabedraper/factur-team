@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { pageUsage, type PageUsageReport } from "@/actions/page-usage";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 function ms(value: number | null): string {
   if (value === null) return "—";
@@ -92,68 +93,68 @@ export function PageUsageTable() {
       )}
 
       {report && !report.problem && (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium"><span title={HINTS.page}>Page</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.views}>Views</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.people}>People</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.move}>Move</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.arrive}>Arrive</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.median}>Median</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.p95}>p95</span></th>
-                <th className="px-3 py-2 text-right font-medium"><span title={HINTS.slow}>Slow</span></th>
-                <th className="px-3 py-2 font-medium"><span title={HINTS.last}>Last</span></th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableScroll className="rounded-md border">
+          <Table>
+            <THead>
+              <TR>
+                <TH><span title={HINTS.page}>Page</span></TH>
+                <TH numeric><span title={HINTS.views}>Views</span></TH>
+                <TH numeric><span title={HINTS.people}>People</span></TH>
+                <TH numeric><span title={HINTS.move}>Move</span></TH>
+                <TH numeric><span title={HINTS.arrive}>Arrive</span></TH>
+                <TH numeric><span title={HINTS.median}>Median</span></TH>
+                <TH numeric><span title={HINTS.p95}>p95</span></TH>
+                <TH numeric><span title={HINTS.slow}>Slow</span></TH>
+                <TH><span title={HINTS.last}>Last</span></TH>
+              </TR>
+            </THead>
+            <TBody>
               {rows.map((p) => (
-                <tr
+                <TR
                   key={p.path}
                   className={`border-t ${
                     p.known ? "" : "bg-amber-50/50 dark:bg-amber-950/20"
                   }`}
                 >
-                  <td className="px-3 py-1.5 font-mono text-xs">{p.path}</td>
-                  <td
-                    className={`px-3 py-1.5 text-right tabular-nums ${
+                  <TD className="font-mono text-xs">{p.path}</TD>
+                  <TD numeric
+                    className={`${
                       p.views ? "" : "text-muted-foreground"
                     }`}
                   >
                     {p.views}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD numeric className="text-muted-foreground">
                     {p.people || "—"}
-                  </td>
-                  <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.routeMs)}`}>
+                  </TD>
+                  <TD numeric className={`${tone(p.routeMs)}`}>
                     {ms(p.routeMs)}
-                  </td>
-                  <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.loadMs)}`}>
+                  </TD>
+                  <TD numeric className={`${tone(p.loadMs)}`}>
                     {ms(p.loadMs)}
-                  </td>
-                  <td className={`px-3 py-1.5 text-right tabular-nums ${tone(p.medianMs)}`}>
+                  </TD>
+                  <TD numeric className={`${tone(p.medianMs)}`}>
                     {ms(p.medianMs)}
-                  </td>
-                  <td
-                    className={`px-3 py-1.5 text-right tabular-nums ${tone(p.p95Ms)} ${
+                  </TD>
+                  <TD numeric
+                    className={`${tone(p.p95Ms)} ${
                       p.views < 20 ? "opacity-50" : ""
                     }`}
                     title={p.views < 20 ? `Only ${p.views} views \u2014 close to the slowest single visit` : undefined}
                   >
                     {ms(p.p95Ms)}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD numeric className="text-muted-foreground">
                     {p.slowViews || "—"}
-                  </td>
-                  <td className="px-3 py-1.5 text-muted-foreground tabular-nums">
+                  </TD>
+                  <TD className="text-muted-foreground tabular-nums">
                     {p.lastSeen ? p.lastSeen.slice(0, 10) : "—"}
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TBody>
+          </Table>
+        </TableScroll>
       )}
     </section>
   );

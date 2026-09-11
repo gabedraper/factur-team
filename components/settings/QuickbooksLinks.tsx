@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { decideQuickbooksLink, type UnmatchedCustomer } from "@/actions/quickbooks-links";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -61,27 +62,27 @@ export function QuickbooksLinks({
       </p>
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">In QuickBooks</th>
-              <th className="px-3 py-2 font-medium text-right">Owed</th>
-              <th className="px-3 py-2 font-medium text-right">Past 60 days</th>
-              <th className="px-3 py-2 font-medium">Salesforce Client</th>
-              {canDecide && <th className="px-3 py-2" />}
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>In QuickBooks</TH>
+              <TH numeric>Owed</TH>
+              <TH numeric>Past 60 days</TH>
+              <TH>Salesforce Client</TH>
+              {canDecide && <TH  />}
+            </TR>
+          </THead>
+          <TBody>
             {left.map((r) => (
-              <tr key={r.qb_customer_name} className="border-b last:border-0">
-                <td className="px-3 py-2 font-medium">{r.qb_customer_name}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{money.format(r.owed)}</td>
-                <td className={`px-3 py-2 text-right tabular-nums ${
+              <TR key={r.qb_customer_name} >
+                <TD className="font-medium">{r.qb_customer_name}</TD>
+                <TD numeric>{money.format(r.owed)}</TD>
+                <TD numeric className={`${
                   r.overdue_60_plus > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                 }`}>
                   {r.overdue_60_plus > 0 ? money.format(r.overdue_60_plus) : "—"}
-                </td>
-                <td className="px-3 py-2">
+                </TD>
+                <TD>
                   {canDecide ? (
                     <select
                       className="h-8 w-64 rounded-md border bg-field px-2 text-sm"
@@ -109,9 +110,9 @@ export function QuickbooksLinks({
                       {r.score !== null && <> ({r.score})</>}
                     </span>
                   )}
-                </td>
+                </TD>
                 {canDecide && (
-                  <td className="px-3 py-2 text-right">
+                  <TD numeric>
                     <button
                       disabled={pending}
                       onClick={() =>
@@ -124,12 +125,12 @@ export function QuickbooksLinks({
                     >
                       Save
                     </button>
-                  </td>
+                  </TD>
                 )}
-              </tr>
+              </TR>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
     </div>
   );

@@ -5,6 +5,7 @@ import {
   addClientContact, removeClientContact, setContactOptOut,
 } from "@/actions/client-contacts";
 import { ROLES, ROLE_LABEL, SOURCE_LABEL, type Contact, type Role } from "@/lib/client-contacts";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /**
  * Who we email at this client, and who has asked us not to.
@@ -75,31 +76,31 @@ export function ContactsPanel({
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No contacts.</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Role</th>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Email</th>
-              <th className="px-3 py-2 font-medium">From</th>
-              <th className="px-3 py-2 font-medium">Emailing</th>
-              {canEdit && <th className="px-3 py-2" />}
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Role</TH>
+              <TH>Name</TH>
+              <TH>Email</TH>
+              <TH>From</TH>
+              <TH>Emailing</TH>
+              {canEdit && <TH  />}
+            </TR>
+          </THead>
+          <TBody>
             {rows.map((c) => {
               const stopped = c.opted_out_at || c.bounced_at || !c.active;
               return (
-                <tr key={c.id} className="border-b last:border-0">
-                  <td className="px-3 py-2">{ROLE_LABEL[c.role]}</td>
-                  <td className="px-3 py-2">
+                <TR key={c.id} >
+                  <TD>{ROLE_LABEL[c.role]}</TD>
+                  <TD>
                     {[c.first_name, c.last_name].filter(Boolean).join(" ") || (
                       <span className="text-muted-foreground">—</span>
                     )}
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">{c.email}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{SOURCE_LABEL[c.source]}</td>
-                  <td className="px-3 py-2">
+                  </TD>
+                  <TD className="text-muted-foreground">{c.email}</TD>
+                  <TD className="text-muted-foreground">{SOURCE_LABEL[c.source]}</TD>
+                  <TD>
                     {c.bounced_at ? (
                       <span className="text-red-600 dark:text-red-400">Bounced</span>
                     ) : c.opted_out_at ? (
@@ -107,9 +108,9 @@ export function ContactsPanel({
                     ) : (
                       <span className="text-emerald-600 dark:text-emerald-400">Yes</span>
                     )}
-                  </td>
+                  </TD>
                   {canEdit && (
-                    <td className="px-3 py-2 text-right">
+                    <TD numeric>
                       <button
                         onClick={() => toggleOptOut(c)}
                         disabled={pending || !!c.bounced_at}
@@ -126,13 +127,13 @@ export function ContactsPanel({
                           remove
                         </button>
                       )}
-                    </td>
+                    </TD>
                   )}
-                </tr>
+                </TR>
               );
             })}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       )}
 
       {canEdit && (

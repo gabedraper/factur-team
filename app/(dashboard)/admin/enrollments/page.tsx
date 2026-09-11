@@ -25,6 +25,7 @@ import { ClipboardList, Plus, Trash2, Search } from "lucide-react";
 import { roleLabelsAction } from "@/actions/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { PageHeader } from "@/components/ui/page-header";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 interface Enrollment {
   id: string;
@@ -232,32 +233,32 @@ export default function AdminEnrollmentsPage() {
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
+          <Table>
+            <THead>
+              <TR>
                 <SortHeader className="text-left px-4 py-3" {...sortProps("user")}>User</SortHeader>
                 <SortHeader className="text-left px-4 py-3" {...sortProps("course")}>Course</SortHeader>
                 <SortHeader className="text-left px-4 py-3" {...sortProps("status")}>Status</SortHeader>
                 <SortHeader className="text-left px-4 py-3" {...sortProps("deadline")}>Deadline</SortHeader>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+                <TH  />
+              </TR>
+            </THead>
+            <TBody>
               {sorted.map((e) => {
                 const overdue = isOverdue(e.deadline, e.completed_at);
                 const deadlineValue = e.deadline
                   ? new Date(e.deadline).toISOString().split("T")[0]
                   : "";
                 return (
-                  <tr key={e.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3">
+                  <TR key={e.id} >
+                    <TD className="py-3">
                       <p className="font-medium">{e.profiles?.full_name ?? "—"}</p>
                       <p className="text-xs text-muted-foreground">{roleLabels[e.profiles?.id ?? ""] ?? "No role set"}</p>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TD>
+                    <TD className="py-3">
                       <p className="max-w-[220px] truncate">{e.courses?.title ?? "—"}</p>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TD>
+                    <TD className="py-3">
                       {e.completed_at ? (
                         <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>
                       ) : overdue ? (
@@ -265,16 +266,16 @@ export default function AdminEnrollmentsPage() {
                       ) : (
                         <Badge variant="secondary">In Progress</Badge>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TD>
+                    <TD className="py-3">
                       <input
                         type="date"
                         defaultValue={deadlineValue}
                         onBlur={(ev) => handleDeadlineChange(e.id, ev.target.value)}
                         className="text-xs border rounded px-2 py-1 bg-background"
                       />
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </TD>
+                    <TD numeric className="py-3">
                       <button
                         onClick={() => handleRemove(e.id)}
                         disabled={pending}
@@ -282,12 +283,12 @@ export default function AdminEnrollmentsPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 );
               })}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       )}
     </div>

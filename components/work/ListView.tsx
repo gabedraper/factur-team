@@ -7,6 +7,7 @@ import type { ListItem } from "@/lib/work-tree";
 import { estimate, columnFields, groupOptions } from "@/lib/work-tree";
 import { dueClass, shortDate } from "@/lib/work";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /**
  * A ClickUp list, rebuilt read-only.
@@ -160,26 +161,26 @@ export function ListView({ items }: { items: ListItem[] }) {
       </div>
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full min-w-[52rem]">
-          <thead>
-            <tr className="border-b text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-              <th className="py-2 pl-1 pr-3 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Assignee</th>
+        <Table className="min-w-[52rem]">
+          <THead>
+            <TR className="text-[10px]">
+              <TH>Name</TH>
+              <TH>Status</TH>
+              <TH>Assignee</TH>
               {columns.map((name) => (
-                <th key={name} className="px-3 py-2 font-medium">{name}</th>
+                <TH key={name} >{name}</TH>
               ))}
-              <th className="px-3 py-2 text-right font-medium">Start</th>
-              <th className="px-3 py-2 text-right font-medium">Due</th>
-              <th className="px-3 py-2 text-right font-medium">Est.</th>
-              <th className="px-3 py-2 font-medium">Waiting on</th>
-            </tr>
-          </thead>
-          <tbody>
+              <TH numeric>Start</TH>
+              <TH numeric>Due</TH>
+              <TH numeric>Est.</TH>
+              <TH>Waiting on</TH>
+            </TR>
+          </THead>
+          <TBody>
             {grouped.map(([name, rows]) => (
               <>
-                <tr key={`h-${name}`} className="border-b bg-muted/40">
-                  <td colSpan={colCount} className="px-1 py-1.5">
+                <TR key={`h-${name}`} className="bg-muted/40">
+                  <TD colSpan={colCount} >
                     <button
                       onClick={() => toggle(name)}
                       className="inline-flex items-center gap-1 text-xs font-semibold"
@@ -194,14 +195,14 @@ export function ListView({ items }: { items: ListItem[] }) {
                         {rows.length}
                       </span>
                     </button>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
                 {!collapsed.has(name) &&
                   rows.map((item) => <Row key={item.id} item={item} depth={0} />)}
               </>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
     </div>
   );

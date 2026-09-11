@@ -14,6 +14,7 @@ import { Chip, Empty, Panel } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
 import { STAGE_COLOURS, STAGE_KIND, TONE, type Integration, type TalentSettings } from "@/lib/talent/types";
 import { cn } from "@/lib/utils";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
 
@@ -549,31 +550,31 @@ export function MailSettings({
 
       {reports.length > 0 && (
         <Panel title="Last run">
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Mailbox</th>
-                <th className="px-4 py-2 text-right font-medium">Matched search</th>
-                <th className="px-4 py-2 text-right font-medium">Attached</th>
-                <th className="px-4 py-2 text-right font-medium">Already had</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Mailbox</TH>
+                <TH numeric>Matched search</TH>
+                <TH numeric>Attached</TH>
+                <TH numeric>Already had</TH>
+              </TR>
+            </THead>
+            <TBody>
               {reports.map((r) => (
-                <tr key={r.account}>
-                  <td className="px-4 py-2">
+                <TR key={r.account}>
+                  <TD>
                     {r.account}
                     {r.problem && (
                       <p className="text-xs text-red-600 dark:text-red-400">{r.problem}</p>
                     )}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{r.matching}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{r.attached}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{r.alreadyHad}</td>
-                </tr>
+                  </TD>
+                  <TD numeric className="text-muted-foreground">{r.matching}</TD>
+                  <TD numeric>{r.attached}</TD>
+                  <TD numeric className="text-muted-foreground">{r.alreadyHad}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </Panel>
       )}
     </div>

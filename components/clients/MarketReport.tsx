@@ -1,6 +1,7 @@
 import { Chip, Panel } from "@/components/pipeline/bits";
 import type { MarketReport, MarketRow, Trend, CoverageStatus } from "@/lib/market/report";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const nf = new Intl.NumberFormat("en-US");
 const pf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
@@ -222,46 +223,46 @@ export function MarketReportView({ report }: { report: MarketReport }) {
       )}
 
       <Panel title="Markets">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2 font-medium">Market</th>
-              <th className="px-4 py-2 font-medium">NAICS</th>
-              <th className="px-4 py-2 text-right font-medium">Companies</th>
-              <th className="px-4 py-2 text-right font-medium">20+ staff</th>
-              <th className="px-4 py-2 text-right font-medium">Ours</th>
-              <th className="px-4 py-2 font-medium">Coverage</th>
-              <th className="px-4 py-2 font-medium">Status</th>
-              <th className="px-4 py-2 text-right font-medium">Contacted</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+        <Table>
+          <THead>
+            <TR>
+              <TH>Market</TH>
+              <TH>NAICS</TH>
+              <TH numeric>Companies</TH>
+              <TH numeric>20+ staff</TH>
+              <TH numeric>Ours</TH>
+              <TH>Coverage</TH>
+              <TH>Status</TH>
+              <TH numeric>Contacted</TH>
+            </TR>
+          </THead>
+          <TBody>
             {rows.map((r) => (
-              <tr key={r.market} className="hover:bg-muted/30">
-                <td className="px-4 py-2.5 font-medium">{r.market}</td>
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">
+              <TR key={r.market} >
+                <TD className="font-medium">{r.market}</TD>
+                <TD className="text-xs text-muted-foreground">
                   {r.naics.map((n) => n.code).join(", ")}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                </TD>
+                <TD numeric>
                   {nf.format(r.tamEstablishments)}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                </TD>
+                <TD numeric className="text-muted-foreground">
                   {r.tamInSizeBand === null ? "—" : nf.format(r.tamInSizeBand)}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                </TD>
+                <TD numeric>
                   {r.dbAccountsAdjusted === null ? "—" : nf.format(Math.round(r.dbAccountsAdjusted))}
-                </td>
-                <td className="px-4 py-2.5">
+                </TD>
+                <TD>
                   <CoverageBar row={r} />
-                </td>
-                <td className="px-4 py-2.5">
+                </TD>
+                <TD>
                   <Chip colour={STATUS[r.status].colour}>{STATUS[r.status].label}</Chip>
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{nf.format(r.contacted)}</td>
-              </tr>
+                </TD>
+                <TD numeric>{nf.format(r.contacted)}</TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Panel>
 
       {trends.length > 0 && (

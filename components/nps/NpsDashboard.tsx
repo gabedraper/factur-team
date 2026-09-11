@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CampaignSummary, LeadSummary, PersonSummary, ResponseDetail } from "@/lib/nps/reporting";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const BAND_LABEL: Record<ResponseDetail["band"], string> = {
   promoter: "Promoter",
@@ -144,56 +145,56 @@ export function NpsDashboard({
 
       {byLead.length > 0 && (
         <Surface pad="none" className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-medium">Team lead</th>
-                <th className="px-3 py-2 text-right font-medium">Sent</th>
-                <th className="px-3 py-2 text-right font-medium">Responded</th>
-                <th className="px-3 py-2 text-right font-medium">Rate</th>
-                <th className="px-3 py-2 text-right font-medium">Promoters</th>
-                <th className="px-3 py-2 text-right font-medium">Passives</th>
-                <th className="px-3 py-2 text-right font-medium">Detractors</th>
-                <th className="px-3 py-2 text-right font-medium">NPS</th>
-                <th className="px-3 py-2 text-right font-medium">Follow-ups</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Team lead</TH>
+                <TH numeric>Sent</TH>
+                <TH numeric>Responded</TH>
+                <TH numeric>Rate</TH>
+                <TH numeric>Promoters</TH>
+                <TH numeric>Passives</TH>
+                <TH numeric>Detractors</TH>
+                <TH numeric>NPS</TH>
+                <TH numeric>Follow-ups</TH>
+              </TR>
+            </THead>
+            <TBody>
               {byLead.map((l) => {
                 const score = npsFrom(l.promoters, l.detractors, l.responded);
                 return (
-                  <tr key={l.teamLead} className="border-b last:border-0">
-                    <td className="px-3 py-2">
+                  <TR key={l.teamLead} >
+                    <TD>
                       <button
                         onClick={() => setLead(lead === l.teamLead ? "all" : l.teamLead)}
                         className={`hover:underline ${lead === l.teamLead ? "font-semibold" : ""}`}
                       >
                         {l.teamLead}
                       </button>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.sent}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.responded}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    </TD>
+                    <TD numeric>{l.sent}</TD>
+                    <TD numeric>{l.responded}</TD>
+                    <TD numeric>
                       {l.sent === 0 ? "—" : `${Math.round((100 * l.responded) / l.sent)}%`}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                    </TD>
+                    <TD numeric className="text-emerald-600 dark:text-emerald-400">
                       {l.promoters || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                    </TD>
+                    <TD numeric className="text-muted-foreground">
                       {l.passives || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-red-600 dark:text-red-400">
+                    </TD>
+                    <TD numeric className="text-red-600 dark:text-red-400">
                       {l.detractors || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                    </TD>
+                    <TD numeric className="font-semibold">
                       {score === null ? "—" : score}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{l.followUps || "—"}</td>
-                  </tr>
+                    </TD>
+                    <TD numeric>{l.followUps || "—"}</TD>
+                  </TR>
                 );
               })}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </Surface>
       )}
 
@@ -209,79 +210,79 @@ export function NpsDashboard({
             ))}
           </select>
           <Surface pad="none" className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">{PERSON_ROLE_LABEL[personRole]}</th>
-                  <th className="px-3 py-2 text-right font-medium">Sent</th>
-                  <th className="px-3 py-2 text-right font-medium">Responded</th>
-                  <th className="px-3 py-2 text-right font-medium">Rate</th>
-                  <th className="px-3 py-2 text-right font-medium">Promoters</th>
-                  <th className="px-3 py-2 text-right font-medium">Detractors</th>
-                  <th className="px-3 py-2 text-right font-medium">NPS</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>{PERSON_ROLE_LABEL[personRole]}</TH>
+                  <TH numeric>Sent</TH>
+                  <TH numeric>Responded</TH>
+                  <TH numeric>Rate</TH>
+                  <TH numeric>Promoters</TH>
+                  <TH numeric>Detractors</TH>
+                  <TH numeric>NPS</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {byPerson.map((p) => {
                   const score = npsFrom(p.promoters, p.detractors, p.responded);
                   return (
-                    <tr key={p.memberName} className="border-b last:border-0">
-                      <td className="px-3 py-2">{p.memberName}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{p.sent}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{p.responded}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
+                    <TR key={p.memberName} >
+                      <TD>{p.memberName}</TD>
+                      <TD numeric>{p.sent}</TD>
+                      <TD numeric>{p.responded}</TD>
+                      <TD numeric>
                         {p.sent === 0 ? "—" : `${Math.round((100 * p.responded) / p.sent)}%`}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                      </TD>
+                      <TD numeric className="text-emerald-600 dark:text-emerald-400">
                         {p.promoters || "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-red-600 dark:text-red-400">
+                      </TD>
+                      <TD numeric className="text-red-600 dark:text-red-400">
                         {p.detractors || "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                      </TD>
+                      <TD numeric className="font-semibold">
                         {score === null ? "—" : score}
-                      </td>
-                    </tr>
+                      </TD>
+                    </TR>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </Surface>
         </div>
       )}
 
       {campaigns.length > 0 && (
         <Surface pad="none" className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-medium">Campaign</th>
-                <th className="px-3 py-2 font-medium">Period</th>
-                <th className="px-3 py-2 text-right font-medium">Sent</th>
-                <th className="px-3 py-2 text-right font-medium">Responded</th>
-                <th className="px-3 py-2 text-right font-medium">Rate</th>
-                <th className="px-3 py-2 text-right font-medium">NPS</th>
-                <th className="px-3 py-2 text-right font-medium">Follow-ups</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Campaign</TH>
+                <TH>Period</TH>
+                <TH numeric>Sent</TH>
+                <TH numeric>Responded</TH>
+                <TH numeric>Rate</TH>
+                <TH numeric>NPS</TH>
+                <TH numeric>Follow-ups</TH>
+              </TR>
+            </THead>
+            <TBody>
               {campaigns.map((c) => (
-                <tr key={c.id} className="border-b last:border-0">
-                  <td className="px-3 py-2">{c.name}</td>
-                  <td className="px-3 py-2 tabular-nums text-muted-foreground">{c.period}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.sent}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.responded}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
+                <TR key={c.id} >
+                  <TD>{c.name}</TD>
+                  <TD className="tabular-nums text-muted-foreground">{c.period}</TD>
+                  <TD numeric>{c.sent}</TD>
+                  <TD numeric>{c.responded}</TD>
+                  <TD numeric>
                     {c.sent === 0 ? "—" : `${Math.round((100 * c.responded) / c.sent)}%`}
-                  </td>
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  </TD>
+                  <TD numeric className="font-semibold">
                     {c.nps === null ? "—" : c.nps}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.followUps || "—"}</td>
-                </tr>
+                  </TD>
+                  <TD numeric>{c.followUps || "—"}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </Surface>
       )}
 

@@ -8,6 +8,7 @@ import { ServicePeriods } from "@/components/clients/ServicePeriods";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -96,49 +97,49 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.month}>Month</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.calendar}>Calendar</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.leads}>Leads</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.appts}>Appts</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.quotes}>Quotes</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.pos}>POs</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.quoteValue}>Quote value</span></th>
-              <th className="px-3 py-2 font-medium"><span title={HINTS.poValue}>PO value</span></th>
-              <th className="w-28 px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
+              <TH><span title={HINTS.month}>Month</span></TH>
+              <TH><span title={HINTS.calendar}>Calendar</span></TH>
+              <TH><span title={HINTS.leads}>Leads</span></TH>
+              <TH><span title={HINTS.appts}>Appts</span></TH>
+              <TH><span title={HINTS.quotes}>Quotes</span></TH>
+              <TH><span title={HINTS.pos}>POs</span></TH>
+              <TH><span title={HINTS.quoteValue}>Quote value</span></TH>
+              <TH><span title={HINTS.poValue}>PO value</span></TH>
+              <TH className="w-28" />
+            </TR>
+          </THead>
+          <TBody>
             {series.months.map((m) => (
-              <tr key={m.monthIndex} className="border-t">
-                <td className="px-3 py-1.5 tabular-nums">{m.monthIndex}</td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">
+              <TR key={m.monthIndex} className="border-t">
+                <TD className="tabular-nums">{m.monthIndex}</TD>
+                <TD className="whitespace-nowrap text-muted-foreground">
                   {monthLabel.format(new Date(`${m.monthStart}T00:00:00Z`))}
-                </td>
-                <td className="px-3 py-1.5 tabular-nums">{m.leads || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">{m.appointments || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">{m.quotes || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">{m.pos || "—"}</td>
-                <td className="px-3 py-1.5 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">{m.leads || "—"}</TD>
+                <TD className="tabular-nums">{m.appointments || "—"}</TD>
+                <TD className="tabular-nums">{m.quotes || "—"}</TD>
+                <TD className="tabular-nums">{m.pos || "—"}</TD>
+                <TD className="tabular-nums">
                   {m.quoteAmount ? money.format(m.quoteAmount) : "—"}
-                </td>
-                <td className="px-3 py-1.5 tabular-nums">
+                </TD>
+                <TD className="tabular-nums">
                   {m.poAmount ? money.format(m.poAmount) : "—"}
-                </td>
-                <td className="px-3 py-1.5">
+                </TD>
+                <TD>
                   <span
                     className="block h-1.5 rounded-sm bg-sky-500/70"
                     style={{ width: `${(bar(m) / peak) * 100}%` }}
                   />
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
     </div>
   );
 }

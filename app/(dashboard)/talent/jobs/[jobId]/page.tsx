@@ -16,6 +16,7 @@ import {
   EMPLOYMENT_TYPE, JOB_KIND, JOB_STATUS, REMOTE, SUBMISSION_STATUS, label,
 } from "@/lib/talent/types";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -205,17 +206,17 @@ export default async function JobPage({
       {tab === "submissions" && (
         <Panel title="Submissions">
           {submissions.length === 0 ? <Empty>Nothing submitted yet</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Candidate</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Decision</th>
-                  <th className="px-4 py-2 font-medium">Shared</th>
-                  <th className="px-4 py-2 text-right font-medium">Views</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Candidate</TH>
+                  <TH>Status</TH>
+                  <TH>Decision</TH>
+                  <TH>Shared</TH>
+                  <TH numeric>Views</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {submissions.map((s) => {
                   const row = s as Record<string, unknown> & {
                     id: string; status: string; client_decision: string | null;
@@ -223,27 +224,27 @@ export default async function JobPage({
                     tal_people: { id: string; name: string } | null;
                   };
                   return (
-                    <tr key={row.id}>
-                      <td className="px-4 py-2">
+                    <TR key={row.id}>
+                      <TD>
                         {row.tal_people ? (
                           <Link href={`/talent/people/${row.tal_people.id}`} className="hover:underline">
                             {row.tal_people.name}
                           </Link>
                         ) : "—"}
-                      </td>
-                      <td className="px-4 py-2">
+                      </TD>
+                      <TD>
                         <Chip colour={row.status === "declined" ? "rose" : row.status === "advanced" ? "emerald" : "slate"}>
                           {label(SUBMISSION_STATUS, row.status)}
                         </Chip>
-                      </td>
-                      <td className="px-4 py-2 text-muted-foreground">{row.client_decision ?? "—"}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{ago(row.shared_at)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{row.view_count}</td>
-                    </tr>
+                      </TD>
+                      <TD className="text-muted-foreground">{row.client_decision ?? "—"}</TD>
+                      <TD className="text-muted-foreground">{ago(row.shared_at)}</TD>
+                      <TD numeric className="text-muted-foreground">{row.view_count}</TD>
+                    </TR>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
       )}
@@ -303,36 +304,36 @@ export default async function JobPage({
       {tab === "reports" && (
         <Panel title="Funnel">
           {funnel.length === 0 ? <Empty>Nothing has moved through this job yet</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Stage</th>
-                  <th className="px-4 py-2 text-right font-medium">Reached</th>
-                  <th className="px-4 py-2 text-right font-medium">There now</th>
-                  <th className="px-4 py-2 text-right font-medium">Median days</th>
-                  <th className="px-4 py-2 text-right font-medium">From previous</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Stage</TH>
+                  <TH numeric>Reached</TH>
+                  <TH numeric>There now</TH>
+                  <TH numeric>Median days</TH>
+                  <TH numeric>From previous</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {funnel.map((f, i) => {
                   const prior = funnel[i - 1];
                   const rate = prior?.reached ? Math.round((f.reached / prior.reached) * 100) : null;
                   return (
-                    <tr key={f.stage_id}>
-                      <td className="px-4 py-2">{f.stage_name}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">{f.reached}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{f.still_there}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                    <TR key={f.stage_id}>
+                      <TD>{f.stage_name}</TD>
+                      <TD numeric>{f.reached}</TD>
+                      <TD numeric className="text-muted-foreground">{f.still_there}</TD>
+                      <TD numeric className="text-muted-foreground">
                         {f.median_days == null ? "—" : Math.round(Number(f.median_days))}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                      </TD>
+                      <TD numeric className="text-muted-foreground">
                         {rate === null ? "—" : `${rate}%`}
-                      </td>
-                    </tr>
+                      </TD>
+                    </TR>
                   );
                 })}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
       )}

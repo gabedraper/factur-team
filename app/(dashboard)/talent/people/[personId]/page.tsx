@@ -17,6 +17,7 @@ import { ago, onDay, place } from "@/lib/talent/format";
 import { CANDIDATE_STATUS, PERSON_TYPE, RECOMMENDATION, label } from "@/lib/talent/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -195,40 +196,40 @@ export default async function PersonPage({
       {tab === "pipelines" && (
         <Panel>
           {pipelines.length === 0 ? <Empty>Not on any job</Empty> : (
-            <table className="w-full text-sm">
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Job</th>
-                  <th className="px-4 py-2 font-medium">Company</th>
-                  <th className="px-4 py-2 font-medium">Stage</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 text-right font-medium">Days in stage</th>
-                  <th className="px-4 py-2 font-medium">Added</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Job</TH>
+                  <TH>Company</TH>
+                  <TH>Stage</TH>
+                  <TH>Status</TH>
+                  <TH numeric>Days in stage</TH>
+                  <TH>Added</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {pipelines.map((p) => (
-                  <tr key={p.candidate_id}>
-                    <td className="px-4 py-2">
+                  <TR key={p.candidate_id}>
+                    <TD>
                       <Link href={`/talent/jobs/${p.job_id}`} className="font-medium hover:underline">
                         {p.job_title}
                       </Link>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">{p.company_name ?? "—"}</td>
-                    <td className="px-4 py-2">
+                    </TD>
+                    <TD className="text-muted-foreground">{p.company_name ?? "—"}</TD>
+                    <TD>
                       <Chip colour={p.stage_color}>{p.stage_name ?? "—"}</Chip>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
+                    </TD>
+                    <TD className="text-muted-foreground">
                       {label(CANDIDATE_STATUS, p.status)}
-                    </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
+                    </TD>
+                    <TD numeric className="text-muted-foreground">
                       {p.days_in_stage}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">{onDay(p.created_at)}</td>
-                  </tr>
+                    </TD>
+                    <TD className="text-muted-foreground">{onDay(p.created_at)}</TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
       )}

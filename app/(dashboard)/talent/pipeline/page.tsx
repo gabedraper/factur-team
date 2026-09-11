@@ -5,6 +5,7 @@ import { Avatar, Chip, Empty, PageHeader, Panel } from "@/components/talent/bits
 import { Button } from "@/components/ui/button";
 import { ago } from "@/lib/talent/format";
 import { CANDIDATE_STATUS, STAGE_KIND } from "@/lib/talent/types";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -68,21 +69,21 @@ export default async function MasterPipelinePage({
 
       <Panel>
         {rows.length === 0 ? <Empty>Nothing in the pipeline</Empty> : (
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Candidate</th>
-                <th className="px-4 py-2 font-medium">Job</th>
-                <th className="px-4 py-2 font-medium">Stage</th>
-                <th className="px-4 py-2 font-medium">Owner</th>
-                <th className="px-4 py-2 text-right font-medium">In stage</th>
-                <th className="px-4 py-2 text-right font-medium">Untouched</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Candidate</TH>
+                <TH>Job</TH>
+                <TH>Stage</TH>
+                <TH>Owner</TH>
+                <TH numeric>In stage</TH>
+                <TH numeric>Untouched</TH>
+              </TR>
+            </THead>
+            <TBody>
               {rows.map((c) => (
-                <tr key={c.candidate_id} className="hover:bg-accent/40">
-                  <td className="px-4 py-2.5">
+                <TR key={c.candidate_id} >
+                  <TD>
                     <div className="flex items-center gap-2.5">
                       <Avatar name={c.person_name} size={6} />
                       <div className="min-w-0">
@@ -94,22 +95,22 @@ export default async function MasterPipelinePage({
                         </p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-2.5">
+                  </TD>
+                  <TD>
                     <Link href={`/talent/jobs/${c.job_id}`} className="hover:underline">
                       {c.job_title}
                     </Link>
                     <p className="text-xs text-muted-foreground">{c.company_name ?? "—"}</p>
-                  </td>
-                  <td className="px-4 py-2.5">
+                  </TD>
+                  <TD>
                     <Chip colour={c.stage_color}>{c.stage_name ?? "—"}</Chip>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.owner_name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                  </TD>
+                  <TD className="text-muted-foreground">{c.owner_name ?? "—"}</TD>
+                  <TD numeric className="text-muted-foreground">
                     {c.days_in_stage}d
-                  </td>
-                  <td
-                    className={`px-4 py-2.5 text-right tabular-nums ${
+                  </TD>
+                  <TD numeric
+                    className={`${
                       c.days_since_touch >= 21 ? "font-semibold text-red-600 dark:text-red-400"
                         : c.days_since_touch >= 7 ? "text-amber-600 dark:text-amber-400"
                         : "text-muted-foreground"
@@ -117,11 +118,11 @@ export default async function MasterPipelinePage({
                     title={ago(c.last_activity_at)}
                   >
                     {c.days_since_touch}d
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

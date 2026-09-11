@@ -7,6 +7,7 @@ import { UserPlus } from "lucide-react";
 import { Panel, Empty, AlphaFilter } from "@/components/pipeline/bits";
 import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
 import { searchCrmContacts, type ContactMatch } from "@/actions/pipeline";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 type ClientOption = { id: string; name: string; heldBy: string | null; mine: boolean };
 
@@ -44,34 +45,34 @@ export function PeopleSearch({ clients }: { clients: ClientOption[] }) {
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No one matches."}</Empty>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Title</th>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Name</TH>
+                <TH>Title</TH>
+                <TH>Company</TH>
+                <TH>Email</TH>
+                <TH  />
+              </TR>
+            </THead>
+            <TBody>
               {results.map((r) => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-2.5 font-medium">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.title ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.account_name ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.email ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right">
+                <TR key={r.id} >
+                  <TD className="font-medium">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}</TD>
+                  <TD className="text-muted-foreground">{r.title ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{r.account_name ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{r.email ?? "—"}</TD>
+                  <TD numeric>
                     <NewOpportunityDialog
                       clients={clients}
                       initialContact={r}
                       trigger={<Button size="sm" variant="outline" className="gap-1"><UserPlus className="h-3.5 w-3.5" /> Create opportunity</Button>}
                     />
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>

@@ -5,6 +5,7 @@ import { integrationsReport } from "@/actions/integrations";
 import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, SlidersHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -78,28 +79,28 @@ export default async function IntegrationsPage() {
           <h2 className="text-sm font-medium">Needs attention</h2>
 
           {report.failing.length > 0 && (
-            <div className="overflow-x-auto rounded-md border border-destructive/40">
-              <table className="w-full text-sm">
-                <thead className="bg-destructive/10 text-left">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Account</th>
-                    <th className="px-3 py-2 font-medium">Read</th>
-                    <th className="px-3 py-2 font-medium">When</th>
-                    <th className="px-3 py-2 font-medium">Problem</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableScroll className="rounded-md border border-destructive/40">
+              <Table>
+                <THead className="bg-destructive/10">
+                  <TR>
+                    <TH>Account</TH>
+                    <TH>Read</TH>
+                    <TH>When</TH>
+                    <TH>Problem</TH>
+                  </TR>
+                </THead>
+                <TBody>
                   {report.failing.map((r) => (
-                    <tr key={`${r.kind}-${r.account}`} className="border-t">
-                      <td className="px-3 py-1.5">{r.account}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{r.kind}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{ago(r.ranAt)}</td>
-                      <td className="px-3 py-1.5 text-destructive">{r.problem}</td>
-                    </tr>
+                    <TR key={`${r.kind}-${r.account}`} className="border-t">
+                      <TD>{r.account}</TD>
+                      <TD className="text-muted-foreground">{r.kind}</TD>
+                      <TD className="text-muted-foreground">{ago(r.ranAt)}</TD>
+                      <TD className="text-destructive">{r.problem}</TD>
+                    </TR>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TBody>
+              </Table>
+            </TableScroll>
           )}
 
           {report.undocumented.length > 0 && (
@@ -151,40 +152,40 @@ export default async function IntegrationsPage() {
             </div>
 
             {i.tableState.length > 0 && (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40 text-left">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Table</th>
-                      <th className="px-3 py-2 text-right font-medium">Rows</th>
-                      <th className="px-3 py-2 text-right font-medium">Size</th>
-                      <th className="px-3 py-2 text-right font-medium">Last changed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <TableScroll className="rounded-md border">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Table</TH>
+                      <TH numeric>Rows</TH>
+                      <TH numeric>Size</TH>
+                      <TH numeric>Last changed</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
                     {i.tableState.map((t) => (
-                      <tr key={t.name} className="border-t">
-                        <td className="px-3 py-1.5 font-mono text-xs">{t.name}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">
+                      <TR key={t.name} className="border-t">
+                        <TD className="font-mono text-xs">{t.name}</TD>
+                        <TD numeric>
                           {t.missing ? (
                             <span className="text-destructive">absent</span>
                           ) : (
                             (t.rows ?? 0).toLocaleString()
                           )}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        </TD>
+                        <TD numeric className="text-muted-foreground">
                           {t.size ?? "—"}
-                        </td>
-                        <td
-                          className={`px-3 py-1.5 text-right tabular-nums ${staleTone(t.lastChanged)}`}
+                        </TD>
+                        <TD numeric
+                          className={`${staleTone(t.lastChanged)}`}
                         >
                           {ago(t.lastChanged)}
-                        </td>
-                      </tr>
+                        </TD>
+                      </TR>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TBody>
+                </Table>
+              </TableScroll>
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -210,34 +211,34 @@ export default async function IntegrationsPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium">Schedules</h2>
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Job</th>
-                <th className="px-3 py-2 font-medium">Runs</th>
-                <th className="px-3 py-2 font-medium">Cron</th>
-                <th className="px-3 py-2 font-medium">State</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableScroll className="rounded-md border">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Job</TH>
+                <TH>Runs</TH>
+                <TH>Cron</TH>
+                <TH>State</TH>
+              </TR>
+            </THead>
+            <TBody>
               {report.schedules.map((s) => (
-                <tr key={s.name} className="border-t">
-                  <td className="px-3 py-1.5 font-mono text-xs">{s.name}</td>
-                  <td className="px-3 py-1.5">{s.runs}</td>
-                  <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">{s.cron}</td>
-                  <td className="px-3 py-1.5">
+                <TR key={s.name} className="border-t">
+                  <TD className="font-mono text-xs">{s.name}</TD>
+                  <TD>{s.runs}</TD>
+                  <TD className="font-mono text-xs text-muted-foreground">{s.cron}</TD>
+                  <TD>
                     {s.active ? (
                       <span className="text-success">on</span>
                     ) : (
                       <span className="text-destructive">off</span>
                     )}
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TBody>
+          </Table>
+        </TableScroll>
         <p className="text-xs text-muted-foreground">
           Coupler runs Salesforce and QuickBooks on its own schedule, outside
           this list. The last-changed column above is the app&apos;s only view of
@@ -247,30 +248,30 @@ export default async function IntegrationsPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium">What Google is allowed to do</h2>
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Purpose</th>
-                <th className="px-3 py-2 font-medium">Scope granted</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableScroll className="rounded-md border">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Purpose</TH>
+                <TH>Scope granted</TH>
+              </TR>
+            </THead>
+            <TBody>
               {report.googleScopes.map((g) => (
-                <tr key={g.service} className="border-t align-top">
-                  <td className="px-3 py-1.5">{g.service}</td>
-                  <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
+                <TR key={g.service} className="border-t align-top">
+                  <TD>{g.service}</TD>
+                  <TD className="font-mono text-xs text-muted-foreground">
                     {g.scopes.map((s) => (
                       <span key={s} className="block">
                         {s.replace("https://www.googleapis.com/auth/", "")}
                       </span>
                     ))}
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TBody>
+          </Table>
+        </TableScroll>
       </section>
 
       <section className="space-y-3">
@@ -288,30 +289,30 @@ export default async function IntegrationsPage() {
       {report.recentRuns.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium">Recent reads</h2>
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Account</th>
-                  <th className="px-3 py-2 font-medium">Source</th>
-                  <th className="px-3 py-2 text-right font-medium">Found</th>
-                  <th className="px-3 py-2 text-right font-medium">Attached</th>
-                  <th className="px-3 py-2 font-medium">When</th>
-                </tr>
-              </thead>
-              <tbody>
+          <TableScroll className="rounded-md border">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Account</TH>
+                  <TH>Source</TH>
+                  <TH numeric>Found</TH>
+                  <TH numeric>Attached</TH>
+                  <TH>When</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {report.recentRuns.map((r) => (
-                  <tr key={`${r.kind}-${r.account}-${r.ranAt}`} className="border-t">
-                    <td className="px-3 py-1.5">{r.account}</td>
-                    <td className="px-3 py-1.5 text-muted-foreground">{r.kind}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{r.found}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{r.attached}</td>
-                    <td className="px-3 py-1.5 text-muted-foreground">{ago(r.ranAt)}</td>
-                  </tr>
+                  <TR key={`${r.kind}-${r.account}-${r.ranAt}`} className="border-t">
+                    <TD>{r.account}</TD>
+                    <TD className="text-muted-foreground">{r.kind}</TD>
+                    <TD numeric>{r.found}</TD>
+                    <TD numeric>{r.attached}</TD>
+                    <TD className="text-muted-foreground">{ago(r.ranAt)}</TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TBody>
+            </Table>
+          </TableScroll>
         </section>
       )}
     </div>

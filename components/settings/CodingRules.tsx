@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Lock } from "lucide-react";
 import { updateCodingSettings, type CodingSettings } from "@/actions/gaib-admin";
+import { Table, TBody, TR, TD } from "@/components/ui/table";
 
 export function CodingRules({
   settings, ceiling, builtIn,
@@ -94,16 +95,16 @@ export function CodingRules({
           Always protected — {builtIn.length} paths, editable only in code
         </p>
         <div className="max-h-72 overflow-y-auto rounded-lg border">
-          <table className="w-full text-xs">
-            <tbody>
+          <Table className="text-meta">
+            <TBody>
               {builtIn.map((d) => (
-                <tr key={d.pattern} className="border-b last:border-0">
-                  <td className="px-3 py-1.5 font-mono">{d.pattern}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">{d.why}</td>
-                </tr>
+                <TR key={d.pattern} >
+                  <TD className="font-mono">{d.pattern}</TD>
+                  <TD className="text-muted-foreground">{d.why}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       </div>
     </div>

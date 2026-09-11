@@ -14,6 +14,7 @@ import {
   type AccountContact, type CampaignMembership, type StageFields,
   type TargetAccount, type UnworkedContact,
 } from "@/lib/pipeline/targets";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 /*
  * A client's companies, and the way into each one.
@@ -129,49 +130,49 @@ export function TargetAccounts({
           {rows.length === 0 ? (
             <Empty>{loading ? "Loading…" : "No companies match."}</Empty>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Company</th>
-                  <th className="px-4 py-2 font-medium">Stage</th>
-                  <th className="px-4 py-2 font-medium">Location</th>
-                  <th className="px-4 py-2 font-medium">Industry</th>
-                  <th className="px-4 py-2 font-medium">Keywords</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Company</TH>
+                  <TH>Stage</TH>
+                  <TH>Location</TH>
+                  <TH>Industry</TH>
+                  <TH>Keywords</TH>
+                  <TH  />
+                </TR>
+              </THead>
+              <TBody>
                 {rows.map((r) => (
-                  <tr
+                  <TR
                     key={r.account_id}
                     onClick={() => setSelected(r)}
                     className={`cursor-pointer border-b last:border-0 hover:bg-muted/40 ${
                       selected?.account_id === r.account_id ? "bg-muted/60" : ""
                     }`}
                   >
-                    <td className="px-4 py-2">
+                    <TD>
                       <div className="font-medium">{r.account_name}</div>
                       <Website domain={r.domain} />
-                    </td>
-                    <td className="px-4 py-2">
+                    </TD>
+                    <TD>
                       <Chip colour={STAGE_TONE[r.target_stage] ?? "slate"}>{r.target_stage}</Chip>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
+                    </TD>
+                    <TD className="text-muted-foreground">
                       {[r.city, r.state].filter(Boolean).join(", ") || null}
-                    </td>
-                    <td className="max-w-[14rem] px-4 py-2 text-muted-foreground">
+                    </TD>
+                    <TD className="max-w-[14rem] text-muted-foreground">
                       <div className="truncate" title={r.industry ?? undefined}>{r.industry}</div>
-                    </td>
-                    <td className="max-w-[22rem] px-4 py-2 text-xs text-muted-foreground">
+                    </TD>
+                    <TD className="max-w-[22rem] text-xs text-muted-foreground">
                       <div className="truncate" title={r.keywords ?? undefined}>{r.keywords}</div>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
+                    </TD>
+                    <TD className="text-muted-foreground">
                       <ChevronRight className="h-4 w-4" />
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
         </Panel>
 

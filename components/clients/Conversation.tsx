@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
 import { editClientNote, setNotePinned, deleteClientNote } from "@/actions/client-notes";
 import { Mail, MessageSquare, MessageSquareText, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote, Pin, ListChecks } from "lucide-react";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -413,51 +414,51 @@ export function Conversation({
                       </span>
                     </div>
 
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                          <th className="py-1 font-medium">Item</th>
-                          <th className="py-1 text-right font-medium">Unit</th>
-                          <th className="py-1 text-right font-medium">Qty</th>
-                          <th className="py-1 text-right font-medium">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="py-1 pr-2">
+                    <Table>
+                      <THead>
+                        <TR className="text-[10px]">
+                          <TH>Item</TH>
+                          <TH numeric>Unit</TH>
+                          <TH numeric>Qty</TH>
+                          <TH numeric>Amount</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        <TR>
+                          <TD>
                             {e.service ?? "—"}
                             {e.line_description && (
                               <div className="text-muted-foreground">{e.line_description}</div>
                             )}
-                          </td>
-                          <td className="py-1 text-right tabular-nums">
+                          </TD>
+                          <TD numeric>
                             {e.unit_price !== null ? money.format(e.unit_price) : "—"}
-                          </td>
-                          <td className="py-1 text-right tabular-nums">{e.quantity ?? "—"}</td>
-                          <td className="py-1 text-right tabular-nums">
+                          </TD>
+                          <TD numeric>{e.quantity ?? "—"}</TD>
+                          <TD numeric>
                             {e.amount !== null ? money.format(e.amount) : "—"}
-                          </td>
-                        </tr>
-                      </tbody>
+                          </TD>
+                        </TR>
+                      </TBody>
                       <tfoot>
-                        <tr className="border-t">
-                          <td colSpan={3} className="py-1 text-right text-muted-foreground">Total</td>
-                          <td className="py-1 text-right font-semibold tabular-nums">
+                        <TR className="border-t">
+                          <TD colSpan={3} numeric className="text-muted-foreground">Total</TD>
+                          <TD numeric className="font-semibold">
                             {e.amount !== null ? money.format(e.amount) : "—"}
-                          </td>
-                        </tr>
+                          </TD>
+                        </TR>
                         {e.outstanding !== null && (
-                          <tr>
-                            <td colSpan={3} className="py-1 text-right text-muted-foreground">Outstanding</td>
-                            <td className={`py-1 text-right font-semibold tabular-nums ${
+                          <TR>
+                            <TD colSpan={3} numeric className="text-muted-foreground">Outstanding</TD>
+                            <TD numeric className={`font-semibold ${
                               e.outstanding > 0 ? "text-amber-600 dark:text-amber-400" : ""
                             }`}>
                               {money.format(e.outstanding)}
-                            </td>
-                          </tr>
+                            </TD>
+                          </TR>
                         )}
                       </tfoot>
-                    </table>
+                    </Table>
 
                     {e.bill_email && (
                       <p className="mt-2 text-muted-foreground">Billed to {e.bill_email}</p>

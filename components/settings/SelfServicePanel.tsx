@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { setMyRole, claimClient } from "@/actions/self-service";
 import { FIELD } from "@/lib/field-class";
+import { Table, TBody, TR, TD } from "@/components/ui/table";
 
 /**
  * Your own role and your own client list, set without an administrator.
@@ -139,11 +140,11 @@ export function SelfServicePanel({
         </div>
 
         <div className="max-h-72 overflow-y-auto rounded-md border">
-          <table className="w-full text-sm">
-            <tbody>
+          <Table>
+            <TBody>
               {shown.map((c) => (
-                <tr key={c.id} className="border-b last:border-b-0">
-                  <td className="w-8 px-3 py-1.5">
+                <TR key={c.id} >
+                  <TD className="w-8">
                     <input
                       type="checkbox"
                       checked={c.mine}
@@ -151,22 +152,22 @@ export function SelfServicePanel({
                       onChange={() => toggleClient(c)}
                       aria-label={c.name}
                     />
-                  </td>
-                  <td className="px-1 py-1.5">{c.name}</td>
-                  <td className="px-3 py-1.5 text-right text-muted-foreground">
+                  </TD>
+                  <TD>{c.name}</TD>
+                  <TD numeric className="text-muted-foreground">
                     {c.mine ? "You" : c.heldBy}
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               ))}
               {!shown.length && (
-                <tr>
-                  <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
+                <TR>
+                  <TD colSpan={3} className="py-6 text-center text-muted-foreground">
                     No clients match.
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               )}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       </div>
     </div>

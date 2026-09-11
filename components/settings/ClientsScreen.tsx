@@ -8,6 +8,7 @@ import { effectiveTeamLeadId } from "@/lib/team-lead";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
 
 export function ClientsScreen({
   clients, teams, members,
@@ -125,27 +126,27 @@ export function ClientsScreen({
       )}
 
       <Surface pad="none" className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <Table>
+          <THead>
+            <TR>
               <SortHeader className="px-3 py-2" {...sortProps("client")}>Client</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("status")}>Status</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("owner")}>Covered by</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("lead")}>Team lead</SortHeader>
-            </tr>
-          </thead>
-          <tbody>
+            </TR>
+          </THead>
+          <TBody>
             {sorted.map((c) => (
-              <tr key={c.id} className={`border-b last:border-0 ${!c.team_id && !c.member_id ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
-                <td className="px-3 py-2">
+              <TR key={c.id} className={`${!c.team_id && !c.member_id ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
+                <TD>
                   <Link href={`/settings/clients/${c.id}`}
                         className="flex items-center gap-2 font-medium hover:underline">
                     <CompanyLogo name={c.name} domain={c.email_domain} size={20} />
                     {c.name}
                   </Link>
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">{c.status ?? "—"}</td>
-                <td className="px-3 py-2">
+                </TD>
+                <TD className="text-muted-foreground">{c.status ?? "—"}</TD>
+                <TD>
                   <select
                     className="h-8 max-w-56 rounded-md border bg-field px-2 text-sm"
                     value={ownerValue(c)}
@@ -177,17 +178,17 @@ export function ClientsScreen({
                       ))}
                     </optgroup>
                   </select>
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">
+                </TD>
+                <TD className="text-muted-foreground">
                   {leadName(c) ?? "—"}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No clients match.</td></tr>
+              <TR><TD colSpan={5} className="py-6 text-center text-muted-foreground">No clients match.</TD></TR>
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Surface>
 
       <p className="text-xs text-muted-foreground">

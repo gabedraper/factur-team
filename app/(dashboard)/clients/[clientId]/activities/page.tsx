@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import { PageHeader } from "@/components/ui/page-header";
+import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -79,47 +80,47 @@ export default async function ClientActivitiesPage({
           {activities.length === 2000 && " (first 2,000)"}</>}
       />
 
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Type</th>
-              <th className="px-3 py-2 font-medium">Direction</th>
-              <th className="px-3 py-2 font-medium">Subject</th>
-              <th className="px-3 py-2 font-medium">Owner</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableScroll className="rounded-md border">
+        <Table>
+          <THead>
+            <TR>
+              <TH>Date</TH>
+              <TH>Type</TH>
+              <TH>Direction</TH>
+              <TH>Subject</TH>
+              <TH>Owner</TH>
+            </TR>
+          </THead>
+          <TBody>
             {activities.map((a, i) => (
-              <tr key={i} className="border-t">
-                <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">
+              <TR key={i} className="border-t">
+                <TD className="whitespace-nowrap tabular-nums text-muted-foreground">
                   {dayLabel.format(new Date(`${a.activity_date}T00:00:00Z`))}
-                </td>
-                <td className="px-3 py-1.5">{a.activity_type ?? "—"}</td>
-                <td className="px-3 py-1.5 text-muted-foreground">
+                </TD>
+                <TD>{a.activity_type ?? "—"}</TD>
+                <TD className="text-muted-foreground">
                   {a.email_category ?? "—"}
-                </td>
-                <td className="max-w-xl truncate px-3 py-1.5" title={a.subject ?? ""}>
+                </TD>
+                <TD className="max-w-xl truncate" title={a.subject ?? ""}>
                   {a.subject ?? "—"}
-                </td>
-                <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">
+                </TD>
+                <TD className="whitespace-nowrap text-muted-foreground">
                   {a.owner_name ?? "—"}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
             {!activities.length && (
-              <tr>
-                <td colSpan={5} className="px-3 py-4 text-muted-foreground">
+              <TR>
+                <TD colSpan={5} className="py-4 text-muted-foreground">
                   {accountId
                     ? "No activities recorded for this month."
                     : "This client has no Salesforce account linked, so activities cannot be matched to it."}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TBody>
+        </Table>
+      </TableScroll>
     </div>
   );
 }

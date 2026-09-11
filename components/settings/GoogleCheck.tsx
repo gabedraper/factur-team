@@ -7,6 +7,7 @@ import {
 } from "@/actions/google-check";
 import type { IngestReport } from "@/lib/ingest/comms";
 import { Surface } from "@/components/ui/surface";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const LANES: { kind: IngestReport["kind"]; label: string; doing: string }[] = [
   { kind: "mail", label: "Pull billing mail (90 days)", doing: "Reading mailbox" },
@@ -136,43 +137,43 @@ export function GoogleCheck() {
             })()}
           </p>
           <Surface pad="none" className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Account</th>
-                  <th className="px-3 py-2 font-medium text-right">Matching</th>
-                  <th className="px-3 py-2 font-medium text-right">Read</th>
-                  <th className="px-3 py-2 font-medium text-right">Attached</th>
-                  <th className="px-3 py-2 font-medium text-right">By domain</th>
-                  <th className="px-3 py-2 font-medium text-right">By thread</th>
-                  <th className="px-3 py-2 font-medium text-right">By name</th>
-                  <th className="px-3 py-2 font-medium">Note</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Account</TH>
+                  <TH numeric>Matching</TH>
+                  <TH numeric>Read</TH>
+                  <TH numeric>Attached</TH>
+                  <TH numeric>By domain</TH>
+                  <TH numeric>By thread</TH>
+                  <TH numeric>By name</TH>
+                  <TH>Note</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {[...reports]
                   .filter((r) => r.kind === lane)
                   .sort((a, b) => a.account.localeCompare(b.account))
                   .map((r) => (
-                  <tr key={`${r.kind}-${r.account}`} className="border-b last:border-0">
-                    <td className="px-3 py-2">{r.account}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.matching}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.found}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.attached}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byDomain}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byThread}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{r.byName}</td>
-                    <td className="max-w-xs px-3 py-2 text-xs text-muted-foreground">
+                  <TR key={`${r.kind}-${r.account}`} >
+                    <TD>{r.account}</TD>
+                    <TD numeric>{r.matching}</TD>
+                    <TD numeric>{r.found}</TD>
+                    <TD numeric>{r.attached}</TD>
+                    <TD numeric className="text-muted-foreground">{r.byDomain}</TD>
+                    <TD numeric className="text-muted-foreground">{r.byThread}</TD>
+                    <TD numeric className="text-muted-foreground">{r.byName}</TD>
+                    <TD className="max-w-xs text-xs text-muted-foreground">
                       {r.problem
                         ? <span className="text-red-600 dark:text-red-400">{r.problem}</span>
                         : r.hitCap
                           ? `only the newest ${r.found} of ${r.matching} were read`
                           : ""}
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </Surface>
         </div>
       )}
@@ -203,30 +204,30 @@ export function GoogleCheck() {
           </p>
 
           <Surface pad="none" className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Account</th>
-                  <th className="px-3 py-2 font-medium">Why they&apos;re read</th>
-                  <th className="px-3 py-2 font-medium">Result</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Account</TH>
+                  <TH>Why they&apos;re read</TH>
+                  <TH>Result</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {result.accounts.map((a: AccountCheck) => (
-                  <tr key={a.email} className="border-b last:border-0">
-                    <td className="px-3 py-2">
+                  <TR key={a.email} >
+                    <TD>
                       <div className="font-medium">{a.name ?? a.email}</div>
                       <div className="text-xs text-muted-foreground">{a.email}</div>
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    </TD>
+                    <TD className="text-muted-foreground">
                       {a.why}
                       {a.why.includes("by hand") && (
                         <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                           not from a role
                         </span>
                       )}
-                    </td>
-                    <td className="px-3 py-2">
+                    </TD>
+                    <TD>
                       {a.ok ? (
                         <span className="text-emerald-600 dark:text-emerald-400">reachable</span>
                       ) : (
@@ -251,11 +252,11 @@ export function GoogleCheck() {
                           </span>
                         ))}
                       </div>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           </Surface>
         </>
       )}

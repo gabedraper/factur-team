@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Panel, Empty, AlphaFilter } from "@/components/pipeline/bits";
 import { searchCrmAccounts, type AccountMatch } from "@/actions/pipeline";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export function CompaniesSearch() {
   const [query, setQuery] = useState("");
@@ -38,26 +39,26 @@ export function CompaniesSearch() {
         {results.length === 0 ? (
           <Empty>{searching ? "Searching…" : "No companies match."}</Empty>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Company</th>
-                <th className="px-4 py-2 font-medium">Domain</th>
-                <th className="px-4 py-2 font-medium">Industry</th>
-                <th className="px-4 py-2 font-medium">Location</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Company</TH>
+                <TH>Domain</TH>
+                <TH>Industry</TH>
+                <TH>Location</TH>
+              </TR>
+            </THead>
+            <TBody>
               {results.map((r) => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-2.5 font-medium">{r.name}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.domain ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{r.industry ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{[r.city, r.state].filter(Boolean).join(", ") || "—"}</td>
-                </tr>
+                <TR key={r.id} >
+                  <TD className="font-medium">{r.name}</TD>
+                  <TD className="text-muted-foreground">{r.domain ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{r.industry ?? "—"}</TD>
+                  <TD className="text-muted-foreground">{[r.city, r.state].filter(Boolean).join(", ") || "—"}</TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
       </Panel>
     </div>
