@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
-import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
+import { hiddenSpaceIds, withoutHidden, grantedTaskIds } from "@/lib/work-access";
 import { clickup } from "@/lib/clickup/api";
 import { displayValue } from "@/lib/clickup/fields.mjs";
 import type { TaskDetail, Person, RelatedTask, Comment, CommentSegment } from "@/lib/work-detail";
@@ -92,19 +92,37 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
   const db = createServiceClient();
   const hidden = await hiddenSpaceIds();
 
-  const { data: mirrorRow } = await withoutHidden(
-    db.from("work_items")
-      .select(`
-        clickup_id, clickup_url, title, status, status_type, priority,
-        start_at, due_at, closed_at, created_at_remote, updated_at_remote,
-        time_estimate_ms, time_spent_ms, body, fields, parent_clickup_id,
-        clickup_space, space_clickup_id, clickup_folder, clickup_list, clickup_list_id,
-        client_id, org_clients(name), work_processes(name),
-        work_item_assignees(name)
-      `)
-      .eq("clickup_id", clickupId),
+  const COLUMNS = `
+    clickup_id, clickup_url, title, status, status_type, priority,
+    start_at, due_at, closed_at, created_at_remote, updated_at_remote,
+    time_estimate_ms, time_spent_ms, body, fields, parent_clickup_id,
+    clickup_space, space_clickup_id, clickup_folder, clickup_list, clickup_list_id,
+    client_id, org_clients(name), work_processes(name),
+    work_item_assignees(name)
+  `;
+
+  let { data: mirrorRow } = await withoutHidden(
+    db.from("work_items").select(COLUMNS).eq("clickup_id", clickupId),
     hidden
   ).maybeSingle();
+
+  /*
+   * Not visible through space membership -- but it may have been shared with
+   * this person directly, or be a subtask of something that was. Only then is
+   * the unfiltered row read, and only then is it returned.
+   */
+  let viaGrant = false;
+  if (!mirrorRow) {
+    const granted = await grantedTaskIds();
+    if (granted.size) {
+      const { data: raw } = await db.from("work_items").select(COLUMNS).eq("clickup_id", clickupId).maybeSingle();
+      const parent = (raw as Raw | null)?.parent_clickup_id as string | null | undefined;
+      if (raw && (granted.has(clickupId) || (parent && granted.has(parent)))) {
+        mirrorRow = raw;
+        viaGrant = true;
+      }
+    }
+  }
   if (!mirrorRow) return null;
   const m = mirrorRow as Raw;
 
@@ -181,12 +199,13 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
 
   /* Subtasks from the mirror: same list, same access, and they carry our
    * assignee matching rather than ClickUp's raw ids. */
-  const { data: subRows } = await withoutHidden(
-    db.from("work_items")
-      .select("clickup_id,title,status,status_type,due_at,work_item_assignees(name)")
-      .eq("parent_clickup_id", clickupId),
-    hidden
-  ).order("created_at_remote", { ascending: true });
+  /* A shared task brings its subtasks with it, as it does in ClickUp: they are
+   * part of the page that was shared, not neighbours of it. */
+  const subQuery = db.from("work_items")
+    .select("clickup_id,title,status,status_type,due_at,work_item_assignees(name)")
+    .eq("parent_clickup_id", clickupId);
+  const { data: subRows } = await (viaGrant ? subQuery : withoutHidden(subQuery, hidden))
+    .order("created_at_remote", { ascending: true });
 
   /* ---- Fields: all of them from ClickUp, or the set ones from the mirror -- */
   const fields = task

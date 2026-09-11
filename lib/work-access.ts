@@ -20,27 +20,41 @@ import { getAuthedUser } from "@/lib/supabase/session";
  * check.
  */
 export const hiddenSpaceIds = cache(async (): Promise<string[]> => {
-  const db = createServiceClient();
-
-  let email: string | null = null;
-  const previewing = await previewedMember();
-  if (previewing) {
-    email = previewing.email;
-  } else {
-    const user = await getAuthedUser();
-    if (user) {
-      const { data } = await db
-        .from("org_members").select("email").eq("auth_user_id", user.id).maybeSingle();
-      email = (data as { email: string } | null)?.email ?? user.email ?? null;
-    }
-  }
+  const { email } = await viewer();
 
   /* No identity means no private space membership, so everything private is
    * hidden -- never the other way round. */
-  const { data } = await db.rpc("work_hidden_space_ids", { p_email: email ?? "" });
+  const { data } = await createServiceClient().rpc("work_hidden_space_ids", { p_email: email ?? "" });
   return ((data ?? []) as unknown[]).map((r) =>
     typeof r === "string" ? r : String((r as Record<string, unknown>).work_hidden_space_ids ?? "")
   ).filter(Boolean);
+});
+
+/**
+ * Who is asking, as far as the mirror is concerned: the previewed person when
+ * previewing, otherwise the signed-in one. One answer for every access check,
+ * so a grant and a space membership can never be judged for different people.
+ */
+export const viewer = cache(async (): Promise<{ memberId: string | null; email: string | null }> => {
+  const previewing = await previewedMember();
+  if (previewing) return { memberId: previewing.id, email: previewing.email };
+
+  const user = await getAuthedUser();
+  if (!user) return { memberId: null, email: null };
+
+  const { data } = await createServiceClient()
+    .from("org_members").select("id,email").eq("auth_user_id", user.id).maybeSingle();
+  const row = data as { id: string; email: string } | null;
+  return { memberId: row?.id ?? null, email: row?.email ?? user.email ?? null };
+});
+
+/** Tasks shared with the viewer one at a time, by ClickUp id. */
+export const grantedTaskIds = cache(async (): Promise<Set<string>> => {
+  const { memberId } = await viewer();
+  if (!memberId) return new Set();
+  const { data } = await createServiceClient()
+    .from("work_access_grants").select("clickup_id").eq("member_id", memberId);
+  return new Set(((data ?? []) as { clickup_id: string }[]).map((g) => g.clickup_id));
 });
 
 /** PostgREST's `in` list syntax, quoted, for use with .not(col, "in", ...). */
