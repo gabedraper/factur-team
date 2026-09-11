@@ -160,7 +160,25 @@ export async function updateOpportunity(
       .from("opportunities")
       .update({ ...patch, updated_by: me })
       .eq("id", id);
-    if (error) return { ok: false, error: `Could not update that opportunity: ${error.message}` };
+    if (error) {
+      /*
+       * 42501 is row security refusing the write. It means this opportunity
+       * belongs to a client this person holds no role on, so it is theirs to
+       * read and not theirs to change -- and the policy's own name, table and
+       * all, is no use to the person reading it. Say whose record it is and
+       * who can change it instead.
+       */
+      const refused = error.code === "42501" || /row-level security/i.test(error.message);
+      if (refused) {
+        return {
+          ok: false,
+          error:
+            "This opportunity belongs to a client you are not on the team for, so it is not yours to edit. " +
+            "Ask the client's account manager, or an app administrator, to make the change or to add you to the client.",
+        };
+      }
+      return { ok: false, error: `Could not update that opportunity: ${error.message}` };
+    }
 
     await supabase.rpc("record_opportunity_history", { p_source: "manual" });
     revalidatePath("/opportunities", "layout");
