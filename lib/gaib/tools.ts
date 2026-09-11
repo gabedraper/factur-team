@@ -464,7 +464,7 @@ const answerQuestionTool: GaibTool = {
       .maybeSingle();
 
     if (error) return `Could not record that: ${error.message}`;
-    if (!data) return "That question is not open for this person — do not try again.";
+    if (!data) return "That question is not open for this person. Do not try again.";
     return "Answer recorded and passed back. Thank them and carry on.";
   },
 };
@@ -695,7 +695,7 @@ const searchHandbookTool: GaibTool = {
   name: "search_handbook",
   label: "Search the handbook",
   blurb: "Finds the passages in Factur's training material that answer a question.",
-  reads: "The company handbook — 146 courses brought over from Guru.",
+  reads: "The company handbook: 146 courses brought over from Guru.",
   definition: {
     name: "search_handbook",
     description:
@@ -756,7 +756,7 @@ const searchHandbookTool: GaibTool = {
     }
 
     return hits
-      .map((h) => `## ${h.course} — ${h.lesson}\n${h.passage}`)
+      .map((h) => `## ${h.course}: ${h.lesson}\n${h.passage}`)
       .join("\n\n");
   },
 };

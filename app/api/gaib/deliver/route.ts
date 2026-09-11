@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
     };
 
     const text = room
-      ? `${await mentionFor(row.user_id)} — ${phrase(notice)}`
+      ? `${await mentionFor(row.user_id)} ${phrase(notice)}`
       : phrase(notice);
 
     const sent = await postToSpace(space, text);

@@ -2,6 +2,7 @@ import { JWT } from "google-auth-library";
 import { createServiceClient } from "@/lib/supabase/server";
 import { readKey } from "./service-key";
 import { postToSpace } from "./chat-post";
+import { vary } from "./vary";
 
 /*
  * Opening the conversation, so Gaib can be the one who speaks first.
@@ -112,7 +113,7 @@ export async function openDmAs(email: string): Promise<OpenResult> {
 /** What Gaib says when it turns up in somebody's Chat unannounced. */
 function intro(firstName: string): string {
   return [
-    `Hi ${firstName} — I'm Gaib.`,
+    vary("intro-open", [`hey ${firstName}, i'm Gaib.`, `hi ${firstName}! Gaib here.`, `hey ${firstName}. i'm Gaib.`]),
     "",
     "I'm the assistant built into the team app. I can answer questions about " +
       "your clients, your invoices and how the app works, and if something in " +
@@ -131,12 +132,15 @@ function intro(firstName: string): string {
  */
 function invitation(firstName: string): string {
   return [
-    `Hi ${firstName} — I'm Gaib, the assistant in the Factur team app.`,
+    vary("invite-open", [
+      `hey ${firstName}, i'm Gaib, the assistant in the Factur team app.`,
+      `hi ${firstName}! Gaib here, i live in the Factur team app.`,
+    ]),
     "",
     "You have an account waiting and haven't used it yet. It's where your " +
       "clients, your work and your team's numbers live.",
     "",
-    "Sign in with your Factur Google account — nothing to set up:",
+    "sign in with your Factur Google account, nothing to set up:",
     "https://team.facturmfg.com",
     "",
     "Once you're in, ask me anything here, or tell me if something's broken " +

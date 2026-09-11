@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { postToSpace } from "./chat-post";
 import { ROUTES } from "@/lib/routes.generated";
+import { noDashes } from "./vary";
 
 /*
  * One thing to test, each working day, in a testing room.
@@ -127,6 +128,14 @@ export async function postTodaysTest(
   const recentList = ((recent ?? []) as { subject: string }[])
     .map((r) => `- ${r.subject}`).join("\n") || "- none yet";
 
+  /*
+   * In Gabe's voice, like everything else Gaib says. The test post is the one
+   * message the whole room reads every morning, so it is the last place to
+   * sound like a different person.
+   */
+  const { data: agent } = await db.from("gaib_agents").select("voice").eq("is_default", true).maybeSingle();
+  const voice = (agent as { voice: string | null } | null)?.voice ?? "";
+
   const client = new Anthropic();
   let pick: z.infer<typeof Pick> | null = null;
   try {
@@ -138,9 +147,10 @@ export async function postTodaysTest(
         "You run a small testing programme for Factur's internal web app (team.facturmfg.com). " +
         "Each working day you pick ONE thing for a group of colleagues to try, and post it in their " +
         "shared chat. Pick something concrete and completable in a few minutes, inside the group's area. " +
-        "Prefer something that changed recently. Never repeat a recent test. Write like a friendly " +
-        "colleague, in plain language with no technical terms -- these are salespeople and strategists, " +
-        "not engineers.",
+        "Prefer something that changed recently. Never repeat a recent test. Plain language with no " +
+        "technical terms -- these are salespeople and strategists, not engineers. Never use an em dash " +
+        "or an en dash, and never open two days' posts the same way." +
+        (voice ? `\n\nWrite it in this person's voice:\n\n${voice}` : ""),
       messages: [{
         role: "user",
         content: [
@@ -164,7 +174,7 @@ export async function postTodaysTest(
   }
   if (!pick) return { ok: false, reason: "the model returned nothing usable" };
 
-  const text = `${await mentions(track)} — today's test (${track.name})\n\n${pick.message}`;
+  const text = `${await mentions(track)} today's test (${track.name})\n\n${noDashes(pick.message)}`;
 
   // Claimed before posting, so a second run the same day finds it and stops.
   const { error: claimError } = await db.from("gaib_room_tests").insert({

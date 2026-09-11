@@ -79,7 +79,7 @@ export async function tellWatchers(event: WatchEvent): Promise<void> {
         ].join("\n")
       : [
           `*${event.fromName}* reported ${event.ticketKind === "bug" ? "a bug" : "an idea"} ` +
-            `— [Ticket ${event.ref}], ${LANE_MEANS[event.lane] ?? event.lane}:`,
+            `[Ticket ${event.ref}], ${LANE_MEANS[event.lane] ?? event.lane}:`,
           "",
           `_${event.title}_`,
           "",

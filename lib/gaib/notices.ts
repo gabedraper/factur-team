@@ -13,6 +13,8 @@
  * "Gaib 12" needs no explanation.
  */
 
+import { vary } from "./vary";
+
 export type Notice = {
   id: string;
   ref: number;
@@ -31,7 +33,7 @@ function shorten(note: string | null, cap = 240): string | null {
   const clean = note
     .replace(/^#+\s*/gm, "")
     .replace(/\*\*/g, "")
-    .replace(/\s*\n+\s*/g, " — ")
+    .replace(/\s*\n+\s*/g, ". ")
     .replace(/\s+/g, " ")
     .trim();
   if (!clean) return null;
@@ -48,36 +50,60 @@ function shorten(note: string | null, cap = 240): string | null {
  */
 export function phrase(n: Notice): string {
   const thing = `"${n.title}"`;
+  const tag = `[Ticket ${n.ref}]`;
 
+  /*
+   * Several ways to say each one, in Gabe's voice, picked at random. The same
+   * sentence for every update is the fastest way to make a person sound like
+   * a machine, and these are the lines people see most.
+   */
   switch (n.toStatus) {
     /*
      * Nothing happened, and saying so is the whole point.
      *
      * A ticket that never reached the agent used to sit in the queue silently:
      * the person who reported it heard nothing and reasonably assumed somebody
-     * was on it. Twice that went unnoticed for hours. An assistant that goes
-     * quiet when it fails teaches people not to bother reporting things, which
-     * costs far more than the bug did.
+     * was on it. An assistant that goes quiet when it fails teaches people not
+     * to bother reporting things, which costs far more than the bug did.
      */
     case "stuck":
-      return `I have not managed to get started on ${thing} — something went wrong at my end, not with what you told me. Gabe has been told. Nothing for you to do. [Ticket ${n.ref}]`;
+      return vary("stuck", [
+        `ok so i haven't managed to get going on ${thing}. that's on my end, not anything you said. Gabe knows. nothing for you to do ${tag}`,
+        `heads up, ${thing} got stuck before i even started. my fault, not yours. Gabe's been told ${tag}`,
+        `${thing} hit a snag on my side before i could start on it. you're good, nothing needed from you. Gabe's on it ${tag}`,
+      ]);
 
     case "shipped": {
       const why = shorten(n.note);
-      return [
-        n.kind === "bug"
-          ? `That thing you flagged is fixed and live — ${thing}. Have a look next time you're on that screen, and tell me if it's still wrong. [Ticket ${n.ref}]`
-          : `Your idea is built and live — ${thing}. Give it a try and tell me if it's not what you had in mind. [Ticket ${n.ref}]`,
-        why ? `Gabe added: ${why}` : null,
-      ].filter(Boolean).join("\n\n");
+      const line = n.kind === "bug"
+        ? vary("shipped-bug", [
+            `fixed. ${thing} is live. have a look next time you're on that screen and tell me if it's still weird ${tag}`,
+            `${thing} is sorted and live. try now and let me know if anything's still off ${tag}`,
+            `good news, ${thing} is fixed. give it a go and shout if it's not right ${tag}`,
+            `done. ${thing} is fixed and live. try now ${tag}`,
+          ])
+        : vary("shipped-idea", [
+            `your idea's built and live, ${thing}. give it a try and tell me if it's not what you had in mind ${tag}`,
+            `${thing} is live! go poke at it and tell me what's missing ${tag}`,
+            `built it. ${thing} is live now. give me feedback ${tag}`,
+          ]);
+      return [line, why ? `Gabe added: ${why}` : null].filter(Boolean).join("\n\n");
     }
 
     case "rejected": {
       const why = shorten(n.note);
       return [
-        `Gabe's had a look at ${thing} and decided against it for now. [Ticket ${n.ref}]`,
+        vary("rejected", [
+          `Gabe looked at ${thing} and made the call not to do it for now ${tag}`,
+          `update on ${thing}: Gabe decided against it for now ${tag}`,
+          `${thing} is a no for now. Gabe's call ${tag}`,
+        ]),
         why ? `His reasoning: ${why}` : null,
-        `If you think that's the wrong call, tell me why and I'll put it back in front of him.`,
+        vary("rejected-appeal", [
+          `if you think that's the wrong call tell me why and i'll put it back in front of him`,
+          `disagree? tell me why and i'll take it back to him`,
+          `if you think he's wrong on this one, make the case and i'll pass it on`,
+        ]),
       ].filter(Boolean).join("\n\n");
     }
 
@@ -86,7 +112,11 @@ export function phrase(n: Notice): string {
       // exists if somebody typed it.
       const why = shorten(n.note);
       return [
-        `${thing} turned out to be the same thing somebody else had already reported, so it's been grouped with theirs. It's still being dealt with. [Ticket ${n.ref}]`,
+        vary("duplicate", [
+          `turns out ${thing} is the same thing someone else already reported, so i've grouped it with theirs. still being worked on ${tag}`,
+          `${thing} was already on the list from someone else, so they're together now. still moving ${tag}`,
+          `someone beat you to ${thing}, it's grouped with theirs and still in progress ${tag}`,
+        ]),
         why ? `Gabe added: ${why}` : null,
       ].filter(Boolean).join("\n\n");
     }
@@ -96,31 +126,46 @@ export function phrase(n: Notice): string {
      *
      * "Failed" means the work stopped, which from the reporter's side is
      * usually because the description was not enough to go on -- and the useful
-     * response to that is a question, not a status. Asking for the missing
-     * piece is the whole reason to come back at all.
+     * response to that is a question, not a status.
      */
     case "failed": {
       const why = shorten(n.note, 200);
       return [
-        `I got stuck on ${thing} and could use a bit more from you. [Ticket ${n.ref}]`,
+        vary("failed", [
+          `i got stuck on ${thing} and could use a bit more from you ${tag}`,
+          `need your help on ${thing}, i hit a wall ${tag}`,
+          `${thing} stumped me. can you give me a bit more to go on? ${tag}`,
+        ]),
         why ? `Where it went wrong: ${why}` : null,
-        `If you can tell me exactly what you clicked and what you saw, I'll have another go.`,
+        vary("failed-ask", [
+          `what exactly did you click, and what did you see?`,
+          `tell me exactly what you clicked and what happened and i'll have another go`,
+          `walk me through it. what did you click, what showed up?`,
+        ]),
       ].filter(Boolean).join("\n\n");
     }
 
     case "awaiting_review":
       return n.kind === "idea"
         ? [
-            `I've worked out what ${thing} would involve, and it's with Gabe to decide. [Ticket ${n.ref}]`,
-            `I'll come back to you either way.`,
+            vary("review-idea", [
+              `i've worked out what ${thing} would take. it's with Gabe to decide ${tag}`,
+              `scoped ${thing}, it's in front of Gabe now ${tag}`,
+              `${thing} is mapped out and waiting on Gabe ${tag}`,
+            ]),
+            vary("review-idea-close", [`i'll come back to you either way`, `you'll hear from me either way`, `i'll let you know what he says`]),
           ].join("\n\n")
         : [
-            `The fix for ${thing} is written and waiting on Gabe to check it before it goes live. [Ticket ${n.ref}]`,
-            `I'll let you know when it's in.`,
+            vary("review-bug", [
+              `the fix for ${thing} is written, just waiting on Gabe to check it before it goes live ${tag}`,
+              `${thing} is fixed on my side, Gabe just has to sign it off ${tag}`,
+              `got a fix for ${thing}. waiting on Gabe to give it the ok ${tag}`,
+            ]),
+            vary("review-bug-close", [`i'll tell you when it's in`, `i'll ping you once it's live`, `you'll hear from me when it ships`]),
           ].join("\n\n");
 
     default:
-      return `There's an update on ${thing}. [Ticket ${n.ref}]`;
+      return vary("other", [`there's an update on ${thing} ${tag}`, `quick update on ${thing} ${tag}`]);
   }
 }
 
@@ -133,7 +178,7 @@ export function phrase(n: Notice): string {
  */
 export const WHAT_HAPPENS_NEXT = {
   bug_auto:
-    "I'll get this fixed now. It's a small one, so it should be sorted shortly — I'll come back and tell you when it's done.",
+    "I'll get this fixed now. It's a small one, so it should be sorted shortly, and I'll come back and tell you when it's done.",
   bug_approval:
     "Gabe needs to sign this one off before anything changes, because it's near something we don't touch without a person looking. I'll let you know either way.",
   idea:

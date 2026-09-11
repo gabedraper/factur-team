@@ -7,6 +7,7 @@ import { repairDanglingToolCalls } from "./repair";
 import { tellWatchers } from "./watchers";
 import type { Agent } from "./agents";
 import { effortFor } from "./models";
+import { vary, noDashes } from "./vary";
 
 /*
  * One turn of a conversation with an agent.
@@ -184,7 +185,11 @@ function inPlainWords(e: unknown): string {
       return "I am being asked more at once than I am allowed to answer. Give me a minute and ask again.";
     case 529:
     case 503:
-      return "The service I think with is busy — that is at their end, not yours. Try again in a minute and it will most likely just work.";
+      return vary("busy", [
+        "my brain's a bit overloaded right now, that's on their end not yours. try again in a minute.",
+        "ugh, the thing i think with is swamped. give it a minute and try again.",
+        "too many people asking me things at once apparently. try again in a sec.",
+      ]);
     case 500:
     case 502:
       return "Something broke at the far end while I was thinking. Ask again; it usually goes through the second time.";
@@ -227,7 +232,7 @@ async function pendingQuestions(userId: string): Promise<string> {
     "have opened with something else, and never twice in one conversation. When they answer, call",
     "answer_ticket_question with the id below. If they would rather not say, leave it and move on.",
     ...open.map((q) =>
-      `- id ${q.id} — about "${q.ticket_title}" [Ticket ${q.ticket_ref}]: ${q.question}`
+      `- id ${q.id}, about "${q.ticket_title}" [Ticket ${q.ticket_ref}]: ${q.question}`
     ),
   ].join(" ");
 }
@@ -411,7 +416,8 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
       for await (const event of stream) {
         if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
           saidAnything = true;
-          yield { type: "text", text: event.delta.text };
+          // Gabe never uses an em dash. The voice says so; this makes sure.
+          yield { type: "text", text: noDashes(event.delta.text) };
         }
       }
       message = await stream.finalMessage();

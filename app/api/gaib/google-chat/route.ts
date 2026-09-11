@@ -7,6 +7,7 @@ import { runTurn, type TurnImage } from "@/lib/gaib/chat";
 import { postToSpace, downloadAttachment, postGifToSpace } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 import { gifsEnabled } from "@/lib/gaib/gif";
+import { vary } from "@/lib/gaib/vary";
 
 /*
  * Gaib, reachable from Google Chat.
@@ -41,6 +42,15 @@ export const maxDuration = 300;
  * immediately.
  */
 const ANSWER_OR_PROMISE_MS = 8_000;
+
+/** The promise, said differently each time. It is the line people see most. */
+const PROMISES = [
+  "give me a minute on that one, gotta look a few things up. i'll send it here.",
+  "on it. digging in, i'll drop the answer here in a sec.",
+  "good q. let me look, back in a minute.",
+  "hang on, checking a couple things. answer's coming here.",
+  "one sec, looking into it. i'll post back here.",
+] as const;
 
 /*
  * Is this thing switched on?
@@ -217,11 +227,12 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         reply(
-          "Hi everyone — I'm Gaib. Mention me (type @Gaib) and I'll answer, and if " +
-            "something in the app is broken or annoying, tell me here and I'll raise it " +
-            "and come back to this space when it's fixed.\n\n" +
-            "One thing: this is a shared space, so I won't talk about clients, money, or " +
-            "anyone's own email or files in here. Ask me those in a direct message.",
+          vary("room-hello", [
+            "hey yall, i'm Gaib. mention me (@Gaib) and i'll answer. if something in the app is broken or annoying, tell me here and i'll raise it and come back when it's fixed.\n\n" +
+              "one thing: this is a shared space, so i won't get into clients, money, or anyone's own email or files in here. dm me for those.",
+            "Team, Gaib here. tag me with @Gaib and i'm on it. broken stuff, weird stuff, questions, throw it at me and i'll come back here when it's sorted.\n\n" +
+              "heads up: shared space, so no clients, money, or personal email and files in here. dm me for that.",
+          ]),
           event
         )
       );
@@ -229,8 +240,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       reply(
-        "Hello. Ask me about the app, your clients, or anything you can see in it — " +
-          "and tell me when something is broken and I will get it fixed.",
+        vary("dm-hello", [
+          "hey! ask me about the app, your clients, or anything you can see in it. and tell me when something's broken, i'll get it fixed.",
+          "hey buddy. anything about the app or your clients, just ask. if something's broken tell me and i'll sort it.",
+        ]),
         event
       )
     );
@@ -394,17 +407,17 @@ async function answer(event: ChatEvent) {
         } catch {
           // Say something rather than nothing: a promise to reply that goes
           // quiet is worse than the original timeout.
-          await postToSpace(space, "That one beat me — something went wrong at my end.").catch(() => {});
+          await postToSpace(space, vary("beat-me", [
+            "that one beat me, something broke on my end.",
+            "ugh, that one got me. something went wrong on my side.",
+            "yeah that didn't work, my fault. try me again in a bit.",
+          ])).catch(() => {});
         } finally {
           await acting.session.release();
         }
       });
 
-      return reply(
-        "Give me a minute on that one — I need to look a few things up. " +
-          "I will send the answer here as soon as I have it.",
-        event
-      );
+      return reply(vary("promise", PROMISES), event);
     }
 
     /*
@@ -419,8 +432,7 @@ async function answer(event: ChatEvent) {
     });
 
     return reply(
-      "Give me a minute on that one — I need to look a few things up. " +
-        "I cannot post back into this conversation, so open Gaib in the app and it will be there.",
+      "give me a minute on that one, i need to look a few things up. i can't post back in here though, so check Gaib in the app and it'll be there.",
       event
     );
   } finally {
