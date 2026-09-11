@@ -91,14 +91,12 @@ export function ListView({ items }: { items: ListItem[] }) {
       <>
         <tr className="group border-b last:border-0 hover:bg-accent/50">
           <td className="py-1.5 pr-3" style={{ paddingLeft: `${depth * 20 + 4}px` }}>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm hover:underline"
-            >
+            <Link href={`/work/task/${item.clickupId}`} className="text-sm hover:underline">
               {item.title}
-              <ExternalLink className="ml-1.5 inline h-3 w-3 align-baseline text-muted-foreground opacity-0 group-hover:opacity-100" />
+            </Link>
+            <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open in ClickUp"
+               className="ml-1.5 inline-block align-baseline text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100">
+              <ExternalLink className="h-3 w-3" />
             </a>
           </td>
           <td className="whitespace-nowrap px-3 text-xs uppercase tracking-wide text-muted-foreground">

@@ -290,6 +290,7 @@ export type Blocked = {
   item: WorkItem;
   blockerTitle: string;
   blockerUrl: string;
+  blockerClickupId: string;
   blockerStatus: string;
 };
 
@@ -334,6 +335,7 @@ export async function myBlocked(): Promise<Blocked[]> {
       item,
       blockerTitle: blocker.title,
       blockerUrl: blocker.clickup_url,
+      blockerClickupId: blocker.clickup_id,
       blockerStatus: blocker.status,
     });
   }

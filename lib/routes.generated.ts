@@ -12,6 +12,7 @@ export const ROUTES: readonly string[] = [
   "/admin/weights",
   "/careers",
   "/careers/[slug]",
+  "/clients",
   "/clients/[clientId]",
   "/clients/[clientId]/activities",
   "/clients/[clientId]/leads",
@@ -54,6 +55,14 @@ export const ROUTES: readonly string[] = [
   "/portal/[token]",
   "/progress",
   "/progress/person/[userId]",
+  "/reports",
+  "/reports/dashboards/[id]",
+  "/reports/dashboards/[id]/edit",
+  "/reports/dashboards/new",
+  "/reports/new",
+  "/reports/r/[id]",
+  "/reports/r/[id]/edit",
+  "/reports/standard/[key]",
   "/scoreboard",
   "/scoreboard/deals",
   "/scoreboard/hustle-points",
@@ -69,6 +78,7 @@ export const ROUTES: readonly string[] = [
   "/settings/clients",
   "/settings/clients/[clientId]",
   "/settings/collections",
+  "/settings/design",
   "/settings/dialpad",
   "/settings/google",
   "/settings/nps",
@@ -110,5 +120,6 @@ export const ROUTES: readonly string[] = [
   "/work",
   "/work/[slug]",
   "/work/browse",
-  "/work/browse/[containerId]"
+  "/work/browse/[containerId]",
+  "/work/task/[clickupId]"
 ] as const;

@@ -101,7 +101,8 @@ export function TwilioDialWidget() {
    * Opportunity open at all. Only commit()/tag the call with an
    * opportunity_id on the normal, no-override path calling this
    * Opportunity's own contact; an ad hoc number is unrelated to whatever's
-   * open elsewhere.
+   * open elsewhere. It gets no disposition dialog either -- that would log it
+   * against the panel's contact, who is not who was called.
    */
   async function placeCall(overrideNumber?: string) {
     const device = deviceRef.current;
@@ -145,8 +146,13 @@ export function TwilioDialWidget() {
       });
       callRef.current = call;
       call.on("accept", () => setCallState("ringing"));
-      call.on("disconnect", () => { setCallState("ended"); setDispositionOpen(true); });
-      call.on("cancel", () => { setCallState("ended"); setDispositionOpen(true); });
+      const ended = () => {
+        if (isAdHoc) { setCallState("idle"); return; }
+        setCallState("ended");
+        setDispositionOpen(true);
+      };
+      call.on("disconnect", ended);
+      call.on("cancel", ended);
       call.on("error", (e) => setError(e.message ?? "Call error."));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not place that call.");

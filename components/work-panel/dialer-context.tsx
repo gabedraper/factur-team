@@ -19,13 +19,17 @@ type DialerContextValue = {
   setActive: (target: CallTarget | null) => void;
   canAdmin: boolean;
   /**
-   * A number something outside the dial widgets -- the Contact panel's
-   * phone field, say -- has asked to be dialed ad hoc, independent of
-   * whatever Opportunity is open. Whichever provider is actually live
-   * watches this and places the call; the requester doesn't need to know
-   * which provider that is or how it dials.
+   * A call something outside the dial widgets has asked for. Whichever
+   * provider is actually live watches this and places the call; the
+   * requester doesn't need to know which provider that is or how it dials.
    */
   requestedCall: CallRequest | null;
+  /**
+   * Dial a number that belongs to no Opportunity -- a contact on Target
+   * Contacts or Target Companies. It is not tagged, and no "log a call"
+   * dialog follows it: the panel's contact is just whichever Opportunity was
+   * last opened, which has nothing to do with this call.
+   */
   requestCall: (number: string) => void;
   /**
    * Call this Opportunity's contact from somewhere that is not its page -- a

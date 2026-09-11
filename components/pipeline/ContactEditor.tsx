@@ -17,13 +17,17 @@ import { toE164 } from "@/lib/phone";
  * panel doesn't own; wrong numbers get fixed in Salesforce.
  */
 export function ContactEditor({
-  phone, email, industry,
+  opportunityId, contactName, phone, email, industry,
 }: {
+  opportunityId: string;
+  contactName: string;
   phone: string | null;
   email: string | null;
   industry: string | null;
 }) {
-  const { requestCall } = useDialer();
+  // This is the Opportunity's own contact, so the call is tagged with it and
+  // logged against it -- callOpportunity, not the ad hoc requestCall.
+  const { callOpportunity } = useDialer();
   const dialableNumber = toE164(phone);
 
   return (
@@ -41,7 +45,7 @@ export function ContactEditor({
                 className="h-6 w-6"
                 title={dialableNumber ? `Call ${dialableNumber}` : "This number doesn't look valid"}
                 disabled={!dialableNumber}
-                onClick={() => dialableNumber && requestCall(dialableNumber)}
+                onClick={() => dialableNumber && callOpportunity({ opportunityId, phoneNumber: phone, contactName })}
               >
                 <PhoneIcon className="h-3.5 w-3.5" />
               </Button>

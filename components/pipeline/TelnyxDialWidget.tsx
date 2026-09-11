@@ -45,8 +45,8 @@ export function TelnyxDialWidget() {
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // A call the keypad below placed, to an arbitrary number rather than the
-  // Opportunity currently open -- it isn't attached to a CRM record, so it
+  // A call to an arbitrary number rather than the Opportunity currently open
+  // -- the keypad below, or requestCall() -- isn't attached to a CRM record, so it
   // skips commit()/the disposition dialog entirely. adHocRef (not state)
   // because the notification handler below is wired up once and would
   // otherwise read a stale value.
@@ -96,6 +96,9 @@ export function TelnyxDialWidget() {
           if (state === "ringing" || state === "active" || state === "trying" || state === "early") {
             setCallState("ringing");
           } else if (state === "hangup" || state === "destroy") {
+            // Read outside the updater: React may run an updater twice, and
+            // clearing the ref inside it made the second run open the dialog.
+            const adHoc = adHocRef.current;
             setCallState((prev) => {
               if (prev === "idle") return prev;
               // A cause other than a normal clearing means the far end never
@@ -105,8 +108,7 @@ export function TelnyxDialWidget() {
               if (cause && cause !== "NORMAL_CLEARING" && cause !== "ORIGINATOR_CANCEL") {
                 setError(`Call did not connect: ${cause.replaceAll("_", " ").toLowerCase()}.`);
               }
-              if (adHocRef.current) {
-                adHocRef.current = false;
+              if (adHoc) {
                 setDialedNumber(null);
                 return "idle";
               }
@@ -136,19 +138,18 @@ export function TelnyxDialWidget() {
   usePlaceRequestedCall({
     target, release, requestedCall, clearRequestedCall,
     live: callState === "dialing" || callState === "ringing",
-    place: (n) => void placeCall(n, { adHoc: false }),
+    place: (n) => void placeCall(n),
     refuse: setError,
   });
 
   /**
-   * overrideNumber comes from either the keypad (an arbitrary number, kept
-   * ad hoc -- no CRM record to log it against) or from something outside
-   * this panel asking to dial a specific number, like the Contact panel's
-   * phone field (still this Opportunity's own contact, so still commits/
-   * logs normally). adHoc defaults from whether an override was given at
-   * all, but the caller can say otherwise.
+   * overrideNumber comes from either the keypad or requestCall() -- a
+   * contact on Target Contacts or Target Companies. Either way it is ad hoc:
+   * no Opportunity to tag it with or log it against, and the panel's contact
+   * is just whichever one was last opened. A call for an Opportunity arrives
+   * with no override (callOpportunity -- see usePlaceRequestedCall).
    */
-  async function placeCall(overrideNumber?: string, options?: { adHoc?: boolean }) {
+  async function placeCall(overrideNumber?: string) {
     const raw = overrideNumber ?? target?.phoneNumber;
     if (!raw) { setError("This contact has no phone number on file."); return; }
     const client = clientRef.current;
@@ -177,7 +178,7 @@ export function TelnyxDialWidget() {
         setError("No active outbound numbers in the pool — add one in Dialer settings.");
         return;
       }
-      adHocRef.current = options?.adHoc ?? Boolean(overrideNumber);
+      adHocRef.current = Boolean(overrideNumber);
       if (adHocRef.current) {
         setDialedNumber(number);
       } else {

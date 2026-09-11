@@ -28,15 +28,15 @@ function Row({
 
   return (
     <div className="group flex items-baseline gap-3 border-b px-1 py-1.5 last:border-0 hover:bg-accent/50">
-      <a
-        href={item.url}
-        target="_blank"
-        rel="noreferrer"
-        className="min-w-0 flex-1 truncate text-sm hover:underline"
-      >
-        {item.title}
-        <ExternalLink className="ml-1.5 inline h-3 w-3 shrink-0 align-baseline text-muted-foreground opacity-0 group-hover:opacity-100" />
-      </a>
+      <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+        <Link href={`/work/task/${item.clickupId}`} className="truncate text-sm hover:underline">
+          {item.title}
+        </Link>
+        <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open in ClickUp"
+           className="shrink-0 text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100">
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </span>
 
       {show?.client && (
         <span className="hidden w-40 shrink-0 truncate text-xs sm:block">

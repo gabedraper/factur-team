@@ -113,6 +113,8 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           />
 
           <ContactEditor
+            opportunityId={o.id}
+            contactName={contactName}
             phone={o.crm_contacts?.phone ?? null}
             email={o.crm_contacts?.email ?? null}
             industry={o.crm_accounts?.industry ?? null}

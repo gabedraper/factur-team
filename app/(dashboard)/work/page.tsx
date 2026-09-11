@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 import { myAgenda, myBlocked, syncState, processesWithWork } from "@/actions/work";
 import { WorkRows } from "@/components/work/WorkRows";
 import { myPermissions } from "@/lib/org";
@@ -92,14 +91,13 @@ export default async function WorkPage() {
           <div className="px-3 py-1">
             {blocked.map((b) => (
               <div key={`${b.item.id}-${b.blockerUrl}`} className="border-b py-1.5 last:border-0">
-                <a href={b.item.url} target="_blank" rel="noreferrer" className="text-sm hover:underline">
+                <Link href={`/work/task/${b.item.clickupId}`} className="text-sm hover:underline">
                   {b.item.title}
-                </a>
+                </Link>
                 <div className="text-xs text-muted-foreground">
-                  <a href={b.blockerUrl} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
+                  <Link href={`/work/task/${b.blockerClickupId}`} className="hover:text-foreground hover:underline">
                     {b.blockerTitle}
-                    <ExternalLink className="ml-1 inline h-2.5 w-2.5 align-baseline" />
-                  </a>
+                  </Link>
                   {" · "}
                   {b.blockerStatus}
                 </div>

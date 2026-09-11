@@ -53,6 +53,10 @@ export function DialWidget() {
   const [claiming, setClaiming] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether the call in progress is ad hoc -- see placeCall. A ref, not state,
+  // because the message handler below is wired up once and would otherwise
+  // read a stale value.
+  const adHocRef = useRef(false);
 
   /*
    * Say so, for the right rail. It refuses to fold the Calls section away
@@ -81,9 +85,11 @@ export function DialWidget() {
       }
       if (msg.method === "call_ringing") {
         const on = msg.payload?.state === "on";
+        const adHoc = adHocRef.current;
         setCallState((prev) => {
           if (on) return "ringing";
           if (prev === "ringing" || prev === "dialing") {
+            if (adHoc) return "idle";
             setDispositionOpen(true);
             return "ended";
           }
@@ -109,7 +115,9 @@ export function DialWidget() {
    * page). Only commit()/tag the call with an opportunity_id when this is
    * the normal, no-override path calling this Opportunity's own contact --
    * an ad hoc number is unrelated to whatever happens to be open elsewhere,
-   * and must not be misattributed to it.
+   * and must not be misattributed to it. For the same reason it gets no
+   * disposition dialog when it ends: that dialog would log it against the
+   * panel's contact, who is not who was called.
    */
   async function placeCall(overrideNumber?: string) {
     const raw = overrideNumber ?? target?.phoneNumber;
@@ -138,6 +146,7 @@ export function DialWidget() {
       const claimed = await claimOutboundNumber("dialpad");
       const outboundCallerId = claimed.ok ? claimed.e164 : null;
       const isAdHoc = Boolean(overrideNumber);
+      adHocRef.current = isAdHoc;
       if (!isAdHoc) commit();
       setCallState("dialing");
       postToDialer(frameRef.current, "initiate_call", {
@@ -154,6 +163,10 @@ export function DialWidget() {
 
   function hangUp() {
     postToDialer(frameRef.current, "hang_up_all_calls");
+    if (adHocRef.current) {
+      setCallState("idle");
+      return;
+    }
     setDispositionOpen(true);
     setCallState("ended");
   }
