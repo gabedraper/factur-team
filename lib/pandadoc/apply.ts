@@ -203,7 +203,7 @@ export async function readAgreement(
      * person set is theirs to change.
      */
     let kpis = 0;
-    if (!older && c.kpis.length > 0) {
+    if (!older) {
       const { data: have } = await db
         .from("client_kpi_targets")
         .select("metric,source")
@@ -213,6 +213,27 @@ export async function readAgreement(
           .filter((k) => k.source === "manual")
           .map((k) => k.metric)
       );
+
+      /*
+       * A target this reading did not find is not in the contract, so it does
+       * not belong on the client. Readings of the same document do not always
+       * agree on a borderline promise -- a range, an either/or -- and a figure
+       * left behind by an earlier reading has nothing to check it against.
+       */
+      const promised = new Set(c.kpis.map((k) => k.metric));
+      const stale = ((have ?? []) as { metric: string; source: string }[])
+        .filter((k) => k.source === "contract" && !promised.has(k.metric))
+        .map((k) => k.metric);
+      if (stale.length > 0) {
+        const { error } = await db
+          .from("client_kpi_targets")
+          .delete()
+          .eq("client_id", row.client_id)
+          .eq("source", "contract")
+          .in("metric", stale);
+        if (error) throw new Error(`clearing KPIs: ${error.message}`);
+      }
+
       for (const k of c.kpis) {
         if (manual.has(k.metric)) continue;
         const { error } = await db.from("client_kpi_targets").upsert(
