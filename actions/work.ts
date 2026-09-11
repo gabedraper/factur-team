@@ -3,6 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions, previewedMemberId } from "@/lib/org";
 import { getAuthedUser } from "@/lib/supabase/session";
+import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
 import type { WorkItem, WorkGroup, SyncState } from "@/lib/work";
 import { PRIORITY_ORDER } from "@/lib/work";
 
@@ -95,12 +96,15 @@ async function mayView(): Promise<boolean> {
 export async function clientWork(clientId: string): Promise<WorkGroup[]> {
   if (!(await mayView())) return [];
 
-  const { data } = await createServiceClient()
-    .from("work_items")
-    .select(SELECT)
-    .eq("client_id", clientId)
-    .in("status_type", ["open", "custom"])
-    .limit(500);
+  const hidden = await hiddenSpaceIds();
+  const { data } = await withoutHidden(
+    createServiceClient()
+      .from("work_items")
+      .select(SELECT)
+      .eq("client_id", clientId)
+      .in("status_type", ["open", "custom"]),
+    hidden
+  ).limit(500);
 
   const groups = new Map<string, WorkGroup & { position: number }>();
   for (const row of (data ?? []) as unknown as Row[]) {
@@ -154,12 +158,14 @@ export async function myWork(): Promise<WorkItem[]> {
   const ids = (mine ?? []).map((r) => (r as { work_item_id: string }).work_item_id);
   if (ids.length === 0) return [];
 
-  const { data } = await db
-    .from("work_items")
-    .select(SELECT)
-    .in("id", ids)
-    .in("status_type", ["open", "custom"])
-    .limit(1000);
+  const hidden = await hiddenSpaceIds();
+  const { data } = await withoutHidden(
+    db.from("work_items")
+      .select(SELECT)
+      .in("id", ids)
+      .in("status_type", ["open", "custom"]),
+    hidden
+  ).limit(1000);
 
   return ((data ?? []) as unknown as Row[]).map(toItem).sort(inWorkingOrder);
 }
@@ -179,12 +185,14 @@ export async function processWork(slug: string): Promise<WorkItem[]> {
     .maybeSingle();
   if (!process) return [];
 
-  const { data } = await db
-    .from("work_items")
-    .select(SELECT)
-    .eq("process_id", (process as { id: string }).id)
-    .in("status_type", ["open", "custom"])
-    .limit(1000);
+  const hidden = await hiddenSpaceIds();
+  const { data } = await withoutHidden(
+    db.from("work_items")
+      .select(SELECT)
+      .eq("process_id", (process as { id: string }).id)
+      .in("status_type", ["open", "custom"]),
+    hidden
+  ).limit(1000);
 
   return ((data ?? []) as unknown as Row[]).map(toItem).sort(inWorkingOrder);
 }
@@ -222,7 +230,10 @@ export async function processesWithWork(): Promise<{ slug: string; name: string;
   const db = createServiceClient();
   const [{ data: processes }, { data: items }] = await Promise.all([
     db.from("work_processes").select("id,slug,name,position").eq("active", true).order("position"),
-    db.from("work_items").select("process_id").in("status_type", ["open", "custom"]).limit(20000),
+    withoutHidden(
+      db.from("work_items").select("process_id").in("status_type", ["open", "custom"]),
+      await hiddenSpaceIds()
+    ).limit(20000),
   ]);
 
   const counts = new Map<string, number>();
@@ -296,10 +307,14 @@ export async function myBlocked(): Promise<Blocked[]> {
   const rows = (edges ?? []) as { work_item_id: string; depends_on_clickup_id: string }[];
   if (rows.length === 0) return [];
 
-  const { data: blockers } = await db
-    .from("work_items")
-    .select("clickup_id,title,clickup_url,status,status_type")
-    .in("clickup_id", [...new Set(rows.map((r) => r.depends_on_clickup_id))]);
+  /* A blocker in a space you cannot see stays unseen: its title is exactly
+   * the kind of thing the space was made private to protect. */
+  const { data: blockers } = await withoutHidden(
+    db.from("work_items")
+      .select("clickup_id,title,clickup_url,status,status_type")
+      .in("clickup_id", [...new Set(rows.map((r) => r.depends_on_clickup_id))]),
+    await hiddenSpaceIds()
+  );
 
   const byId = new Map(
     ((blockers ?? []) as {

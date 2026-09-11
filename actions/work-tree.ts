@@ -2,6 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
+import { hiddenSpaceIds, withoutHidden } from "@/lib/work-access";
 import type { Container, ContainerKind, Crumb, ListItem, FieldValue } from "@/lib/work-tree";
 import type { WorkItem } from "@/lib/work";
 
@@ -32,12 +33,14 @@ async function mayView(): Promise<boolean> {
 /** Open items per list, for the lists being shown. One round trip. */
 async function openCounts(listIds: string[]): Promise<Map<string, number>> {
   if (listIds.length === 0) return new Map();
-  const { data } = await createServiceClient()
-    .from("work_items")
-    .select("clickup_list_id")
-    .in("clickup_list_id", listIds)
-    .in("status_type", ["open", "custom"])
-    .limit(50000);
+  const { data } = await withoutHidden(
+    createServiceClient()
+      .from("work_items")
+      .select("clickup_list_id")
+      .in("clickup_list_id", listIds)
+      .in("status_type", ["open", "custom"]),
+    await hiddenSpaceIds()
+  ).limit(50000);
 
   const counts = new Map<string, number>();
   for (const r of (data ?? []) as { clickup_list_id: string | null }[]) {
@@ -66,11 +69,15 @@ async function decorate(rows: Row[]): Promise<Container[]> {
 /** The top of the tree. */
 export async function spaces(): Promise<Container[]> {
   if (!(await mayView())) return [];
-  const { data } = await createServiceClient()
-    .from("work_containers")
-    .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
-    .eq("kind", "space")
-    .eq("archived", false)
+  const { data } = await withoutHidden(
+    createServiceClient()
+      .from("work_containers")
+      .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
+      .eq("kind", "space")
+      .eq("archived", false),
+    await hiddenSpaceIds(),
+    "clickup_id"
+  )
     .order("orderindex", { nullsFirst: false })
     .order("name");
   return decorate((data ?? []) as Row[]);
@@ -85,11 +92,14 @@ export async function spaces(): Promise<Container[]> {
  */
 export async function children(clickupId: string): Promise<Container[]> {
   if (!(await mayView())) return [];
-  const { data } = await createServiceClient()
-    .from("work_containers")
-    .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
-    .eq("parent_clickup_id", clickupId)
-    .eq("archived", false)
+  const { data } = await withoutHidden(
+    createServiceClient()
+      .from("work_containers")
+      .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
+      .eq("parent_clickup_id", clickupId)
+      .eq("archived", false),
+    await hiddenSpaceIds()
+  )
     .order("kind", { ascending: true })
     .order("orderindex", { nullsFirst: false })
     .order("name");
@@ -109,12 +119,18 @@ export async function containerWithPath(
 
   const { data } = await db
     .from("work_containers")
-    .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id")
+    .select("id,clickup_id,kind,name,task_count,url,parent_clickup_id,space_clickup_id")
     .eq("clickup_id", clickupId)
     .maybeSingle();
   if (!data) return null;
 
-  const row = data as Row;
+  const row = data as Row & { space_clickup_id: string | null };
+
+  /* Not found, rather than forbidden: a page that says "you may not see this"
+   * has already told you it exists. */
+  const hidden = await hiddenSpaceIds();
+  const spaceId = row.kind === "space" ? row.clickup_id : row.space_clickup_id;
+  if (!spaceId || hidden.includes(spaceId)) return null;
   const [node] = await decorate([row]);
 
   /* At most two hops -- list to folder to space -- so a loop is cheaper and
@@ -146,16 +162,18 @@ export async function listItems(listClickupId: string): Promise<ListItem[]> {
   if (!(await mayView())) return [];
   const db = createServiceClient();
 
-  const { data } = await db
-    .from("work_items")
-    .select(`
-      id, clickup_id, clickup_url, title, status, status_type, priority,
-      start_at, due_at, time_estimate_ms, fields, parent_clickup_id, client_id,
-      org_clients(name), work_item_assignees(name),
-      work_item_dependencies(depends_on_clickup_id, relation)
-    `)
-    .eq("clickup_list_id", listClickupId)
-    .limit(2000);
+  const hidden = await hiddenSpaceIds();
+  const { data } = await withoutHidden(
+    db.from("work_items")
+      .select(`
+        id, clickup_id, clickup_url, title, status, status_type, priority,
+        start_at, due_at, time_estimate_ms, fields, parent_clickup_id, client_id,
+        org_clients(name), work_item_assignees(name),
+        work_item_dependencies(depends_on_clickup_id, relation)
+      `)
+      .eq("clickup_list_id", listClickupId),
+    hidden
+  ).limit(2000);
 
   type Row = {
     id: string; clickup_id: string; clickup_url: string; title: string;
@@ -175,8 +193,10 @@ export async function listItems(listClickupId: string): Promise<ListItem[]> {
     (r.work_item_dependencies ?? []).map((d) => d.depends_on_clickup_id)))];
   const titles = new Map<string, string>();
   if (wanted.length) {
-    const { data: others } = await db
-      .from("work_items").select("clickup_id,title").in("clickup_id", wanted);
+    const { data: others } = await withoutHidden(
+      db.from("work_items").select("clickup_id,title").in("clickup_id", wanted),
+      hidden
+    );
     for (const o of (others ?? []) as { clickup_id: string; title: string }[]) {
       titles.set(o.clickup_id, o.title);
     }

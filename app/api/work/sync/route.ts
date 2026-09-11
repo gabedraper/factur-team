@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
           pod: podFor(listName),
           client_id: clientId,
           clickup_space: t.space?.id ? spaceName.get(String(t.space.id)) ?? null : null,
+          space_clickup_id: t.space?.id ? String(t.space.id) : null,
           clickup_folder: t.folder?.name ?? null,
           clickup_list: listName || null,
           clickup_list_id: t.list?.id ? String(t.list.id) : null,

@@ -230,6 +230,16 @@ async function main() {
   if (!team) throw new Error("token is valid but sees no workspace");
   console.log(`workspace: ${team.name}`);
 
+  /* The token sees every private space; whoever owns it therefore can too. */
+  const tokenOwner = String((await get("/user")).user?.email ?? "").toLowerCase();
+
+  /* Space members arrive as bare ids with no email; the workspace member list
+   * is the only place the two are joined. Missing this is how the first pass
+   * recorded Finance as having one member instead of six. */
+  const emailById = new Map(
+    (team.members ?? []).map((m) => [String(m.user?.id), String(m.user?.email ?? "").toLowerCase()])
+  );
+
   let spaces = (await get(`/team/${team.id}/space?archived=false`)).spaces ?? [];
   if (ONLY_SPACE) spaces = spaces.filter((s) => s.name === ONLY_SPACE);
   console.log(`${spaces.length} spaces`);
@@ -256,6 +266,13 @@ async function main() {
     task_count: Number(node.task_count ?? 0),
     archived: Boolean(node.archived),
     statuses: node.statuses ?? null,
+    private: kind === "space" ? Boolean(node.private) : false,
+    member_emails: kind === "space" && node.private
+      ? [...new Set([
+          ...(node.members ?? []).map((m) => emailById.get(String(m.user?.id)) ?? "").filter(Boolean),
+          tokenOwner,
+        ].filter(Boolean))]
+      : null,
     url: node.id ? `https://app.clickup.com/${team.id}/v/li/${node.id}` : null,
     synced_at: new Date().toISOString(),
   });
@@ -272,14 +289,14 @@ async function main() {
       containers.push(container("folder", f, space.id, space.id));
       for (const l of f.lists ?? []) {
         containers.push(container("list", l, f.id, space.id));
-        targets.push({ space: space.name, folder: f.name, list: l, count: l.task_count ?? 0 });
+        targets.push({ space: space.name, spaceId: space.id, folder: f.name, list: l, count: l.task_count ?? 0 });
       }
     }
     /* Folderless lists hang off the space itself -- the tree is not a fixed
      * depth, and pretending otherwise loses a fifth of the workspace. */
     for (const l of loose.lists ?? []) {
       containers.push(container("list", l, space.id, space.id));
-      targets.push({ space: space.name, folder: null, list: l, count: l.task_count ?? 0 });
+      targets.push({ space: space.name, spaceId: space.id, folder: null, list: l, count: l.task_count ?? 0 });
     }
   }
 
@@ -360,6 +377,7 @@ async function main() {
           pod,
           client_id: clientId,
           clickup_space: target.space,
+          space_clickup_id: String(target.spaceId),
           clickup_folder: target.folder,
           clickup_list: target.list.name,
           clickup_list_id: String(target.list.id),
