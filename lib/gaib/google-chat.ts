@@ -64,6 +64,12 @@ export type ChatEvent = {
   threadName: string | null;
   /** True for a one-to-one chat with Gaib rather than a group space. */
   isDirectMessage: boolean;
+  /**
+   * Images uploaded with the message, as references to download. Files shared
+   * from Drive are left out: they are fetched through Drive with the person's
+   * own access, which is a different path with different rules.
+   */
+  images: { resourceName: string; contentType: string }[];
 };
 
 /**
@@ -162,6 +168,12 @@ type Message = {
   argumentText?: string;
   sender?: { name?: string; email?: string; displayName?: string };
   thread?: { name?: string };
+  attachment?: {
+    contentName?: string;
+    contentType?: string;
+    source?: string;
+    attachmentDataRef?: { resourceName?: string };
+  }[];
 };
 type Space = { name?: string; type?: string; spaceType?: string; singleUserBotDm?: boolean };
 
@@ -232,6 +244,10 @@ function read(body: unknown): ChatEvent | null {
     spaceName: space?.name ?? null,
     threadName: message?.thread?.name ?? null,
     isDirectMessage: spaceType === "DM" || spaceType === "DIRECT_MESSAGE" || Boolean(space?.singleUserBotDm),
+    images: (message?.attachment ?? [])
+      .filter((a) => a.source !== "DRIVE_FILE" && a.attachmentDataRef?.resourceName)
+      .filter((a) => /^image\/(png|jpe?g|gif|webp)$/i.test(a.contentType ?? ""))
+      .map((a) => ({ resourceName: a.attachmentDataRef!.resourceName!, contentType: a.contentType! })),
   };
 }
 

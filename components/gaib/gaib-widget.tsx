@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell, Smartphone } from "lucide-react";
+import { MessageCircle, Send, Ticket, X, SquarePen, History, Bell, Smartphone, ImagePlus } from "lucide-react";
 import { canAsk, ask, notify } from "@/lib/gaib/notify";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,8 +13,43 @@ import {
   myOpenTickets, type OpenTicket,
 } from "@/actions/gaib";
 
+type Shot = { mediaType: "image/png" | "image/jpeg"; data: string; preview: string };
+
+/*
+ * A screenshot, made small enough to send.
+ *
+ * The model looks at about 1,568 pixels on the long edge and scales anything
+ * bigger down itself -- so sending a 4K retina capture costs upload time and
+ * money for detail that is thrown away on arrival. Shrunk here instead. PNG is
+ * kept for PNGs because screenshots are mostly text, and JPEG smears text.
+ */
+async function toShot(file: File): Promise<Shot | null> {
+  if (!/^image\/(png|jpe?g|gif|webp)$/.test(file.type)) return null;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+    const scale = Math.min(1, 1568 / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const mediaType = file.type === "image/png" ? "image/png" : "image/jpeg";
+    const dataUrl = canvas.toDataURL(mediaType, 0.88);
+    return { mediaType, data: dataUrl.split(",")[1] ?? "", preview: dataUrl };
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 type Line =
-  | { kind: "said"; who: "you" | "gaib"; text: string; fromChat?: boolean }
+  | { kind: "said"; who: "you" | "gaib"; text: string; fromChat?: boolean; shots?: string[] }
   | { kind: "working"; text: string }
   | { kind: "ticket"; ref: number; title: string; lane: string }
   | { kind: "offer-notify" }
@@ -90,6 +125,13 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
   const [open, setOpen] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState("");
+  const [shots, setShots] = useState<Shot[]>([]);
+  const picker = useRef<HTMLInputElement>(null);
+
+  async function addFiles(files: FileList | File[]) {
+    const made = (await Promise.all(Array.from(files).map(toShot))).filter(Boolean) as Shot[];
+    if (made.length) setShots((s) => [...s, ...made].slice(0, 4));
+  }
   const [busy, setBusy] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -139,10 +181,15 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
    * split, at which point it fails only for the longest answers.
    */
   const send = useCallback(
-    async (text: string, openedBy: "user" | "gaib" = "user") => {
+    async (text: string, openedBy: "user" | "gaib" = "user", withShots: Shot[] = []) => {
       setBusy(true);
       setThinking(true);
-      if (text) setLines((l) => [...l, { kind: "said", who: "you", text }]);
+      if (text || withShots.length) {
+        setLines((l) => [
+          ...l,
+          { kind: "said", who: "you", text, shots: withShots.map((x) => x.preview) },
+        ]);
+      }
 
       try {
         /*
@@ -165,6 +212,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sessionId, message: text, pageUrl: window.location.href, openedBy,
+            images: withShots.map(({ mediaType, data }) => ({ mediaType, data })),
           }),
         });
         if (res.status === 401) {
@@ -415,13 +463,15 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
 
   function submit() {
     const text = draft.trim();
-    if (!text || busy) return;
+    if ((!text && !shots.length) || busy) return;
+    const sending = shots;
     setDraft("");
+    setShots([]);
     if (!answered) {
       setAnswered(true);
       void recordAnswered();
     }
-    void send(text);
+    void send(text, "user", sending);
   }
 
   return (
@@ -590,6 +640,13 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                         : "w-fit max-w-[85%] break-words rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
                     }
                   >
+                    {line.shots && line.shots.length > 0 && (
+                      <div className="mb-1.5 flex flex-wrap gap-1.5">
+                        {line.shots.map((src, j) => (
+                          <img key={j} src={src} alt="Screenshot" className="max-h-32 rounded-md" />
+                        ))}
+                      </div>
+                    )}
                     {line.text}
                   </div>
                 );
@@ -641,12 +698,63 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
             <div ref={bottom} />
           </div>
 
+          {/*
+            Screenshots waiting to go, shown before they are sent so a wrong
+            paste can be taken back.
+          */}
+          {shots.length > 0 && (
+            <div className="flex gap-2 border-t px-3 pt-3">
+              {shots.map((shot, i) => (
+                <div key={i} className="relative">
+                  <img src={shot.preview} alt="" className="h-14 w-14 rounded-md object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setShots((all) => all.filter((_, j) => j !== i))}
+                    aria-label="Remove screenshot"
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-background p-0.5 shadow-overlay"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-end gap-2 border-t p-3">
+            <input
+              ref={picker}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              multiple
+              hidden
+              onChange={(e) => {
+                if (e.target.files) void addFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => picker.current?.click()}
+              disabled={busy || shots.length >= 4}
+              aria-label="Attach a screenshot"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
             <Textarea
               ref={box}
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              // A pasted screenshot is caught here -- the way almost everybody
+              // takes one is a capture straight to the clipboard.
+              onPaste={(e) => {
+                const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+                if (files.length) {
+                  e.preventDefault();
+                  void addFiles(files);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -660,7 +768,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
               // a third of a panel this size.
               className="min-h-0 resize-none"
             />
-            <Button size="icon" onClick={submit} disabled={busy || !draft.trim()}>
+            <Button size="icon" onClick={submit} disabled={busy || (!draft.trim() && !shots.length)}>
               <Send className="h-4 w-4" />
             </Button>
           </div>

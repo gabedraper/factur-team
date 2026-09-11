@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { runTurn, type ChatEvent } from "@/lib/gaib/chat";
+import { runTurn, type ChatEvent, type TurnImage } from "@/lib/gaib/chat";
 import { defaultAgent, getAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 
 /*
@@ -23,7 +23,26 @@ type Body = {
   message?: string;
   pageUrl?: string;
   openedBy?: "user" | "gaib";
+  /** Screenshots pasted into the panel, as base64 with their type. */
+  images?: { mediaType: string; data: string }[];
 };
+
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+/*
+ * What the panel may send as a picture.
+ *
+ * Checked here rather than trusted from the browser: four at most, known
+ * types only, and nothing past 5MB decoded -- the model refuses anything
+ * bigger, and failing that way costs a request and says nothing useful.
+ */
+function acceptedImages(raw: Body["images"]): TurnImage[] {
+  return (raw ?? [])
+    .filter((i) => IMAGE_TYPES.has(i.mediaType) && typeof i.data === "string")
+    .filter((i) => i.data.length * 0.75 <= 5 * 1024 * 1024)
+    .slice(0, 4)
+    .map((i) => ({ mediaType: i.mediaType as TurnImage["mediaType"], data: i.data }));
+}
 
 export async function POST(request: NextRequest) {
   // This client carries the person's own token. It is what every database read
@@ -74,8 +93,11 @@ export async function POST(request: NextRequest) {
     userId: user.id,
     email: user.email,
     db: supabase,
-    message: body.message?.trim() || null,
+    message:
+      body.message?.trim() ||
+      (body.images?.length ? "(sent a screenshot without saying anything)" : null),
     pageUrl: body.pageUrl ?? null,
+    images: acceptedImages(body.images),
     person: { name: p?.full_name || user.email, role: p?.role ?? null },
   });
 

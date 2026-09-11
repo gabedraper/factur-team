@@ -3,8 +3,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { verifyAndParse, reply, type ChatEvent } from "@/lib/gaib/google-chat";
 import { readKey } from "@/lib/gaib/service-key";
 import { actAs, findMemberByEmail } from "@/lib/gaib/act-as";
-import { runTurn } from "@/lib/gaib/chat";
-import { postToSpace } from "@/lib/gaib/chat-post";
+import { runTurn, type TurnImage } from "@/lib/gaib/chat";
+import { postToSpace, downloadAttachment } from "@/lib/gaib/chat-post";
 import { defaultAgent, myRoleIds, mayUse } from "@/lib/gaib/agents";
 
 /*
@@ -231,7 +231,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (event.kind !== "MESSAGE" || !event.text) {
+  /*
+   * A screenshot on its own is a message.
+   *
+   * This used to drop anything with no text, and the first thing a tester did
+   * in the room was send a screenshot of the problem -- which arrived, was
+   * logged as "textLength=0", and was ignored. A picture with no words still
+   * needs an answer.
+   */
+  if (event.kind !== "MESSAGE" || (!event.text && event.images.length === 0)) {
     await noteOutcome(`ignored: kind=${event.kind} textLength=${event.text.length}`);
     return NextResponse.json({});
   }
@@ -295,7 +303,8 @@ async function answer(event: ChatEvent) {
       userId: person.userId,
       email: acting.session.email,
       db: acting.session.db,
-      message: event.text,
+      message: event.text || "(sent a screenshot without saying anything)",
+      images: await fetchImages(event),
       channel: "google_chat",
       pageUrl: null,
       person: { name: person.fullName ?? acting.session.email, role: null },
@@ -423,6 +432,20 @@ const RESUME_WITHIN_HOURS = 12;
  * only place Gaib ever learns that id is a message they send. So it is kept
  * the first time it is seen, and the daily test post can ping them by name.
  */
+/** Download whatever images came with the message. Failures are skipped. */
+async function fetchImages(event: ChatEvent): Promise<TurnImage[]> {
+  const out: TurnImage[] = [];
+  for (const img of event.images.slice(0, 4)) {
+    const got = await downloadAttachment(img.resourceName);
+    if (!got.ok) continue;
+    const type = img.contentType.toLowerCase().replace("image/jpg", "image/jpeg");
+    if (type === "image/png" || type === "image/jpeg" || type === "image/gif" || type === "image/webp") {
+      out.push({ mediaType: type, data: got.data });
+    }
+  }
+  return out;
+}
+
 async function rememberWho(event: ChatEvent, inRoom: boolean) {
   try {
     const db = createServiceClient();

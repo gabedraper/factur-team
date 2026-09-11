@@ -96,6 +96,17 @@ export type TurnInput = {
    * Gaib. Changes what it may reach for -- see GROUP_SAFE_TOOLS.
    */
   room?: { name: string | null } | null;
+  /**
+   * Screenshots sent with this message. Seen on this turn only -- see the note
+   * where they are used.
+   */
+  images?: TurnImage[];
+};
+
+export type TurnImage = {
+  mediaType: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  /** Base64, without the data: prefix. */
+  data: string;
 };
 
 /*
@@ -253,7 +264,15 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   );
 
   if (input.message) {
-    await save(input.sessionId, "user", input.message, null, input.pageUrl, input.channel);
+    const shared = input.images?.length ?? 0;
+    await save(
+      input.sessionId,
+      "user",
+      shared ? `${input.message}\n\n[shared ${shared === 1 ? "a screenshot" : `${shared} screenshots`}]` : input.message,
+      null,
+      input.pageUrl,
+      input.channel
+    );
 
     /*
      * Told before the answer is worked out, not after.
@@ -277,7 +296,31 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
       });
     }
 
-    messages.push({ role: "user", content: input.message });
+    /*
+     * Screenshots go to the model on this turn, and are not kept.
+     *
+     * Testers explain half of what they mean with a screenshot, and Gaib used
+     * to have to reply "I can't see images" -- to the people whose whole job
+     * this week is showing it what is wrong. Now it looks.
+     *
+     * Not stored in the conversation: history is replayed on every later turn,
+     * so a stored image would be re-sent and re-billed each time for the rest
+     * of the conversation. What Gaib said about it stays, which is the part
+     * worth remembering, and the saved line notes that a picture was shared.
+     */
+    const images = (input.images ?? []).slice(0, 4);
+    messages.push({
+      role: "user",
+      content: images.length
+        ? [
+            ...images.map((img) => ({
+              type: "image" as const,
+              source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+            })),
+            { type: "text" as const, text: input.message },
+          ]
+        : input.message,
+    });
   }
 
   const ctx: ToolContext = {

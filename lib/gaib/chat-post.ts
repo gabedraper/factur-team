@@ -106,3 +106,35 @@ export async function spaceFor(userId: string): Promise<string | null> {
   return (data as { space_name: string } | null)?.space_name ?? null;
 }
 export { readKey } from "./service-key";
+
+/**
+ * Fetch an image somebody attached to a message sent to Gaib.
+ *
+ * Chat hands the app a reference rather than the file, and the file is
+ * downloaded with the app's own credentials -- the same chat.bot scope that
+ * posts, which covers attachments on messages the app was sent. Never throws:
+ * a picture that could not be fetched means an answer without it, not no
+ * answer.
+ */
+export async function downloadAttachment(
+  resourceName: string
+): Promise<{ ok: true; data: string } | { ok: false; reason: string }> {
+  const access = await token().catch(() => null);
+  if (!access) return { ok: false, reason: "no posting key" };
+
+  try {
+    const res = await fetch(
+      `https://chat.googleapis.com/v1/media/${resourceName}?alt=media`,
+      { headers: { Authorization: `Bearer ${access}` } }
+    );
+    if (!res.ok) return { ok: false, reason: `Chat ${res.status}` };
+
+    const bytes = Buffer.from(await res.arrayBuffer());
+    // Past this the model refuses the image outright, and a screenshot of a
+    // browser window is never close to it -- anything bigger is something else.
+    if (bytes.length > 5 * 1024 * 1024) return { ok: false, reason: "image over 5MB" };
+    return { ok: true, data: bytes.toString("base64") };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "download failed" };
+  }
+}
