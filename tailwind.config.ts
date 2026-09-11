@@ -30,6 +30,8 @@ const config: Config = {
         heading: ["var(--font-heading)", "var(--font-body)", "sans-serif"],
       },
       colors: {
+        /* Board columns. See --lane in globals.css. */
+        lane: "hsl(var(--lane))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         field: "hsl(var(--field))",

@@ -232,7 +232,7 @@ export function OpportunityBoard({ rows }: { rows: Row[] }) {
               className={cn(
                 "flex shrink-0 flex-col gap-2 rounded-md p-1.5 transition-colors duration-fast ease-out",
                 cards.length ? "w-64" : "w-36",
-                target ? "bg-accent" : "bg-muted/50",
+                target ? "bg-accent" : "bg-lane",
               )}
             >
               <h2 className="flex items-baseline justify-between gap-2 px-1.5 pt-1 text-meta font-semibold">

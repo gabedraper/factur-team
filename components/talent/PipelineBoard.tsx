@@ -138,8 +138,8 @@ export function PipelineBoard({
               onDragLeave={() => setOver((s) => (s === stage.id ? null : s))}
               onDrop={() => canEdit && drop(stage.id)}
               className={cn(
-                "flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors",
-                over === stage.id && "border-primary bg-primary/5"
+                "flex w-72 shrink-0 flex-col rounded-md bg-lane transition-colors duration-fast ease-out",
+                over === stage.id && "bg-accent"
               )}
             >
               <header className="flex items-center gap-2 border-b px-3 py-2">

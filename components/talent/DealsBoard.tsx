@@ -68,8 +68,8 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
               onDragLeave={() => setOver((s) => (s === stage ? null : s))}
               onDrop={() => canEdit && drop(stage)}
               className={cn(
-                "flex w-64 shrink-0 flex-col rounded-lg border bg-muted/30",
-                over === stage && "border-primary bg-primary/5"
+                "flex w-64 shrink-0 flex-col rounded-md bg-lane",
+                over === stage && "bg-accent"
               )}
             >
               <header className="flex items-center gap-2 border-b px-3 py-2">

@@ -122,6 +122,7 @@ deleted").
 | `duration-base` `ease-out` | `duration-200` `ease-in-out` |
 | `shadow-raised/overlay/modal` | `shadow-sm` `shadow-lg` |
 | `bg-card` `bg-background` `bg-card-hover` | any hex, any `bg-white` |
+| `bg-lane` for a board column | `bg-muted/30` — it lands on the card colour in dark mode |
 
 **The radius trap:** `--radius` is **10px**, but `rounded-md` is defined as
 `--radius − 2`, so corners render at **8px**. If you want 8px corners, leave

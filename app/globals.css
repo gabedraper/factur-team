@@ -76,6 +76,17 @@
        themes rather than branching. */
     --card-hover: 0 0% 100%;
 
+    /* A board column: one step *below* the page, so the cards in it -- which
+       are ordinary cards -- stand out the same way they do on the page. Was
+       bg-muted at partial opacity, which in dark mode landed within a point
+       of the card colour and made every card edgeless. */
+    --lane: 210 20% 92.5%;
+
+    /* Tells the browser which theme its own controls are in -- checkboxes,
+       radios, date pickers, scrollbars. Without it they stay light, and a dark
+       page gets bright white tick boxes. */
+    color-scheme: light;
+
     /* Motion ----------------------------------------------------------------
        One duration and one curve, referenced rather than retyped. The curve
        decelerates: things arrive quickly and settle, which reads as fast even
@@ -166,6 +177,9 @@
     --shadow-modal: inset 0 1px 0 hsl(210 40% 98% / .12), 0 0 0 1px hsl(210 40% 98% / .05), 0 16px 44px -10px hsl(220 40% 84% / .18);
     /* The surface-lightening half of the lift. A shadow cannot express it. */
     --card-hover: 217.2 32.6% 14%;
+    /* Between the page (4.9%) and the card (11%). */
+    --lane: 222 50% 7.5%;
+    color-scheme: dark;
 
     /* The same eight hues, stepped for the dark surface -- not a flip. */
     --viz-1: #3987e5;
