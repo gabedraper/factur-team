@@ -24,6 +24,7 @@ import {
   Circle,
   Clock,
 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 const lessonTypeIcons: Record<string, React.ReactNode> = {
   video: <Video className="h-4 w-4" />,
@@ -154,7 +155,7 @@ export default async function CourseOutlinePage({
             }
           />
           <div className="flex-1">
-            <h1 className="text-3xl font-bold">{course.title}</h1>
+            <PageHeader title={course.title} />
             {course.description && (
               <p className="text-muted-foreground mt-2">{course.description}</p>
             )}

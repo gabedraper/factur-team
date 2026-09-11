@@ -8,6 +8,7 @@ import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/or
 import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
 import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
 import { listClientsForSelf, listRolesForSelf } from "@/actions/self-service";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ export default async function SettingsPage() {
   return (
     <div className="p-6 space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-xl font-semibold">Settings</h1>
+        <PageHeader title="Settings" />
       </div>
 
       <section className="rounded-md border bg-card p-4 space-y-3">

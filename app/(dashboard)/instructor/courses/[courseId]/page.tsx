@@ -46,6 +46,7 @@ import {
   Eye,
   GripVertical,
 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Lesson {
   id: string;
@@ -261,7 +262,7 @@ export default function CourseEditorPage() {
       <div className="p-8">
         {loadError ? (
           <>
-            <h1 className="text-xl font-semibold">Can&apos;t open this course</h1>
+            <PageHeader title={<>Can&apos;t open this course</>} />
             <p className="mt-2 max-w-prose text-sm text-muted-foreground">{loadError}</p>
             <Button asChild variant="outline" className="mt-4">
               <Link href="/instructor/courses">
@@ -326,7 +327,7 @@ export default function CourseEditorPage() {
             ) : (
               <div className="flex items-start gap-2">
                 <div>
-                  <h1 className="text-3xl font-bold">{course.title}</h1>
+                  <PageHeader title={course.title} />
                   {course.description && (
                     <p className="text-muted-foreground mt-1">{course.description}</p>
                   )}

@@ -3,6 +3,7 @@ import { getNpsByPerson, getNpsCampaigns, getNpsLeads, getNpsResponses, npsOf } 
 import { NpsDashboard } from "@/components/nps/NpsDashboard";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -22,17 +23,17 @@ export default async function NpsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">NPS</h1>
-        {maySend && (
+      <PageHeader
+        title="NPS"
+        actions={<>{maySend && (
           <Link
             href="/clients/nps/send"
             className="ml-auto h-8 rounded-md border px-3 text-sm leading-8 hover:bg-muted"
           >
             Send surveys
           </Link>
-        )}
-      </div>
+        )}</>}
+      />
       <NpsDashboard
         campaigns={campaigns}
         leads={leads}

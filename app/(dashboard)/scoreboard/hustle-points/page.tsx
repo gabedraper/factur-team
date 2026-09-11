@@ -26,6 +26,7 @@ import {
 } from "@/lib/scoreboard/activity-buckets";
 import { Avatar } from "@/components/ui/thumbnail";
 import { repAvatars } from "@/lib/org";
+import { PageHeader } from "@/components/ui/page-header";
 
 type RepAgg = {
   rep_id: string;
@@ -139,7 +140,7 @@ export default async function HustlePointsPage(
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-4 group relative inline-block">
-        <h1 className="cursor-default text-xl font-semibold">Hustle Points</h1>
+        <PageHeader title="Hustle Points" />
 
         <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md border border-slate-800 bg-slate-900 p-3 text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
           <p className="mb-2 font-medium uppercase tracking-wide text-slate-500">

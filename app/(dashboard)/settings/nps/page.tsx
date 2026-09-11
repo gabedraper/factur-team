@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { npsCoverage } from "@/actions/nps-readiness";
 import { NpsReadiness } from "@/components/nps/NpsReadiness";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +16,7 @@ export default async function NpsSettingsPage() {
 
   return (
     <div className="max-w-4xl space-y-4 p-6">
-      <div>
-        <Link
-          href="/settings"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Settings
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">NPS</h1>
-      </div>
+      <PageHeader back={{ href: "/settings", label: "Settings" }} title="NPS" />
       <Link
         href="/settings/nps/sequence"
         className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"

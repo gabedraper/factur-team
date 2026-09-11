@@ -3,6 +3,7 @@ import { ResultsTable } from "@/components/clients/ResultsTable";
 import { clientDomains } from "@/lib/org";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function ClientResultsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-xl font-semibold">Client Results</h1>
+      <PageHeader title="Client Results" />
       <ResultsTable clients={clients} domains={domains} />
     </div>
   );

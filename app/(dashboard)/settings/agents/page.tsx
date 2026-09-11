@@ -8,6 +8,7 @@ import { TOOLS } from "@/lib/gaib/tools";
 import { chatReach } from "@/actions/gaib-admin";
 import { ChatReachPanel } from "@/components/gaib/chat-reach";
 import { AgentsHub } from "@/components/settings/AgentsHub";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +40,9 @@ export default async function AgentsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Agents</h1>
-        {/* What the agents were asked and what came of it, beside the agents
+      <PageHeader
+        title="Agents"
+        actions={<>{/* What the agents were asked and what came of it, beside the agents
             themselves rather than adrift in the settings index. */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -67,8 +68,8 @@ export default async function AgentsPage() {
             <Wrench className="h-4 w-4" />
             Coding agent
           </Link>
-        </div>
-      </div>
+        </div></>}
+      />
 
       <ChatReachPanel people={reach} />
 

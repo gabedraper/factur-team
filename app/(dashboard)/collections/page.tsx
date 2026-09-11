@@ -5,6 +5,7 @@ import {
 } from "@/actions/collections";
 import { Board } from "@/components/collections/Board";
 import { clientDomains } from "@/lib/org";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function CollectionsPage({
   if (visibility.problem) {
     return (
       <div className="p-6 max-w-2xl">
-        <h1 className="text-xl font-semibold">Collections</h1>
+        <PageHeader title="Collections" />
         <p className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           Couldn’t check what you can see. {visibility.problem}
         </p>
@@ -48,17 +49,17 @@ export default async function CollectionsPage({
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">Collections</h1>
-        <div className="flex items-baseline gap-4">
+      <PageHeader
+        title="Collections"
+        actions={<div className="flex items-baseline gap-4">
           <Link href="/collections/invoices" className="text-sm text-muted-foreground hover:text-foreground">
             Invoices
           </Link>
           <Link href="/collections/ar" className="text-sm text-muted-foreground hover:text-foreground">
             A/R Ladder
           </Link>
-        </div>
-      </div>
+        </div>}
+      />
       <Board rows={rows} settings={settings} visibility={visibility} scope={scope} domains={domains} />
     </div>
   );

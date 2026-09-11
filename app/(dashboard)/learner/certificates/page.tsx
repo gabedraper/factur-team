@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Award, Download } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function CertificatesPage() {
   const supabase = await createClient();
@@ -27,13 +28,12 @@ export default async function CertificatesPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">My Certificates</h1>
-        <p className="text-muted-foreground mt-1">
-          {certificates?.length ?? 0} certificate
-          {(certificates?.length ?? 0) !== 1 ? "s" : ""} earned
-        </p>
-      </div>
+      <PageHeader
+        title="My Certificates"
+        description={<>{certificates?.length ?? 0} certificate
+          {(certificates?.length ?? 0) !== 1 ? "s" : ""} earned</>}
+        className="mb-8"
+      />
 
       {certificates && certificates.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

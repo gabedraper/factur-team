@@ -15,6 +15,7 @@ import { LogActivity } from "@/components/talent/LogActivity";
 import { Avatar, Chip, Empty, Panel, Stat, Tabs } from "@/components/talent/bits";
 import { ago, onDay, place } from "@/lib/talent/format";
 import { CANDIDATE_STATUS, PERSON_TYPE, RECOMMENDATION, label } from "@/lib/talent/types";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function PersonPage({
   if (person.merged_into_id) {
     return (
       <div className="max-w-xl space-y-3 p-6">
-        <h1 className="text-xl font-semibold">{person.name}</h1>
+        <PageHeader title={person.name} />
         <p className="text-sm text-muted-foreground">Merged</p>
         <Link href={`/talent/people/${person.merged_into_id}`} className="text-primary hover:underline">
           Open the surviving record
@@ -82,9 +83,9 @@ export default async function PersonPage({
       <div className="flex flex-wrap items-start gap-4">
         <Avatar name={person.name} size={12} />
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold">{person.name}</h1>
-            {person.do_not_contact && (
+          <PageHeader
+            title={person.name}
+            actions={<>{person.do_not_contact && (
               <Chip colour="rose">
                 <Ban className="h-3 w-3" />
                 Do not contact
@@ -95,8 +96,8 @@ export default async function PersonPage({
             ))}
             {tags.map((t) => (
               <Chip key={t.id} colour={t.color}>{t.label}</Chip>
-            ))}
-          </div>
+            ))}</>}
+          />
           <p className="mt-1 text-sm text-muted-foreground">
             {[person.title, person.company_name, place(person.city, person.state)]
               .filter(Boolean).join(" · ") || "—"}

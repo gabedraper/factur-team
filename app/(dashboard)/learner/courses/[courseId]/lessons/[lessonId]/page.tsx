@@ -278,6 +278,7 @@ export default function LessonViewerPage() {
                   </Badge>
                 )}
               </div>
+              {/* design-ok: title printed over the cover image */}
               <h1 className="text-2xl font-bold text-white">{lesson.title}</h1>
             </div>
           </div>

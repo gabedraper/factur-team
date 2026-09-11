@@ -14,6 +14,7 @@ export function NoAccess({ section, need }: { section: string; need: string }) {
     <div className="p-8">
       <div className="flex items-center gap-2">
         <Lock className="h-5 w-5 text-muted-foreground" />
+        {/* design-ok: a centred message in place of the page, not a page header */}
         <h1 className="text-xl font-semibold">{section}</h1>
       </div>
       <p className="mt-2 max-w-prose text-sm text-muted-foreground">

@@ -1,11 +1,10 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { getSequence, whoAmI } from "@/actions/sequences";
 import { SequenceBuilder } from "@/components/sequences/SequenceBuilder";
 import { PLACEHOLDERS as COLLECTIONS_FIELDS } from "@/lib/collections/render";
 import { PLACEHOLDERS as NPS_FIELDS } from "@/lib/nps/render";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -59,15 +58,10 @@ export default async function SequencePage({
 
   return (
     <div className="p-6 space-y-4 max-w-4xl">
-      <div>
-        <Link
-          href="/settings/sequences"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Sequences
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">{sequence.name}</h1>
-      </div>
+      <PageHeader
+        back={{ href: "/settings/sequences", label: "Sequences" }}
+        title={sequence.name}
+      />
       <SequenceBuilder
         sequence={sequence}
         steps={steps}

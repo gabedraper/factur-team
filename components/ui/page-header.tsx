@@ -1,4 +1,6 @@
 import * as React from "react";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,6 +22,13 @@ type PageHeaderProps = {
   description?: React.ReactNode;
   /** Section name above the title. Worth it once a page is nested deep. */
   eyebrow?: React.ReactNode;
+  /**
+   * The way back up, above the title: "< Client Health". Twenty pages drew
+   * this link by hand, each a little differently. Takes the place of the
+   * eyebrow -- a page is either nested under something you can go back to, or
+   * it is not.
+   */
+  back?: { href: string; label: React.ReactNode };
   /** Primary controls for the page, right-aligned on the title's line. */
   actions?: React.ReactNode;
   /**
@@ -35,6 +44,7 @@ export function PageHeader({
   title,
   description,
   eyebrow,
+  back,
   actions,
   count,
   className,
@@ -42,7 +52,15 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="min-w-0">
-        {eyebrow ? (
+        {back ? (
+          <Link
+            href={back.href}
+            className="mb-1 inline-flex items-center gap-1 text-meta text-muted-foreground transition-colors duration-fast ease-out hover:text-foreground"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+            {back.label}
+          </Link>
+        ) : eyebrow ? (
           <div className="text-meta uppercase tracking-wider text-muted-foreground">
             {eyebrow}
           </div>

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Users, TrendingUp, CheckCircle2, AlertCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/thumbnail";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function ProgressDashboard() {
   const { users, totalUsers, avgProgress, fullyComplete, notStarted } =
@@ -45,12 +46,11 @@ export default async function ProgressDashboard() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Team Progress</h1>
-        <p className="text-muted-foreground mt-1">
-          Track every team member's training completion
-        </p>
-      </div>
+      <PageHeader
+        title="Team Progress"
+        description="Track every team member's training completion"
+        className="mb-8"
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">

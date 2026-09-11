@@ -7,6 +7,7 @@ import { ListView } from "@/components/work/ListView";
 import { KIND_LABEL } from "@/lib/work-tree";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -54,9 +55,9 @@ export default async function ContainerPage({
           ))}
         </nav>
 
-        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-xl font-semibold">{node.name}</h1>
-          <div className="flex items-baseline gap-3 text-xs text-muted-foreground">
+        <PageHeader
+          title={node.name}
+          actions={<div className="flex items-baseline gap-3 text-xs text-muted-foreground">
             <span>{KIND_LABEL[node.kind]}</span>
             {isList && (
               <span className="tabular-nums">
@@ -73,8 +74,9 @@ export default async function ContainerPage({
                 ClickUp <ExternalLink className="h-3 w-3" />
               </a>
             )}
-          </div>
-        </div>
+          </div>}
+          className="mt-1"
+        />
       </div>
 
       {isList ? (

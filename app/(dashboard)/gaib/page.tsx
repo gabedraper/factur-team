@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import type { Ticket } from "@/lib/gaib/tickets";
 import { TicketCard } from "@/components/gaib/ticket-card";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function GaibPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
-      <h1 className="text-xl font-semibold">Gaib</h1>
+      <PageHeader title="Gaib" />
 
       <Section title="Waiting on you" count={waiting.length}>
         {waiting.map((t) => <TicketCard key={t.id} ticket={t} raisedByName={names.get(t.raised_by ?? "")} decidable />)}

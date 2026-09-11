@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCourseProgress } from "@/lib/progress";
 import { ArrowLeft, Award, CheckCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/thumbnail";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function TeamMemberDetailPage({
   params,
@@ -79,10 +80,7 @@ export default async function TeamMemberDetailPage({
           src={member.avatar_url}
           size={64}
         />
-        <div>
-          <h1 className="text-3xl font-bold">{member.full_name}</h1>
-          <p className="text-muted-foreground">{roleLabel}</p>
-        </div>
+        <PageHeader title={member.full_name} description={roleLabel} />
       </div>
 
       {/* Stats */}

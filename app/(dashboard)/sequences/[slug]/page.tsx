@@ -1,10 +1,9 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { listSequences, sequenceAudience } from "@/actions/sequence-audience";
 import { SequenceDetail } from "@/components/sequences/SequenceDetail";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +36,7 @@ export default async function SequencePage({
 
   return (
     <div className="max-w-5xl space-y-4 p-6">
-      <div>
-        <Link
-          href="/sequences"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Sequences
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">{sequence.name}</h1>
-      </div>
+      <PageHeader back={{ href: "/sequences", label: "Sequences" }} title={sequence.name} />
       <SequenceDetail sequence={sequence} audience={audience} dueCount={dueCount} />
     </div>
   );

@@ -3,6 +3,7 @@ export const metadata = { title: "Privacy — Factur" };
 export default function PrivacyPage() {
   return (
     <>
+      {/* design-ok: public page outside the app shell */}
       <h1 className="text-xl font-semibold">Privacy</h1>
       <p className="text-muted-foreground">Last updated 8 September 2026</p>
 

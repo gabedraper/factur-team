@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { myPermissions } from "@/lib/org";
 import { integrationsReport } from "@/actions/integrations";
 import { ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, SlidersHorizontal } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function IntegrationsPage() {
   if (report.problem) {
     return (
       <div className="p-6 max-w-3xl">
-        <h1 className="text-xl font-semibold">Integrations</h1>
+        <PageHeader title="Integrations" />
         <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {report.problem}
         </p>
@@ -65,14 +66,10 @@ export default async function IntegrationsPage() {
 
   return (
     <div className="space-y-8 p-6 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-semibold">Integrations</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Every tool this app reads from or writes to, what it takes, what it
-          deliberately leaves out, and when it last ran. Read from the running
-          system rather than written down, so it stays true as things change.
-        </p>
-      </div>
+      <PageHeader
+        title="Integrations"
+        description="Every tool this app reads from or writes to, what it takes, what it deliberately leaves out, and when it last ran. Read from the running system rather than written down, so it stays true as things change."
+      />
 
       {/* Anything actually wrong, before anything merely informative. */}
       {(report.failing.length > 0 || report.undocumented.length > 0) && (

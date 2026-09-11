@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -70,24 +69,15 @@ export default async function ClientActivitiesPage({
 
   return (
     <div className="max-w-5xl space-y-4 p-6">
-      <div>
-        <Link
-          href="/clients/health"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Client Health
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">
-          {(client as any).name}
+      <PageHeader
+        back={{ href: "/clients/health", label: "Client Health" }}
+        title={<>{(client as any).name}
           <span className="ml-2 font-normal text-muted-foreground">
             {monthLabel.format(new Date(`${start}T00:00:00Z`))}
-          </span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-          {activities.length.toLocaleString()} activities
-          {activities.length === 2000 && " (first 2,000)"}
-        </p>
-      </div>
+          </span></>}
+        description={<>{activities.length.toLocaleString()} activities
+          {activities.length === 2000 && " (first 2,000)"}</>}
+      />
 
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">

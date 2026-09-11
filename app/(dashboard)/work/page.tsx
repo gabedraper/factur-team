@@ -5,6 +5,7 @@ import { WorkRows } from "@/components/work/WorkRows";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
 import type { WorkItem } from "@/lib/work";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -54,13 +55,13 @@ export default async function WorkPage() {
   return (
     <div className="max-w-5xl space-y-4 p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold">My work</h1>
-          <Link href="/work/browse" className="text-sm text-muted-foreground hover:text-foreground">
+        <PageHeader
+          title="My work"
+          actions={<><Link href="/work/browse" className="text-sm text-muted-foreground hover:text-foreground">
             Spaces
           </Link>
-          <span className="text-xs tabular-nums text-muted-foreground">{total} open</span>
-        </div>
+          <span className="text-xs tabular-nums text-muted-foreground">{total} open</span></>}
+        />
         {sync?.finishedAt && (
           <span className="text-xs tabular-nums text-muted-foreground">
             synced{" "}

@@ -19,6 +19,7 @@ import { getViewerRepId } from "@/lib/scoreboard/viewer";
 import { companyAverageSplit } from "@/lib/scoreboard/leaderboard-average";
 import { Avatar } from "@/components/ui/thumbnail";
 import { repAvatars } from "@/lib/org";
+import { PageHeader } from "@/components/ui/page-header";
 
 const MIN_OPPORTUNITIES_TO_RANK = 5;
 const RETENTION_DEAL_TYPES = ["Renewed Client", "Lost Client", "Early Terminated Client"] as const;
@@ -230,10 +231,10 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Retention</h1>
-          <p className="text-sm text-slate-500">Renewed, lost, and early-terminated clients per person</p>
-        </div>
+        <PageHeader
+          title="Retention"
+          description="Renewed, lost, and early-terminated clients per person"
+        />
         <div className="flex gap-2">
           {RETENTION_PERIODS.map((p) => (
             <Link

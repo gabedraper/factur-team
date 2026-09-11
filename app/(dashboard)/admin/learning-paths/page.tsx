@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Map, Pencil, Trash2, BookOpen, X } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Course {
   id: string;
@@ -196,12 +197,10 @@ export default function LearningPathsPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Learning Paths</h1>
-          <p className="text-muted-foreground mt-1">
-            Organize courses into role-based learning paths
-          </p>
-        </div>
+        <PageHeader
+          title="Learning Paths"
+          description="Organize courses into role-based learning paths"
+        />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button>

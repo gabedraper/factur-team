@@ -18,6 +18,7 @@ import {
   addRoleCourse,
   removeRoleCourse,
 } from "@/actions/role-training";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Course {
   id: string;
@@ -73,12 +74,11 @@ export default function RoleTrainingPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Role Training</h1>
-        <p className="text-muted-foreground mt-1">
-          Assign courses to each role — members see their assigned courses automatically when they log in.
-        </p>
-      </div>
+      <PageHeader
+        title="Role Training"
+        description="Assign courses to each role — members see their assigned courses automatically when they log in."
+        className="mb-8"
+      />
 
       {message && (
         <div className={`mb-6 p-3 rounded-md text-sm ${message.type === "success" ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>

@@ -1,9 +1,8 @@
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { spaces } from "@/actions/work-tree";
 import { ContainerRows } from "@/components/work/ContainerRows";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -24,15 +23,7 @@ export default async function BrowsePage() {
 
   return (
     <div className="max-w-4xl space-y-4 p-6">
-      <div>
-        <Link
-          href="/work"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> My work
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">Spaces</h1>
-      </div>
+      <PageHeader back={{ href: "/work", label: "My work" }} title="Spaces" />
 
       <div className="rounded-lg border bg-card px-3 py-1">
         <ContainerRows items={items} />

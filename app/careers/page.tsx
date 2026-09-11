@@ -44,6 +44,7 @@ export default async function CareersPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
+      {/* design-ok: public page outside the app shell */}
       <h1 className="text-3xl font-semibold tracking-tight">
         {careers.heading || "Open roles"}
       </h1>

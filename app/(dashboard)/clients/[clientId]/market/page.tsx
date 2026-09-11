@@ -6,6 +6,7 @@ import { NoAccess } from "@/components/no-access";
 import { Chip } from "@/components/pipeline/bits";
 import { MarketReportView } from "@/components/clients/MarketReport";
 import { getMarketReport } from "@/lib/market/report";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -44,15 +45,15 @@ export default async function ClientMarketPage({
         {report.client.name}
       </Link>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-heading text-xl font-semibold">Market</h1>
-        <Chip colour="slate">Census {report.vintage}</Chip>
+      <PageHeader
+        title="Market"
+        actions={<><Chip colour="slate">Census {report.vintage}</Chip>
         {report.computedAt && (
           <span className="text-xs text-muted-foreground">
             {asOf.format(new Date(report.computedAt))}
           </span>
-        )}
-      </div>
+        )}</>}
+      />
 
       {report.markets.length === 0 ? (
         <p className="text-sm text-muted-foreground">

@@ -21,9 +21,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ClipboardList, Plus, Trash2, Calendar, Search } from "lucide-react";
+import { ClipboardList, Plus, Trash2, Search } from "lucide-react";
 import { roleLabelsAction } from "@/actions/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Enrollment {
   id: string;
@@ -140,12 +141,10 @@ export default function AdminEnrollmentsPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Enrollments</h1>
-          <p className="text-muted-foreground mt-1">
-            Enroll users into courses and set completion deadlines
-          </p>
-        </div>
+        <PageHeader
+          title="Enrollments"
+          description="Enroll users into courses and set completion deadlines"
+        />
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>

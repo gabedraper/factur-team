@@ -49,6 +49,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
   return (
     <main className="mx-auto max-w-3xl px-6 py-14">
       <header>
+        {/* design-ok: public page outside the app shell */}
         <h1 className="text-2xl font-semibold tracking-tight">{view.job?.title ?? "Candidates"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {[view.job?.company, place(view.job?.city, view.job?.state)]

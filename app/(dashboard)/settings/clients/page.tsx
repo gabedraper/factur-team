@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { myPermissions, listMembers, listPodsAndClients } from "@/lib/org";
 import { ClientsScreen } from "@/components/settings/ClientsScreen";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +15,7 @@ export default async function ClientsPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <Link href="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Settings
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">Clients</h1>
-      </div>
+      <PageHeader back={{ href: "/settings", label: "Settings" }} title="Clients" />
       <ClientsScreen clients={clients} teams={teams} members={members} />
     </div>
   );

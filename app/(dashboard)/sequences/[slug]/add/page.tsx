@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { contactCandidates } from "@/actions/sequence-audience";
 import { AddContacts } from "@/components/sequences/AddContacts";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +19,7 @@ export default async function AddContactsPage({
 
   return (
     <div className="max-w-5xl space-y-4 p-6">
-      <div>
-        <Link
-          href={`/sequences/${slug}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" /> Back
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">Add contacts</h1>
-      </div>
+      <PageHeader back={{ href: `/sequences/${slug}`, label: "Back" }} title="Add contacts" />
       <AddContacts slug={slug} contacts={contacts} />
     </div>
   );

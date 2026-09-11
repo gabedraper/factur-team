@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Users, BookOpen, Map, Award } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -56,10 +57,7 @@ export default async function AdminDashboard() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of your LMS</p>
-      </div>
+      <PageHeader title="Admin Dashboard" description="Overview of your LMS" className="mb-8" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => (

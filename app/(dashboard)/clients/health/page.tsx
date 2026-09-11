@@ -5,6 +5,7 @@ import { HealthTable } from "@/components/clients/HealthTable";
 import { terciles } from "@/lib/clients/health-score";
 import { myPermissions, clientDomains, clientStrategists } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,9 @@ export default async function ClientHealthPage({
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-xl font-semibold">Client Health</h1>
-        {scope.canSeeAll && (
+      <PageHeader
+        title="Client Health"
+        actions={<>{scope.canSeeAll && (
           <div className="flex overflow-hidden rounded-md border text-sm">
             {([
               ["mine", "My Clients", false],
@@ -77,8 +78,8 @@ export default async function ClientHealthPage({
               </Link>
             ))}
           </div>
-        )}
-      </div>
+        )}</>}
+      />
       <HealthTable
         clients={shown}
         perfBands={perfBands}

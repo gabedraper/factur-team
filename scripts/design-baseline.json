@@ -1,200 +1,53 @@
 {
-  "app/(dashboard)/admin/courses/[courseId]/page.tsx": {
-    "hand-h1": 2
-  },
   "app/(dashboard)/admin/courses/page.tsx": {
-    "hand-h1": 1,
     "raw-shadow": 1
   },
   "app/(dashboard)/admin/enrollments/page.tsx": {
-    "bare-table": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/admin/learning-paths/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/admin/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/admin/role-training/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/admin/weights/page.tsx": {
-    "hand-h1": 1
+    "bare-table": 1
   },
   "app/(dashboard)/clients/[clientId]/activities/page.tsx": {
-    "bare-table": 1,
-    "hand-h1": 1
+    "bare-table": 1
   },
   "app/(dashboard)/clients/[clientId]/leads/page.tsx": {
-    "bare-table": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/clients/[clientId]/market/page.tsx": {
-    "hand-h1": 1
+    "bare-table": 1
   },
   "app/(dashboard)/clients/[clientId]/page.tsx": {
-    "card-recipe": 4,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/clients/health/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/clients/nps/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/clients/nps/send/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 4
   },
   "app/(dashboard)/clients/results/[clientId]/page.tsx": {
-    "bare-table": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/clients/results/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/collections/ar/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/collections/invoices/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/collections/page.tsx": {
-    "hand-h1": 2
-  },
-  "app/(dashboard)/error.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/gaib/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/gaib/transcripts/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/instructor/courses/[courseId]/lessons/[lessonId]/edit/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/instructor/courses/[courseId]/page.tsx": {
-    "hand-h1": 2
-  },
-  "app/(dashboard)/instructor/courses/new/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/instructor/courses/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/instructor/page.tsx": {
-    "hand-h1": 1
+    "bare-table": 1
   },
   "app/(dashboard)/integrations/page.tsx": {
     "bare-table": 5,
-    "card-recipe": 1,
-    "hand-h1": 2
-  },
-  "app/(dashboard)/leaderboard/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 1
   },
   "app/(dashboard)/learner/certificates/page.tsx": {
-    "bg-white": 1,
-    "hand-h1": 1
+    "bg-white": 1
   },
   "app/(dashboard)/learner/courses/[courseId]/lessons/[lessonId]/page.tsx": {
-    "bg-white": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/learner/courses/[courseId]/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/learner/page.tsx": {
-    "hand-h1": 1
+    "bg-white": 1
   },
   "app/(dashboard)/opportunities/my/[clientId]/page.tsx": {
     "bare-table": 1
   },
-  "app/(dashboard)/progress/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/progress/person/[userId]/page.tsx": {
-    "hand-h1": 1
-  },
   "app/(dashboard)/scoreboard/deals/page.tsx": {
-    "bg-white": 1,
-    "hand-h1": 1
+    "bg-white": 1
   },
   "app/(dashboard)/scoreboard/hustle-points/[repId]/activities/page.tsx": {
-    "bg-white": 1,
-    "hand-h1": 1
+    "bg-white": 1
   },
   "app/(dashboard)/scoreboard/hustle-points/page.tsx": {
     "bg-white": 1,
-    "hand-h1": 1,
     "raw-shadow": 2
   },
   "app/(dashboard)/scoreboard/retention/page.tsx": {
-    "bg-white": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/sequences/[slug]/add/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/sequences/[slug]/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/sequences/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/agents/coding/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/agents/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/agreements/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/clients/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/dialpad/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/google/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/nps/page.tsx": {
-    "hand-h1": 1
+    "bg-white": 1
   },
   "app/(dashboard)/settings/page.tsx": {
-    "card-recipe": 18,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/people/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/performance/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/quickbooks/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/roles/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/salesforce/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/sequences/[slug]/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 18
   },
   "app/(dashboard)/settings/sequences/page.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/services/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/(dashboard)/settings/teams/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 1
   },
   "app/(dashboard)/talent/campaigns/[campaignId]/page.tsx": {
     "bare-table": 1,
@@ -224,8 +77,7 @@
   },
   "app/(dashboard)/talent/people/[personId]/page.tsx": {
     "bare-table": 1,
-    "card-recipe": 1,
-    "hand-h1": 2
+    "card-recipe": 1
   },
   "app/(dashboard)/talent/pipeline/page.tsx": {
     "bare-table": 1
@@ -239,45 +91,19 @@
     "card-recipe": 1
   },
   "app/(dashboard)/work/[slug]/page.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
+    "card-recipe": 1
   },
   "app/(dashboard)/work/browse/[containerId]/page.tsx": {
-    "card-recipe": 2,
-    "hand-h1": 1
+    "card-recipe": 2
   },
   "app/(dashboard)/work/browse/page.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
+    "card-recipe": 1
   },
   "app/(dashboard)/work/page.tsx": {
-    "card-recipe": 4,
-    "hand-h1": 1
-  },
-  "app/careers/[slug]/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/careers/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/error.tsx": {
-    "hand-h1": 1
-  },
-  "app/legal/privacy/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/legal/support/page.tsx": {
-    "hand-h1": 1
-  },
-  "app/legal/terms/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 4
   },
   "app/portal/[token]/page.tsx": {
-    "card-recipe": 1,
-    "hand-h1": 1
-  },
-  "app/unauthorized/page.tsx": {
-    "hand-h1": 1
+    "card-recipe": 1
   },
   "components/clients/AgreementPanel.tsx": {
     "card-recipe": 2
@@ -332,9 +158,6 @@
   "components/gaib/gaib-widget.tsx": {
     "raw-shadow": 1
   },
-  "components/no-access.tsx": {
-    "hand-h1": 1
-  },
   "components/nps/NpsDashboard.tsx": {
     "bare-table": 3,
     "card-recipe": 5
@@ -345,9 +168,6 @@
   "components/nps/NpsReadiness.tsx": {
     "bare-table": 1,
     "card-recipe": 3
-  },
-  "components/nps/NpsResponseForm.tsx": {
-    "hand-h1": 1
   },
   "components/pipeline/TargetAccounts.tsx": {
     "bare-table": 1,

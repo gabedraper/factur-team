@@ -103,6 +103,7 @@ export function NpsResponseForm({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center gap-8 px-6 py-16">
+      {/* design-ok: public survey page outside the app shell */}
       <h1 className="text-xl font-medium leading-snug sm:text-2xl">
         How likely are you to recommend Factur to a friend or colleague?
       </h1>

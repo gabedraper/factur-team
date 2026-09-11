@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import RichTextEditor from "@/components/rich-text-editor";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface QuizQuestion {
   question: string;
@@ -165,7 +166,7 @@ export default function LessonEditPage() {
             Back to Course
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Edit Lesson</h1>
+        <PageHeader title="Edit Lesson" />
       </div>
 
       <div className="space-y-6">

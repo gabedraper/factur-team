@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCourseProgress } from "@/lib/progress";
 import { GraduationCap } from "lucide-react";
 import { getCourseGradientStyle } from "@/lib/course-colors";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function LearnerDashboard() {
   const supabase = await createClient();
@@ -68,12 +69,11 @@ export default async function LearnerDashboard() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">My Training</h1>
-        <p className="text-muted-foreground mt-1">
-          {coursesWithProgress.length} course{coursesWithProgress.length !== 1 ? "s" : ""} assigned
-        </p>
-      </div>
+      <PageHeader
+        title="My Training"
+        description={<>{coursesWithProgress.length} course{coursesWithProgress.length !== 1 ? "s" : ""} assigned</>}
+        className="mb-8"
+      />
 
       {coursesWithProgress.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">

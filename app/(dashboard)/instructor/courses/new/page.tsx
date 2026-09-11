@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function NewCoursePage() {
   const [error, setError] = useState("");
@@ -48,7 +49,7 @@ export default function NewCoursePage() {
             Back to Courses
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">New Course</h1>
+        <PageHeader title="New Course" />
         <p className="text-muted-foreground mt-1">Create a new course</p>
       </div>
 

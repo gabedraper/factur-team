@@ -3,6 +3,7 @@ import { myPermissions } from "@/lib/org";
 import { getCodingSettings } from "@/actions/gaib-admin";
 import { DANGER, AUTO_MAX_FILES, AUTO_MAX_LINES } from "@/lib/gaib/danger";
 import { CodingRules } from "@/components/settings/CodingRules";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function CodingAgentPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <h1 className="text-xl font-semibold">Coding agent</h1>
+      <PageHeader title="Coding agent" />
       <CodingRules
         settings={settings}
         ceiling={{ files: AUTO_MAX_FILES, lines: AUTO_MAX_LINES }}

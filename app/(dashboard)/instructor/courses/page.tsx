@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function InstructorCoursesPage() {
   const supabase = await createClient();
@@ -26,12 +27,7 @@ export default async function InstructorCoursesPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">My Courses</h1>
-          <p className="text-muted-foreground mt-1">
-            {courses?.length ?? 0} courses
-          </p>
-        </div>
+        <PageHeader title="My Courses" description={<>{courses?.length ?? 0} courses</>} />
         <Button asChild>
           <Link href="/instructor/courses/new">
             <Plus className="h-4 w-4 mr-2" />

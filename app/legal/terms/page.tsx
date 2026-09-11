@@ -3,6 +3,7 @@ export const metadata = { title: "Terms of use — Factur" };
 export default function TermsPage() {
   return (
     <>
+      {/* design-ok: public page outside the app shell */}
       <h1 className="text-xl font-semibold">Terms of use</h1>
       <p className="text-muted-foreground">Last updated 8 September 2026</p>
 

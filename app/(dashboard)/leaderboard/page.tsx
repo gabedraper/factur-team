@@ -3,6 +3,7 @@ import { getAuthedUser } from "@/lib/supabase/session";
 import { roleLabelsForUsers } from "@/lib/org";
 import { Trophy, Medal } from "lucide-react";
 import { Avatar } from "@/components/ui/thumbnail";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function LeaderboardPage() {
   const supabase = createServiceClient();
@@ -56,10 +57,7 @@ export default async function LeaderboardPage() {
     <div className="p-8 max-w-3xl">
       <div className="mb-8 flex items-center gap-3">
         <Trophy className="h-8 w-8 text-yellow-500" />
-        <div>
-          <h1 className="text-3xl font-bold">Leaderboard</h1>
-          <p className="text-muted-foreground mt-0.5">Ranked by lessons completed</p>
-        </div>
+        <PageHeader title="Leaderboard" description="Ranked by lessons completed" />
       </div>
 
       {rows.length === 0 ? (

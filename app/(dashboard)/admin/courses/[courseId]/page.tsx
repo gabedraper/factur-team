@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, Pencil, FileText } from "lucide-react";
 import { getCourseGradientStyle } from "@/lib/course-colors";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function AdminCourseDetailPage({
   params,
@@ -58,18 +59,20 @@ export default async function AdminCourseDetailPage({
 
       {/* Course hero */}
       <div className="h-40 rounded-xl mb-8 flex items-end p-6" style={getCourseGradientStyle((await params).courseId)}>
+        {/* design-ok: title printed over the cover image */}
         <h1 className="text-3xl font-bold text-white drop-shadow">{course.title}</h1>
       </div>
 
       {/* Course header */}
       <div className="flex items-start justify-between gap-4 mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold">{course.title}</h1>
-            <Badge variant={course.is_published ? "default" : "secondary"}>
+          <PageHeader
+            title={course.title}
+            actions={<Badge variant={course.is_published ? "default" : "secondary"}>
               {course.is_published ? "Published" : "Draft"}
-            </Badge>
-          </div>
+            </Badge>}
+            className="mb-1"
+          />
           {course.description && (
             <p className="text-muted-foreground">{course.description}</p>
           )}

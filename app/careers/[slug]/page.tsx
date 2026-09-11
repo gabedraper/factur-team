@@ -28,6 +28,7 @@ export default async function CareersJobPage({ params }: { params: Promise<{ slu
         ← All roles
       </Link>
 
+      {/* design-ok: public page outside the app shell */}
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">{job.title}</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {[

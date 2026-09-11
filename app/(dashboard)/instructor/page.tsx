@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Users } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function InstructorDashboard() {
   const supabase = await createClient();
@@ -29,10 +30,7 @@ export default async function InstructorDashboard() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Instructor Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Manage your courses</p>
-        </div>
+        <PageHeader title="Instructor Dashboard" description="Manage your courses" />
         <Button asChild>
           <Link href="/instructor/courses/new">
             <Plus className="h-4 w-4 mr-2" />

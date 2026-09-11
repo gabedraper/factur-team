@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { Transcript } from "@/components/gaib/transcript";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -64,10 +65,10 @@ export default async function TranscriptsPage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-xl font-semibold">Conversations</h1>
-        <span className="text-sm text-muted-foreground">{sessions.length}</span>
-      </div>
+      <PageHeader
+        title="Conversations"
+        count={sessions.length}
+      />
 
       <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
         <div className="max-h-[75vh] space-y-1 overflow-y-auto pr-1">

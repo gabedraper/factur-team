@@ -1,6 +1,7 @@
 export default function UnauthorizedPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-4 text-center">
+      {/* design-ok: public page outside the app shell */}
       <h1 className="text-xl font-semibold">Not a Factur account</h1>
       <p className="max-w-sm text-sm text-muted-foreground">
         This site is only available to @bethefactur.com and @facturmfg.com

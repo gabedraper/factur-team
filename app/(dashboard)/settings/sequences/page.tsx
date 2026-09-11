@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { myPermissions } from "@/lib/org";
 import { createServiceClient } from "@/lib/supabase/server";
 import { NewSequence } from "@/components/sequences/NewSequence";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,10 @@ export default async function SequencesPage() {
 
   return (
     <div className="p-6 space-y-4 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">Sequences</h1>
-        {perms.has("org.manage") && <div className="ml-auto"><NewSequence /></div>}
-      </div>
+      <PageHeader
+        title="Sequences"
+        actions={<>{perms.has("org.manage") && <div className="ml-auto"><NewSequence /></div>}</>}
+      />
 
       <div className="overflow-hidden rounded-md border bg-card">
         {rows.map((s) => (

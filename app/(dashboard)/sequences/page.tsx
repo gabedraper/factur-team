@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { myPermissions } from "@/lib/org";
 import { listSequences } from "@/actions/sequence-audience";
 import { SequenceList } from "@/components/sequences/SequenceList";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function SequencesPage() {
 
   return (
     <div className="max-w-4xl space-y-4 p-6">
-      <h1 className="text-xl font-semibold">Sequences</h1>
+      <PageHeader title="Sequences" />
       <SequenceList sequences={sequences} />
     </div>
   );

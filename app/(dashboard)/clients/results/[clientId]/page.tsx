@@ -7,6 +7,7 @@ import {
 import { ServicePeriods } from "@/components/clients/ServicePeriods";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -166,7 +167,7 @@ export default async function ClientResultPage({
         <Link href="/clients/results" className="text-sm text-muted-foreground hover:underline">
           Client Results
         </Link>
-        <h1 className="text-xl font-semibold">{client.name}</h1>
+        <PageHeader title={client.name} />
         <span className="text-sm text-muted-foreground">{client.status ?? "—"}</span>
         {client.website && (
           <a

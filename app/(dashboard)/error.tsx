@@ -26,6 +26,7 @@ export default function DashboardError({
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-section">
       <div className="max-w-md rounded-md bg-card p-card text-center">
+        {/* design-ok: a centred error message, not a page header */}
         <h1 className="text-2xl font-semibold">This page couldn&apos;t load</h1>
         <p className="mt-2 text-body text-muted-foreground">
           Usually a slow moment on the database. Trying again normally works.

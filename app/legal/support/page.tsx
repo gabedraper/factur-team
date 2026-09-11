@@ -3,6 +3,7 @@ export const metadata = { title: "Support — Factur" };
 export default function SupportPage() {
   return (
     <>
+      {/* design-ok: public page outside the app shell */}
       <h1 className="text-xl font-semibold">Support</h1>
 
       <h2 className="pt-4 font-medium">Message Gaib</h2>

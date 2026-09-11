@@ -23,6 +23,7 @@ import { CollectionsSmsPanel } from "@/components/clients/CollectionsSmsPanel";
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { myPermissions, getClientDetail, listMembers } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -99,15 +100,16 @@ export default async function ClientPage({
         >
           <ChevronLeft className="h-4 w-4" /> Client Health
         </Link>
-        <div className="mt-1 flex flex-wrap items-baseline gap-3">
-          <h1 className="text-xl font-semibold">{(client as { name: string }).name}</h1>
-          <Link
+        <PageHeader
+          title={(client as { name: string }).name}
+          actions={<Link
             href={`/clients/${clientId}/market`}
             className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             Market
-          </Link>
-        </div>
+          </Link>}
+          className="mt-1"
+        />
       </div>
 
       {billing && <BillingSummary summary={billing} />}

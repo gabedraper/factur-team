@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus, Search, BookMarked, Users, CheckCircle2, User } from "lucide-react";
 import { createCourse, getCoursesWithStats } from "@/actions/courses";
 import { getCourseGradientStyle } from "@/lib/course-colors";
+import { PageHeader } from "@/components/ui/page-header";
 
 const ALPHABET = ["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
 
@@ -52,10 +53,7 @@ export default function AdminCoursesPage() {
     <div className="p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">All Courses</h1>
-          <p className="text-muted-foreground mt-1">{courses.length} courses total</p>
-        </div>
+        <PageHeader title="All Courses" description={<>{courses.length} courses total</>} />
         <Button onClick={handleCreate} disabled={creating}>
           <Plus className="h-4 w-4 mr-2" />
           {creating ? "Creating..." : "New Course"}

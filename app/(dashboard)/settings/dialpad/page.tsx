@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { myPermissions, listMembers } from "@/lib/org";
 import { listVoiceNumbers } from "@/actions/dialer";
 import { VoiceNumbers } from "@/components/settings/VoiceNumbers";
 import { Chip } from "@/components/pipeline/bits";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +23,13 @@ export default async function DialerSettingsPage() {
 
   return (
     <div className="p-6 space-y-4 max-w-4xl">
-      <div>
-        <Link href="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Settings
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold">Dialer</h1>
-        <p className="text-sm text-muted-foreground">
-          The click-to-dial widget on an Opportunity uses whichever provider below is configured
+      <PageHeader
+        back={{ href: "/settings", label: "Settings" }}
+        title="Dialer"
+        description={<>The click-to-dial widget on an Opportunity uses whichever provider below is configured
           &mdash; Telnyx first, then Twilio, then Dialpad&apos;s Mini Dialer once it&apos;s wired up.
-          Either way, what&apos;s below is the outbound number pool the widget rotates through.
-        </p>
-      </div>
+          Either way, what&apos;s below is the outbound number pool the widget rotates through.</>}
+      />
 
       <div className="space-y-2">
         <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">

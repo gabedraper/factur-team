@@ -14,6 +14,7 @@ import { BOARD_MASKING } from "@/lib/scoreboard/verification-mode";
 import { getViewerRepId } from "@/lib/scoreboard/viewer";
 import { Avatar } from "@/components/ui/thumbnail";
 import { repAvatars } from "@/lib/org";
+import { PageHeader } from "@/components/ui/page-header";
 
 const DEAL_TYPES = ["New Client Deal", "New Customer PO"] as const;
 
@@ -138,10 +139,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Deals</h1>
-          <p className="text-sm text-slate-500">New Customers closed per person</p>
-        </div>
+        <PageHeader title="Deals" description="New Customers closed per person" />
         <div className="flex gap-2">
           {DEAL_PERIODS.map((p) => (
             <Link

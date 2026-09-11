@@ -5,6 +5,7 @@ import { processWork, processesWithWork } from "@/actions/work";
 import { WorkRows } from "@/components/work/WorkRows";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,11 @@ export default async function ProcessBoardPage({
         >
           <ChevronLeft className="h-4 w-4" /> My work
         </Link>
-        <div className="mt-1 flex items-baseline justify-between">
-          <h1 className="text-xl font-semibold">{process?.name ?? slug}</h1>
-          <span className="text-xs tabular-nums text-muted-foreground">{items.length} open</span>
-        </div>
+        <PageHeader
+          title={process?.name ?? slug}
+          actions={<span className="text-xs tabular-nums text-muted-foreground">{items.length} open</span>}
+          className="mt-1"
+        />
       </div>
 
       <div className="rounded-lg border bg-card px-3 py-1">
