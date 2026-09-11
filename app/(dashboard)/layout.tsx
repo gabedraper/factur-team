@@ -290,12 +290,6 @@ export default async function DashboardLayout({
   const showWorkPanel = perms.has("timelines.view");
   /* Empty, cheaply, for anyone without the grant or before the first sync. */
   const work = await myWork();
-  const dialpadConfigured = Boolean(process.env.NEXT_PUBLIC_DIALPAD_CTI_CLIENT_ID);
-  const telnyxConfigured = Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_CREDENTIAL_ID);
-  const twilioConfigured = Boolean(
-    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID &&
-    process.env.TWILIO_API_KEY_SECRET && process.env.TWILIO_TWIML_APP_SID
-  );
 
   return (
     <div className="flex h-screen bg-background">
@@ -380,9 +374,6 @@ export default async function DashboardLayout({
         <WorkPanel
           work={work}
           showCalls={showWorkPanel}
-          dialpadConfigured={dialpadConfigured}
-          telnyxConfigured={telnyxConfigured}
-          twilioConfigured={twilioConfigured}
         />
       </DialerProvider>
     </div>

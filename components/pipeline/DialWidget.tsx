@@ -21,9 +21,11 @@ import { toE164 } from "@/lib/phone";
  * sent, from our own pool via claimOutboundNumber(), rather than anything
  * Dialpad decides.
  *
- * Lives in the work panel, not on the Opportunity page -- see
- * TelnyxDialWidget for why (useCallTarget instead of props is what lets the
- * iframe and an in-progress call survive navigation).
+ * Lives in the work panel, not on the Opportunity page. Who it's calling
+ * comes from useCallTarget() -- the Opportunity currently open, or whoever a
+ * call is already committed to -- rather than props, which is what lets the
+ * iframe and an in-progress call survive navigating away from the page that
+ * started it.
  *
  * Message shape is Dialpad's `opencti_dialpad` protocol -- see
  * developers.dialpad.com/docs/dialpad-mini-dialer. call_ringing firing with
@@ -137,12 +139,11 @@ export function DialWidget() {
     setError(null);
     setClaiming(true);
     try {
-      // Unlike Telnyx/Twilio, Dialpad already manages its own outbound
-      // caller ID -- the number/identity picker built into the Mini Dialer
-      // itself (visible at the top of the embed). There's nothing to
-      // require from our own pool here; claim one if it happens to exist
-      // (so the pool's usage stats stay meaningful) but don't block the
-      // call on it.
+      // Dialpad already manages its own outbound caller ID -- the
+      // number/identity picker built into the Mini Dialer itself (visible at
+      // the top of the embed). There's nothing to require from our own pool
+      // here; claim one if it happens to exist (so the pool's usage stats
+      // stay meaningful) but don't block the call on it.
       const claimed = await claimOutboundNumber("dialpad");
       const outboundCallerId = claimed.ok ? claimed.e164 : null;
       const isAdHoc = Boolean(overrideNumber);

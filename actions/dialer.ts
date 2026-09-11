@@ -1,25 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import twilio from "twilio";
 import { createClient } from "@/lib/supabase/server";
 import { currentMemberId, myPermissions } from "@/lib/org";
 import { assertPipeline } from "@/lib/pipeline/access";
 
-export type VoiceProvider = "dialpad" | "twilio" | "telnyx";
+export type VoiceProvider = "dialpad";
 
 /**
- * The dialer's own server-side surface, shared across whichever voice
- * provider is actually wired up.
+ * The dialer's own server-side surface.
  *
- * Dialpad: placing and hanging up a call happens entirely client-side, by
- * posting messages into the embedded Mini Dialer iframe -- nothing here
- * talks to Dialpad for that. Twilio: the browser holds a real WebRTC call
- * via the Voice SDK, authenticated with the access token this file issues;
- * the actual dial-out happens when Twilio's servers hit
- * app/api/twilio/voice, not here either. What's genuinely ours either way is
- * picking which reserved number a call goes out from, and provisioning that
- * pool -- see voice_numbers / claim_voice_number.
+ * Placing and hanging up a call happens entirely client-side, by posting
+ * messages into Dialpad's embedded Mini Dialer iframe -- nothing here talks
+ * to Dialpad for that. What's genuinely ours is picking which reserved number
+ * a call goes out from, and provisioning that pool -- see voice_numbers /
+ * claim_voice_number.
  */
 
 export async function claimOutboundNumber(
@@ -64,6 +59,9 @@ export async function listVoiceNumbers(): Promise<VoiceNumberRow[]> {
   const { data, error } = await supabase
     .from("voice_numbers")
     .select("id,e164,label,provider,assigned_member_id,status,last_used_at,calls_placed,org_members(full_name)")
+    // voice_numbers still holds a Telnyx number from before Dialpad was the
+    // only dialer. Nothing claims it any more, so it isn't part of the pool.
+    .eq("provider", "dialpad")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`Could not load the number pool: ${error.message}`);
 
@@ -112,126 +110,6 @@ export async function setVoiceNumberStatus(id: string, status: "active" | "pause
 }
 
 /**
- * A short-lived token authenticating the current rep's browser to Twilio's
- * Voice SDK. Identity is their member id, not name/email -- Twilio uses it
- * to route inbound calls and shows up in call logs, and a member id is
- * stable across a name change in a way "Jane Doe" isn't.
- *
- * Requires TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET and
- * TWILIO_TWIML_APP_SID. Returns null (rather than throwing) when they're not
- * set, so the widget can render its own "not connected" state.
- */
-export async function getTwilioVoiceToken(): Promise<
-  { ok: true; token: string | null } | { ok: false; error: string }
-> {
-  try {
-    await assertPipeline("view");
-    const { TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID } = process.env;
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) {
-      return { ok: true, token: null };
-    }
-
-    const me = await currentMemberId();
-    if (!me) return { ok: false, error: "Not signed in as a Factur member." };
-
-    const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
-
-    const token = new AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: me });
-    token.addGrant(new VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
-    return { ok: true, token: token.toJwt() };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not get a Twilio voice token." };
-  }
-}
-
-/**
- * Same job as getTwilioVoiceToken, for Telnyx -- but Telnyx has no
- * in-process JWT signing helper, this is a real REST call to their API
- * (POST /v2/telephony_credentials/{id}/token) using TELNYX_API_KEY, scoped
- * to a credential you create once in the Telnyx portal or API
- * (TELNYX_CREDENTIAL_ID). The credential is the identity the token proves --
- * unlike Twilio, there's no per-rep `identity` param here, so every rep
- * currently authenticates as the same credential. Fine for now; if per-rep
- * call attribution in Telnyx's own logs ever matters, that needs one
- * credential per rep instead of one shared one.
- *
- * Response shape is documented inconsistently (a bare JWT string in some
- * examples, {"data":{"token":...}} in others going by Telnyx's usual v2
- * envelope) -- handled defensively below rather than assumed, and worth
- * confirming against the real response the first time this actually runs.
- */
-export async function getTelnyxVoiceToken(): Promise<
-  { ok: true; token: string | null } | { ok: false; error: string }
-> {
-  try {
-    await assertPipeline("view");
-    const { TELNYX_API_KEY, TELNYX_CREDENTIAL_ID } = process.env;
-    if (!TELNYX_API_KEY || !TELNYX_CREDENTIAL_ID) return { ok: true, token: null };
-
-    const res = await fetch(`https://api.telnyx.com/v2/telephony_credentials/${TELNYX_CREDENTIAL_ID}/token`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
-      body: "{}",
-    });
-    if (!res.ok) return { ok: false, error: `Could not get a Telnyx token: ${res.status} ${await res.text()}` };
-
-    const text = await res.text();
-    try {
-      const parsed = JSON.parse(text) as { data?: { token?: string } | string; token?: string };
-      if (typeof parsed.data === "string") return { ok: true, token: parsed.data };
-      if (typeof parsed.data === "object" && parsed.data?.token) return { ok: true, token: parsed.data.token };
-      if (typeof parsed.token === "string") return { ok: true, token: parsed.token };
-    } catch {
-      // Not JSON -- the bare-JWT-string response shape.
-    }
-    return { ok: true, token: text.trim() || null };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not get a Telnyx token." };
-  }
-}
-
-/**
- * Sends one SMS via Telnyx's Messages API, from a number claimed out of the
- * same pool a call would use.
- *
- * Requires TELNYX_MESSAGING_PROFILE_ID -- the pool's numbers are provisioned
- * for voice, and Telnyx also needs each one attached to a Messaging Profile
- * (set up once in the portal) before it can send.
- *
- * Returns a result rather than throwing -- Next redacts a thrown Server
- * Action error's message in production (the client gets a generic
- * "Minified React error" and a digest; the real text only reaches the
- * server log), so a thrown error here would never actually reach the
- * widget. Everything that can fail, including assertPipeline/
- * claimOutboundNumber below, is caught and turned into { ok: false }.
- */
-export async function sendSms(to: string, body: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  try {
-    await assertPipeline("view");
-    const { TELNYX_API_KEY, TELNYX_MESSAGING_PROFILE_ID } = process.env;
-    if (!TELNYX_API_KEY || !TELNYX_MESSAGING_PROFILE_ID) {
-      return { ok: false, error: "Texting isn't configured yet — needs TELNYX_MESSAGING_PROFILE_ID." };
-    }
-
-    const claimed = await claimOutboundNumber("telnyx");
-    if (!claimed.ok) return { ok: false, error: claimed.error };
-    const from = claimed.e164;
-    if (!from) return { ok: false, error: "No active outbound numbers in the pool — add one in Dialer settings." };
-
-    const res = await fetch("https://api.telnyx.com/v2/messages", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TELNYX_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, text: body, messaging_profile_id: TELNYX_MESSAGING_PROFILE_ID }),
-    });
-    if (!res.ok) return { ok: false, error: `Could not send that text: ${res.status} ${await res.text()}` };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not send that text." };
-  }
-}
-
-/**
  * Sends one SMS via Dialpad's own Messages API -- a different product from
  * the Mini Dialer CTI embedded elsewhere in this app, which has no
  * server-callable send of its own. Requires DIALPAD_API_KEY, a static key
@@ -239,8 +117,7 @@ export async function sendSms(to: string, body: string): Promise<{ ok: true } | 
  * ID/Secret the Mini Dialer's CTI app was issued -- that's a different
  * credential for a different product) and, per Dialpad's own docs,
  * "business messaging" registered on the account before this endpoint will
- * accept anything -- a one-time portal step, same idea as Telnyx's
- * messaging profile.
+ * accept anything -- a one-time portal step.
  *
  * DIALPAD_SMS_USER_ID picks which licensed Dialpad user the text is sent
  * as; DIALPAD_SMS_FROM_NUMBER picks which of that user's numbers it goes

@@ -6,8 +6,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialWidget } from "@/components/pipeline/DialWidget";
-import { TwilioDialWidget } from "@/components/pipeline/TwilioDialWidget";
-import { TelnyxDialWidget } from "@/components/pipeline/TelnyxDialWidget";
 import { GaibWidget } from "@/components/gaib/gaib-widget";
 import { RailWork } from "@/components/work/RailWork";
 import { useCallActive } from "@/lib/calls/active";
@@ -41,12 +39,9 @@ const DEFAULT_WIDTH = 480;
  * everything else in this panel: it's work you reach for from any page.
  */
 export function WorkPanel({
-  showCalls, dialpadConfigured, telnyxConfigured, twilioConfigured, work = [],
+  showCalls, work = [],
 }: {
   showCalls: boolean;
-  dialpadConfigured: boolean;
-  telnyxConfigured: boolean;
-  twilioConfigured: boolean;
   /** Open ClickUp work assigned to the viewer. Empty until the mirror runs. */
   work?: WorkItem[];
 }) {
@@ -203,18 +198,7 @@ export function WorkPanel({
           />
           {!collapsed && !callsShut && (
             <div>
-              {/* Dialpad first: it's the provider that's actually cleared for
-                  outbound calling. Telnyx and Twilio stay wired up underneath
-                  in case that changes. */}
-              {dialpadConfigured ? (
-                <DialWidget />
-              ) : telnyxConfigured ? (
-                <TelnyxDialWidget />
-              ) : twilioConfigured ? (
-                <TwilioDialWidget />
-              ) : (
-                <DialWidget />
-              )}
+              <DialWidget />
             </div>
           )}
         </div>

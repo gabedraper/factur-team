@@ -8,26 +8,21 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Chip } from "@/components/pipeline/bits";
-import { addVoiceNumber, setVoiceNumberStatus, type VoiceNumberRow, type VoiceProvider } from "@/actions/dialer";
+import { addVoiceNumber, setVoiceNumberStatus, type VoiceNumberRow } from "@/actions/dialer";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 const STATUS_COLOUR = { active: "emerald", paused: "slate", flagged: "rose" } as const;
-const PROVIDER_LABEL: Record<VoiceProvider, string> = { dialpad: "Dialpad", twilio: "Twilio", telnyx: "Telnyx" };
 
 /**
- * The pool click-to-dial rotates through, provisioned by hand, for
- * whichever provider is actually placing calls right now.
+ * The pool click-to-dial rotates through, provisioned by hand.
  *
- * "Provisioning" here means recording a number this app already reserves on
- * that provider's own console — this form doesn't buy or reserve anything
- * there, it just registers the pool for rotation. Buying the number itself
- * still happens on the provider's side (Twilio numbers specifically have to
- * be Twilio-owned or separately verified, or Dial's callerId rejects them).
+ * "Provisioning" here means recording a number already reserved in Dialpad —
+ * this form doesn't buy or reserve anything there, it just registers the pool
+ * for rotation. Buying the number itself still happens on Dialpad's side.
  */
 export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; members: { id: string; full_name: string | null; email: string }[] }) {
   const [rows, setRows] = useState(numbers);
   const [e164, setE164] = useState("");
-  const [provider, setProvider] = useState<VoiceProvider>("telnyx");
   const [label, setLabel] = useState("");
   const [assignee, setAssignee] = useState<string>("shared");
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +37,7 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
     start(async () => {
       const result = await addVoiceNumber({
         e164: e164.trim(),
-        provider,
+        provider: "dialpad",
         label: label.trim() || null,
         assigned_member_id: assignee === "shared" ? null : assignee,
       });
@@ -54,7 +49,7 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
         {
           id: crypto.randomUUID(),
           e164: e164.trim(),
-          provider,
+          provider: "dialpad",
           label: label.trim() || null,
           assigned_member_id: assignee === "shared" ? null : assignee,
           assigned_member_name: assignee === "shared" ? null : members.find((m) => m.id === assignee)?.full_name ?? null,
@@ -87,17 +82,6 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
         <div>
-          <label className="text-xs text-muted-foreground">Provider</label>
-          <Select value={provider} onValueChange={(v) => setProvider(v as VoiceProvider)}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="telnyx">Telnyx</SelectItem>
-              <SelectItem value="twilio">Twilio</SelectItem>
-              <SelectItem value="dialpad">Dialpad</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
           <label className="text-xs text-muted-foreground">Number</label>
           <Input value={e164} onChange={(e) => setE164(e.target.value)} placeholder="+14155551234" className="w-40" />
         </div>
@@ -124,7 +108,6 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
         <THead>
           <TR>
             <TH>Number</TH>
-            <TH>Provider</TH>
             <TH>Assigned to</TH>
             <TH>Calls placed</TH>
             <TH>Last used</TH>
@@ -135,7 +118,6 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
           {rows.map((r) => (
             <TR key={r.id}>
               <TD className="tabular-nums">{r.e164}{r.label && <span className="ml-2 text-xs text-muted-foreground">{r.label}</span>}</TD>
-              <TD className="text-muted-foreground">{PROVIDER_LABEL[r.provider]}</TD>
               <TD className="text-muted-foreground">{r.assigned_member_name ?? "Shared pool"}</TD>
               <TD className="tabular-nums">{r.calls_placed}</TD>
               <TD className="text-muted-foreground">{r.last_used_at ? new Date(r.last_used_at).toLocaleString() : "Never"}</TD>

@@ -16,10 +16,9 @@ const OUTCOMES = [
 ] as const;
 
 /**
- * Shared between every dial widget (Dialpad, Twilio, whatever comes next) --
- * the disposition write into opp_activities doesn't care which provider
- * placed the call, so this owns its own outcome/notes state rather than
- * making each widget duplicate it.
+ * The disposition write into opp_activities doesn't care how the call was
+ * placed, so this owns its own outcome/notes state rather than leaving it to
+ * the dial widget.
  */
 export function CallDispositionDialog({
   open, onOpenChange, opportunityId, contactName, onSaved,

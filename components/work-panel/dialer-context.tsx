@@ -6,7 +6,7 @@ import { expandCallsPanel } from "@/lib/calls/expand";
 export type CallTarget = { opportunityId: string; phoneNumber: string | null; contactName: string };
 
 /**
- * Something outside the dial widgets asking for a call. With a target it is a
+ * Something outside the dial widget asking for a call. With a target it is a
  * call to that Opportunity's contact -- tagged with its id and logged against
  * it, exactly as if the Call button on its page had been pressed. Without one
  * it is an ad hoc number, attributed to nothing.
@@ -19,9 +19,9 @@ type DialerContextValue = {
   setActive: (target: CallTarget | null) => void;
   canAdmin: boolean;
   /**
-   * A call something outside the dial widgets has asked for. Whichever
-   * provider is actually live watches this and places the call; the
-   * requester doesn't need to know which provider that is or how it dials.
+   * A call something outside the dial widget has asked for. The widget
+   * watches this and places the call; the requester doesn't need to know how
+   * it dials.
    */
   requestedCall: CallRequest | null;
   /**
@@ -47,7 +47,7 @@ const DialerContext = createContext<DialerContextValue | null>(null);
  * Lives in the dashboard layout, not on the Opportunity page -- that's what
  * makes a call survive navigating away from the page that started it. The
  * layout doesn't remount between routes that share it, so this context (and
- * the SDK Device/Call objects the call panel holds) persists across the app
+ * the Dialpad iframe the call panel holds) persists across the app
  * the same way the left sidebar does.
  */
 export function DialerProvider({ children, canAdmin }: { children: ReactNode; canAdmin: boolean }) {
@@ -101,8 +101,7 @@ export function useCallTarget() {
 }
 
 /**
- * Places whatever call was requested from outside the panel. Shared by all
- * three providers so they cannot disagree about who a call is with.
+ * Places whatever call was requested from outside the panel.
  *
  * A request for an Opportunity has to wait until the panel is showing that
  * Opportunity. Usually it already is -- callOpportunity sets it in the same
