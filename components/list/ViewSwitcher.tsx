@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { hideView, pinView } from "@/actions/list-views";
+import { pinView } from "@/actions/list-views";
 import type { ResolvedView } from "@/lib/list-views/catalogue";
 
 /**
@@ -17,7 +17,13 @@ import type { ResolvedView } from "@/lib/list-views/catalogue";
  *
  * Only pinned views are chips. There are 215 live clients, and a row of 215
  * would bury the two views a person opens every day, so the rest live behind
- * a search.
+ * a search. Pinning and unpinning both happen there.
+ *
+ * The × on the selected chip clears the selection -- it does not remove the
+ * view. It used to hide the view, and people pressed it expecting to be back
+ * at "nothing selected"; instead the chip vanished for good, with no way to
+ * get it back, and the list underneath went on showing its rows. It is only
+ * offered where the page has a "nothing selected" state to go to (clearHref).
  */
 
 /** The query parameters that mean "a view is selected". */
@@ -31,12 +37,15 @@ export function ViewSwitcher({
   rest,
   canSave,
   onSave,
+  clearHref,
 }: {
   entity: string;
   pinned: ResolvedView[];
   rest: ResolvedView[];
   canSave?: boolean;
   onSave?: () => void;
+  /** Where the selected chip's × goes: this list with no view selected. */
+  clearHref?: string;
 }) {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -68,17 +77,21 @@ export function ViewSwitcher({
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rest;
-    return rest.filter((v) => v.label.toLowerCase().includes(q));
-  }, [rest, query]);
+    const all = [
+      ...pinned.map((view) => ({ view, pinned: true })),
+      ...rest.map((view) => ({ view, pinned: false })),
+    ];
+    if (!q) return all;
+    return all.filter(({ view }) => view.label.toLowerCase().includes(q));
+  }, [pinned, rest, query]);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {pinned.map((v) => (
-        <ChipLink key={v.key} view={v} href={href(v)} current={isCurrent(v)} entity={entity} />
+        <ChipLink key={v.key} view={v} href={href(v)} current={isCurrent(v)} clearHref={clearHref} />
       ))}
 
-      {rest.length > 0 && (
+      {(rest.length > 0 || pinned.length > 0) && (
         <div className="relative">
           <button
             type="button"
@@ -86,7 +99,7 @@ export function ViewSwitcher({
             aria-expanded={picking}
             className="rounded-full bg-card px-3 py-1 text-meta text-muted-foreground transition-colors duration-fast ease-out hover:bg-card-hover hover:text-foreground"
           >
-            More… <span className="tabular-nums">{rest.length}</span>
+            More…{rest.length > 0 && <span className="tabular-nums"> {rest.length}</span>}
           </button>
 
           {picking && (
@@ -113,7 +126,7 @@ export function ViewSwitcher({
                       Nothing matches “{query}”.
                     </p>
                   ) : (
-                    matches.map((v) => (
+                    matches.map(({ view: v, pinned: isPinned }) => (
                       <div key={v.key} className="group flex items-center gap-1">
                         <Link
                           href={href(v)}
@@ -124,11 +137,11 @@ export function ViewSwitcher({
                         </Link>
                         <button
                           type="button"
-                          title={`Pin ${v.label}`}
-                          onClick={() => pinView(entity, v.key, true)}
+                          title={`${isPinned ? "Unpin" : "Pin"} ${v.label}`}
+                          onClick={() => pinView(entity, v.key, !isPinned)}
                           className="rounded-sm px-2 py-1 text-meta text-muted-foreground opacity-0 transition-opacity duration-fast group-hover:opacity-100 focus-visible:opacity-100 hover:text-foreground"
                         >
-                          Pin
+                          {isPinned ? "Unpin" : "Pin"}
                         </button>
                       </div>
                     ))
@@ -157,12 +170,12 @@ function ChipLink({
   view,
   href,
   current,
-  entity,
+  clearHref,
 }: {
   view: ResolvedView;
   href: string;
   current: boolean;
-  entity: string;
+  clearHref?: string;
 }) {
   return (
     <span className="group relative inline-flex">
@@ -178,17 +191,16 @@ function ChipLink({
       >
         {view.label}
       </Link>
-      {/* Hiding a chip is available on every kind of view, including the ones
-          defined in code -- somebody who never looks at their team's work
-          should not have to keep seeing it. */}
-      <button
-        type="button"
-        title={`Hide ${view.label}`}
-        onClick={() => hideView(entity, view.key, true)}
-        className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-popover text-meta leading-none text-muted-foreground shadow-overlay group-hover:flex focus-visible:flex hover:text-foreground"
-      >
-        ×
-      </button>
+      {current && clearHref && (
+        <Link
+          href={clearHref}
+          title={`Clear ${view.label}`}
+          aria-label={`Clear ${view.label}`}
+          className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-popover text-meta leading-none text-muted-foreground shadow-overlay group-hover:flex focus-visible:flex hover:text-foreground"
+        >
+          ×
+        </Link>
+      )}
     </span>
   );
 }

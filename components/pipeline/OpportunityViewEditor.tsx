@@ -56,6 +56,19 @@ export function OpportunityViewTools({
   );
 }
 
+/* The same editor, opened from the "no view selected" prompt. */
+export function NewViewButton({ canShare }: { canShare: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <Plus className="mr-1 h-3.5 w-3.5" /> New view
+      </Button>
+      {open && <ViewEditor view={{ ...BLANK }} canShare={canShare} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 function ViewEditor({
   view, canShare, onClose,
 }: {
