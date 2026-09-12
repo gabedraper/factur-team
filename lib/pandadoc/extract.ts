@@ -26,6 +26,12 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 /** These figures decide what gets invoiced. Not the place to save on the model. */
 export const CONTRACT_MODEL = "claude-opus-5";
 
+/**
+ * How long one document may take. A contract reads in well under a minute; past
+ * this the service is struggling, and waiting only loses the whole run.
+ */
+export const READ_BUDGET_MS = 120_000;
+
 const METRICS = ["leads", "appointments", "quotes", "pos", "project_completion"] as const;
 
 /*
@@ -158,7 +164,17 @@ export async function extractFromPdf(
   name: string,
   pdfBase64: string
 ): Promise<ExtractResult> {
-  const client = new Anthropic();
+  /*
+   * One retry, and a ceiling on how long a document may take.
+   *
+   * The default is to retry a busy service two or three times with a growing
+   * wait, which under real load ran past the five minutes the sync route is
+   * allowed. The route was killed mid-read, so nothing was written at all --
+   * not even the problem -- and the same documents were picked up and paid for
+   * again on the next run, for four hours. Failing inside the budget records
+   * the reason and leaves the document for a later run.
+   */
+  const client = new Anthropic({ maxRetries: 1 });
 
   try {
     const res = await client.messages.parse({
@@ -188,7 +204,7 @@ export async function extractFromPdf(
           ],
         },
       ],
-    });
+    }, { timeout: READ_BUDGET_MS });
 
     if (res.stop_reason === "refusal") {
       return { ok: false, reason: "the model declined to read this document", retry: false };

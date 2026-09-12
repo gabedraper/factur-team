@@ -4,6 +4,7 @@ import {
   listCompleted, details, money, whole, isoDate, serviceFromName,
 } from "@/lib/pandadoc/client";
 import { readAgreement, writeTerms } from "@/lib/pandadoc/apply";
+import { READ_BUDGET_MS } from "@/lib/pandadoc/extract";
 
 /*
  * Keeping the signed agreements current, a few at a time.
@@ -25,7 +26,15 @@ export const maxDuration = 300;
 const IMPORT = 25;
 const READ = 2;
 
+/*
+ * Stop starting documents with less than a document's worth of time left. Being
+ * killed mid-read writes nothing -- not the terms, not the problem -- and the
+ * document is read and paid for again on the next run.
+ */
+const RUN_BUDGET_MS = maxDuration * 1000 - READ_BUDGET_MS - 20_000;
+
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   const offered = request.headers.get("x-gaib-secret");
   if (!offered) return new NextResponse("Unauthorized", { status: 401 });
 
@@ -136,6 +145,10 @@ export async function POST(request: NextRequest) {
   for (const row of (unread ?? []) as {
     id: string; external_id: string; name: string; client_id: string; signed_on: string | null;
   }[]) {
+    if (Date.now() - startedAt > RUN_BUDGET_MS) {
+      problems.push("ran out of time; the rest are left for the next run");
+      break;
+    }
     const out = await readAgreement(db, row, "sync");
     if (out.ok) read.push(row.name);
     else problems.push(`${row.name}: ${out.reason}`);
