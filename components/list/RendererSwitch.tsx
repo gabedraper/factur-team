@@ -10,11 +10,14 @@ import { cn } from "@/lib/utils";
  */
 export function RendererSwitch({
   options,
+  label = "Show as",
 }: {
   options: { label: string; href: string; current: boolean }[];
+  /** What this switch chooses, for a screen reader. Two on one page must differ. */
+  label?: string;
 }) {
   return (
-    <nav aria-label="Show as" className="inline-flex rounded-md bg-muted p-0.5">
+    <nav aria-label={label} className="inline-flex rounded-md bg-muted p-0.5">
       {options.map((o) => (
         <Link
           key={o.label}

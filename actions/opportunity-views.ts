@@ -51,6 +51,11 @@ export async function listOpportunities(input: {
    * database, from the session -- see clientIdsForScope.
    */
   scope?: "mine" | "team" | null;
+  /**
+   * The stages to include, which is how the board asks for the live pipeline
+   * only. A table passes nothing and sees every stage.
+   */
+  stages?: string[];
   page?: number;
   /**
    * Rows per page. The table pages by 50; the board asks for more at once
@@ -158,6 +163,7 @@ export async function listOpportunities(input: {
     if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
     q = q.in("client_id", ids);
   }
+  if (input.stages?.length) q = q.in("stage", input.stages);
 
   for (const f of filters) {
     const field = FIELD_BY_KEY.get(f.field)!;
