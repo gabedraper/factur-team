@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { AGENT_PREAMBLE } from "../prompt";
 import { holdsPermission, type Agent } from "../agents";
 import { effortFor } from "../models";
-import { ROOM_NOTE, todaysTest, roomReach, pendingQuestions, type TurnImage } from "../chat";
+import { roomNote, roomPolicy, todaysTest, roomReach, pendingQuestions, type TurnImage } from "../chat";
 import { postToSpace, postGifToSpace } from "../chat-post";
 import { noDashes } from "../vary";
 
@@ -277,7 +277,7 @@ async function context(worker: Worker, name: string, thread: string | null): Pro
   return [
     `You are speaking with ${name}. Their email address is ${worker.email}.`,
     await pendingQuestions(worker.user_id),
-    inRoom ? ROOM_NOTE : "",
+    inRoom ? roomNote(await roomPolicy(worker.reply_space)) : "",
     inRoom ? await todaysTest(worker.reply_space) : "",
     inRoom ? await roomReach(worker.reply_space) : "",
     inRoom && thread ? `Earlier in this thread, oldest first (lines from Gaib are you):\n${thread}` : "",

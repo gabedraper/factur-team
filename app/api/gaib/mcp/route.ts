@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { actAs } from "@/lib/gaib/act-as";
 import { defaultAgent } from "@/lib/gaib/agents";
 import { toolsFor, type ToolContext } from "@/lib/gaib/tools";
-import { GROUP_SAFE_TOOLS } from "@/lib/gaib/chat";
+import { roomPolicy, roomAllows } from "@/lib/gaib/chat";
 import { hashToken, type Worker } from "@/lib/gaib/worker/engine";
 
 /*
@@ -51,7 +51,9 @@ async function toolsForWorker(worker: Worker) {
   if (!agent) return [];
   const tools = toolsFor(agent.tools);
   // A room reads the answer, so only what everyone in it could already see.
-  return worker.mode === "room" ? tools.filter((t) => GROUP_SAFE_TOOLS.has(t.name)) : tools;
+  if (worker.mode !== "room") return tools;
+  const policy = await roomPolicy(worker.reply_space);
+  return tools.filter((t) => roomAllows(policy, t.name));
 }
 
 async function handle(worker: Worker, msg: RpcRequest): Promise<object | null> {

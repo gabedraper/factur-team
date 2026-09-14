@@ -143,6 +143,39 @@ export const ROOM_NOTE = [
   "Bugs and ideas raised here are welcome -- raise them as normal.",
 ].join(" ");
 
+/** The same, for a room where the client's own people are talking about their own clients. */
+const ROOM_NOTE_CLIENTS_OK = [
+  "This message came from a shared Google Chat space, not a private conversation:",
+  "everyone in the space reads your reply.",
+  "Keep replies short and conversational -- a room, not a report.",
+  "Address the person who asked by name.",
+  "Clients, contacts, opportunities and the app's records are fine to discuss here.",
+  "Money -- invoices, balances, pay -- and anyone's own mail, chat or files are not:",
+  "say you will happily answer that privately and ask them to message you directly.",
+  "Bugs and ideas raised here are welcome -- raise them as normal.",
+].join(" ");
+
+/** What a clients-ok room may use on top of GROUP_SAFE_TOOLS. */
+const CLIENT_TOOLS = new Set(["describe_data", "query_data"]);
+
+export type RoomPolicy = { clientsOk: boolean };
+
+/** How open this room is, from Settings on the room. Unknown rooms get the strict default. */
+export async function roomPolicy(space: string | null): Promise<RoomPolicy> {
+  if (!space) return { clientsOk: false };
+  const { data } = await createServiceClient()
+    .from("gaib_rooms").select("clients_ok").eq("space_name", space).maybeSingle();
+  return { clientsOk: Boolean((data as { clients_ok: boolean } | null)?.clients_ok) };
+}
+
+export function roomAllows(policy: RoomPolicy, tool: string): boolean {
+  return GROUP_SAFE_TOOLS.has(tool) || (policy.clientsOk && CLIENT_TOOLS.has(tool));
+}
+
+export function roomNote(policy: RoomPolicy): string {
+  return policy.clientsOk ? ROOM_NOTE_CLIENTS_OK : ROOM_NOTE;
+}
+
 /**
  * What Gaib can see of a room, from the reader's own last attempt.
  *
@@ -164,6 +197,8 @@ export const GROUP_SAFE_TOOLS = new Set([
   "add_gif",
   // A public page is public.
   "read_web_page",
+  // Filters itself down to company-wide material in a room.
+  "search_company_memory",
   "search_handbook",
   "search_tickets",
   "raise_ticket",
@@ -290,8 +325,9 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
   const client = new Anthropic();
   const messages = await history(input.sessionId);
   const inRoom = Boolean(input.room);
+  const policy = inRoom ? await roomPolicy(input.room?.name ?? null) : { clientsOk: false };
   const tools = toolsFor(input.agent.tools).filter(
-    (t) => !inRoom || GROUP_SAFE_TOOLS.has(t.name)
+    (t) => !inRoom || roomAllows(policy, t.name)
   );
 
   if (input.message) {
@@ -397,7 +433,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<ChatEvent> {
         `You are speaking with ${input.person.name}${input.person.role ? `, ${input.person.role}` : ""}.`,
         `Their email address, for anything that needs to match a person to a record, is ${input.email}.`,
         input.pageUrl ? `They are on ${input.pageUrl}.` : "",
-        inRoom ? ROOM_NOTE : "",
+        inRoom ? roomNote(policy) : "",
         inRoom ? await todaysTest(input.room?.name ?? null) : "",
         inRoom ? await roomReach(input.room?.name ?? null) : "",
         `Today is ${new Date().toISOString().slice(0, 10)}.`,
