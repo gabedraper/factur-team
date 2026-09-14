@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, ExternalLink, GitPullRequest, MessageCircleQuestion, MessagesSquare } from "lucide-react";
 import type { Ticket } from "@/lib/gaib/tickets";
-import { approveTicket, rejectTicket, closeTicket, retryTicket, askAboutTicket, ticketConversation, mergeTicket, ticketChat } from "@/actions/gaib";
+import { approveTicket, rejectTicket, closeTicket, retryTicket, askAboutTicket, ticketConversation, mergeTicket, ticketChat, directTicket } from "@/actions/gaib";
 
 /*
  * What the severity words mean, said on the card.
@@ -96,6 +96,7 @@ export function TicketCard({
   const latest = history[history.length - 1];
   const [open, setOpen] = useState(false);
   const [why, setWhy] = useState("");
+  const [direction, setDirection] = useState("");
   const [question, setQuestion] = useState("");
   const [asked, setAsked] = useState(false);
   const [chat, setChat] = useState<
@@ -378,6 +379,48 @@ export function TicketCard({
               {ticket.brief}
             </div>
           )}
+
+          {(ticket.directions ?? []).length > 0 && (
+            <div className="space-y-1">
+              {ticket.directions.map((d, i) => (
+                <p key={i} className="rounded-md border-l-2 border-primary/50 pl-3 text-sm">
+                  {d.text}
+                  <span className="ml-2 text-xs text-muted-foreground">{d.by} · {submitted(d.at)}</span>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/*
+        Instructions for the builder, on any ticket that is not closed. Yes,
+        no and try again were the only levers; nearly every real decision is
+        "yes, but". Sending one stops a run in progress and starts again with
+        the instruction in the brief.
+      */}
+      {!["shipped", "rejected", "duplicate"].includes(ticket.status) && (
+        <div className="mt-4 flex gap-2 border-t pt-4">
+          <Textarea
+            value={direction}
+            onChange={(e) => setDirection(e.target.value)}
+            rows={1}
+            placeholder="Tell Gaib"
+            className="resize-none text-sm"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending || !direction.trim()}
+            onClick={() =>
+              run(
+                () => directTicket(ticket.id, direction).then((r) => { if (r.ok) setDirection(""); return r; }),
+                ticket.status === "running" ? "Stopped the run and started again with that" : "Started again with that"
+              )
+            }
+          >
+            Send and rebuild
+          </Button>
         </div>
       )}
 

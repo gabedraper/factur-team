@@ -488,6 +488,65 @@ export async function retryTicket(ticketId: string) {
 }
 
 /**
+ * Tell the builder something, and have it start again with that in hand.
+ *
+ * The only levers used to be yes, no and try again. There was no way to say
+ * "yes, but as a checkbox", which is what most decisions actually are. The
+ * instruction is kept on the ticket, the builder reads it on every run, and a
+ * run already in progress is stopped so the old brief does not finish first.
+ */
+export async function directTicket(ticketId: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await mayDecide())) return { ok: false, error: "Not allowed" };
+  const instruction = text.trim();
+  if (!instruction) return { ok: false, error: "Type the instruction first" };
+
+  const me = await getAuthedUser();
+  if (!me) return { ok: false, error: "Not allowed" };
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("gaib_tickets").select("lane,status,run_url,directions").eq("id", ticketId).maybeSingle();
+  const t = data as {
+    lane: "auto" | "approval" | "scoping"; status: string; run_url: string | null;
+    directions: { at: string; by: string; text: string }[] | null;
+  } | null;
+  if (!t) return { ok: false, error: "No such ticket" };
+  if (["shipped", "rejected", "duplicate"].includes(t.status)) {
+    return { ok: false, error: "That one is closed. Raise it again if it needs more." };
+  }
+
+  const { data: who } = await db.from("profiles").select("full_name").eq("id", me.id).maybeSingle();
+  const by = (who as { full_name: string | null } | null)?.full_name ?? "Gabe";
+  const directions = [...(t.directions ?? []), { at: new Date().toISOString(), by, text: instruction }];
+  await db.from("gaib_tickets").update({ directions }).eq("id", ticketId);
+  await logEvent(ticketId, "person", "gave instructions", instruction.slice(0, 300));
+
+  // A run still going is working from the old brief. Stop it; the new run
+  // supersedes it either way, and two of them would race for the branch.
+  if (t.status === "running" && t.run_url) await cancelRun(t.run_url);
+
+  // Ideas go to be built now, not scoped again: an instruction is a decision.
+  const lane = t.lane === "scoping" ? "approval" : t.lane;
+  const sent = await dispatchAgent(ticketId, lane);
+  if (!sent.dispatched) return { ok: false, error: sent.reason };
+  await db.from("gaib_tickets").update({ status: "queued", lane, decision_note: null }).eq("id", ticketId);
+  await logEvent(ticketId, "system", "queued", "handed to the agent with the new instructions");
+  revalidatePath("/gaib");
+  return { ok: true };
+}
+
+/** Stop a GitHub Actions run by its page address. Best effort. */
+async function cancelRun(runUrl: string): Promise<void> {
+  const token = process.env.GAIB_GITHUB_TOKEN;
+  const m = runUrl.match(/github\.com\/([^/]+)\/([^/]+)\/actions\/runs\/(\d+)/);
+  if (!token || !m) return;
+  await fetch(`https://api.github.com/repos/${m[1]}/${m[2]}/actions/runs/${m[3]}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+  }).catch(() => {});
+}
+
+/**
  * Put a question to whoever raised a ticket, through their own Gaib.
  *
  * Not an email and not a separate thread. It waits in their conversation and

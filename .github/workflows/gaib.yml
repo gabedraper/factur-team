@@ -135,6 +135,30 @@ jobs:
           jq -r '.title' /tmp/ticket.json > /tmp/title.txt
           echo "Working on: $(cat /tmp/title.txt)"
 
+          # Instructions given after the ticket was raised, and what the last
+          # attempt did. Both go into every prompt below when present, so a
+          # rebuild after "do it, but as a checkbox" starts from the checkbox,
+          # not from the original description alone.
+          {
+            if [ "$(jq -r '.directions | length' /tmp/ticket.json)" != "0" ]; then
+              echo
+              echo "## Instructions from the person deciding on this, oldest first"
+              echo
+              echo "These override anything above that they contradict."
+              echo
+              jq -r '.directions[] | "- (\(.by), \(.at | .[:10])) \(.text)"' /tmp/ticket.json
+              if [ "$(jq -r '.brief // "" | length' /tmp/ticket.json)" != "0" ]; then
+                echo
+                echo "## What the previous attempt did"
+                echo
+                echo "You are starting again from the current code, not from that attempt's"
+                echo "changes. Reuse its approach where the instructions above do not change it."
+                echo
+                jq -r '.brief' /tmp/ticket.json | head -c 3000
+              fi
+            fi
+          } > /tmp/directions.txt
+
           /tmp/patch.sh "$(jq -nc --arg r "$RUN_URL" '{status:"running", run_url:$r}')"
           /tmp/event.sh "started" "$RUN_URL"
 
@@ -165,6 +189,7 @@ jobs:
             echo "## $(jq -r '.title' /tmp/ticket.json)"
             echo
             jq -r '.body' /tmp/ticket.json
+            cat /tmp/directions.txt
             echo
             echo "Read enough of the codebase to answer, concretely and in plain language:"
             echo "1. What this would actually change -- name the files and screens."
@@ -212,6 +237,7 @@ jobs:
             echo "## $(jq -r '.title' /tmp/ticket.json)"
             echo
             jq -r '.body' /tmp/ticket.json
+            cat /tmp/directions.txt
             echo
             PAGE=$(jq -r '.page_url // ""' /tmp/ticket.json)
             if [ -n "$PAGE" ]; then echo "They were on: $PAGE"; fi

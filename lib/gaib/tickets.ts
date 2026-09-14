@@ -27,6 +27,8 @@ export type Ticket = {
   commit_sha: string | null;
   run_url: string | null;
   guard_tripped: string | null;
+  /** What the person deciding told the builder after it was raised, newest last. */
+  directions: { at: string; by: string; text: string }[];
   raised_by: string | null;
   session_id: string | null;
   created_at: string;
