@@ -103,12 +103,22 @@ export default async function ClientPage({
         </Link>
         <PageHeader
           title={(client as { name: string }).name}
-          actions={<Link
-            href={`/clients/${clientId}/market`}
-            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Market
-          </Link>}
+          actions={<>
+            {/* The client's live pipeline in one click. RLS on opportunities
+                decides what lands there, so this needs no check of its own. */}
+            <Link
+              href={`/opportunities/my?client=${clientId}&open=1`}
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Open pipeline
+            </Link>
+            <Link
+              href={`/clients/${clientId}/market`}
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Market
+            </Link>
+          </>}
           className="mt-1"
         />
       </div>

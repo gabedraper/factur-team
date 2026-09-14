@@ -46,8 +46,12 @@ const REMEMBER = "opp_list_query";
 const VIEW_KEYS = ["scope", "client", "view", "as"] as const;
 /* A board needs these whatever the view's own columns are. */
 const BOARD_COLUMNS = ["contact_name", "account_name", "client_name", "stage", "next_action_date"];
+/* ?open=1 is the live pipeline, which is what a client page links to. It asks
+   a different question from the default list -- what is still being worked and
+   how long since anybody touched it -- so it brings its own columns. */
+const OPEN_COLUMNS = ["opportunity_name", "contact_name", "stage", "updated_at"];
 
-type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string };
+type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string; open?: string };
 
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requirePipeline("view");
@@ -72,6 +76,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
 
   const scope = sp.scope === "mine" || sp.scope === "team" ? sp.scope : null;
   const board = sp.as === "board";
+  const openOnly = sp.open === "1";
   const q = (sp.q ?? "").trim();
   const page = Math.max(0, Number(sp.page ?? 0) || 0);
 
@@ -81,6 +86,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     sp.view ? getView(sp.view) : Promise.resolve(null),
   ]);
   const canShare = perms.has("org.manage");
+  const listColumns = saved?.columns ?? (openOnly ? OPEN_COLUMNS : DEFAULT_COLUMNS);
 
   let rows: Row[] = [];
   let hasMore = false;
@@ -94,13 +100,17 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   } else {
     try {
       const res = await listOpportunities({
-        columns: board ? BOARD_COLUMNS : saved?.columns ?? DEFAULT_COLUMNS,
+        columns: board ? BOARD_COLUMNS : listColumns,
         filters: saved?.filters ?? [],
-        sortField: saved?.sort_field ?? null,
+        /* Stalest first, which is the opposite of the list's usual default.
+           The open pipeline is opened to find what has gone quiet, and newest
+           first buries that behind nine pages of what is already moving. */
+        sortField: saved?.sort_field ?? (openOnly ? "updated_at" : null),
         sortDir: saved?.sort_dir ?? "asc",
         search: q,
         clientId: sp.client ?? null,
         scope,
+        openOnly,
         page: board ? 0 : page,
         limit: board ? BOARD_LIMIT : PAGE,
       });
@@ -110,7 +120,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     }
   }
 
-  const columns = knownColumns(saved?.columns ?? DEFAULT_COLUMNS);
+  const columns = knownColumns(listColumns);
 
   /* Builds a link to this list with some parameters changed. Anything set to
      null is dropped, which is how "clear the search" and "first page" work. */
@@ -128,7 +138,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
      only returns private views to their owner, so "private" means "yours". */
   const editable: ListView | null = saved && (!saved.shared || canShare) ? saved : null;
 
-  const activeFilters = q ? [`“${q}”`] : [];
+  const activeFilters = [...(openOnly ? ["open pipeline only"] : []), ...(q ? [`“${q}”`] : [])];
 
   const clearQuery = new URLSearchParams({ none: "1" });
   if (sp.as) clearQuery.set("as", sp.as);
@@ -139,6 +149,9 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
       <RememberView cookie={REMEMBER} query={viewQuery.toString()} />
       <PageHeader
         title="Opportunities"
+        /* Said out loud, because a count of the open pipeline next to a bare
+           "Opportunities" reads as everything this client has ever had. */
+        description={openOnly ? "Open pipeline: still in a stage being worked, and not closed off." : undefined}
         /* No exact total: a count over a broad view costs more than the page it
            labels. "50+" is what is actually known. */
         count={none || error || tooBroad ? undefined : `${rows.length}${hasMore ? "+" : ""}`}
@@ -164,7 +177,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
           <div className="flex flex-wrap items-center gap-3">
             {/* A GET form: search is a query parameter like every other filter. */}
             <form action="/opportunities/my" className="min-w-[12rem] max-w-sm flex-1">
-              {VIEW_KEYS.map((k) => sp[k] && <input key={k} type="hidden" name={k} value={sp[k]} />)}
+              {[...VIEW_KEYS, "open" as const].map((k) => sp[k] && <input key={k} type="hidden" name={k} value={sp[k]} />)}
               <input
                 name="q"
                 defaultValue={q}
@@ -194,7 +207,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               noun="opportunities"
               error={error}
               activeFilters={activeFilters}
-              clearHref={href({ q: null, page: null })}
+              clearHref={href({ q: null, page: null, open: null })}
             />
           ) : board ? (
             <OpportunityBoard key={viewQuery.toString() + q} rows={rows} />
