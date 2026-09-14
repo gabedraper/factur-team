@@ -23,6 +23,19 @@ const FUNNEL_STEPS = [
 
 type FunnelKey = (typeof FUNNEL_STEPS)[number]["key"];
 
+/*
+ * The day a note was written, in front of it. Date only -- the time of day is
+ * not what anyone is asking when they read a months-old follow-up note.
+ *
+ * Only notes added from the box below get one. What is already in the field
+ * stays exactly as it is: we do not know which day any of it was typed on, so
+ * a stamp added now would be a guess dressed up as a record.
+ */
+function stamped(note: string): string {
+  const day = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return `${day} - ${note}`;
+}
+
 export type EditableOpportunity = {
   id: string;
   stage: string;
@@ -34,6 +47,7 @@ export type EditableOpportunity = {
 
 export function OpportunityEditor({ opportunity }: { opportunity: EditableOpportunity }) {
   const [state, setState] = useState(opportunity);
+  const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
@@ -52,6 +66,14 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     });
+  }
+
+  /* New note on top, so the newest is the first thing read. */
+  function addNote(text: string) {
+    const body = text.trim();
+    if (!body) return;
+    setNote("");
+    save({ updates: [stamped(body), state.updates].filter(Boolean).join("\n") });
   }
 
   return (
@@ -111,6 +133,17 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
             type="date"
             value={state.next_action_date ?? ""}
             onChange={(e) => save({ next_action_date: e.target.value || null })}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-muted-foreground">Add update</label>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={(e) => addNote(e.target.value)}
+            rows={2}
+            placeholder="Today's date goes in front of it"
           />
         </div>
 
