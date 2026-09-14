@@ -51,6 +51,17 @@ export async function listOpportunities(input: {
    * database, from the session -- see clientIdsForScope.
    */
   scope?: "mine" | "team" | null;
+  /**
+   * Narrows to the live pipeline: still in a stage that is being worked, and
+   * not closed off in the app.
+   *
+   * Deliberately not `close_date is null`, which is the obvious reading of
+   * "no close date". close_date is Salesforce's required CloseDate and
+   * createOpportunity stamps it with today, so every open row has one --
+   * filtering on it empty would hide the whole pipeline. `closed_on` is the
+   * column that means what it says, and stage is the real signal.
+   */
+  openOnly?: boolean;
   page?: number;
   /**
    * Rows per page. The table pages by 50; the board asks for more at once
@@ -147,6 +158,7 @@ export async function listOpportunities(input: {
   let q = db.from("opportunities").select(parts.join(","));
 
   if (input.clientId) q = q.eq("client_id", input.clientId);
+  if (input.openOnly) q = q.not("stage", "ilike", "Closed:%").is("closed_on", null);
   if (input.scope) {
     /*
      * An empty scope means "none of your clients", and it has to stay empty.
