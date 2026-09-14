@@ -55,7 +55,7 @@ export default async function AdminCourseDetailPage({
   // way to answer it was to read the completion records by hand.
   const { data: enrollments, error: enrollmentsError } = await supabase
     .from("enrollments")
-    .select("id, user_id, completed_at, profiles(full_name, email)")
+    .select("id, user_id, completed_at, profiles(full_name)")
     .eq("course_id", (await params).courseId);
 
   // Every completion for this course's lessons. Enrollees times lessons passes
@@ -96,11 +96,13 @@ export default async function AdminCourseDetailPage({
   const roster = (enrollments || [])
     .map((e) => {
       // A to-one embed arrives as one row, whatever the generated type says.
-      const profile = e.profiles as unknown as { full_name: string | null; email: string | null } | null;
+      const profile = e.profiles as unknown as { full_name: string | null } | null;
       const done = doneByUser.get(e.user_id ?? "") || { count: 0, last: null };
       return {
         id: e.id,
-        name: profile?.full_name || profile?.email || "Unknown",
+        // A profile carries no email, so the name is all there is to fall
+        // back from.
+        name: profile?.full_name || "Unknown",
         completedAt: e.completed_at as string | null,
         done: done.count,
         last: done.last,
