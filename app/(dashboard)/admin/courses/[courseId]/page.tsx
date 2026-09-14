@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Eye, Pencil, FileText } from "lucide-react";
 import { getCourseGradientStyle } from "@/lib/course-colors";
 import { PageHeader } from "@/components/ui/page-header";
+import { everyRow } from "@/lib/supabase/every-row.mjs";
+import { Surface } from "@/components/ui/surface";
+import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export default async function AdminCourseDetailPage({
   params,
@@ -45,6 +48,69 @@ export default async function AdminCourseDetailPage({
   });
 
   const totalLessons = lessons?.length || 0;
+  const lessonIds = (lessons || []).map((l) => l.id);
+
+  // Who is signed up and how far each of them has got. "Who all finished the
+  // Pipeline Management modules" had no screen that answered it, so the only
+  // way to answer it was to read the completion records by hand.
+  const { data: enrollments, error: enrollmentsError } = await supabase
+    .from("enrollments")
+    .select("id, user_id, completed_at, profiles(full_name, email)")
+    .eq("course_id", (await params).courseId);
+
+  // Every completion for this course's lessons. Enrollees times lessons passes
+  // the thousand-row cap on a course this size, and a truncated read would
+  // report people as having done less than they have.
+  let completions: { user_id: string | null; completed_at: string | null }[] = [];
+  let rosterError: string | null = enrollmentsError?.message ?? null;
+  try {
+    if (lessonIds.length) {
+      completions = await everyRow(() =>
+        supabase
+          .from("lesson_progress")
+          .select("user_id, completed_at")
+          .in("lesson_id", lessonIds)
+          // (lesson_id, user_id) is unique, so the order is total and no row
+          // can repeat or vanish between pages.
+          .order("lesson_id")
+          .order("user_id")
+      );
+    }
+  } catch (err) {
+    rosterError = err instanceof Error ? err.message : "Couldn't read lesson completions.";
+  }
+
+  const doneByUser = new Map<string, { count: number; last: string | null }>();
+  completions.forEach((c) => {
+    if (!c.user_id) return;
+    const done = doneByUser.get(c.user_id) || { count: 0, last: null };
+    done.count += 1;
+    if (c.completed_at && (!done.last || c.completed_at > done.last)) {
+      done.last = c.completed_at;
+    }
+    doneByUser.set(c.user_id, done);
+  });
+
+  // Least done first, so the people who have started nothing are the rows you
+  // land on rather than rows you have to scroll for.
+  const roster = (enrollments || [])
+    .map((e) => {
+      // A to-one embed arrives as one row, whatever the generated type says.
+      const profile = e.profiles as unknown as { full_name: string | null; email: string | null } | null;
+      const done = doneByUser.get(e.user_id ?? "") || { count: 0, last: null };
+      return {
+        id: e.id,
+        name: profile?.full_name || profile?.email || "Unknown",
+        completedAt: e.completed_at as string | null,
+        done: done.count,
+        last: done.last,
+      };
+    })
+    .sort((a, b) => a.done - b.done || a.name.localeCompare(b.name));
+
+  const finishedAll =
+    totalLessons > 0 ? roster.filter((r) => r.done >= totalLessons).length : 0;
+  const notStarted = roster.filter((r) => r.done === 0).length;
 
   return (
     <div className="p-8 max-w-4xl">
@@ -86,6 +152,69 @@ export default async function AdminCourseDetailPage({
             Edit Course
           </Link>
         </Button>
+      </div>
+
+      {/* Who has finished */}
+      <div className="mb-8">
+        <h2 className="text-section-title mb-1">Who has finished this course</h2>
+        {rosterError ? (
+          /* A failed query has to say so. An empty table here reads as "nobody
+             is signed up", which is how a real fault goes unnoticed. */
+          <p className="text-body text-destructive">
+            Couldn&apos;t load who is signed up: {rosterError}
+          </p>
+        ) : roster.length === 0 ? (
+          <p className="text-body text-muted-foreground">
+            Nobody is signed up to this course.
+          </p>
+        ) : (
+          <>
+            <p className="text-meta text-muted-foreground mb-3">
+              {finishedAll} of {roster.length} finished all {totalLessons} lesson
+              {totalLessons !== 1 ? "s" : ""} · {notStarted} not started
+            </p>
+            <Surface pad="none">
+              <TableScroll>
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Person</TH>
+                      <TH numeric>Lessons</TH>
+                      <TH>Status</TH>
+                      <TH>Last activity</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {roster.map((r) => (
+                      <TR key={r.id}>
+                        <TD>{r.name}</TD>
+                        <TD numeric>
+                          {r.done} / {totalLessons}
+                        </TD>
+                        <TD>
+                          {/* Complete is the enrollment's own flag, not the
+                              lesson count -- the two can disagree. */}
+                          {r.completedAt ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              Complete
+                            </Badge>
+                          ) : r.done === 0 ? (
+                            <Badge variant="outline">Not started</Badge>
+                          ) : (
+                            <Badge variant="secondary">In progress</Badge>
+                          )}
+                        </TD>
+                        <TD>
+                          {r.last ? new Date(r.last).toLocaleDateString() : "—"}
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </TableScroll>
+            </Surface>
+          </>
+        )}
       </div>
 
       {/* Lessons */}
