@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type DragEvent } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,7 @@ import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/ta
 import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 import { Chip } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
-import { STAGE_GROUPS } from "@/lib/pipeline/picklists";
+import { BOARD_STAGES, NURTURE_STAGE } from "@/lib/pipeline/picklists";
 import { progressTone } from "@/lib/pipeline/targets";
 import { toE164 } from "@/lib/phone";
 import { useDialer } from "@/components/work-panel/dialer-context";
@@ -203,17 +203,28 @@ export function OpportunityTable({ rows, columns }: { rows: Row[]; columns: List
 }
 
 /*
- * The board: one column per stage, and dragging a card to another column
- * changes its stage -- through updateOpportunity, the same write the record
- * page's stage picker makes, so history is recorded and Salesforce hears
- * about it the same way.
+ * The board: one column per working stage, and dragging a card to another
+ * column changes its stage -- through updateOpportunity, the same write the
+ * record page's stage picker makes, so history is recorded and Salesforce
+ * hears about it the same way.
  *
- * Every stage gets a column, including empty ones, because an empty column is
- * still somewhere a card can be moved to. Empty columns are drawn narrow so
- * twenty-two stages do not push the busy ones off the screen.
+ * Only the six stages a deal is worked through get a column, empty ones
+ * included, because an empty column is still somewhere a card can be moved to.
+ * A closed deal has left the pipeline and is not drawn at all. LT Follow Up is
+ * drawn below the columns as a section closed by default: the parked pile runs
+ * several times the size of the live one, so a column for it would be the
+ * whole board -- but its size belongs on the same screen, so the heading
+ * carries the count whether or not the section is open.
  */
-export function OpportunityBoard({ rows }: { rows: Row[] }) {
-  const [items, setItems] = useState(rows);
+export function OpportunityBoard({
+  rows, parked, parkedTotal,
+}: {
+  rows: Row[];
+  parked: Row[];
+  /** How many parked deals there are, against the page of them fetched. */
+  parkedTotal: number | null;
+}) {
+  const [items, setItems] = useState([...rows, ...parked]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -241,29 +252,76 @@ export function OpportunityBoard({ rows }: { rows: Row[] }) {
     byStage.set(s, [...(byStage.get(s) ?? []), r]);
   }
 
+  const nurture = byStage.get(NURTURE_STAGE) ?? [];
+  // The parked deals past the page that was fetched: counted on the heading,
+  // so the number is the size of the pile rather than the size of the fetch.
+  const unfetched = Math.max(0, (parkedTotal ?? parked.length) - parked.length);
+
+  /* A column and the parked section take a drop the same way. */
+  const dropZone = (stage: string) => ({
+    onDragOver: (e: DragEvent) => {
+      if (!dragging) return;
+      e.preventDefault();
+      setOver(stage);
+    },
+    onDragLeave: () => setOver((o) => (o === stage ? null : o)),
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      if (dragging) move(dragging, stage);
+      setDragging(null);
+      setOver(null);
+    },
+  });
+
+  const card = (r: Row) => {
+    const id = String(r.id);
+    const account = embed(r, "crm_accounts")?.name;
+    const client = embed(r, "org_clients")?.name;
+    return (
+      <article
+        key={id}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          setDragging(id);
+        }}
+        onDragEnd={() => {
+          setDragging(null);
+          setOver(null);
+        }}
+        className={cn(
+          "cursor-grab rounded-md bg-card p-card-tight text-body transition-shadow duration-base ease-out hover:shadow-overlay active:cursor-grabbing",
+          dragging === id && "opacity-50",
+        )}
+      >
+        <Link href={`/opportunities/${id}`} className="block truncate font-medium underline-offset-2 hover:underline">
+          {contactName(r) || "Unnamed contact"}
+        </Link>
+        {typeof account === "string" && account && (
+          <p className="truncate text-meta text-muted-foreground">{account}</p>
+        )}
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-meta text-muted-foreground">
+          <span className="truncate">{typeof client === "string" ? client : ""}</span>
+          {shortDate(r.next_action_date) && (
+            <span className="shrink-0 tabular-nums">{shortDate(r.next_action_date)}</span>
+          )}
+        </div>
+      </article>
+    );
+  };
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {error && <p className="text-body text-destructive">{error}</p>}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {STAGE_GROUPS.flatMap((g) => g.values).map((stage) => {
+        {BOARD_STAGES.map((stage) => {
           const cards = byStage.get(stage) ?? [];
           const target = over === stage && dragging !== null;
           return (
             <section
               key={stage}
               aria-label={stage}
-              onDragOver={(e) => {
-                if (!dragging) return;
-                e.preventDefault();
-                setOver(stage);
-              }}
-              onDragLeave={() => setOver((o) => (o === stage ? null : o))}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragging) move(dragging, stage);
-                setDragging(null);
-                setOver(null);
-              }}
+              {...dropZone(stage)}
               className={cn(
                 "flex shrink-0 flex-col gap-2 rounded-md p-1.5 transition-colors duration-fast ease-out",
                 cards.length ? "w-64" : "w-36",
@@ -274,46 +332,30 @@ export function OpportunityBoard({ rows }: { rows: Row[] }) {
                 <span className="truncate" title={stage}>{stage}</span>
                 <span className="tabular-nums text-muted-foreground">{cards.length}</span>
               </h2>
-              {cards.map((r) => {
-                const id = String(r.id);
-                const account = embed(r, "crm_accounts")?.name;
-                const client = embed(r, "org_clients")?.name;
-                return (
-                  <article
-                    key={id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
-                      setDragging(id);
-                    }}
-                    onDragEnd={() => {
-                      setDragging(null);
-                      setOver(null);
-                    }}
-                    className={cn(
-                      "cursor-grab rounded-md bg-card p-card-tight text-body transition-shadow duration-base ease-out hover:shadow-overlay active:cursor-grabbing",
-                      dragging === id && "opacity-50",
-                    )}
-                  >
-                    <Link href={`/opportunities/${id}`} className="block truncate font-medium underline-offset-2 hover:underline">
-                      {contactName(r) || "Unnamed contact"}
-                    </Link>
-                    {typeof account === "string" && account && (
-                      <p className="truncate text-meta text-muted-foreground">{account}</p>
-                    )}
-                    <div className="mt-1.5 flex items-center justify-between gap-2 text-meta text-muted-foreground">
-                      <span className="truncate">{typeof client === "string" ? client : ""}</span>
-                      {shortDate(r.next_action_date) && (
-                        <span className="shrink-0 tabular-nums">{shortDate(r.next_action_date)}</span>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
+              {cards.map(card)}
             </section>
           );
         })}
       </div>
+
+      <details
+        {...dropZone(NURTURE_STAGE)}
+        className={cn(
+          "rounded-md p-1.5 transition-colors duration-fast ease-out",
+          over === NURTURE_STAGE && dragging !== null ? "bg-accent" : "bg-lane",
+        )}
+      >
+        <summary className="flex cursor-pointer items-baseline gap-2 px-1.5 py-1 text-meta font-semibold">
+          <span>{NURTURE_STAGE}</span>
+          <span className="tabular-nums text-muted-foreground">{nurture.length + unfetched}</span>
+        </summary>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{nurture.map(card)}</div>
+        {unfetched > 0 && (
+          <p className="px-1.5 pt-2 text-meta text-muted-foreground">
+            Showing the {nurture.length.toLocaleString()} most recently updated.
+          </p>
+        )}
+      </details>
     </div>
   );
 }

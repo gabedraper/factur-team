@@ -31,6 +31,27 @@ export const STAGE_GROUPS: { label: string; values: string[] }[] = [
 
 export const ALL_STAGES: string[] = STAGE_GROUPS.flatMap((g) => g.values);
 
+/* Closed means the deal has left the pipeline, so the board draws none of it. */
+export const CLOSED_STAGES: string[] =
+  STAGE_GROUPS.find((g) => g.label === "Closed")!.values;
+
+/*
+ * The stages the board draws as columns, in the order a deal moves through
+ * them -- the six an account manager actually works.
+ */
+export const BOARD_STAGES: string[] = [
+  "Pipeline: Warm", "Sales Support", "Pipeline: Hot",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Quote Follow up",
+  "Pipeline Hot: Supplier forms / NDA",
+];
+
+/*
+ * Deals parked for the long term. Not a column: at Riverside there are 365 of
+ * them against 54 live ones, so a column for it is the board. It sits below
+ * the columns as a section that opens, with its size on the heading.
+ */
+export const NURTURE_STAGE = "Pipeline: LT Follow Up";
+
 export const LEAD_STATUSES: string[] = [
   "Pipeline - Cold", "Pipeline - Warm SDR", "Pipeline - Warm", "Pipeline - Selling",
   "Closing", "LTFU", "Lost Follow Up", "Customer", "Relationship", "No Fit Ever - Contact", "No Fit Ever - Account",
