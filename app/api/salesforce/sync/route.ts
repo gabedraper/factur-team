@@ -45,9 +45,82 @@ const MAX_PER_OBJECT = 20_000;
  * statement finishes well inside the timeout. */
 const WRITE_BATCH = 500;
 
+/* Ids per lookup. SOQL goes out as a GET and a contact's field list is already
+ * 339 names long, so the id list has to stay well inside the URL Salesforce
+ * will accept. */
+const LOOKUP_IDS = 100;
+
 /* Salesforce writes timestamps as 2026-09-09T11:22:33.000+0000. */
 function soqlTime(iso: string) {
   return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+/** Every mirror column is text; Salesforce hands back typed JSON. */
+function asText(rows: Record<string, unknown>[]) {
+  return rows.map((r) => {
+    const flat = stripAttributes(r);
+    const out: Record<string, string | null> = {};
+    for (const [k, v] of Object.entries(flat)) {
+      out[k] = v === null || v === undefined ? null : String(v);
+    }
+    return out;
+  });
+}
+
+/*
+ * The contacts an opportunity names, fetched by id.
+ *
+ * An opportunity cannot be placed until its contact is here -- contact_id is NOT
+ * NULL, so the transform's join is inner and a pursuit whose contact is missing
+ * is dropped again on every run, the nightly catch-up included.
+ *
+ * "What contacts changed since I last looked" can never supply that contact. The
+ * bulk load was filtered to contacts on active opportunities, and opening a
+ * pursuit against a contact nobody had ever worked does not touch that contact's
+ * own LastModifiedDate -- so it sits outside every window there will ever be,
+ * and the opportunity is lost silently and permanently. The only thing that
+ * finds it is asking for the id the opportunity is already holding.
+ *
+ * Almost all of them are here already, so each chunk asks the mirror first: one
+ * local lookup on a primary key, and usually no round trip at all.
+ */
+async function loadOpportunityContacts(
+  db: ReturnType<typeof createServiceClient>,
+  ids: string[],
+): Promise<number> {
+  let fields: string[] = [];
+  let written = 0;
+
+  for (let i = 0; i < ids.length; i += LOOKUP_IDS) {
+    const chunk = ids.slice(i, i + LOOKUP_IDS);
+    const { data: held } = await db.from("sky_Contact").select("Id").in("Id", chunk);
+    const have = new Set(((held ?? []) as { Id: string }[]).map((r) => r.Id));
+    const missing = chunk.filter((id) => !have.has(id));
+    if (missing.length === 0) continue;
+
+    if (fields.length === 0) {
+      const { data: cols } = await db.rpc("salesforce_mirror_columns", { p_table: "sky_Contact" });
+      fields = (cols as string[] | null) ?? [];
+      if (fields.length === 0) return written;
+    }
+
+    const rows = await soql<Record<string, unknown>>(
+      `SELECT ${fields.join(", ")} FROM Contact ` +
+      `WHERE Id IN (${missing.map((id) => `'${id}'`).join(", ")})`,
+    );
+    if (rows.length === 0) continue;
+
+    const payload = asText(rows);
+    const { error } = await db.from("sky_Contact").upsert(payload, { onConflict: "Id" });
+    if (error) {
+      throw new Error(
+        `Opportunity: writing ${payload.length} named contacts to sky_Contact failed - ${error.message}`,
+      );
+    }
+    written += payload.length;
+  }
+
+  return written;
 }
 
 export async function POST(request: NextRequest) {
@@ -111,15 +184,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      /* Every mirror column is text; Salesforce hands back typed JSON. */
-      const payload = rows.map((r) => {
-        const flat = stripAttributes(r);
-        const out: Record<string, string | null> = {};
-        for (const [k, v] of Object.entries(flat)) {
-          out[k] = v === null || v === undefined ? null : String(v);
-        }
-        return out;
-      });
+      const payload = asText(rows);
 
       /*
        * In batches, because these rows are wide -- an opportunity carries 335
@@ -136,6 +201,18 @@ export async function POST(request: NextRequest) {
             `${name}: writing rows ${i}-${i + slice.length} to ${mirror} failed - ${error.message}`,
           );
         }
+      }
+
+      /*
+       * Before the watermark moves, so a failure here re-fetches these
+       * opportunities rather than leaving them with no contact to join to.
+       */
+      if (name === "Opportunity") {
+        const contactIds = [
+          ...new Set(payload.map((r) => r.Client_Contact__c).filter((v): v is string => !!v)),
+        ];
+        const fetched = await loadOpportunityContacts(db, contactIds);
+        if (fetched > 0) summary.contactsNamedByOpportunities = fetched;
       }
 
       /* Advance only as far as the rows we actually stored. */
