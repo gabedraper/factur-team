@@ -41,6 +41,25 @@ type Activity = {
 
 const ACTIVITY_ICON = { call: Phone, email: Mail, task: ClipboardList, note: StickyNote };
 
+/*
+ * Mail that came back instead of landing.
+ *
+ * A bounce is logged against the pursuit like any other email, so a dead
+ * address reads as the prospect's turn to answer and the deal sits there for
+ * days. The subject line is the only place the failure is written down --
+ * nothing records a bounce as a bounce -- so it is matched here.
+ *
+ * Narrower than the timeline's system-mail pattern on purpose. An out of office
+ * or a read receipt is machine mail too, but the address still works, and
+ * flagging those would teach people to ignore the flag.
+ */
+const UNDELIVERED_RE =
+  /undeliverable|delivery (status|has failed|failure)|mail delivery|postmaster|returned mail|bounced/i;
+
+function undelivered(a: Activity): boolean {
+  return a.activity_type === "email" && UNDELIVERED_RE.test(a.subject || "");
+}
+
 export default async function OpportunityPage({ params }: { params: Promise<{ opportunityId: string }> }) {
   await requirePipeline("view");
   const { opportunityId } = await params;
@@ -68,6 +87,16 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const o = opp as unknown as Opportunity;
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
+  /*
+   * The header flags a bounce only while it is still the last word. Activities
+   * come back newest first, so once somebody has fixed the address and resent,
+   * that send is the newest email and the flag clears -- a warning left up
+   * after the work is done is one people learn to scroll past.
+   */
+  const feed = (activities ?? []) as unknown as Activity[];
+  const lastEmail = feed.find((a) => a.activity_type === "email");
+  const bounced = !!lastEmail && undelivered(lastEmail);
+
   return (
     <div className="p-6 space-y-4 max-w-6xl">
       <RegisterActiveOpportunity
@@ -82,6 +111,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         <PageHeader title={contactName}>
           <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
           {o.lead_status && <Chip>{o.lead_status}</Chip>}
+          {bounced && <Chip colour="rose">Email bounced</Chip>}
         </PageHeader>
         <p className="text-sm text-muted-foreground">
           {[o.crm_contacts?.title, o.crm_accounts?.name, o.org_clients?.name && `for ${o.org_clients.name}`]
@@ -124,11 +154,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
 
         <div className="space-y-4">
           <Panel title="Activity">
-            {!activities || activities.length === 0 ? (
+            {feed.length === 0 ? (
               <Empty>Nothing logged against this opportunity yet.</Empty>
             ) : (
               <ul className="divide-y">
-                {(activities as unknown as Activity[]).map((a) => {
+                {feed.map((a) => {
                   const Icon = ACTIVITY_ICON[a.activity_type];
                   return (
                     <li key={a.id} className="flex gap-3 px-4 py-3">
@@ -137,8 +167,13 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
                         <div className="flex items-center gap-2 text-sm">
                           <span className="font-medium capitalize">{a.activity_type}</span>
                           {a.direction && <span className="text-xs text-muted-foreground">{a.direction}</span>}
+                          {undelivered(a) && <Chip colour="rose">Not delivered</Chip>}
                           {a.outcome && <Chip colour="slate">{a.outcome}</Chip>}
                         </div>
+                        {/* The subject was fetched and never shown, which is what made a
+                            bounce indistinguishable from a reply: the whole of a delivery
+                            failure is its subject line. */}
+                        {a.subject && <p className="text-sm">{a.subject}</p>}
                         <span className="text-xs tabular-nums text-muted-foreground">
                           {new Date(a.occurred_at).toLocaleString()}
                         </span>
