@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
+import { createMember, setMemberRole, setMemberManager, toggleStandaloneRole, setMemberActive } from "@/actions/org";
 import type { MemberRow } from "@/lib/org";
 import { isJobRole } from "@/lib/org-roles";
 import { useSort, SortHeader } from "@/components/ui/sortable";
@@ -20,6 +20,7 @@ export function PeopleTable(
   const [showInactive, setShowInactive] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [draft, setDraft] = useState({ fullName: "", email: "" });
 
   // Every role defined in Settings is offered here, except the two that are
   // already their own checkboxes. A role with no service is still a job someone
@@ -84,11 +85,57 @@ export function PeopleTable(
     });
   }
 
+  // Signing in makes somebody a learner, not a member of the org chart, so a
+  // new starter is nowhere to be found on this screen until they are added
+  // here -- there is no role, team or manager to hang on them otherwise.
+  function addMember() {
+    setError("");
+    const { fullName, email } = draft;
+    startTransition(async () => {
+      const { success, error: failed, member } = await createMember(email, fullName);
+      if (!success || !member) {
+        setError(failed ?? "Something went wrong");
+        return;
+      }
+      setRows((rs) => [member, ...rs]);
+      setDraft({ fullName: "", email: "" });
+    });
+  }
+
   const reviewCount = inScope.filter((r) => r.needs_review).length;
   const inactiveCount = rows.filter((r) => !r.active).length;
 
   return (
     <div className="space-y-3">
+      <Surface as="section" className="space-y-2">
+        <h2 className="text-sm font-medium">New team member</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm"
+            placeholder="Full name"
+            value={draft.fullName}
+            onChange={(e) => setDraft((d) => ({ ...d, fullName: e.target.value }))}
+          />
+          <input
+            className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+            placeholder="name@facturmfg.com"
+            value={draft.email}
+            onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+          />
+          <button
+            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
+            disabled={!draft.fullName.trim() || !draft.email.trim() || pending}
+            onClick={addMember}
+          >
+            Add team member
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          For somebody who is in the app but not yet on the org chart — signing in makes them a
+          learner and nothing more. They arrive needing a role, which is picked in their row below.
+        </p>
+      </Surface>
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"

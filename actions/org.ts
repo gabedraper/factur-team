@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/server";
-import { myPermissions, roleLabelsForUsers } from "@/lib/org";
+import { myPermissions, roleLabelsForUsers, type MemberRow } from "@/lib/org";
 import { isJobRole, isStandaloneRole, type StandaloneRoleSlug } from "@/lib/org-roles";
 
 async function requireOrgManage() {
@@ -267,7 +267,9 @@ export async function setClientOwner(
 
 // --- people -----------------------------------------------------------------
 
-export async function createMember(email: string, fullName: string) {
+export async function createMember(
+  email: string, fullName: string
+): Promise<{ success: boolean; error?: string; member?: MemberRow }> {
   try {
     await requireOrgManage();
   } catch (e) {
@@ -291,8 +293,12 @@ export async function createMember(email: string, fullName: string) {
     };
   }
 
-  const { error } = await db.from("org_members")
-    .insert({ email: address, full_name: fullName.trim(), needs_review: true });
+  // The new row comes back so the people screen can show it straight away --
+  // that list is held in state, so a revalidate alone would not reach it.
+  const { data: created, error } = await db.from("org_members")
+    .insert({ email: address, full_name: fullName.trim(), needs_review: true })
+    .select("id,email,full_name,active,needs_review,manager_member_id,salesforce_user_id")
+    .single();
   if (error) {
     return {
       success: false,
@@ -300,7 +306,7 @@ export async function createMember(email: string, fullName: string) {
     };
   }
   revalidatePath("/settings/people");
-  return { success: true };
+  return { success: true, member: { ...(created as Omit<MemberRow, "roleIds">), roleIds: [] } };
 }
 
 export async function updateMember(memberId: string, fields: { full_name?: string; email?: string }) {
