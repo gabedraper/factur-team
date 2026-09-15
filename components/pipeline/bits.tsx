@@ -27,7 +27,7 @@ const TONE: Record<string, { chip: string; dot: string }> = {
 
 export function Chip({ children, colour = "slate", className }: { children: React.ReactNode; colour?: keyof typeof TONE; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", TONE[colour]?.chip ?? TONE.slate.chip, className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-meta font-medium whitespace-nowrap", TONE[colour]?.chip ?? TONE.slate.chip, className)}>
       {children}
     </span>
   );
@@ -101,12 +101,12 @@ export function NotConnected({ name, requires, canAdmin }: { name: string; requi
     <div className="rounded-lg border border-dashed bg-muted/30 p-4">
       <div className="flex items-center gap-2">
         <Plug className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="text-sm font-medium">{name}</span>
+        <span className="text-body font-medium">{name}</span>
         <Chip colour="amber">Not connected</Chip>
       </div>
-      {requires && <p className="mt-2 text-sm text-muted-foreground">{requires}</p>}
+      {requires && <p className="mt-2 text-body text-muted-foreground">{requires}</p>}
       {canAdmin && (
-        <Link href="/settings/dialpad" className="mt-3 inline-block text-sm text-primary underline-offset-4 hover:underline">
+        <Link href="/settings/dialpad" className="mt-3 inline-block text-body text-primary underline-offset-4 hover:underline">
           Dialpad settings
         </Link>
       )}
@@ -137,7 +137,7 @@ export function AlphaFilter({
   hrefFor?: (letter: string | null) => string;
 }) {
   const cls = (isActive: boolean) =>
-    cn("rounded px-1.5 py-0.5 text-xs tabular-nums", isActive ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted");
+    cn("rounded px-1.5 py-0.5 text-meta tabular-nums", isActive ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted");
 
   return (
     <div className="flex flex-wrap items-center gap-0.5">

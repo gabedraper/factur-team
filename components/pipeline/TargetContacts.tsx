@@ -98,7 +98,7 @@ export function TargetContacts({
             <button
               key={s}
               onClick={() => toggleStage(s)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+              className={`rounded-full px-2.5 py-1 text-meta font-medium transition ${
                 on ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"
               }`}
             >
@@ -137,7 +137,7 @@ export function TargetContacts({
                       {newCompany && (
                         <TR className="bg-muted/20">
                           <TD colSpan={7} >
-                            <span className="flex items-center gap-2 text-xs font-semibold">
+                            <span className="flex items-center gap-2 text-meta font-semibold">
                               <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                               {r.account_name ?? "No company"}
                             </span>
@@ -162,11 +162,11 @@ export function TargetContacts({
                             {stageFields.show_stage ? r.stage : (r.lead_status ?? r.stage)}
                           </Chip>
                           {showBoth && r.lead_status && (
-                            <div className="mt-0.5 text-xs text-muted-foreground">{r.lead_status}</div>
+                            <div className="mt-0.5 text-meta text-muted-foreground">{r.lead_status}</div>
                           )}
                         </TD>
                         <TD className="tabular-nums">{shortDate(r.next_action_date)}</TD>
-                        <TD className="max-w-[24rem] text-xs text-muted-foreground">
+                        <TD className="max-w-[24rem] text-meta text-muted-foreground">
                           <div className="truncate" title={r.updates ?? undefined}>{r.updates}</div>
                         </TD>
                       </TR>
@@ -180,7 +180,7 @@ export function TargetContacts({
       </Panel>
 
       {pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-body text-muted-foreground">
           <span className="tabular-nums">
             {(page * PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PAGE, total).toLocaleString()} of {total.toLocaleString()}
           </span>

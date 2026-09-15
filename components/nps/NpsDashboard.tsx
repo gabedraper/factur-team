@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { CampaignSummary, LeadSummary, PersonSummary, ResponseDetail } from "@/lib/nps/reporting";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 const BAND_LABEL: Record<ResponseDetail["band"], string> = {
   promoter: "Promoter",
@@ -21,7 +22,7 @@ const BAND_CLASS: Record<ResponseDetail["band"], string> = {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Surface pad="tight">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-meta uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="text-xl font-semibold tabular-nums">{value}</div>
     </Surface>
   );
@@ -203,7 +204,7 @@ export function NpsDashboard({
           <select
             value={personRole}
             onChange={(e) => setPersonRole(e.target.value)}
-            className="h-8 rounded-md border bg-field px-2 text-sm"
+            className={control({ size: "sm" })}
           >
             {personRoles.map((f) => (
               <option key={f} value={f}>{PERSON_ROLE_LABEL[f]}</option>
@@ -290,7 +291,7 @@ export function NpsDashboard({
         <select
           value={campaign}
           onChange={(e) => setCampaign(e.target.value)}
-          className="h-8 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="all">All campaigns</option>
           {campaigns.map((c) => (
@@ -300,7 +301,7 @@ export function NpsDashboard({
         <select
           value={band}
           onChange={(e) => setBand(e.target.value)}
-          className="h-8 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="all">All scores</option>
           <option value="promoter">Promoters</option>
@@ -310,14 +311,14 @@ export function NpsDashboard({
         <select
           value={lead}
           onChange={(e) => setLead(e.target.value)}
-          className="h-8 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="all">All team leads</option>
           {leadNames.map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-body text-muted-foreground">
           <input
             type="checkbox"
             checked={followUpsOnly}
@@ -325,7 +326,7 @@ export function NpsDashboard({
           />
           Asked for follow-up ({followUps})
         </label>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-meta text-muted-foreground">
           {shown.length} of {responses.length}
         </span>
       </div>
@@ -335,7 +336,7 @@ export function NpsDashboard({
           <Surface key={r.id} pad="tight">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-2xl font-semibold tabular-nums">{r.score}</span>
-              <span className={`text-xs uppercase tracking-wide ${BAND_CLASS[r.band]}`}>
+              <span className={`text-meta uppercase tracking-wide ${BAND_CLASS[r.band]}`}>
                 {BAND_LABEL[r.band]}
               </span>
               <Link
@@ -345,27 +346,27 @@ export function NpsDashboard({
                 {r.clientName}
               </Link>
               {r.respondent && (
-                <span className="text-sm text-muted-foreground">{r.respondent}</span>
+                <span className="text-body text-muted-foreground">{r.respondent}</span>
               )}
               {r.teamLead && (
-                <span className="text-sm text-muted-foreground">· {r.teamLead}</span>
+                <span className="text-body text-muted-foreground">· {r.teamLead}</span>
               )}
               {r.followUpRequested && (
-                <span className="rounded-full border border-amber-400 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-amber-400 px-2 py-0.5 text-meta text-amber-700 dark:text-amber-300">
                   Wants follow-up
                 </span>
               )}
-              <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+              <span className="ml-auto text-meta tabular-nums text-muted-foreground">
                 {r.collectedOn}
               </span>
             </div>
             {r.comment && (
-              <p className="mt-2 whitespace-pre-line text-sm">{r.comment}</p>
+              <p className="mt-2 whitespace-pre-line text-body">{r.comment}</p>
             )}
           </Surface>
         ))}
         {shown.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nothing matches those filters.</p>
+          <p className="text-body text-muted-foreground">Nothing matches those filters.</p>
         )}
       </div>
     </div>

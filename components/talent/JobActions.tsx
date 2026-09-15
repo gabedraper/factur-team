@@ -43,7 +43,7 @@ export function AddCandidate({ jobId }: { jobId: string }) {
   return (
     <div className="w-80 rounded-md bg-popover p-3 shadow-overlay">
       <div className="mb-2 flex items-center">
-        <span className="text-sm font-medium">Add candidate</span>
+        <span className="text-body font-medium">Add candidate</span>
         <button
           type="button"
           onClick={() => { setOpen(false); setAdded([]); }}
@@ -56,10 +56,10 @@ export function AddCandidate({ jobId }: { jobId: string }) {
 
       <PersonPicker onPick={pick} autoFocus />
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-body text-red-600 dark:text-red-400">{error}</p>}
 
       {added.length > 0 && (
-        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+        <ul className="mt-2 space-y-1 text-meta text-muted-foreground">
           {added.map((a, i) => (
             <li key={i}>
               {a.name} — {a.already ? "already on this job" : "added"}
@@ -126,16 +126,16 @@ export function PublishToggle({
             href={`/careers/${slug}`}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-primary underline-offset-4 hover:underline"
+            className="text-body text-primary underline-offset-4 hover:underline"
           >
             /careers/{slug}
           </a>
         )}
         {!published && blocked && (
-          <span className="text-xs text-muted-foreground">{blocked}</span>
+          <span className="text-meta text-muted-foreground">{blocked}</span>
         )}
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function PeopleSearch({ clients }: { clients: ClientOption[] }) {
       />
       <AlphaFilter active={letter} onSelect={(l) => { setLetter(l); setQuery(""); run("", l); }} />
       {total !== null && !searching && (
-        <p className="text-xs text-muted-foreground">{total} {total === 1 ? "person" : "people"} match</p>
+        <p className="text-meta text-muted-foreground">{total} {total === 1 ? "person" : "people"} match</p>
       )}
       <Panel>
         {results.length === 0 ? (

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { setMyRole, claimClient } from "@/actions/self-service";
 import { FIELD } from "@/lib/field-class";
 import { Table, TBody, TR, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 /**
  * Your own role and your own client list, set without an administrator.
@@ -86,12 +87,12 @@ export function SelfServicePanel({
   return (
     <div className="space-y-4">
       {problem && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-body text-destructive">
           {problem}
         </p>
       )}
 
-      <div className="grid grid-cols-[8rem_1fr] items-center gap-y-2 text-sm">
+      <div className="grid grid-cols-[8rem_1fr] items-center gap-y-2 text-body">
         <label htmlFor="own-role" className="text-muted-foreground">
           Role
         </label>
@@ -100,7 +101,7 @@ export function SelfServicePanel({
           value={roleId}
           disabled={pending}
           onChange={(e) => chooseRole(e.target.value)}
-          className={`h-8 w-full rounded-md border px-2 text-sm disabled:opacity-50 ${FIELD}`}
+          className={control({ size: "sm", className: `w-full ${FIELD}` })}
         >
           <option value="">None</option>
           {[...grouped.entries()].map(([service, list]) => (
@@ -127,14 +128,14 @@ export function SelfServicePanel({
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="w-32 shrink-0 text-sm text-muted-foreground">Clients</span>
+          <span className="w-32 shrink-0 text-body text-muted-foreground">Clients</span>
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search clients…"
-            className={`h-8 w-full rounded-md border px-2 text-sm ${FIELD}`}
+            className={control({ size: "sm", className: `w-full ${FIELD}` })}
           />
-          <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-body tabular-nums text-muted-foreground">
             {rows.filter((c) => c.mine).length}
           </span>
         </div>

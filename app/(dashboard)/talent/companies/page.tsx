@@ -8,6 +8,7 @@ import { ago, place } from "@/lib/talent/format";
 import { COMPANY_KIND, label } from "@/lib/talent/types";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +35,12 @@ export default async function CompaniesPage({
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Name or domain"
-          className="w-64 rounded-md border bg-background px-3 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-64" })}
         />
         <select
           name="kind"
           defaultValue={params.kind ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="">Any type</option>
           {Object.entries(COMPANY_KIND).map(([k, v]) => (
@@ -77,7 +78,7 @@ export default async function CompaniesPage({
                       <Chip colour={c.kind === "client" ? "emerald" : c.kind === "target" ? "violet" : "slate"}>
                         {label(COMPANY_KIND, c.kind)}
                       </Chip>
-                      {c.domain && <span className="text-xs text-muted-foreground">{c.domain}</span>}
+                      {c.domain && <span className="text-meta text-muted-foreground">{c.domain}</span>}
                     </div>
                   </TD>
                   <TD className="text-muted-foreground">{c.industry ?? "—"}</TD>

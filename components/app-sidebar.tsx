@@ -109,7 +109,7 @@ export function AppSidebar({
           <Link
             href={home.href}
             title={collapsed ? home.label : undefined}
-            className={`mb-2 flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`mb-2 flex items-center gap-3 rounded-md px-3 py-2 text-body transition-colors ${
               collapsed ? "justify-center px-0" : ""
             } ${
               pathname === home.href
@@ -136,7 +136,7 @@ export function AppSidebar({
                   type="button"
                   onClick={() => toggleGroup(group.label)}
                   aria-expanded={!shut}
-                  className={`flex w-full items-center gap-1 rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors hover:text-foreground ${
+                  className={`flex w-full items-center gap-1 rounded-md px-3 py-1 text-meta font-semibold uppercase tracking-wide transition-colors hover:text-foreground ${
                     shut && holdsActive ? "text-foreground" : "text-muted-foreground/70"
                   }`}
                 >
@@ -161,7 +161,7 @@ export function AppSidebar({
                         key={item.href + item.label}
                         href={item.href}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                        className={`flex items-center gap-3 rounded-md px-3 py-2 text-body transition-colors ${
                           collapsed ? "justify-center px-0" : ""
                         } ${
                           active
@@ -196,7 +196,7 @@ export function AppSidebar({
         <Link
           href="/settings"
           title={collapsed ? "Settings" : undefined}
-          className={`flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2 text-body transition-colors ${
             collapsed ? "justify-center px-0" : "mx-3 mt-3 rounded-md"
           } ${
             pathname.startsWith("/settings")

@@ -7,6 +7,7 @@ import { money, onDay } from "@/lib/talent/format";
 import { STAGE_KIND, label } from "@/lib/talent/types";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,9 @@ export default async function ReportsPage({
 
       <form className="flex flex-wrap items-center gap-2" action="/talent/reports">
         <input type="date" name="from" defaultValue={from}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm" />
+          className={control({ size: "sm" })} />
         <input type="date" name="to" defaultValue={to}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm" />
+          className={control({ size: "sm" })} />
         <Button size="sm" variant="outline" type="submit">Apply</Button>
       </form>
 
@@ -105,7 +106,7 @@ export default async function ReportsPage({
 
         <Panel title="Where the pipeline is">
           {byStage.size === 0 ? <Empty>Nothing active</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {[...byStage.entries()]
                 .sort((a, b) => b[1] - a[1])
                 .map(([kind, count]) => (

@@ -75,6 +75,7 @@ value is how that starts again.
 | A company logo | `<CompanyLogo>` | `<img className="rounded-full">` |
 | A person | `<Avatar>` | as above |
 | A form field | `<Field label hint error>` | a label beside the box, or none |
+| An input, select or textarea | `className={control()}` (or `<Input>`) | `rounded-md border bg-field px-2 …` |
 | Loading | `<Skeleton>` / `<TableSkeleton>` / `<PageSkeleton>` | a spinner |
 | View chips on a list | `<ViewSwitcher>` (+ `lib/list-views`) | filters in component state |
 | Table or board | `<RendererSwitch>` | a toggle held in state |
@@ -83,8 +84,9 @@ value is how that starts again.
 
 `scripts/design-check.mjs` runs in `prebuild`, so **a deploy fails if new code
 breaks these rules.** It catches a bare `<table>`, Tailwind's own shadows,
-`bg-white`, literal hex colours in classes, the hand-typed card recipe, and a
-hand-styled `<h1>`.
+`bg-white`, literal hex colours in classes, the hand-typed card recipe, a
+hand-styled `<h1>`, `text-sm`/`text-xs` in place of the type tokens, and
+`bg-field` outside `control()`.
 
 **Commits are checked too.** A pre-commit hook in `.githooks/` runs the same
 check on what you are committing, so a violation is caught in your session
@@ -185,14 +187,19 @@ Density is two tokens, `cell-x` and `cell-y`, currently 16px × 10px.
 - Money and counts use `<TD numeric>`. It right-aligns and sets `tabular-nums`
   so figures line up down the column.
 - **Company lists carry a logo. People lists do not.** Use `<TDIdentity>` on
-  companies and clients; on contacts, candidates and team members, the name is
-  the whole cell.
+  companies and clients; on contacts and candidates, the name is the whole
+  cell.
 
   The asymmetry is deliberate. A favicon is a real signal — you recognise a
   manufacturer's mark faster than you read its name — and it costs one external
-  request per row. A contact photo is almost always just initials, because
-  LinkedIn's are not obtainable, so it takes the same space and the same row
-  height while telling you nothing you were not about to read anyway.
+  request per row. A contact or candidate photo is always just initials,
+  because LinkedIn's are not obtainable, so it takes the same space and the
+  same row height while telling you nothing you were not about to read anyway.
+
+  **The exception is our own people**, who have real Google photos: the
+  scoreboards, the leaderboard, progress and the sidebar pass `src` and keep
+  them. The test is not "is this a person" but "is there a picture" — initials
+  beside a name earn nothing.
 
   This is also why `cell-y` is 10px rather than 8: a company row has to fit a
   24px logo. If logos ever leave the company lists, that token can come down.
@@ -248,10 +255,23 @@ Label above the field, always. It survives any width, reads fastest, and needs
 no fixed label column. Use `<Field>` from `@/components/ui/field` — it does
 all of this, and `<FieldSet>` does it for a group of radios or checkboxes.
 
-The line under every field is always reserved: it holds the hint, and the
-error replaces the hint when validation fires, so the form never jumps. Stack
-fields with `gap-2`; the reserved line supplies the rest. Pass `aria-invalid`
-to the input when there is an error and its border turns red on its own.
+The line under a field is reserved **only if the field passes `hint` or
+`error`** (even as undefined). Then it holds the hint, and the error replaces
+it when validation fires, so the form never jumps; a builder panel of twenty
+selects with no validation does not carry twenty empty lines. Stack fields
+with `gap-2`. Pass `aria-invalid` to the control when there is an error and
+its border turns red on its own.
+
+**Controls come from `control()`** in `@/components/ui/control` — two sizes,
+`sm` (32px, filter rows and builder panels) and the default (40px, forms you
+fill in), plus `multiline` for a textarea and `plain` for the borderless
+search box at the top of a list. `<Input>`, `<Textarea>` and the Select
+trigger are built from it, and so is every native `<select>` the app draws
+directly. Native selects are deliberate: they post, they work with a keyboard,
+and they need no popover library to be right.
+
+The fill is `bg-field`, never `bg-background` — the page colour in a control
+reads as a grey box on a white card, and near-black on a lifted dark one.
 
 ### Loading
 

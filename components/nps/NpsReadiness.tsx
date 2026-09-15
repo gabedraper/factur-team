@@ -9,7 +9,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <Surface pad="tight">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-meta uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${warn ? "text-amber-600 dark:text-amber-400" : ""}`}>
         {value}
       </div>
@@ -27,7 +27,7 @@ function ClientList({
   if (clients.length === 0) return null;
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">
+      <h3 className="text-body font-medium">
         {title} <span className="text-muted-foreground">({clients.length})</span>
       </h3>
       <div className="flex flex-wrap gap-1.5">
@@ -35,7 +35,7 @@ function ClientList({
           <Link
             key={c.id}
             href={`/settings/clients/${c.id}`}
-            className={`${surface({ pad: "tight", interactive: true })} text-xs`}
+            className={`${surface({ pad: "tight", interactive: true })} text-meta`}
           >
             {c.name}
             {c.note && (
@@ -62,7 +62,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-body font-medium uppercase tracking-wide text-muted-foreground">
           Sending permission
         </h2>
 
@@ -70,17 +70,17 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
           <button
             onClick={run}
             disabled={pending}
-            className="h-9 rounded-md border px-4 text-sm disabled:opacity-50"
+            className="h-9 rounded-md border px-4 text-body disabled:opacity-50"
           >
             {pending ? "Checking…" : "Check senders"}
           </button>
           {result?.serviceAccount && (
-            <span className="text-xs text-muted-foreground">{result.serviceAccount}</span>
+            <span className="text-meta text-muted-foreground">{result.serviceAccount}</span>
           )}
         </div>
 
         {result?.problem && (
-          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             {result.problem}
           </p>
         )}
@@ -101,7 +101,7 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
                     <TD>
                       <div>{s.name ?? s.email}</div>
                       {s.name && (
-                        <div className="text-xs text-muted-foreground">{s.email}</div>
+                        <div className="text-meta text-muted-foreground">{s.email}</div>
                       )}
                     </TD>
                     <TD numeric>{s.clients}</TD>
@@ -120,14 +120,14 @@ export function NpsReadiness({ coverage }: { coverage: Coverage }) {
         )}
 
         {result && blocked.length === 0 && result.senders.length > 0 && (
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+          <p className="text-body text-emerald-600 dark:text-emerald-400">
             All {result.senders.length} senders cleared.
           </p>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-body font-medium uppercase tracking-wide text-muted-foreground">
           Coverage
         </h2>
 

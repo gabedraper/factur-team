@@ -63,7 +63,7 @@ export default async function CareersPage() {
                 className="block py-5 transition-colors hover:bg-accent/40"
               >
                 <p className="text-lg font-medium">{j.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-body text-muted-foreground">
                   {[
                     j.company_name,
                     place(j.city, j.state),
@@ -71,7 +71,7 @@ export default async function CareersPage() {
                     label(EMPLOYMENT_TYPE, j.employment_type),
                   ].filter((v) => v && v !== "—").join(" · ")}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-body text-muted-foreground">
                   {salaryRange(j.salary_min, j.salary_max, j.salary_currency, j.salary_period)}
                 </p>
               </Link>

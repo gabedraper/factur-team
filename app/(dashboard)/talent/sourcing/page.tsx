@@ -3,9 +3,10 @@ import { Radar } from "lucide-react";
 import { requireTalent } from "@/lib/talent/access";
 import { integrationStatus, listPeople, searchResumes } from "@/lib/talent/queries";
 import { AddPerson } from "@/components/talent/AddPerson";
-import { Avatar, Empty, NotConnected, PageHeader, Panel } from "@/components/talent/bits";
+import { Empty, NotConnected, PageHeader, Panel } from "@/components/talent/bits";
 import { Button } from "@/components/ui/button";
 import { ago, place } from "@/lib/talent/format";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +52,13 @@ export default async function SourcingPage({
           name="q"
           defaultValue={term}
           placeholder="Title, skill, employer or resume text"
-          className="w-80 rounded-md border bg-background px-3 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-80" })}
         />
         <input
           name="skill"
           defaultValue={params.skill ?? ""}
           placeholder="Skill tag"
-          className="w-40 rounded-md border bg-background px-3 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-40" })}
         />
         <Button size="sm" type="submit">Search</Button>
       </form>
@@ -84,19 +85,18 @@ export default async function SourcingPage({
               city: r.city, state: r.state, last: r.last_activity_at, via: "resume",
             }))].map((p) => (
               <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                <Avatar name={p.name} />
                 <div className="min-w-0 flex-1">
                   <Link href={`/talent/people/${p.id}`} className="font-medium hover:underline">
                     {p.name}
                   </Link>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-meta text-muted-foreground">
                     {[p.title, p.company, place(p.city, p.state)].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 text-meta text-muted-foreground">
                   {p.via === "resume" ? "resume match" : ""}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{ago(p.last)}</span>
+                <span className="shrink-0 text-meta text-muted-foreground">{ago(p.last)}</span>
               </li>
             ))}
           </ul>

@@ -12,11 +12,11 @@ import Link from "next/link";
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
-      <Link href="/" className="text-sm text-muted-foreground hover:underline">
+      <Link href="/" className="text-body text-muted-foreground hover:underline">
         Factur
       </Link>
-      <div className="prose-sm mt-8 space-y-4 text-sm leading-relaxed">{children}</div>
-      <div className="mt-12 flex gap-4 border-t pt-4 text-xs text-muted-foreground">
+      <div className="prose-sm mt-8 space-y-4 text-body leading-relaxed">{children}</div>
+      <div className="mt-12 flex gap-4 border-t pt-4 text-meta text-muted-foreground">
         <Link href="/legal/terms" className="hover:underline">Terms</Link>
         <Link href="/legal/privacy" className="hover:underline">Privacy</Link>
         <Link href="/legal/support" className="hover:underline">Support</Link>

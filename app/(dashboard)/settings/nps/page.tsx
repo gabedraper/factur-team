@@ -19,7 +19,7 @@ export default async function NpsSettingsPage() {
       <PageHeader back={{ href: "/settings", label: "Settings" }} title="NPS" />
       <Link
         href="/settings/nps/sequence"
-        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-body hover:bg-muted"
       >
         NPS Sequence <ChevronRight className="h-4 w-4" />
       </Link>

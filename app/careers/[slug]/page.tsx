@@ -24,13 +24,13 @@ export default async function CareersJobPage({ params }: { params: Promise<{ slu
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <Link href="/careers" className="text-sm text-muted-foreground hover:underline">
+      <Link href="/careers" className="text-body text-muted-foreground hover:underline">
         ← All roles
       </Link>
 
       {/* design-ok: public page outside the app shell */}
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">{job.title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-body text-muted-foreground">
         {[
           job.company_name,
           place(job.city, job.state, job.country),
@@ -38,7 +38,7 @@ export default async function CareersJobPage({ params }: { params: Promise<{ slu
           label(EMPLOYMENT_TYPE, job.employment_type),
         ].filter((v) => v && v !== "—").join(" · ")}
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 text-body text-muted-foreground">
         {salaryRange(job.salary_min, job.salary_max, job.salary_currency, job.salary_period)}
       </p>
 

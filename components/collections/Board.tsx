@@ -298,7 +298,7 @@ export function Board({
               <button
                 key={s}
                 onClick={() => router.push(`/collections?scope=${s}`)}
-                className={`rounded-md border px-3 py-1 text-sm ${
+                className={`rounded-md border px-3 py-1 text-body ${
                   scope === s ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                 }`}
               >
@@ -307,7 +307,7 @@ export function Board({
             ))}
           </div>
         )}
-        <span className="text-sm">
+        <span className="text-body">
           <b>{board.filter((r) => Number(r.past_due_total ?? 0) > 0).length}</b> past due
           {" · "}
           <b>{board.length}</b> with a balance
@@ -316,7 +316,7 @@ export function Board({
         {board.length > 0 && (
           <button
             onClick={exportCsv}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1 text-sm hover:bg-muted"
+            className="ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1 text-body hover:bg-muted"
             title="Download these rows to open in a spreadsheet"
           >
             <Download className="h-3.5 w-3.5" />
@@ -343,7 +343,7 @@ export function Board({
             <div className="text-right">Past due</div>
             <div />
           </div>
-          <div className={`${COLS} rounded-lg border bg-muted/40 px-3 py-2 text-sm`}>
+          <div className={`${COLS} rounded-lg border bg-muted/40 px-3 py-2 text-body`}>
             <div className="font-medium">Total</div>
             <div />
             <Cell amount={totals.current} tone={AGEING_TONE.current} />
@@ -359,7 +359,7 @@ export function Board({
 
       {note && (
         <p
-          className={`rounded-md border px-3 py-2 text-sm ${
+          className={`rounded-md border px-3 py-2 text-body ${
             note.kind === "ok"
               ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
               : "border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
@@ -370,7 +370,7 @@ export function Board({
       )}
 
       {board.length === 0 && (
-        <p className="text-sm text-muted-foreground">Nobody is past due.</p>
+        <p className="text-body text-muted-foreground">Nobody is past due.</p>
       )}
 
       {board.map((r) => {
@@ -387,7 +387,7 @@ export function Board({
 
         return (
           <Surface key={key(r)} pad="none">
-            <div className={`${COLS} min-h-11 px-3 py-2 text-sm`}>
+            <div className={`${COLS} min-h-11 px-3 py-2 text-body`}>
               {/* Truncated rather than wrapped: a long name must not push the
                   money out of line with the row above it. */}
               <div className="flex min-w-0 items-center gap-2" title={r.client_name}>
@@ -468,14 +468,14 @@ export function Board({
                       <>
                         <button
                           onClick={() => setOpen(isOpen ? null : key(r))}
-                          className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                          className="rounded-md border px-2 py-1 text-meta hover:bg-muted"
                         >
                           {isOpen ? "Hide" : "Read"}
                         </button>
                         <button
                           onClick={() => test(r)}
                           disabled={pending}
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                           title="Draft this to yourself instead of the client"
                         >
                           <FlaskConical className="h-3.5 w-3.5" />
@@ -483,7 +483,7 @@ export function Board({
                         <button
                           onClick={() => place(r)}
                           disabled={pending || paused || !r.to_email}
-                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-meta text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                         >
                           {settings.mode === "full" ? <Send className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
                           {settings.mode === "full" ? "Send" : "Draft"}
@@ -493,7 +493,7 @@ export function Board({
                     <button
                       onClick={() => pause(r, inSequence)}
                       disabled={pending}
-                      className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                      className="inline-flex items-center gap-1 truncate rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                     >
                       {inSequence
                         ? <PauseCircle className="h-3.5 w-3.5 shrink-0" />
@@ -508,14 +508,14 @@ export function Board({
             </div>
 
             {due && !r.to_email && (
-              <p className="border-t px-3 py-2 text-xs text-red-600 dark:text-red-400">
+              <p className="border-t px-3 py-2 text-meta text-red-600 dark:text-red-400">
                 No billing email on their QuickBooks record.
               </p>
             )}
 
             {isOpen && due && (
               <div className="space-y-2 border-t px-3 py-3">
-                <div className="space-y-0.5 text-xs text-muted-foreground">
+                <div className="space-y-0.5 text-meta text-muted-foreground">
                   <div>To {r.to_email}</div>
                   <div>
                     {r.cc_emails ? (
@@ -533,7 +533,7 @@ export function Board({
                   onChange={(e) =>
                     setEdited((s) => ({ ...s, [key(r)]: { ...w, subject: e.target.value } }))
                   }
-                  className={`${FIELD} w-full px-2 py-1 text-sm`}
+                  className={`${FIELD} w-full px-2 py-1 text-body`}
                 />
                 <RichTextEditor
                   value={w.body}

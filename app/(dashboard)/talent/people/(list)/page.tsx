@@ -8,6 +8,7 @@ import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/ta
 import { Button } from "@/components/ui/button";
 import { ago, place } from "@/lib/talent/format";
 import { PERSON_TYPE, label } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -69,12 +70,12 @@ export default async function PeoplePage({
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Name, email or employer"
-          className="w-64 rounded-md border bg-background px-3 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-64" })}
         />
         <select
           name="type"
           defaultValue={params.type ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="">Any type</option>
           {Object.entries(PERSON_TYPE).map(([k, v]) => (
@@ -84,7 +85,7 @@ export default async function PeoplePage({
         <select
           name="owner"
           defaultValue={params.owner ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="">Anyone</option>
           {members.map((m) => (
@@ -94,14 +95,14 @@ export default async function PeoplePage({
         <select
           name="sort"
           defaultValue={params.sort ?? "recent"}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="recent">Last activity</option>
           <option value="added">Recently added</option>
           <option value="name">Name</option>
           <option value="readiness">Readiness</option>
         </select>
-        <label className="flex items-center gap-1.5 text-sm">
+        <label className="flex items-center gap-1.5 text-body">
           <input type="checkbox" name="resumes" value="1" defaultChecked={params.resumes === "1"} />
           In resumes
         </label>
@@ -188,7 +189,7 @@ export default async function PeoplePage({
       )}
 
       {!inResumes && pages > 1 && (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-body">
           {page > 1 && (
             <Link href={href({ page: String(page - 1) })} className="text-primary hover:underline">
               Previous

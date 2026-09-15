@@ -26,14 +26,22 @@ type FieldProps = {
   className?: string;
 };
 
-export function Field({ label, hint, error, children, className }: FieldProps) {
+export function Field(props: FieldProps) {
+  const { label, hint, error, children, className } = props;
+  /*
+   * The line underneath is reserved only for fields that can say something --
+   * one that passes `hint` or `error`, even as undefined. A builder panel of
+   * twenty selects with no validation would otherwise carry twenty empty
+   * lines, and the no-jump guarantee is worth nothing where nothing appears.
+   */
+  const reserves = "hint" in props || "error" in props;
   return (
     <div className={cn("grid min-w-0 gap-1.5", className)}>
       <label className="grid min-w-0 gap-1.5">
         <span className="text-body font-medium leading-none">{label}</span>
         {children}
       </label>
-      <FieldMessage hint={hint} error={error} />
+      {reserves && <FieldMessage hint={hint} error={error} />}
     </div>
   );
 }

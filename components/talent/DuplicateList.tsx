@@ -45,7 +45,7 @@ export function DuplicateList({ pairs, canEdit }: { pairs: Pair[]; canEdit: bool
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
       {live.map((p) => {
         const key = `${p.a_id}:${p.b_id}`;
         return (
@@ -64,8 +64,8 @@ export function DuplicateList({ pairs, canEdit }: { pairs: Pair[]; canEdit: bool
                     <Link href={`/talent/people/${side.id}`} className="font-medium hover:underline">
                       {side.name}
                     </Link>
-                    <p className="text-sm text-muted-foreground">{side.email ?? "no email"}</p>
-                    <p className="text-xs text-muted-foreground">Added {onDay(side.created)}</p>
+                    <p className="text-body text-muted-foreground">{side.email ?? "no email"}</p>
+                    <p className="text-meta text-muted-foreground">Added {onDay(side.created)}</p>
                     {canEdit && (
                       <Button
                         size="sm"

@@ -15,8 +15,10 @@ import { FIELD } from "@/lib/field-class";
 import { STAGE_COLOURS, STAGE_KIND, TONE, type Integration, type TalentSettings } from "@/lib/talent/types";
 import { cn } from "@/lib/utils";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
+import { Field } from "@/components/ui/field";
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
 
 type Stage = {
   id: string; workflow_id: string; name: string; kind: string;
@@ -40,7 +42,7 @@ export function WorkflowSettings({ workflows }: { workflows: Workflow[] }) {
 
   return (
     <div className="space-y-4">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
       {workflows.map((w) => (
         <Panel
@@ -59,15 +61,15 @@ export function WorkflowSettings({ workflows }: { workflows: Workflow[] }) {
         >
           {adding === w.id && (
             <div className="flex flex-wrap gap-2 border-b bg-muted/30 px-4 py-3">
-              <input className={`w-40 px-2 py-1.5 text-sm ${FIELD}`} placeholder="Stage name"
+              <input className={`w-40 px-2 py-1.5 text-body ${FIELD}`} placeholder="Stage name"
                 value={name} autoFocus onChange={(e) => setName(e.target.value)} />
-              <select className="rounded-md border bg-background px-2 py-1.5 text-sm"
+              <select className={control({ size: "sm" })}
                 value={kind} onChange={(e) => setKind(e.target.value)}>
                 {Object.entries(STAGE_KIND).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
-              <select className="rounded-md border bg-background px-2 py-1.5 text-sm"
+              <select className={control({ size: "sm" })}
                 value={colour} onChange={(e) => setColour(e.target.value)}>
                 {STAGE_COLOURS.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -85,13 +87,13 @@ export function WorkflowSettings({ workflows }: { workflows: Workflow[] }) {
           {w.stages.length === 0 ? <Empty>No stages</Empty> : (
             <ul className="divide-y">
               {w.stages.map((s) => (
-                <li key={s.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-                  <span className="w-6 shrink-0 text-xs tabular-nums text-muted-foreground">
+                <li key={s.id} className="group flex items-center gap-3 px-4 py-2 text-body">
+                  <span className="w-6 shrink-0 text-meta tabular-nums text-muted-foreground">
                     {s.position + 1}
                   </span>
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", TONE[s.color]?.dot ?? TONE.slate.dot)} />
                   <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
+                  <span className="shrink-0 text-meta text-muted-foreground">
                     {STAGE_KIND[s.kind as keyof typeof STAGE_KIND] ?? s.kind}
                   </span>
                   {s.is_terminal && <Chip colour="slate">end</Chip>}
@@ -118,7 +120,7 @@ export function WorkflowSettings({ workflows }: { workflows: Workflow[] }) {
       ))}
 
       <div className="flex gap-2">
-        <input className={`w-56 px-2 py-1.5 text-sm ${FIELD}`} placeholder="New pipeline"
+        <input className={`w-56 px-2 py-1.5 text-body ${FIELD}`} placeholder="New pipeline"
           value={newFlow} onChange={(e) => setNewFlow(e.target.value)} />
         <Button size="sm" disabled={pending || !newFlow.trim()}
           onClick={() => start(async () => {
@@ -141,7 +143,7 @@ export function CareersSettings({ settings }: { settings: TalentSettings }) {
   return (
     <Panel title="Careers page">
       <div className="space-y-3 px-4 py-3">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-body">
           <input
             type="checkbox"
             checked={form.careers_page_enabled}
@@ -150,29 +152,25 @@ export function CareersSettings({ settings }: { settings: TalentSettings }) {
           Enabled
         </label>
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">Heading</span>
+        <Field label="Heading">
           <input className={input} value={form.careers_page_heading}
             onChange={(e) => setForm({ ...form, careers_page_heading: e.target.value })} />
-        </label>
+        </Field>
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">Intro</span>
+        <Field label="Intro">
           <textarea className={`${input} min-h-20`} value={form.careers_page_intro ?? ""}
             onChange={(e) => setForm({ ...form, careers_page_intro: e.target.value })} />
-        </label>
+        </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Reply-to</span>
+          <Field label="Reply-to">
             <input className={input} value={form.careers_apply_email ?? ""}
               onChange={(e) => setForm({ ...form, careers_apply_email: e.target.value })} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Guarantee days</span>
+          </Field>
+          <Field label="Guarantee days">
             <input className={input} type="number" value={form.default_guarantee_days}
               onChange={(e) => setForm({ ...form, default_guarantee_days: Number(e.target.value) })} />
-          </label>
+          </Field>
         </div>
 
         <div className="flex items-center gap-2">
@@ -185,7 +183,7 @@ export function CareersSettings({ settings }: { settings: TalentSettings }) {
           >Save</Button>
           {saved && <Check className="h-4 w-4 text-emerald-600" />}
           <a href="/careers" target="_blank" rel="noreferrer"
-            className="text-sm text-primary hover:underline">/careers</a>
+            className="text-body text-primary hover:underline">/careers</a>
         </div>
       </div>
     </Panel>
@@ -209,7 +207,7 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
 
   return (
     <div className="space-y-4">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
       {[...groups.entries()].map(([category, items]) => (
         <Panel key={category} title={category}>
           <ul className="divide-y">
@@ -217,7 +215,7 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
               <li key={i.slug} className="space-y-2 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Plug className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm font-medium">{i.name}</span>
+                  <span className="text-body font-medium">{i.name}</span>
                   <Chip colour={
                     i.status === "connected" ? "emerald"
                       : i.status === "error" ? "rose"
@@ -226,7 +224,7 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
                     {i.status.replace("_", " ")}
                   </Chip>
                   <select
-                    className="ml-auto rounded-md border bg-background px-2 py-1 text-sm"
+                    className={control({ size: "sm", className: "ml-auto" })}
                     value={i.status}
                     disabled={pending}
                     onChange={(e) => start(async () => {
@@ -248,9 +246,9 @@ export function IntegrationSettings({ integrations }: { integrations: Integratio
                     <option value="disabled">Disabled</option>
                   </select>
                 </div>
-                <p className="text-sm text-muted-foreground">{i.powers}</p>
+                <p className="text-body text-muted-foreground">{i.powers}</p>
                 {i.requires && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body text-muted-foreground">
                     <span className="font-medium">Needs:</span> {i.requires}
                   </p>
                 )}
@@ -284,7 +282,7 @@ export function TemplateSettings({
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel title="Note templates">
         {notes.length === 0 ? <Empty>None</Empty> : (
-          <ul className="divide-y text-sm">
+          <ul className="divide-y text-body">
             {notes.map((t) => (
               <li key={t.id} className="group flex items-center gap-2 px-4 py-2">
                 <span className="min-w-0 flex-1 truncate">{t.name}</span>
@@ -303,7 +301,7 @@ export function TemplateSettings({
           </ul>
         )}
         <div className="flex gap-2 border-t px-4 py-3">
-          <input className={`flex-1 px-2 py-1.5 text-sm ${FIELD}`} placeholder="Name"
+          <input className={`flex-1 px-2 py-1.5 text-body ${FIELD}`} placeholder="Name"
             value={noteName} onChange={(e) => setNoteName(e.target.value)} />
           <Button size="sm" disabled={!noteName.trim()}
             onClick={() => start(async () => {
@@ -316,7 +314,7 @@ export function TemplateSettings({
 
       <Panel title="Email templates">
         {emails.length === 0 ? <Empty>None</Empty> : (
-          <ul className="divide-y text-sm">
+          <ul className="divide-y text-body">
             {emails.map((t) => (
               <li key={t.id} className="group flex items-center gap-2 px-4 py-2">
                 <span className="min-w-0 flex-1 truncate">{t.name}</span>
@@ -335,7 +333,7 @@ export function TemplateSettings({
           </ul>
         )}
         <div className="flex gap-2 border-t px-4 py-3">
-          <input className={`flex-1 px-2 py-1.5 text-sm ${FIELD}`} placeholder="Name"
+          <input className={`flex-1 px-2 py-1.5 text-body ${FIELD}`} placeholder="Name"
             value={emailName} onChange={(e) => setEmailName(e.target.value)} />
           <Button size="sm" disabled={!emailName.trim()}
             onClick={() => start(async () => {
@@ -352,12 +350,12 @@ export function TemplateSettings({
             </Button>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Name on the first line, <code>Subject:</code> on the second, body under it.
                 Separate each with <code>---</code>.
               </p>
               <textarea
-                className={`${input} min-h-48 font-mono text-xs`}
+                className={`${input} min-h-48 font-mono text-meta`}
                 value={paste}
                 placeholder={"Interview invite\nSubject: Next step at {{company}}\nHi {{first_name}},\n\n...\n---\nRejection\nSubject: Update on your application\n..."}
                 onChange={(e) => setPaste(e.target.value)}
@@ -372,7 +370,7 @@ export function TemplateSettings({
                   })}
                 >Import</Button>
                 <Button size="sm" variant="ghost" onClick={() => setPasting(false)}>Cancel</Button>
-                {pasteNote && <span className="text-sm text-muted-foreground">{pasteNote}</span>}
+                {pasteNote && <span className="text-body text-muted-foreground">{pasteNote}</span>}
               </div>
             </>
           )}
@@ -394,13 +392,13 @@ export function ActivityTypeSettings({ types }: { types: ActType[] }) {
 
   return (
     <Panel title="Activity types">
-      <ul className="divide-y text-sm">
+      <ul className="divide-y text-body">
         {types.map((t) => (
           <li key={t.id} className="flex items-center gap-3 px-4 py-2">
             <span className={cn("h-2 w-2 shrink-0 rounded-full", TONE[t.color]?.dot ?? TONE.slate.dot)} />
             <span className="min-w-0 flex-1 truncate">{t.name}</span>
             <Chip>{t.category}</Chip>
-            <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <label className="flex shrink-0 items-center gap-1.5 text-meta text-muted-foreground">
               <input
                 type="checkbox"
                 checked={t.counts_as_progression}
@@ -460,7 +458,7 @@ export function MailSettings({
     <div className="space-y-4">
       {!gmailConnected && (
         <div className="rounded-lg border border-dashed bg-muted/30 p-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             Mark Gmail connected under Integrations before syncing.
           </p>
         </div>
@@ -468,20 +466,16 @@ export function MailSettings({
 
       <Panel title="Mailboxes read">
         <div className="space-y-3 px-4 py-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-              One Factur address per line
-            </span>
+          <Field label="One Factur address per line">
             <textarea
               className={`${input} min-h-28 font-mono`}
               value={accounts}
               placeholder="recruiter@facturmfg.com"
               onChange={(e) => setAccounts(e.target.value)}
             />
-          </label>
+          </Field>
 
-          <label className="block max-w-40">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Days back</span>
+          <Field label="Days back" className="max-w-40">
             <input
               className={input}
               type="number"
@@ -490,9 +484,9 @@ export function MailSettings({
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
             />
-          </label>
+          </Field>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -536,11 +530,11 @@ export function MailSettings({
               {pending ? "Syncing…" : "Sync now"}
             </Button>
 
-            {note && <span className="text-sm text-muted-foreground">{note}</span>}
+            {note && <span className="text-body text-muted-foreground">{note}</span>}
           </div>
 
           {config.mail_last_sync_at && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Last run {new Date(config.mail_last_sync_at).toLocaleString("en-US")}
               {config.mail_last_sync_note ? ` · ${config.mail_last_sync_note}` : ""}
             </p>
@@ -565,7 +559,7 @@ export function MailSettings({
                   <TD>
                     {r.account}
                     {r.problem && (
-                      <p className="text-xs text-red-600 dark:text-red-400">{r.problem}</p>
+                      <p className="text-meta text-red-600 dark:text-red-400">{r.problem}</p>
                     )}
                   </TD>
                   <TD numeric className="text-muted-foreground">{r.matching}</TD>

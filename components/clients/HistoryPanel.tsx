@@ -18,7 +18,7 @@ function when(value: string): string {
 
 export function HistoryPanel({ spans }: { spans: HistorySpan[] }) {
   if (spans.length === 0) {
-    return <p className="text-sm text-muted-foreground">No history recorded yet.</p>;
+    return <p className="text-body text-muted-foreground">No history recorded yet.</p>;
   }
 
   const fields = Object.keys(HISTORY_FIELD_LABEL).filter((f) =>
@@ -36,18 +36,18 @@ export function HistoryPanel({ spans }: { spans: HistorySpan[] }) {
 
         return (
           <div key={field} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2 last:border-0">
-            <span className="w-40 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="w-40 shrink-0 text-meta uppercase tracking-wide text-muted-foreground">
               {HISTORY_FIELD_LABEL[field]}
             </span>
             <span className="font-medium">
               {current.value ?? <span className="text-muted-foreground">vacant</span>}
             </span>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-meta tabular-nums text-muted-foreground">
               since {when(current.validFrom)}
             </span>
 
             {past.length > 0 && (
-              <div className="w-full pl-40 text-xs text-muted-foreground">
+              <div className="w-full pl-40 text-meta text-muted-foreground">
                 {past.map((p) => (
                   <div key={p.id} className="tabular-nums">
                     {p.value ?? "vacant"} · {when(p.validFrom)} to{" "}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { control } from "@/components/ui/control";
 
 const CHOICES = [
   { key: "interview", label: "Interview" },
@@ -37,7 +38,7 @@ export function PortalFeedback({
 
   if (!canRespond) {
     return decision ? (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         {CHOICES.find((c) => c.key === decision)?.label ?? decision}
         {feedback ? ` — ${feedback}` : ""}
       </p>
@@ -75,7 +76,7 @@ export function PortalFeedback({
             disabled={busy}
             onClick={() => { setChoice(c.key); setSaved(false); send(c.key); }}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm transition-colors",
+              "rounded-full border px-3 py-1.5 text-body transition-colors",
               choice === c.key
                 ? "border-primary bg-primary text-primary-foreground"
                 : "hover:bg-accent"
@@ -87,7 +88,7 @@ export function PortalFeedback({
       </div>
 
       <textarea
-        className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm"
+        className={control({ multiline: true, className: "w-full" })}
         placeholder="Comments"
         value={note}
         onChange={(e) => { setNote(e.target.value); setSaved(false); }}
@@ -97,8 +98,8 @@ export function PortalFeedback({
         <Button size="sm" variant="outline" disabled={busy} onClick={() => send(choice)}>
           {busy ? "Sending…" : "Send"}
         </Button>
-        {saved && <span className="text-sm text-emerald-600 dark:text-emerald-400">Sent</span>}
-        {error && <span className="text-sm text-red-600 dark:text-red-400">{error}</span>}
+        {saved && <span className="text-body text-emerald-600 dark:text-emerald-400">Sent</span>}
+        {error && <span className="text-body text-red-600 dark:text-red-400">{error}</span>}
       </div>
     </div>
   );

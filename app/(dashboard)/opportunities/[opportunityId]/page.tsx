@@ -118,14 +118,14 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         contactName={contactName}
       />
       <div>
-        <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" /> My Opportunities
         </Link>
         <PageHeader title={contactName}>
           <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
           {o.lead_status && <Chip>{o.lead_status}</Chip>}
         </PageHeader>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {[o.crm_contacts?.title, o.crm_accounts?.name, o.org_clients?.name && `for ${o.org_clients.name}`]
             .filter(Boolean)
             .join(" · ")}

@@ -353,10 +353,10 @@ export default async function DashboardLayout({
                 size={32}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
+                <p className="text-body font-medium truncate">
                   {previewing?.full_name ?? previewing?.email ?? profile?.full_name ?? "User"}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                   {previewing ? "Previewing" : (roleLabel ?? "No role set")}
                 </p>
               </div>

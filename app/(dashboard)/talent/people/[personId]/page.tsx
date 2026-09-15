@@ -63,7 +63,7 @@ export default async function PersonPage({
     return (
       <div className="max-w-xl space-y-3 p-6">
         <PageHeader title={person.name} />
-        <p className="text-sm text-muted-foreground">Merged</p>
+        <p className="text-body text-muted-foreground">Merged</p>
         <Link href={`/talent/people/${person.merged_into_id}`} className="text-primary hover:underline">
           Open the surviving record
         </Link>
@@ -100,7 +100,7 @@ export default async function PersonPage({
               <Chip key={t.id} colour={t.color}>{t.label}</Chip>
             ))}</>}
           />
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {[person.title, person.company_name, place(person.city, person.state)]
               .filter(Boolean).join(" · ") || "—"}
           </p>
@@ -109,7 +109,7 @@ export default async function PersonPage({
               href={person.linkedin_url}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+              className="mt-1 inline-flex items-center gap-1 text-body text-primary hover:underline"
             >
               <Linkedin className="h-3.5 w-3.5" />
               LinkedIn
@@ -162,11 +162,11 @@ export default async function PersonPage({
           <div className="space-y-4">
             <Panel title="Open tasks">
               {tasks.length === 0 ? <Empty>None</Empty> : (
-                <ul className="divide-y text-sm">
+                <ul className="divide-y text-body">
                   {tasks.map((t) => (
                     <li key={t.id} className="flex gap-2 px-4 py-2">
                       <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{onDay(t.due_at)}</span>
+                      <span className="shrink-0 text-meta text-muted-foreground">{onDay(t.due_at)}</span>
                     </li>
                   ))}
                 </ul>
@@ -254,7 +254,7 @@ export default async function PersonPage({
                 return (
                   <li key={row.id} className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium">{row.tal_jobs?.title ?? "—"}</span>
+                      <span className="text-body font-medium">{row.tal_jobs?.title ?? "—"}</span>
                       {row.recommendation && (
                         <Chip
                           colour={
@@ -265,15 +265,15 @@ export default async function PersonPage({
                           {label(RECOMMENDATION, row.recommendation)}
                         </Chip>
                       )}
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-meta text-muted-foreground">
                         {row.interviewer_name
                           ?? (row.interviewer_member_id ? authors.get(row.interviewer_member_id) : null)
                           ?? "—"}
                       </span>
-                      <span className="ml-auto text-xs text-muted-foreground">{ago(row.created_at)}</span>
+                      <span className="ml-auto text-meta text-muted-foreground">{ago(row.created_at)}</span>
                     </div>
-                    {row.strengths && <p className="mt-1 text-sm">{row.strengths}</p>}
-                    {row.concerns && <p className="mt-1 text-sm text-muted-foreground">{row.concerns}</p>}
+                    {row.strengths && <p className="mt-1 text-body">{row.strengths}</p>}
+                    {row.concerns && <p className="mt-1 text-body text-muted-foreground">{row.concerns}</p>}
                   </li>
                 );
               })}

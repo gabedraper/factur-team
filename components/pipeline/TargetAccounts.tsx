@@ -120,7 +120,7 @@ export function TargetAccounts({
               <button
                 key={s}
                 onClick={() => toggleStage(s)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+                className={`rounded-full px-2.5 py-1 text-meta font-medium transition ${
                   on ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
@@ -167,7 +167,7 @@ export function TargetAccounts({
                     <TD className="max-w-[14rem] text-muted-foreground">
                       <div className="truncate" title={r.industry ?? undefined}>{r.industry}</div>
                     </TD>
-                    <TD className="max-w-[22rem] text-xs text-muted-foreground">
+                    <TD className="max-w-[22rem] text-meta text-muted-foreground">
                       <div className="truncate" title={r.keywords ?? undefined}>{r.keywords}</div>
                     </TD>
                     <TD className="text-muted-foreground">
@@ -181,7 +181,7 @@ export function TargetAccounts({
         </Panel>
 
         {pages > 1 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center justify-between text-body text-muted-foreground">
             <span className="tabular-nums">
               {(page * PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PAGE, total).toLocaleString()} of {total.toLocaleString()}
             </span>
@@ -345,7 +345,7 @@ function AccountPanel({
               <h2 className="truncate text-lg font-semibold">{account.account_name}</h2>
               <Chip colour={STAGE_TONE[account.target_stage] ?? "slate"}>{account.target_stage}</Chip>
             </div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-muted-foreground">
               <Website domain={account.domain} />
               {account.industry && <span>{account.industry}</span>}
               {[account.city, account.state, account.country].filter(Boolean).length > 0 && (
@@ -354,7 +354,7 @@ function AccountPanel({
               <span>{clientName}</span>
             </div>
             {account.keywords && (
-              <p className="mt-1 text-xs text-muted-foreground">{account.keywords}</p>
+              <p className="mt-1 text-meta text-muted-foreground">{account.keywords}</p>
             )}
           </div>
           <div className="flex shrink-0 gap-1">
@@ -369,24 +369,24 @@ function AccountPanel({
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
           {account.latest_update && (
-            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm">{account.latest_update}</p>
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-body">{account.latest_update}</p>
           )}
 
           {byCampaign.length > 0 && (
             <section className="space-y-2">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <h3 className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
                 Campaigns ({byCampaign.length})
               </h3>
               <div className="divide-y rounded-md border">
                 {byCampaign.map(([id, c]) => (
-                  <div key={id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <div key={id} className="flex items-center justify-between gap-3 px-3 py-2 text-body">
                     <div className="min-w-0">
                       <div className="truncate font-medium">{c.name}</div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div className="truncate text-meta text-muted-foreground">
                         {[c.type, shortDate(c.start_date)].filter(Boolean).join(" · ")}
                       </div>
                     </div>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                       {c.members} {c.members === 1 ? "contact" : "contacts"}
                     </span>
                   </div>
@@ -396,7 +396,7 @@ function AccountPanel({
           )}
 
           <section className="space-y-2">
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
               Target contacts {contacts ? `(${contacts.length})` : ""}
             </h3>
             {contacts === null ? (
@@ -426,7 +426,7 @@ function AccountPanel({
               <button
                 type="button"
                 onClick={() => setShowPotential(!showPotential)}
-                className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 text-meta font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight
                   className={"h-3.5 w-3.5 transition-transform " + (showPotential ? "rotate-90" : "")}
@@ -435,12 +435,12 @@ function AccountPanel({
               </button>
               <div className={"divide-y rounded-md border" + (showPotential ? "" : " hidden")}>
                 {unworked.map((c) => (
-                  <div key={c.contact_id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <div key={c.contact_id} className="flex items-center justify-between gap-3 px-3 py-2 text-body">
                     <div className="min-w-0">
                       <div className="truncate font-medium">
                         {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.email}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div className="truncate text-meta text-muted-foreground">
                         {[c.title, c.email].filter(Boolean).join(" · ")}
                       </div>
                     </div>
@@ -472,10 +472,10 @@ function ContactRow({
     <div>
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-muted/40">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">
+          <div className="truncate text-body font-medium">
             {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.email}
           </div>
-          <div className="truncate text-xs text-muted-foreground">{c.title}</div>
+          <div className="truncate text-meta text-muted-foreground">{c.title}</div>
         </div>
         <div className="hidden shrink-0 sm:block">
           {/* Whichever ladder this reader is on. A prospector wants Attempting,
@@ -485,14 +485,14 @@ function ContactRow({
           </Chip>
         </div>
         {c.next_action_date && (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
             {shortDate(c.next_action_date)}
           </span>
         )}
       </button>
 
       {expanded && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t bg-muted/20 px-3 py-3 text-sm">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t bg-muted/20 px-3 py-3 text-body">
           {stageFields.show_lead_status && (
             <Field label="Prospecting lead status" value={c.lead_status} />
           )}
@@ -506,7 +506,7 @@ function ContactRow({
           <Field label="Activities" value={String(c.activity_count)} />
           {campaigns.length > 0 && (
             <div className="col-span-2">
-              <dt className="text-xs text-muted-foreground">Campaigns</dt>
+              <dt className="text-meta text-muted-foreground">Campaigns</dt>
               <dd className="mt-1 flex flex-wrap gap-1">
                 {campaigns.map((m) => (
                   <Chip key={m.campaign_id} colour={m.has_responded ? "emerald" : "slate"}>
@@ -518,12 +518,12 @@ function ContactRow({
           )}
           {c.updates && (
             <div className="col-span-2">
-              <dt className="text-xs text-muted-foreground">Updates</dt>
+              <dt className="text-meta text-muted-foreground">Updates</dt>
               <dd className="whitespace-pre-wrap">{c.updates}</dd>
             </div>
           )}
           <div className="col-span-2">
-            <a href={`/opportunities/${c.opportunity_id}`} className="text-sm font-medium underline">
+            <a href={`/opportunities/${c.opportunity_id}`} className="text-body font-medium underline">
               Open pursuit
             </a>
           </div>
@@ -551,7 +551,7 @@ function Website({ domain }: { domain: string | null }) {
       target="_blank"
       rel="noreferrer"
       onClick={(e) => e.stopPropagation()}
-      className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      className="text-meta text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
     >
       {domain}
     </a>
@@ -574,7 +574,7 @@ function PhoneField({ value }: { value: string | null }) {
 
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">Phone</dt>
+      <dt className="text-meta text-muted-foreground">Phone</dt>
       <dd className="flex items-center gap-2">
         <span className="truncate tabular-nums">{value}</span>
         <Button
@@ -597,7 +597,7 @@ function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dt className="text-meta text-muted-foreground">{label}</dt>
       <dd className="truncate">{value}</dd>
     </div>
   );

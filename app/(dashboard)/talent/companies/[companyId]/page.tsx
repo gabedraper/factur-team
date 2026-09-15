@@ -7,7 +7,7 @@ import {
 import { CompanyForm } from "@/components/talent/CompanyForm";
 import { ActivityFeed } from "@/components/talent/ActivityFeed";
 import { LogActivity } from "@/components/talent/LogActivity";
-import { Avatar, Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
+import { Chip, Empty, PageHeader, Panel, Stat } from "@/components/talent/bits";
 import { ago, money, place } from "@/lib/talent/format";
 import { COMPANY_KIND, DEAL_STAGE, JOB_STATUS, label } from "@/lib/talent/types";
 import { Surface } from "@/components/ui/surface";
@@ -37,7 +37,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
               {label(COMPANY_KIND, company.kind)}
             </Chip>
           </PageHeader>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {[company.industry, place(company.city, company.state), company.headcount_label]
               .filter(Boolean).join(" · ") || "—"}
           </p>
@@ -46,7 +46,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
               href={`https://${company.domain}`}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-primary hover:underline"
+              className="text-body text-primary hover:underline"
             >
               {company.domain}
             </a>
@@ -69,14 +69,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Jobs">
           {jobs.length === 0 ? <Empty>None</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {jobs.map((j) => (
                 <li key={j.id} className="flex items-center gap-2 px-4 py-2">
                   <Link href={`/talent/jobs/${j.id}`} className="min-w-0 flex-1 truncate hover:underline">
                     {j.title}
                   </Link>
                   <Chip>{label(JOB_STATUS, j.status)}</Chip>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                     {j.active_count}
                   </span>
                 </li>
@@ -87,7 +87,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
 
         <Panel title="Deals">
           {deals.length === 0 ? <Empty>None</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {deals.map((d) => {
                 const row = d as Record<string, unknown> & {
                   id: string; name: string; stage: string; value: number | null;
@@ -108,17 +108,16 @@ export default async function CompanyPage({ params }: { params: Promise<{ compan
 
         <Panel title="People">
           {people.length === 0 ? <Empty>Nobody</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {people.map((p) => (
                 <li key={p.id} className="flex items-center gap-2.5 px-4 py-2">
-                  <Avatar name={p.name} size={6} />
                   <span className="min-w-0 flex-1">
                     <Link href={`/talent/people/${p.id}`} className="block truncate hover:underline">
                       {p.name}
                     </Link>
-                    <span className="block truncate text-xs text-muted-foreground">{p.title ?? "—"}</span>
+                    <span className="block truncate text-meta text-muted-foreground">{p.title ?? "—"}</span>
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{ago(p.last_activity_at)}</span>
+                  <span className="shrink-0 text-meta text-muted-foreground">{ago(p.last_activity_at)}</span>
                 </li>
               ))}
             </ul>

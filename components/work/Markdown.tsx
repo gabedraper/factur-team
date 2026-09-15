@@ -62,13 +62,13 @@ export function Markdown({ source }: { source: string }) {
       i++;
       while (i < lines.length && !lines[i].startsWith("```")) body.push(lines[i++]);
       i++;
-      blocks.push(<pre key={key} className="overflow-x-auto rounded-md bg-muted p-3 text-xs"><code>{body.join("\n")}</code></pre>);
+      blocks.push(<pre key={key} className="overflow-x-auto rounded-md bg-muted p-3 text-meta"><code>{body.join("\n")}</code></pre>);
       continue;
     }
 
     const heading = line.match(/^(#{1,3})\s+(.*)$/);
     if (heading) {
-      const size = heading[1].length === 1 ? "text-lg" : heading[1].length === 2 ? "text-base" : "text-sm";
+      const size = heading[1].length === 1 ? "text-lg" : heading[1].length === 2 ? "text-base" : "text-body";
       blocks.push(<p key={key} className={`${size} font-semibold`}>{inline(heading[2], key)}</p>);
       i++;
       continue;
@@ -111,5 +111,5 @@ export function Markdown({ source }: { source: string }) {
     blocks.push(<p key={key}>{para.flatMap((p, n) => [...inline(p, `${key}-${n}`), n < para.length - 1 ? <br key={`${key}-br${n}`} /> : null])}</p>);
   }
 
-  return <div className="space-y-2 text-sm leading-relaxed">{blocks}</div>;
+  return <div className="space-y-2 text-body leading-relaxed">{blocks}</div>;
 }

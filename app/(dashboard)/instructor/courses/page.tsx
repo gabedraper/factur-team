@@ -80,7 +80,7 @@ export default async function InstructorCoursesPage() {
           <div className="col-span-3 text-center py-16 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p className="text-lg font-medium mb-1">No courses yet</p>
-            <p className="text-sm mb-4">
+            <p className="text-body mb-4">
               Create your first course to start teaching
             </p>
             <Button asChild>

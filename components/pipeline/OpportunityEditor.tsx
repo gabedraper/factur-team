@@ -77,12 +77,12 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
   }
 
   return (
-    <Panel title="Opportunity" action={saved && <span className="flex items-center gap-1 text-xs text-emerald-600"><Check className="h-3 w-3" /> Saved</span>}>
+    <Panel title="Opportunity" action={saved && <span className="flex items-center gap-1 text-meta text-emerald-600"><Check className="h-3 w-3" /> Saved</span>}>
       <div className="space-y-3 p-4">
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-body text-red-600">{error}</p>}
 
         <div>
-          <label className="text-xs text-muted-foreground">Stage</label>
+          <label className="text-meta text-muted-foreground">Stage</label>
           <Select value={state.stage} onValueChange={(v) => save({ stage: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -97,7 +97,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Lead status</label>
+          <label className="text-meta text-muted-foreground">Lead status</label>
           <Select value={state.lead_status ?? ""} onValueChange={(v) => save({ lead_status: v })}>
             <SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger>
             <SelectContent>
@@ -107,7 +107,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Funnel reached</label>
+          <label className="mb-1 block text-meta text-muted-foreground">Funnel reached</label>
           <div className="flex flex-wrap gap-2">
             {FUNNEL_STEPS.map((step) => {
               const on = state[step.key];
@@ -116,7 +116,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
                   key={step.key}
                   type="button"
                   onClick={() => save({ [step.key]: !on } as Partial<EditableOpportunity>)}
-                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  className={`rounded-full border px-2.5 py-1 text-meta transition-colors ${
                     on ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "text-muted-foreground hover:bg-muted"
                   }`}
                 >
@@ -128,7 +128,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Next action</label>
+          <label className="text-meta text-muted-foreground">Next action</label>
           <Input
             type="date"
             value={state.next_action_date ?? ""}
@@ -137,7 +137,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Add update</label>
+          <label className="text-meta text-muted-foreground">Add update</label>
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -148,7 +148,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Updates</label>
+          <label className="text-meta text-muted-foreground">Updates</label>
           <Textarea
             value={state.updates ?? ""}
             onChange={(e) => setState((s) => ({ ...s, updates: e.target.value }))}
@@ -159,7 +159,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground">Notes</label>
+          <label className="text-meta text-muted-foreground">Notes</label>
           <Textarea
             value={state.notes ?? ""}
             onChange={(e) => setState((s) => ({ ...s, notes: e.target.value }))}

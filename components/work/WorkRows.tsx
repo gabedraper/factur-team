@@ -29,7 +29,7 @@ function Row({
   return (
     <div className="group flex items-baseline gap-3 border-b px-1 py-1.5 last:border-0 hover:bg-accent/50">
       <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-        <Link href={`/work/task/${item.clickupId}`} className="truncate text-sm hover:underline">
+        <Link href={`/work/task/${item.clickupId}`} className="truncate text-body hover:underline">
           {item.title}
         </Link>
         <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open in ClickUp"
@@ -39,7 +39,7 @@ function Row({
       </span>
 
       {show?.client && (
-        <span className="hidden w-40 shrink-0 truncate text-xs sm:block">
+        <span className="hidden w-40 shrink-0 truncate text-meta sm:block">
           {destination ? (
             <Link href={destination.href} className="text-muted-foreground hover:text-foreground hover:underline">
               {destination.label}
@@ -51,21 +51,21 @@ function Row({
       )}
 
       {show?.process && item.processName && (
-        <span className="hidden w-36 shrink-0 truncate text-xs text-muted-foreground md:block">
+        <span className="hidden w-36 shrink-0 truncate text-meta text-muted-foreground md:block">
           {item.processName}
           {item.pod ? ` · ${item.pod}` : ""}
         </span>
       )}
 
-      <span className="hidden w-32 shrink-0 truncate text-xs text-muted-foreground lg:block">
+      <span className="hidden w-32 shrink-0 truncate text-meta text-muted-foreground lg:block">
         {item.assignees.join(", ")}
       </span>
 
-      <span className="w-24 shrink-0 truncate text-right text-xs text-muted-foreground">
+      <span className="w-24 shrink-0 truncate text-right text-meta text-muted-foreground">
         {item.status}
       </span>
 
-      <span className={`w-14 shrink-0 text-right text-xs tabular-nums ${dueClass(item.dueAt, open)}`}>
+      <span className={`w-14 shrink-0 text-right text-meta tabular-nums ${dueClass(item.dueAt, open)}`}>
         {shortDate(item.dueAt)}
       </span>
     </div>

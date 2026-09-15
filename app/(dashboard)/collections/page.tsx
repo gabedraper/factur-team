@@ -25,7 +25,7 @@ export default async function CollectionsPage({
     return (
       <div className="p-6 max-w-2xl">
         <PageHeader title="Collections" />
-        <p className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           Couldn’t check what you can see. {visibility.problem}
         </p>
       </div>
@@ -52,10 +52,10 @@ export default async function CollectionsPage({
       <PageHeader
         title="Collections"
         actions={<div className="flex items-baseline gap-4">
-          <Link href="/collections/invoices" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/collections/invoices" className="text-body text-muted-foreground hover:text-foreground">
             Invoices
           </Link>
-          <Link href="/collections/ar" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/collections/ar" className="text-body text-muted-foreground hover:text-foreground">
             A/R Ladder
           </Link>
         </div>}

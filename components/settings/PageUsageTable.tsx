@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { pageUsage, type PageUsageReport } from "@/actions/page-usage";
 import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 function ms(value: number | null): string {
   if (value === null) return "—";
@@ -51,11 +52,11 @@ export function PageUsageTable() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-medium">Pages</h2>
+        <h2 className="text-body font-medium">Pages</h2>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          className="h-8 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value={1}>24 hours</option>
           <option value={7}>7 days</option>
@@ -65,13 +66,13 @@ export function PageUsageTable() {
         <button
           onClick={load}
           disabled={pending}
-          className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+          className="h-8 rounded-md border px-3 text-body disabled:opacity-50"
         >
           {pending ? "Reading…" : "Read"}
         </button>
         {report && !report.problem && (
           <>
-            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <label className="flex items-center gap-1.5 text-body text-muted-foreground">
               <input
                 type="checkbox"
                 checked={hideUnused}
@@ -79,7 +80,7 @@ export function PageUsageTable() {
               />
               Used only
             </label>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               {report.totalViews.toLocaleString()} views · {rows.length} pages
             </span>
           </>
@@ -87,7 +88,7 @@ export function PageUsageTable() {
       </div>
 
       {report?.problem && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {report.problem}
         </p>
       )}
@@ -116,7 +117,7 @@ export function PageUsageTable() {
                     p.known ? "" : "bg-amber-50/50 dark:bg-amber-950/20"
                   }`}
                 >
-                  <TD className="font-mono text-xs">{p.path}</TD>
+                  <TD className="font-mono text-meta">{p.path}</TD>
                   <TD numeric
                     className={`${
                       p.views ? "" : "text-muted-foreground"

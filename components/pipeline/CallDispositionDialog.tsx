@@ -60,14 +60,14 @@ export function CallDispositionDialog({
           <DialogTitle>How did the call with {contactName} go?</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-body text-red-600">{error}</p>}
           <div className="grid grid-cols-2 gap-2">
             {OUTCOMES.map((o) => (
               <button
                 key={o}
                 type="button"
                 onClick={() => setOutcome(o)}
-                className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                className={`rounded-md border px-3 py-2 text-left text-body transition-colors ${
                   outcome === o ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted"
                 }`}
               >

@@ -140,7 +140,7 @@ export default function LoginPage() {
         {/* Kept: it only appears when sign-in has failed, and a screen that
             fails silently gives somebody nothing to act on. */}
         {error && (
-          <p className="relative max-w-xs text-center text-sm text-red-300">{error}</p>
+          <p className="relative max-w-xs text-center text-body text-red-300">{error}</p>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ import { logActivity } from "@/actions/talent";
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/lib/field-class";
 import type { ActivityType } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
 
 /**
  * The composer at the top of a timeline.
@@ -65,7 +66,7 @@ export function LogActivity({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={`w-full px-3 py-2 text-left text-sm text-muted-foreground ${FIELD}`}
+          className={`w-full px-3 py-2 text-left text-body text-muted-foreground ${FIELD}`}
         >
           Log a call, note or email
         </button>
@@ -77,7 +78,7 @@ export function LogActivity({
     <div className="space-y-2 border-b p-3">
       <div className="flex flex-wrap gap-2">
         <select
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
         >
@@ -88,7 +89,7 @@ export function LogActivity({
 
         {templates?.length ? (
           <select
-            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            className={control({ size: "sm" })}
             value=""
             onChange={(e) => {
               const t = templates.find((x) => x.id === e.target.value);
@@ -104,7 +105,7 @@ export function LogActivity({
 
         {wantsOutcome && (
           <input
-            className={`px-2 py-1.5 text-sm ${FIELD}`}
+            className={`px-2 py-1.5 text-body ${FIELD}`}
             placeholder="Outcome"
             value={outcome}
             onChange={(e) => setOutcome(e.target.value)}
@@ -113,20 +114,20 @@ export function LogActivity({
       </div>
 
       <input
-        className={`w-full px-3 py-2 text-sm ${FIELD}`}
+        className={`w-full px-3 py-2 text-body ${FIELD}`}
         placeholder="Subject"
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
         autoFocus
       />
       <textarea
-        className={`min-h-24 w-full px-3 py-2 text-sm ${FIELD}`}
+        className={`min-h-24 w-full px-3 py-2 text-body ${FIELD}`}
         placeholder="Notes"
         value={body}
         onChange={(e) => setBody(e.target.value)}
       />
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="flex gap-2">
         <Button size="sm" onClick={submit} disabled={pending || (!subject.trim() && !body.trim())}>

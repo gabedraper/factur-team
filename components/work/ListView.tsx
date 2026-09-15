@@ -8,6 +8,7 @@ import { estimate, columnFields, groupOptions } from "@/lib/work-tree";
 import { dueClass, shortDate } from "@/lib/work";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 /**
  * A ClickUp list, rebuilt read-only.
@@ -91,7 +92,7 @@ export function ListView({ items }: { items: ListItem[] }) {
       <>
         <tr className="group border-b last:border-0 hover:bg-accent/50">
           <td className="py-1.5 pr-3" style={{ paddingLeft: `${depth * 20 + 4}px` }}>
-            <Link href={`/work/task/${item.clickupId}`} className="text-sm hover:underline">
+            <Link href={`/work/task/${item.clickupId}`} className="text-body hover:underline">
               {item.title}
             </Link>
             <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open in ClickUp"
@@ -99,27 +100,27 @@ export function ListView({ items }: { items: ListItem[] }) {
               <ExternalLink className="h-3 w-3" />
             </a>
           </td>
-          <td className="whitespace-nowrap px-3 text-xs uppercase tracking-wide text-muted-foreground">
+          <td className="whitespace-nowrap px-3 text-meta uppercase tracking-wide text-muted-foreground">
             {item.status}
           </td>
-          <td className="max-w-[10rem] truncate px-3 text-xs text-muted-foreground">
+          <td className="max-w-[10rem] truncate px-3 text-meta text-muted-foreground">
             {item.assignees.join(", ")}
           </td>
           {columns.map((name) => (
-            <td key={name} className="max-w-[10rem] truncate px-3 text-xs text-muted-foreground">
+            <td key={name} className="max-w-[10rem] truncate px-3 text-meta text-muted-foreground">
               {item.fields.find((f) => f.name === name)?.display ?? ""}
             </td>
           ))}
-          <td className="whitespace-nowrap px-3 text-right text-xs tabular-nums text-muted-foreground">
+          <td className="whitespace-nowrap px-3 text-right text-meta tabular-nums text-muted-foreground">
             {shortDate(item.startAt)}
           </td>
-          <td className={`whitespace-nowrap px-3 text-right text-xs tabular-nums ${dueClass(item.dueAt, item.statusType !== "done" && item.statusType !== "closed")}`}>
+          <td className={`whitespace-nowrap px-3 text-right text-meta tabular-nums ${dueClass(item.dueAt, item.statusType !== "done" && item.statusType !== "closed")}`}>
             {shortDate(item.dueAt)}
           </td>
-          <td className="whitespace-nowrap px-3 text-right text-xs tabular-nums text-muted-foreground">
+          <td className="whitespace-nowrap px-3 text-right text-meta tabular-nums text-muted-foreground">
             {estimate(item.timeEstimateMs)}
           </td>
-          <td className="max-w-[12rem] truncate px-3 text-xs text-muted-foreground">
+          <td className="max-w-[12rem] truncate px-3 text-meta text-muted-foreground">
             {waiting.map((d) => d.title ?? d.clickupId).join(", ")}
           </td>
         </tr>
@@ -139,7 +140,7 @@ export function ListView({ items }: { items: ListItem[] }) {
           <select
           value={groupBy}
           onChange={(e) => setGroupBy(e.target.value)}
-            className="rounded-md border bg-background px-2 py-1 text-xs"
+            className={control({ size: "sm" })}
           >
             <option value="Status">Status</option>
             {groups.map((g) => (
@@ -147,7 +148,7 @@ export function ListView({ items }: { items: ListItem[] }) {
             ))}
           </select>
         )}
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-meta text-muted-foreground">
           <input
             type="checkbox"
             checked={showDone}
@@ -181,7 +182,7 @@ export function ListView({ items }: { items: ListItem[] }) {
                   <TD colSpan={colCount} >
                     <button
                       onClick={() => toggle(name)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold"
+                      className="inline-flex items-center gap-1 text-meta font-semibold"
                     >
                       {collapsed.has(name) ? (
                         <ChevronRight className="h-3 w-3" />

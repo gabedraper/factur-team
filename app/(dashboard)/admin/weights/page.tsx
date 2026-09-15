@@ -21,11 +21,11 @@ export default async function AdminWeightsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <Link href="/settings" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/settings" className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-4 w-4" /> Settings
       </Link>
       <PageHeader title="Effort Weights" className="mb-1 mt-1" />
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-6 text-body text-muted-foreground">
         Points per activity type. Changes apply to the leaderboard on the next
         recompute.
       </p>

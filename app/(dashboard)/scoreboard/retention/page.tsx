@@ -55,7 +55,7 @@ function StatsRow({
       {!maskRow && (
         <Avatar name={rep.display_name} src={avatars[rep.rep_id]} size={28} />
       )}
-      <span className="flex-1 text-sm">
+      <span className="flex-1 text-body">
         {maskRow ? (
           <MaskedName />
         ) : (
@@ -69,11 +69,11 @@ function StatsRow({
           </>
         )}
       </span>
-      <span className="w-16 text-right text-sm text-muted-foreground">{rep.renewed}</span>
-      <span className="w-12 text-right text-sm text-muted-foreground">{rep.lost + rep.earlyTerminated}</span>
-      <span className="w-16 text-right text-sm text-muted-foreground">{rep.earlyTerminated}</span>
-      <span className="w-14 text-right text-sm text-muted-foreground">{rep.total}</span>
-      <span className="w-16 text-right text-sm font-medium">
+      <span className="w-16 text-right text-body text-muted-foreground">{rep.renewed}</span>
+      <span className="w-12 text-right text-body text-muted-foreground">{rep.lost + rep.earlyTerminated}</span>
+      <span className="w-16 text-right text-body text-muted-foreground">{rep.earlyTerminated}</span>
+      <span className="w-14 text-right text-body text-muted-foreground">{rep.total}</span>
+      <span className="w-16 text-right text-body font-medium">
         {rep.renewalPct === null ? "—" : `${rep.renewalPct.toFixed(0)}%`}
       </span>
       {maskRow ? (
@@ -253,13 +253,13 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
       </div>
 
       {error && (
-        <p className="text-sm text-red-400">
+        <p className="text-body text-red-400">
           Couldn&apos;t load retention data: {error.message}
         </p>
       )}
 
       <div className="divide-y">
-        <div className="flex items-center gap-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-4 py-2 text-meta font-medium uppercase tracking-wide text-muted-foreground">
           <span className="flex-1">Rep</span>
           <span className="w-16 text-right">Renewed</span>
           <span className="w-12 text-right">Lost</span>
@@ -272,7 +272,7 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
             {avgSplit && i === avgSplit.insertAt && (
               <div className="flex items-center gap-3 py-2">
                 <span className="h-px flex-1 bg-muted" />
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                <span className="shrink-0 text-meta font-medium text-muted-foreground">
                   Company Average — {Math.round(avgSplit.average)}%
                 </span>
                 <span className="h-px flex-1 bg-muted" />
@@ -284,21 +284,21 @@ export default async function RetentionPage(props: ScoreboardPageProps) {
         {avgSplit && avgSplit.insertAt === ranked.length && (
           <div className="flex items-center gap-3 py-2">
             <span className="h-px flex-1 bg-muted" />
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0 text-meta font-medium text-muted-foreground">
               Company Average — {Math.round(avgSplit.average)}%
             </span>
             <span className="h-px flex-1 bg-muted" />
           </div>
         )}
         {ranked.length === 0 && !error && (
-          <p className="py-6 text-center text-sm text-muted-foreground">
+          <p className="py-6 text-center text-body text-muted-foreground">
             No one has {MIN_OPPORTUNITIES_TO_RANK} or more renewal opportunities in this period yet.
           </p>
         )}
 
         {unranked.length > 0 && (
           <>
-            <div className="border-t-2 py-3 text-center text-xs text-muted-foreground">
+            <div className="border-t-2 py-3 text-center text-meta text-muted-foreground">
               Retention Ranking begins after {MIN_OPPORTUNITIES_TO_RANK} opportunities
             </div>
             {unranked.map((rep) => (

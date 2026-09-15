@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { recordNps, deleteNps, type NpsEntry } from "@/actions/nps";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 
 /**
  * The NPS log for one client: every response, newest first, plus a way to add
@@ -55,43 +57,39 @@ export function NpsPanel({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
 
       {canEdit && (
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-muted-foreground">
-            Score
+          <Field label="Score">
             <input type="number" min={0} max={10} value={score}
                    onChange={(e) => setScore(e.target.value)}
-                   className="mt-1 block h-8 w-20 rounded-md border bg-field px-2 text-sm" />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            Collected
+                   className={control({ size: "sm", className: "w-20" })} />
+          </Field>
+          <Field label="Collected">
             <input type="date" value={on} onChange={(e) => setOn(e.target.value)}
-                   className="mt-1 block h-8 rounded-md border bg-field px-2 text-sm" />
-          </label>
-          <label className="flex-1 text-xs text-muted-foreground">
-            Who answered
+                   className={control({ size: "sm" })} />
+          </Field>
+          <Field label="Who answered" className="flex-1">
             <input value={respondent} onChange={(e) => setRespondent(e.target.value)}
-                   className="mt-1 block h-8 w-full rounded-md border bg-field px-2 text-sm" />
-          </label>
-          <label className="flex-1 text-xs text-muted-foreground">
-            Comment
+                   className={control({ size: "sm", className: "w-full" })} />
+          </Field>
+          <Field label="Comment" className="flex-1">
             <input value={comment} onChange={(e) => setComment(e.target.value)}
-                   className="mt-1 block h-8 w-full rounded-md border bg-field px-2 text-sm" />
-          </label>
+                   className={control({ size: "sm", className: "w-full" })} />
+          </Field>
           <button onClick={add} disabled={pending || score === ""}
-                  className="h-8 rounded-md border px-3 text-sm disabled:opacity-50">
+                  className="h-8 rounded-md border px-3 text-body disabled:opacity-50">
             Record
           </button>
         </div>
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No NPS recorded yet.</p>
+        <p className="text-body text-muted-foreground">No NPS recorded yet.</p>
       ) : (
         <Table>
           <THead>
@@ -127,7 +125,7 @@ export function NpsPanel({
                   {canEdit && (
                     <TD numeric>
                       <button onClick={() => remove(r.id)} disabled={pending}
-                              className="text-xs text-muted-foreground underline hover:text-destructive">
+                              className="text-meta text-muted-foreground underline hover:text-destructive">
                         remove
                       </button>
                     </TD>

@@ -9,6 +9,7 @@ import {
   type CollectMethod, type InvoiceRow,
 } from "@/actions/ar-register";
 import { Surface } from "@/components/ui/surface";
+import { control } from "@/components/ui/control";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -103,7 +104,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -128,7 +129,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
           action={(r) => (
             <button type="button" disabled={pending}
               onClick={() => run(() => markAchRun(r.qb_invoice_id, r.balance))}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs hover:bg-primary/20 disabled:opacity-50">
+              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-meta hover:bg-primary/20 disabled:opacity-50">
               {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CircleDollarSign className="h-3 w-3" />}
               Mark run
             </button>
@@ -143,13 +144,13 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
           pending={pending}
           action={(r) => (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-meta text-muted-foreground">
                 {r.ach_marked_at ? ago(r.ach_marked_at) : ""}
                 {r.ach_marked_by ? ` · ${r.ach_marked_by.split("@")[0]}` : ""}
               </span>
               <button type="button" disabled={pending}
                 onClick={() => run(() => unmarkAchRun(r.qb_invoice_id))}
-                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50">
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50">
                 <Undo2 className="h-3 w-3" /> Undo
               </button>
             </div>
@@ -162,7 +163,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
           <div className="flex flex-wrap gap-1">
             {FILTERS.map((f) => (
               <button key={f} type="button" onClick={() => setFilter(f)}
-                className={`rounded-md px-2 py-1 text-xs ${
+                className={`rounded-md px-2 py-1 text-meta ${
                   filter === f ? "bg-primary/15 font-medium text-foreground" : "text-muted-foreground hover:bg-muted"
                 }`}>
                 {f}
@@ -173,7 +174,7 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Client or invoice"
-            className="h-7 w-48 rounded-md border bg-field px-2 text-xs"
+            className={control({ size: "sm", className: "w-48" })}
           />
         </div>
 
@@ -192,26 +193,26 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
             </div>
             <div className="divide-y">
               {listed.length === 0 ? (
-                <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nothing here.</p>
+                <p className="px-3 py-6 text-center text-body text-muted-foreground">Nothing here.</p>
               ) : listed.map((r) => (
                 <div key={r.qb_invoice_id}
-                  className="grid min-h-10 grid-cols-[minmax(9rem,1.3fr)_5rem_5rem_5rem_5rem_6rem_5.5rem_6rem_7.5rem] items-center gap-3 px-3 py-1.5 text-sm">
+                  className="grid min-h-10 grid-cols-[minmax(9rem,1.3fr)_5rem_5rem_5rem_5rem_6rem_5.5rem_6rem_7.5rem] items-center gap-3 px-3 py-1.5 text-body">
                   <Link href={`/clients/${r.client_id}`} title={r.client_name}
                     className="min-w-0 truncate font-medium hover:underline">
                     {r.client_name}
                   </Link>
-                  <span className="truncate font-mono text-xs text-muted-foreground">{r.invoice_no}</span>
-                  <span className="text-xs text-muted-foreground">{on(r.created_at)}</span>
-                  <span className={`text-xs ${r.sent_at ? "text-muted-foreground" : "text-muted-foreground/50"}`}
+                  <span className="truncate font-mono text-meta text-muted-foreground">{r.invoice_no}</span>
+                  <span className="text-meta text-muted-foreground">{on(r.created_at)}</span>
+                  <span className={`text-meta ${r.sent_at ? "text-muted-foreground" : "text-muted-foreground/50"}`}
                     title={r.sent_at ? "" : `QuickBooks has no send record (${r.email_status ?? "not set"})`}>
                     {on(r.sent_at)}
                   </span>
-                  <span className="text-xs text-muted-foreground">{on(r.due_date)}</span>
+                  <span className="text-meta text-muted-foreground">{on(r.due_date)}</span>
                   <span className="text-right tabular-nums text-muted-foreground">{money.format(r.amount)}</span>
                   <span className={`text-right tabular-nums ${r.balance > 0 ? "" : "text-muted-foreground"}`}>
                     {money.format(r.balance)}
                   </span>
-                  <span className="text-xs">
+                  <span className="text-meta">
                     {r.paid_on
                       ? <span className="text-emerald-700 dark:text-emerald-400">{on(r.paid_on)}</span>
                       : <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${STATE_TONE[r.state]}`}>{r.state}</span>}
@@ -222,9 +223,10 @@ export function InvoiceRegister({ rows }: { rows: InvoiceRow[] }) {
                     onChange={(e) =>
                       run(() => setCollectMethod(r.client_id, (e.target.value || null) as CollectMethod))
                     }
-                    className={`h-7 w-full rounded-md border bg-field px-1 text-xs ${
-                      r.collect_method ? "" : "text-red-600 dark:text-red-400"
-                    }`}
+                    className={control({
+                      size: "sm",
+                      className: `w-full ${r.collect_method ? "" : "text-destructive"}`,
+                    })}
                   >
                     <option value="">Unknown</option>
                     <option value="we_charge">We charge</option>
@@ -246,9 +248,9 @@ function Stat({ label, value, sub, tone }: {
 }) {
   return (
     <Surface pad="tight">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-meta text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${tone ?? ""}`}>{value}</div>
-      {sub && <div className="text-xs tabular-nums text-muted-foreground">{sub}</div>}
+      {sub && <div className="text-meta tabular-nums text-muted-foreground">{sub}</div>}
     </Surface>
   );
 }
@@ -262,18 +264,18 @@ function AchPanel({ title, rows, pending, action }: {
   return (
     <Surface as="section" pad="none">
       <div className="border-b px-3 py-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="text-body font-semibold">{title}</h2>
       </div>
       <div className="divide-y">
         {rows.map((r) => (
           <div key={r.qb_invoice_id}
-            className="grid min-h-11 grid-cols-[minmax(9rem,1.4fr)_5rem_5rem_6rem_1fr] items-center gap-3 px-3 py-2 text-sm">
+            className="grid min-h-11 grid-cols-[minmax(9rem,1.4fr)_5rem_5rem_6rem_1fr] items-center gap-3 px-3 py-2 text-body">
             <Link href={`/clients/${r.client_id}`} title={r.client_name}
               className="min-w-0 truncate font-medium hover:underline">
               {r.client_name}
             </Link>
-            <span className="truncate font-mono text-xs text-muted-foreground">{r.invoice_no}</span>
-            <span className={`text-xs ${r.age_days > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+            <span className="truncate font-mono text-meta text-muted-foreground">{r.invoice_no}</span>
+            <span className={`text-meta ${r.age_days > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
               {r.age_days > 0 ? `${r.age_days}d late` : "due today"}
             </span>
             <span className="text-right font-medium tabular-nums">{money.format(r.balance)}</span>

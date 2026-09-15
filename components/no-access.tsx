@@ -17,11 +17,11 @@ export function NoAccess({ section, need }: { section: string; need: string }) {
         {/* design-ok: a centred message in place of the page, not a page header */}
         <h1 className="text-xl font-semibold">{section}</h1>
       </div>
-      <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+      <p className="mt-2 max-w-prose text-body text-muted-foreground">
         Your role doesn&apos;t include &ldquo;{need}&rdquo;. An administrator can
         grant it under Settings → Roles.
       </p>
-      <Link href="/" className="mt-4 inline-block text-sm underline">
+      <Link href="/" className="mt-4 inline-block text-body underline">
         Back to the app
       </Link>
     </div>

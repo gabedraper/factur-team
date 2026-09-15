@@ -8,6 +8,7 @@ import { AGEING_TONE } from "@/lib/ageing-colours";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 const BAND_CLASS: Record<string, string> = {
   good: "text-emerald-600 dark:text-emerald-400",
@@ -157,7 +158,7 @@ function Ageing({ c }: { c: ClientHealth }) {
   return (
     <div className="mt-2 space-y-0.5">
       {rows.map(([label, amount, tone]) => (
-        <div key={label} className="flex justify-between gap-2 text-xs">
+        <div key={label} className="flex justify-between gap-2 text-meta">
           <span className="text-muted-foreground">{label}</span>
           <span className={`tabular-nums ${amount > 0 ? tone : "text-muted-foreground"}`}>
             {money.format(amount)}
@@ -302,7 +303,7 @@ export function HealthTable({
             key={l}
             onClick={() => setLetter(l)}
             aria-pressed={letter === l}
-            className={`h-7 min-w-7 rounded-md border px-2 text-xs ${
+            className={`h-7 min-w-7 rounded-md border px-2 text-meta ${
               letter === l
                 ? "border-transparent bg-primary text-primary-foreground"
                 : "bg-card hover:bg-muted"
@@ -315,12 +316,12 @@ export function HealthTable({
 
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm", className: "min-w-56" })}
           placeholder="Search client or account manager…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-body text-muted-foreground">
           <input
             type="checkbox"
             checked={onlyDisagreements}
@@ -328,7 +329,7 @@ export function HealthTable({
           />
           Disagrees with Salesforce ({disagreeCount})
         </label>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-meta text-muted-foreground">
           {shown.length} of {clients.length}
         </span>
       </div>
@@ -414,7 +415,7 @@ export function HealthTable({
                                 sits opposite it rather than below the numbers. */}
                             <div className="flex items-center justify-between gap-2">
                               <span
-                                className="text-xs uppercase tracking-wide text-muted-foreground"
+                                className="text-meta uppercase tracking-wide text-muted-foreground"
                                 title={
                                   i.key === "engagement"
                                     ? PERFORMANCE_BLURB
@@ -430,7 +431,7 @@ export function HealthTable({
                               {i.key === "receivables" && (
                                 <Link
                                   href={`/clients/${c.clientId}`}
-                                  className="shrink-0 text-xs underline"
+                                  className="shrink-0 text-meta underline"
                                 >
                                   Payment History
                                 </Link>
@@ -472,14 +473,14 @@ export function HealthTable({
                             </div>
 
                             {i.detail && (
-                              <div className="mt-1 text-xs text-muted-foreground">{i.detail}</div>
+                              <div className="mt-1 text-meta text-muted-foreground">{i.detail}</div>
                             )}
                             {/* Same label-left, value-right shape the ageing
                                 buckets use, for any card that has rows. */}
                             {i.rows && i.rows.length > 0 && (
                               <div className="mt-2 space-y-0.5">
                                 {i.rows.map((r) => (
-                                  <div key={r.label} className="flex justify-between gap-2 text-xs">
+                                  <div key={r.label} className="flex justify-between gap-2 text-meta">
                                     {r.href ? (
                                       <Link href={r.href} className="text-muted-foreground underline">
                                         {r.label}
@@ -500,7 +501,7 @@ export function HealthTable({
                       </div>
                       <Link
                         href={`/settings/clients/${c.clientId}`}
-                        className="mt-3 inline-block text-sm underline"
+                        className="mt-3 inline-block text-body underline"
                       >
                         Client record
                       </Link>

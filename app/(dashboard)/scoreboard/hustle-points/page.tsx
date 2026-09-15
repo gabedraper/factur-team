@@ -142,7 +142,7 @@ export default async function HustlePointsPage(
       <div className="mb-4 group relative inline-block">
         <PageHeader title="Hustle Points" />
 
-        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md bg-popover p-3 text-xs opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
+        <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-56 rounded-md bg-popover p-3 text-meta opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
           <p className="mb-2 font-medium uppercase tracking-wide text-muted-foreground">
             Points per activity
           </p>
@@ -178,7 +178,7 @@ export default async function HustlePointsPage(
         ))}
       </div>
 
-      <p className="mb-6 flex items-center justify-end gap-3 text-right text-xs text-muted-foreground">
+      <p className="mb-6 flex items-center justify-end gap-3 text-right text-meta text-muted-foreground">
         <a
           href="https://app.coupler.io/app/dataflows/32e79f15-7a56-4018-9493-5fe58138e8d4/edit"
           target="_blank"
@@ -191,7 +191,7 @@ export default async function HustlePointsPage(
       </p>
 
       {error && (
-        <p className="text-sm text-red-400">
+        <p className="text-body text-red-400">
           Couldn&apos;t load the leaderboard: {error.message}
         </p>
       )}
@@ -207,7 +207,7 @@ export default async function HustlePointsPage(
               {avgSplit && i === avgSplit.insertAt && (
                 <li className="flex items-center gap-3 py-2">
                   <span className="h-px flex-1 bg-muted" />
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                  <span className="shrink-0 text-meta font-medium text-muted-foreground">
                     Company Average — {Math.round(avgSplit.average)}
                   </span>
                   <span className="h-px flex-1 bg-muted" />
@@ -216,7 +216,7 @@ export default async function HustlePointsPage(
               <li
                 className="group relative flex items-center gap-4 py-3"
               >
-                <span className="w-6 text-sm text-muted-foreground">{i + 1}</span>
+                <span className="w-6 text-body text-muted-foreground">{i + 1}</span>
                 {/* Never on a masked row: a face names somebody just as well
                     as their name does, and would undo the masking entirely. */}
                 {!maskRow && (
@@ -226,7 +226,7 @@ export default async function HustlePointsPage(
                     size={28}
                   />
                 )}
-                <span className="flex-1 text-sm">
+                <span className="flex-1 text-body">
                   {maskRow ? (
                     <MaskedName />
                   ) : (
@@ -240,7 +240,7 @@ export default async function HustlePointsPage(
                     </>
                   )}
                 </span>
-                <span className="w-16 text-right text-sm font-medium">
+                <span className="w-16 text-right text-body font-medium">
                   {Math.round(rep.totalPoints)}
                 </span>
 
@@ -265,7 +265,7 @@ export default async function HustlePointsPage(
                   <MaskedBlurb side="right" />
                 ) : (
                   <div className="pointer-events-none absolute left-full top-1/2 z-10 -translate-y-1/2 pl-3 group-hover:pointer-events-auto">
-                    <div className="relative w-56 rounded-md bg-popover p-3 text-xs opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
+                    <div className="relative w-56 rounded-md bg-popover p-3 text-meta opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
                       <div className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-popover" />
                       <p className="mb-2 truncate font-medium text-foreground">
                         {rep.display_name}
@@ -298,14 +298,14 @@ export default async function HustlePointsPage(
           {avgSplit && avgSplit.insertAt === ranked.length && (
             <li className="flex items-center gap-3 py-2">
               <span className="h-px flex-1 bg-muted" />
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">
+              <span className="shrink-0 text-meta font-medium text-muted-foreground">
                 Company Average — {Math.round(avgSplit.average)}
               </span>
               <span className="h-px flex-1 bg-muted" />
             </li>
           )}
           {ranked.length === 0 && !error && (
-            <li className="py-6 text-center text-sm text-muted-foreground">
+            <li className="py-6 text-center text-body text-muted-foreground">
               No activity in this period.
             </li>
           )}

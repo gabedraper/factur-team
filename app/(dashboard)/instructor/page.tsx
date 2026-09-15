@@ -42,7 +42,7 @@ export default async function InstructorDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Total Courses
             </CardTitle>
           </CardHeader>
@@ -52,7 +52,7 @@ export default async function InstructorDashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Published
             </CardTitle>
           </CardHeader>
@@ -62,7 +62,7 @@ export default async function InstructorDashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Drafts
             </CardTitle>
           </CardHeader>

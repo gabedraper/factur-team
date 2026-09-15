@@ -52,12 +52,12 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
       <header>
         {/* design-ok: public page outside the app shell */}
         <h1 className="text-2xl font-semibold tracking-tight">{view.job?.title ?? "Candidates"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-body text-muted-foreground">
           {[view.job?.company, place(view.job?.city, view.job?.state)]
             .filter((v) => v && v !== "—").join(" · ")}
         </p>
         {view.recipient_name && (
-          <p className="mt-4 text-sm text-muted-foreground">For {view.recipient_name}</p>
+          <p className="mt-4 text-body text-muted-foreground">For {view.recipient_name}</p>
         )}
       </header>
 
@@ -70,37 +70,37 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
               <div className="flex flex-wrap items-start gap-3">
                 <div className="min-w-0">
                   <h2 className="text-lg font-medium">{s.person.name}</h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body text-muted-foreground">
                     {[s.person.title, s.person.company, s.person.location]
                       .filter((v) => v && v !== "—").join(" · ")}
                   </p>
                 </div>
                 {s.shared_at && (
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                  <span className="ml-auto shrink-0 text-meta text-muted-foreground">
                     {onDay(s.shared_at)}
                   </span>
                 )}
               </div>
 
               {s.headline && <p className="mt-3 font-medium">{s.headline}</p>}
-              {s.summary && <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{s.summary}</p>}
+              {s.summary && <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed">{s.summary}</p>}
               {!s.summary && s.person.summary && (
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{s.person.summary}</p>
+                <p className="mt-2 whitespace-pre-wrap text-body leading-relaxed">{s.person.summary}</p>
               )}
 
               {(s.person.email || s.person.phone) && (
-                <p className="mt-3 text-sm text-muted-foreground">
+                <p className="mt-3 text-body text-muted-foreground">
                   {[s.person.email, s.person.phone].filter(Boolean).join(" · ")}
                 </p>
               )}
 
               {s.person.work_history?.length ? (
-                <ul className="mt-4 space-y-1.5 border-t pt-4 text-sm">
+                <ul className="mt-4 space-y-1.5 border-t pt-4 text-body">
                   {s.person.work_history.map((h, i) => (
                     <li key={i} className="flex flex-wrap gap-x-2">
                       <span className="font-medium">{h.title ?? "—"}</span>
                       <span className="text-muted-foreground">{h.company ?? ""}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
+                      <span className="ml-auto text-meta text-muted-foreground">
                         {onDay(h.started_on)} – {h.ended_on ? onDay(h.ended_on) : "present"}
                       </span>
                     </li>

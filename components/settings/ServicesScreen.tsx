@@ -7,6 +7,7 @@ import {
 } from "@/actions/org";
 import type { ServiceRow } from "@/lib/org";
 import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 function Field({
   value, onChange, placeholder, className = "",
@@ -21,7 +22,7 @@ function Field({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`rounded-md border bg-background px-2 py-1 text-sm ${className}`}
+      className={control({ size: "sm", className })}
     />
   );
 }
@@ -50,7 +51,7 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-body text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -235,7 +236,7 @@ export function ServicesScreen({ services }: { services: ServiceRow[] }) {
       {!adding && (
         <button
           onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-body hover:bg-accent"
         >
           <Plus className="h-4 w-4" /> Add service
         </button>

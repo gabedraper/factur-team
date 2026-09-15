@@ -63,7 +63,7 @@ export default function NewCoursePage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+              <div className="bg-destructive/10 text-destructive text-body p-3 rounded-md">
                 {error}
               </div>
             )}

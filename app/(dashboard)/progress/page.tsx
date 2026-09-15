@@ -57,7 +57,7 @@ export default async function ProgressDashboard() {
         {stats.map((s) => (
           <Card key={s.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-body font-medium text-muted-foreground">
                 {s.label}
               </CardTitle>
               <div className={`${s.bg} p-2 rounded-md`}>{s.icon}</div>
@@ -88,23 +88,23 @@ export default async function ProgressDashboard() {
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar name={user.name} src={user.avatarUrl} size={36} />
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{user.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        <p className="font-medium text-body truncate">{user.name}</p>
+                        <p className="text-meta text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
+                      <Badge variant="secondary" className="text-meta hidden sm:inline-flex">
                         {user.roleLabel}
                       </Badge>
                       {user.totalCourses > 0 ? (
                         <div className="text-right">
-                          <span className="text-sm font-semibold">{user.overallProgress}%</span>
-                          <p className="text-xs text-muted-foreground">
+                          <span className="text-body font-semibold">{user.overallProgress}%</span>
+                          <p className="text-meta text-muted-foreground">
                             {user.completedCourses}/{user.totalCourses} courses
                           </p>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic">No courses assigned</span>
+                        <span className="text-meta text-muted-foreground italic">No courses assigned</span>
                       )}
                     </div>
                   </div>
@@ -124,12 +124,12 @@ export default async function ProgressDashboard() {
                     <div className="space-y-2 pl-12">
                       {user.courses.map((course) => (
                         <div key={course.id} className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                          <span className="text-meta text-muted-foreground truncate flex-1 min-w-0">
                             {course.title}
                           </span>
                           <div className="flex items-center gap-2 shrink-0 w-40">
                             <Progress value={course.progress} className="h-1.5 flex-1" />
-                            <span className="text-xs text-muted-foreground w-8 text-right">
+                            <span className="text-meta text-muted-foreground w-8 text-right">
                               {course.progress}%
                             </span>
                           </div>

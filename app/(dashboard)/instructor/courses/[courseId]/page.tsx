@@ -263,7 +263,7 @@ export default function CourseEditorPage() {
         {loadError ? (
           <>
             <PageHeader title={<>Can&apos;t open this course</>} />
-            <p className="mt-2 max-w-prose text-sm text-muted-foreground">{loadError}</p>
+            <p className="mt-2 max-w-prose text-body text-muted-foreground">{loadError}</p>
             <Button asChild variant="outline" className="mt-4">
               <Link href="/instructor/courses">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to courses
@@ -303,7 +303,7 @@ export default function CourseEditorPage() {
                   placeholder="Course description (optional)"
                 />
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Content Owner</Label>
+                  <Label className="text-meta text-muted-foreground">Content Owner</Label>
                   <Select value={editOwnerId} onValueChange={setEditOwnerId}>
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select owner..." />
@@ -428,7 +428,7 @@ export default function CourseEditorPage() {
                   <span className="font-medium">
                     Module {mIdx + 1}: {module.title}
                   </span>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-meta">
                     {module.lessons.length} lessons
                   </Badge>
                 </div>
@@ -470,10 +470,10 @@ export default function CourseEditorPage() {
                           <span className="text-muted-foreground">
                             {lessonTypeIcons[lesson.type]}
                           </span>
-                          <span className="text-sm">
+                          <span className="text-body">
                             {lIdx + 1}. {lesson.title}
                           </span>
-                          <Badge variant="outline" className="text-xs capitalize">
+                          <Badge variant="outline" className="text-meta capitalize">
                             {lesson.type}
                           </Badge>
                         </div>
@@ -520,10 +520,10 @@ export default function CourseEditorPage() {
                           value={newLessonTitle}
                           onChange={(e) => setNewLessonTitle(e.target.value)}
                           placeholder="Lesson title"
-                          className="h-8 text-sm"
+                          className="h-8 text-body"
                         />
                         <Select value={newLessonType} onValueChange={setNewLessonType}>
-                          <SelectTrigger className="w-28 h-8 text-sm">
+                          <SelectTrigger className="w-28 h-8 text-body">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

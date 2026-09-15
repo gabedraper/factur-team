@@ -31,13 +31,13 @@ export function AddToJob({ personId }: { personId: string }) {
 
   return (
     <div className="w-72 rounded-md bg-popover p-2 shadow-overlay">
-      {note && <p className="px-2 pb-2 text-xs text-muted-foreground">{note}</p>}
+      {note && <p className="px-2 pb-2 text-meta text-muted-foreground">{note}</p>}
       <ul className="max-h-64 divide-y overflow-y-auto">
         {jobs.map((j) => (
           <li key={j.id}>
             <button
               type="button"
-              className="w-full px-2 py-2 text-left text-sm hover:bg-accent"
+              className="w-full px-2 py-2 text-left text-body hover:bg-accent"
               onClick={() => start(async () => {
                 const res = await addCandidate(j.id, personId);
                 if (!res.ok) { setNote(res.error); return; }
@@ -46,11 +46,11 @@ export function AddToJob({ personId }: { personId: string }) {
               })}
             >
               <span className="block truncate font-medium">{j.title}</span>
-              <span className="block truncate text-xs text-muted-foreground">{j.company_name ?? "—"}</span>
+              <span className="block truncate text-meta text-muted-foreground">{j.company_name ?? "—"}</span>
             </button>
           </li>
         ))}
-        {jobs.length === 0 && <li className="px-2 py-3 text-sm text-muted-foreground">No open jobs</li>}
+        {jobs.length === 0 && <li className="px-2 py-3 text-body text-muted-foreground">No open jobs</li>}
       </ul>
       <Button size="sm" variant="ghost" className="mt-1 w-full" onClick={() => { setOpen(false); setNote(null); }}>
         Close

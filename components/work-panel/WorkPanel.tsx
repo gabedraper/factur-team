@@ -171,7 +171,7 @@ export function WorkPanel({
       )}
 
       <div className={`flex items-center gap-2 border-b px-4 py-3 ${collapsed ? "justify-center px-2" : ""}`}>
-        {!collapsed && <span className="text-sm font-semibold">Work</span>}
+        {!collapsed && <span className="text-body font-semibold">Work</span>}
         <Button
           variant="ghost"
           size="sm"
@@ -213,7 +213,7 @@ export function WorkPanel({
             shut={shut.includes("clickup")}
             onToggle={() => toggleSection("clickup")}
             badge={
-              <span className="text-xs tabular-nums text-muted-foreground">{work.length}</span>
+              <span className="text-meta tabular-nums text-muted-foreground">{work.length}</span>
             }
           />
           {!shut.includes("clickup") && <RailWork items={work} collapsed={collapsed} />}
@@ -248,7 +248,7 @@ function SectionHeader({
       {icon}
       {!collapsed && (
         <>
-          <span className="text-sm font-semibold">{label}</span>
+          <span className="text-body font-semibold">{label}</span>
           {badge && <span className="ml-auto flex items-center">{badge}</span>}
         </>
       )}

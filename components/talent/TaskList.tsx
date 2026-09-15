@@ -10,6 +10,7 @@ import { Empty, Panel } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
 import { onDay } from "@/lib/talent/format";
 import type { Member } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
 
 type Row = {
   id: string; title: string; notes: string | null; due_at: string | null;
@@ -45,7 +46,7 @@ export function TaskList({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <select
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
           value={owner}
           onChange={(e) => go({ owner: e.target.value })}
         >
@@ -54,7 +55,7 @@ export function TaskList({
             <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
           ))}
         </select>
-        <label className="flex items-center gap-1.5 text-sm">
+        <label className="flex items-center gap-1.5 text-body">
           <input
             type="checkbox"
             checked={showingDone}
@@ -74,14 +75,14 @@ export function TaskList({
         {adding && (
           <div className="flex flex-wrap gap-2 border-b bg-muted/30 px-4 py-3">
             <input
-              className={`flex-1 px-2 py-1.5 text-sm ${FIELD}`}
+              className={`flex-1 px-2 py-1.5 text-body ${FIELD}`}
               placeholder="Task"
               value={title}
               autoFocus
               onChange={(e) => setTitle(e.target.value)}
             />
             <input
-              className={`px-2 py-1.5 text-sm ${FIELD}`}
+              className={`px-2 py-1.5 text-body ${FIELD}`}
               type="date"
               value={due}
               onChange={(e) => setDue(e.target.value)}
@@ -105,7 +106,7 @@ export function TaskList({
             {tasks.map((t) => {
               const late = !t.done_at && t.due_at && new Date(t.due_at) < new Date();
               return (
-                <li key={t.id} className="group flex items-start gap-3 px-4 py-2.5 text-sm">
+                <li key={t.id} className="group flex items-start gap-3 px-4 py-2.5 text-body">
                   <input
                     type="checkbox"
                     className="mt-1"
@@ -118,7 +119,7 @@ export function TaskList({
                   />
                   <div className="min-w-0 flex-1">
                     <p className={t.done_at ? "text-muted-foreground line-through" : ""}>{t.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                       {t.tal_people && (
                         <Link href={`/talent/people/${t.tal_people.id}`} className="hover:underline">
                           {t.tal_people.name}
@@ -133,7 +134,7 @@ export function TaskList({
                       {t.notes ? ` · ${t.notes}` : ""}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-xs tabular-nums ${late ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                  <span className={`shrink-0 text-meta tabular-nums ${late ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                     {onDay(t.due_at)}
                   </span>
                   {canEdit && (

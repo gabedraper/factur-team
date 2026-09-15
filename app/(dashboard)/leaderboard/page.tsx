@@ -83,7 +83,7 @@ export default async function LeaderboardPage() {
                   {idx < 3 ? (
                     <Medal className={`h-5 w-5 mx-auto ${medalColors[idx]}`} />
                   ) : (
-                    <span className="text-sm font-semibold text-muted-foreground">#{idx + 1}</span>
+                    <span className="text-body font-semibold text-muted-foreground">#{idx + 1}</span>
                   )}
                 </div>
 
@@ -96,24 +96,24 @@ export default async function LeaderboardPage() {
 
                 {/* Name + role */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">
+                  <p className="font-semibold text-body truncate">
                     {row.full_name}
                     {isCurrentUser && (
-                      <span className="ml-2 text-xs text-primary font-normal">(you)</span>
+                      <span className="ml-2 text-meta text-primary font-normal">(you)</span>
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground">{roleLabels.get(row.id) ?? "No role set"}</p>
+                  <p className="text-meta text-muted-foreground">{roleLabels.get(row.id) ?? "No role set"}</p>
                 </div>
 
                 {/* Stats */}
                 <div className="flex items-center gap-6 text-right shrink-0">
                   <div>
                     <p className="text-lg font-bold">{row.lessonsCompleted}</p>
-                    <p className="text-xs text-muted-foreground">lessons</p>
+                    <p className="text-meta text-muted-foreground">lessons</p>
                   </div>
                   <div>
                     <p className="text-lg font-bold">{row.coursesCompleted}</p>
-                    <p className="text-xs text-muted-foreground">courses</p>
+                    <p className="text-meta text-muted-foreground">courses</p>
                   </div>
                 </div>
               </div>

@@ -23,7 +23,7 @@ export function RailWork({ items, collapsed }: { items: WorkItem[]; collapsed: b
         return (
           <div key={item.id} className="group border-b py-1.5 last:border-0">
             <div className="flex items-baseline gap-2">
-              <Link href={`/work/task/${item.clickupId}`} className="min-w-0 flex-1 truncate text-xs hover:underline">
+              <Link href={`/work/task/${item.clickupId}`} className="min-w-0 flex-1 truncate text-meta hover:underline">
                 {item.title}
               </Link>
               <span className={`shrink-0 text-[10px] tabular-nums ${dueClass(item.dueAt, isOpen(item))}`}>

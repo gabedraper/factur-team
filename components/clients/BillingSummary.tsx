@@ -25,7 +25,7 @@ function Tile({
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className={`mt-0.5 text-sm font-semibold tabular-nums ${colour}`}>
+      <div className={`mt-0.5 text-body font-semibold tabular-nums ${colour}`}>
         {value}
       </div>
     </Surface>

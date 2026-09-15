@@ -28,7 +28,7 @@ export default async function NpsPage() {
         actions={<>{maySend && (
           <Link
             href="/clients/nps/send"
-            className="ml-auto h-8 rounded-md border px-3 text-sm leading-8 hover:bg-muted"
+            className="ml-auto h-8 rounded-md border px-3 text-body leading-8 hover:bg-muted"
           >
             Send surveys
           </Link>

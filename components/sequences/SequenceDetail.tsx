@@ -48,34 +48,34 @@ export function SequenceDetail({
   return (
     <div className="space-y-4">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
-      {note && <p className="text-sm text-muted-foreground">{note}</p>}
+      {note && <p className="text-body text-muted-foreground">{note}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`/sequences/${sequence.slug}/add`}
-          className="h-9 rounded-md bg-primary px-4 text-sm leading-9 text-primary-foreground hover:bg-primary/90"
+          className="h-9 rounded-md bg-primary px-4 text-body leading-9 text-primary-foreground hover:bg-primary/90"
         >
           Add contacts
         </Link>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-body text-muted-foreground">
           {enrolled} enrolled · {dueCount} due now
         </span>
         <div className="ml-auto flex gap-2">
           <button
             onClick={() => work("draft-to-me")}
             disabled={pending || dueCount === 0}
-            className="h-9 rounded-md border px-4 text-sm disabled:opacity-50"
+            className="h-9 rounded-md border px-4 text-body disabled:opacity-50"
           >
             Leave drafts in my inbox
           </button>
           <button
             onClick={() => work("send")}
             disabled={pending || dueCount === 0}
-            className="h-9 rounded-md border px-4 text-sm disabled:opacity-50"
+            className="h-9 rounded-md border px-4 text-body disabled:opacity-50"
           >
             Send to all
           </button>
@@ -83,7 +83,7 @@ export function SequenceDetail({
       </div>
 
       {sequence.activeSteps === 0 && (
-        <p className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <p className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-body text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
           Every step is switched off, so nothing is due. Turn one on in Settings → Sequences.
         </p>
       )}

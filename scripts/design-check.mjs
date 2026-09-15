@@ -77,6 +77,21 @@ const RULES = [
     test: /<h1\s+className=/,
     fix: "Use <PageHeader> from @/components/ui/page-header.",
   },
+  {
+    id: "raw-text-size",
+    // text-sm and text-xs are exactly text-body and text-meta. Same pixels,
+    // no name -- which is how the type scale drifted in the first place.
+    test: /(?<![\w-])text-(?:sm|xs)(?![\w-])/,
+    fix: "Use text-body (14px) or text-meta (12px).",
+  },
+  {
+    id: "hand-field",
+    // The field fill only ever belongs to an editable control, and every one
+    // of those is drawn by control(). 62 hand-typed recipes in 27 spellings
+    // and eight heights is what this replaced.
+    test: /\bbg-field\b/,
+    fix: "Use control() from @/components/ui/control -- size \"sm\" is 32px, default is 40px.",
+  },
 ];
 
 /*

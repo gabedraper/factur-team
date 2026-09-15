@@ -21,6 +21,7 @@ import {
   Undo,
   Redo,
 } from "lucide-react";
+import { control } from "@/components/ui/control";
 
 interface RichTextEditorProps {
   value: string;
@@ -151,7 +152,7 @@ export default function RichTextEditor({
                 editor.chain().focus().insertContent(`{{${field}}}`).run();
                 e.target.value = "";
               }}
-              className="h-8 rounded-md border bg-transparent px-2 text-xs text-muted-foreground"
+              className={control({ size: "sm", className: "bg-transparent text-muted-foreground" })}
             >
               <option value="">{"{ }"} Insert field</option>
               {mergeFields.map((f) => (
@@ -169,7 +170,7 @@ export default function RichTextEditor({
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             placeholder="Paste image URL (https://...)"
-            className="h-8 text-sm"
+            className="h-8 text-body"
             onKeyDown={(e) => e.key === "Enter" && insertImage()}
             autoFocus
           />
@@ -185,7 +186,7 @@ export default function RichTextEditor({
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             placeholder="Paste link URL (https://...)"
-            className="h-8 text-sm"
+            className="h-8 text-body"
             onKeyDown={(e) => e.key === "Enter" && insertLink()}
             autoFocus
           />

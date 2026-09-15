@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 import {
   humanize, KIND_LABELS,
   type ColumnMeta, type FieldRef, type Kind, type ObjectMeta,
@@ -12,11 +14,8 @@ import {
  * popover library to be right.
  */
 
-/* The Input's recipe at the builder's height, shared by every select here. */
-export const FIELD =
-  "flex h-9 w-full min-w-0 rounded-md border border-input bg-field px-2.5 text-sm ring-offset-background " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
-  "disabled:cursor-not-allowed disabled:opacity-50";
+/* Every select in the builder, from the app's one control recipe. */
+export const FIELD = control({ size: "sm", className: "flex w-full min-w-0" });
 
 export function Labelled({
   label,
@@ -27,11 +26,11 @@ export function Labelled({
   children: React.ReactNode;
   className?: string;
 }) {
+  // The app's field, under the name this builder already imports.
   return (
-    <label className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="text-meta font-medium text-muted-foreground">{label}</span>
+    <Field label={label} className={className}>
       {children}
-    </label>
+    </Field>
   );
 }
 

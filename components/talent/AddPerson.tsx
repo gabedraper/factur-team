@@ -8,13 +8,14 @@ import { createPerson, findPossibleDuplicates, type PersonInput } from "@/action
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/lib/field-class";
 import { PERSON_TYPE } from "@/lib/talent/types";
+import { Field } from "@/components/ui/field";
 
 type Dupe = {
   id: string; name: string; title: string | null;
   company: string | null; primary_email: string | null;
 };
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
 
 /**
  * Adding somebody by hand.
@@ -75,7 +76,7 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-20">
       <div className="w-full max-w-lg space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center">
-          <h2 className="text-sm font-semibold">Add person</h2>
+          <h2 className="text-body font-semibold">Add person</h2>
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -87,8 +88,7 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <label className="col-span-2 block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Name</span>
+          <Field label="Name" className="col-span-2">
             <input
               className={input}
               value={form.full_name ?? ""}
@@ -96,66 +96,59 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
               onBlur={check}
               autoFocus
             />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Email</span>
+          <Field label="Email">
             <input
               className={input}
               value={form.emails ?? ""}
               onChange={(e) => set("emails", e.target.value)}
               onBlur={check}
             />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Phone</span>
+          <Field label="Phone">
             <input
               className={input}
               value={form.phones ?? ""}
               onChange={(e) => set("phones", e.target.value)}
             />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Title</span>
+          <Field label="Title">
             <input className={input} value={form.title ?? ""} onChange={(e) => set("title", e.target.value)} />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Company</span>
+          <Field label="Company">
             <input
               className={input}
               value={form.company_name ?? ""}
               onChange={(e) => set("company_name", e.target.value)}
             />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">City</span>
+          <Field label="City">
             <input className={input} value={form.city ?? ""} onChange={(e) => set("city", e.target.value)} />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">State</span>
+          <Field label="State">
             <input className={input} value={form.state ?? ""} onChange={(e) => set("state", e.target.value)} />
-          </label>
+          </Field>
 
-          <label className="col-span-2 block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">LinkedIn</span>
+          <Field label="LinkedIn" className="col-span-2">
             <input
               className={input}
               value={form.linkedin_url ?? ""}
               onChange={(e) => set("linkedin_url", e.target.value)}
               onBlur={check}
             />
-          </label>
+          </Field>
 
           <fieldset className="col-span-2">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">Type</span>
+            <span className="mb-1 block text-meta font-medium text-muted-foreground">Type</span>
             <div className="flex flex-wrap gap-3">
               {Object.entries(PERSON_TYPE).map(([k, v]) => (
-                <label key={k} className="flex items-center gap-1.5 text-sm">
+                <label key={k} className="flex items-center gap-1.5 text-body">
                   <input
                     type="checkbox"
                     checked={form.person_types?.includes(k) ?? false}
@@ -177,19 +170,19 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
 
         {dupes.length > 0 && (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950">
-            <p className="text-xs font-medium text-amber-900 dark:text-amber-200">
+            <p className="text-meta font-medium text-amber-900 dark:text-amber-200">
               Already here
             </p>
             <ul className="mt-1 space-y-1">
               {dupes.map((d) => (
-                <li key={d.id} className="text-sm">
+                <li key={d.id} className="text-body">
                   <Link
                     href={`/talent/people/${d.id}`}
                     className="text-amber-900 underline underline-offset-4 dark:text-amber-100"
                   >
                     {d.name}
                   </Link>
-                  <span className="ml-2 text-xs text-amber-800/80 dark:text-amber-200/70">
+                  <span className="ml-2 text-meta text-amber-800/80 dark:text-amber-200/70">
                     {[d.title, d.company, d.primary_email].filter(Boolean).join(" · ")}
                   </span>
                 </li>
@@ -198,7 +191,7 @@ export function AddPerson({ onAdded }: { onAdded?: (id: string) => void }) {
           </div>
         )}
 
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="flex gap-2">
           <Button size="sm" onClick={submit} disabled={pending || !form.full_name?.trim()}>

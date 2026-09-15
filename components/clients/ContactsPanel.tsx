@@ -6,6 +6,8 @@ import {
 } from "@/actions/client-contacts";
 import { ROLES, ROLE_LABEL, SOURCE_LABEL, type Contact, type Role } from "@/lib/client-contacts";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 
 /**
  * Who we email at this client, and who has asked us not to.
@@ -68,13 +70,13 @@ export function ContactsPanel({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No contacts.</p>
+        <p className="text-body text-muted-foreground">No contacts.</p>
       ) : (
         <Table>
           <THead>
@@ -114,7 +116,7 @@ export function ContactsPanel({
                       <button
                         onClick={() => toggleOptOut(c)}
                         disabled={pending || !!c.bounced_at}
-                        className="text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-50"
+                        className="text-meta text-muted-foreground underline hover:text-foreground disabled:opacity-50"
                       >
                         {stopped ? "resume" : "opt out"}
                       </button>
@@ -122,7 +124,7 @@ export function ContactsPanel({
                         <button
                           onClick={() => remove(c)}
                           disabled={pending}
-                          className="ml-3 text-xs text-muted-foreground underline hover:text-destructive"
+                          className="ml-3 text-meta text-muted-foreground underline hover:text-destructive"
                         >
                           remove
                         </button>
@@ -138,46 +140,42 @@ export function ContactsPanel({
 
       {canEdit && (
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-muted-foreground">
-            Role
+          <Field label="Role">
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
-              className="mt-1 block h-8 rounded-md border bg-field px-2 text-sm"
+              className={control({ size: "sm" })}
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>{ROLE_LABEL[r]}</option>
               ))}
             </select>
-          </label>
-          <label className="text-xs text-muted-foreground">
-            First name
+          </Field>
+          <Field label="First name">
             <input
               value={first}
               onChange={(e) => setFirst(e.target.value)}
-              className="mt-1 block h-8 w-32 rounded-md border bg-field px-2 text-sm"
+              className={control({ size: "sm", className: "w-32" })}
             />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            Last name
+          </Field>
+          <Field label="Last name">
             <input
               value={last}
               onChange={(e) => setLast(e.target.value)}
-              className="mt-1 block h-8 w-32 rounded-md border bg-field px-2 text-sm"
+              className={control({ size: "sm", className: "w-32" })}
             />
-          </label>
-          <label className="flex-1 text-xs text-muted-foreground">
-            Email
+          </Field>
+          <Field label="Email" className="flex-1">
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block h-8 w-full rounded-md border bg-field px-2 text-sm"
+              className={control({ size: "sm", className: "w-full" })}
             />
-          </label>
+          </Field>
           <button
             onClick={add}
             disabled={pending || !email.trim()}
-            className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+            className="h-8 rounded-md border px-3 text-body disabled:opacity-50"
           >
             Add
           </button>

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { deleteDocument, documentUrl, recordDocument } from "@/actions/talent";
 import { Button } from "@/components/ui/button";
 import { ago } from "@/lib/talent/format";
+import { control } from "@/components/ui/control";
 
 type Doc = {
   id: string; name: string; kind: string; storage_path: string | null;
@@ -94,7 +95,7 @@ export function Documents({
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
           <select
-            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+            className={control({ size: "sm" })}
             value={kind}
             onChange={(e) => setKind(e.target.value)}
           >
@@ -116,10 +117,10 @@ export function Documents({
         </div>
       )}
 
-      {error && <p className="px-4 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="px-4 py-2 text-body text-red-600 dark:text-red-400">{error}</p>}
 
       {documents.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">No files</p>
+        <p className="px-4 py-6 text-body text-muted-foreground">No files</p>
       ) : (
         <ul className="divide-y">
           {documents.map((d) => (
@@ -128,15 +129,15 @@ export function Documents({
               <button
                 type="button"
                 onClick={() => open(d)}
-                className="min-w-0 flex-1 truncate text-left text-sm hover:underline"
+                className="min-w-0 flex-1 truncate text-left text-body hover:underline"
               >
                 {d.name}
               </button>
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="shrink-0 text-meta text-muted-foreground">
                 {KINDS.find(([k]) => k === d.kind)?.[1] ?? d.kind}
                 {d.is_primary ? " · primary" : ""}
               </span>
-              <span className="shrink-0 text-xs text-muted-foreground">{ago(d.created_at)}</span>
+              <span className="shrink-0 text-meta text-muted-foreground">{ago(d.created_at)}</span>
               {canEdit && (
                 <button
                   type="button"

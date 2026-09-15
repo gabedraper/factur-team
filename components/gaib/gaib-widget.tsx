@@ -552,7 +552,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
             className="flex cursor-move touch-none select-none items-center gap-1 border-b px-3 py-2.5"
           >
             <MessageCircle className="ml-1 h-4 w-4 shrink-0" />
-            <span className="ml-1 min-w-0 flex-1 truncate text-sm font-medium">
+            <span className="ml-1 min-w-0 flex-1 truncate text-body font-medium">
               {title ?? "Gaib"}
             </span>
             <button
@@ -595,7 +595,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                       <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                         {t.ref}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-xs">{t.title}</span>
+                      <span className="min-w-0 flex-1 truncate text-meta">{t.title}</span>
                       <span
                         className={`shrink-0 text-[10px] ${
                           t.waitingOnYou ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
@@ -608,7 +608,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                 </div>
               )}
               {past.length === 0 ? (
-                <p className="px-4 py-3 text-xs text-muted-foreground">Nothing yet</p>
+                <p className="px-4 py-3 text-meta text-muted-foreground">Nothing yet</p>
               ) : (
                 past.map((p) => (
                   <button
@@ -618,7 +618,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                       p.id === sessionId ? "bg-accent" : ""
                     }`}
                   >
-                    <span className="min-w-0 flex-1 truncate text-xs">
+                    <span className="min-w-0 flex-1 truncate text-meta">
                       {p.title ?? "Untitled"}
                     </span>
                     <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -652,8 +652,8 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                     // can be neither read nor copied.
                     className={
                       line.who === "you"
-                        ? "ml-auto w-fit max-w-[85%] break-words rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-                        : "w-fit max-w-[85%] break-words rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
+                        ? "ml-auto w-fit max-w-[85%] break-words rounded-lg bg-primary px-3 py-2 text-body text-primary-foreground"
+                        : "w-fit max-w-[85%] break-words rounded-lg bg-muted px-3 py-2 text-body whitespace-pre-wrap"
                     }
                   >
                     {line.shots && line.shots.length > 0 && (
@@ -669,14 +669,14 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
               }
               if (line.kind === "working") {
                 return (
-                  <p key={i} className="text-xs italic text-muted-foreground">
+                  <p key={i} className="text-meta italic text-muted-foreground">
                     {line.text}…
                   </p>
                 );
               }
               if (line.kind === "ticket") {
                 return (
-                  <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+                  <div key={i} className="flex items-center gap-2 rounded-lg border px-3 py-2 text-body">
                     <Ticket className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="font-medium">Ticket {line.ref}</span>
                     <span className="truncate text-muted-foreground">{line.title}</span>
@@ -705,7 +705,7 @@ export function GaibWidget({ collapsed = false }: { collapsed?: boolean } = {}) 
                 );
               }
               return (
-                <p key={i} className="text-sm text-destructive">
+                <p key={i} className="text-body text-destructive">
                   {line.text}
                 </p>
               );

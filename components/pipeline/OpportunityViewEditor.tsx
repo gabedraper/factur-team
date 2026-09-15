@@ -6,6 +6,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 import { saveView, deleteView } from "@/actions/opportunity-views";
 import { ALL_STAGES, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 import {
@@ -23,9 +24,7 @@ import {
  * server -- picks it up on the refresh.
  */
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-field px-2 text-body ring-offset-background " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+const SELECT = control({ size: "sm" });
 
 const BLANK: ListView = {
   id: "", name: "", owner_member_id: null, shared: false,

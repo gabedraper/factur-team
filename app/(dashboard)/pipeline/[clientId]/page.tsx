@@ -63,7 +63,7 @@ export default async function ClientTargetAccountsPage({
     <div className="space-y-4">
       <Link
         href="/pipeline"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         Target Companies

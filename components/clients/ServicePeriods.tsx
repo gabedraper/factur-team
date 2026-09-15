@@ -7,6 +7,8 @@ import {
 } from "@/actions/org";
 import type { ServicePeriod } from "@/lib/clients/result-metrics";
 import { TableScroll, Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -51,7 +53,7 @@ function Input({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={`rounded-md border bg-background px-2 py-1 text-sm ${className}`}
+      className={control({ size: "sm", className })}
     />
   );
 }
@@ -66,7 +68,7 @@ function ServicePicker({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-md border bg-background px-2 py-1 text-sm"
+      className={control({ size: "sm" })}
     >
       {SERVICES.map((s) => (
         <option key={s} value={s}>{s}</option>
@@ -134,13 +136,13 @@ export function ServicePeriods({
           <>
             <button
               onClick={() => { setSwitching(true); setError(null); }}
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+              className="text-body text-muted-foreground hover:text-foreground hover:underline"
             >
               Change service
             </button>
             <button
               onClick={() => { setAdding(true); setFresh(EMPTY); setError(null); }}
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+              className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground hover:underline"
             >
               <Plus className="h-3.5 w-3.5" /> Add period
             </button>
@@ -149,30 +151,28 @@ export function ServicePeriods({
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+        <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-body text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
 
       {switching && (
         <div className="flex flex-wrap items-end gap-2 rounded-md border bg-muted/20 p-3">
-          <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Switch to</span>
+          <label className="text-body">
+            <span className="mb-1 block text-meta text-muted-foreground">Switch to</span>
             <ServicePicker value={sw.service} onChange={(v) => setSw({ ...sw, service: v })} />
           </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Effective</span>
+          <Field label="Effective">
             <Input type="date" value={sw.onDate} onChange={(v) => setSw({ ...sw, onDate: v })} />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">Monthly rate</span>
+          </Field>
+          <Field label="Monthly rate">
             <Input
               type="number"
               value={sw.rate}
               onChange={(v) => setSw({ ...sw, rate: v })}
               className="w-28"
             />
-          </label>
+          </Field>
           <button
             disabled={pending}
             onClick={() =>
@@ -181,13 +181,13 @@ export function ServicePeriods({
                 () => { setSwitching(false); setSw({ service: "OP", onDate: "", rate: "" }); },
               )
             }
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+            className="rounded-md border px-3 py-1.5 text-body hover:bg-accent"
           >
             Switch
           </button>
           <button
             onClick={() => { setSwitching(false); setError(null); }}
-            className="rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+            className="rounded-md px-2 py-1.5 text-body text-muted-foreground hover:text-foreground"
           >
             Cancel
           </button>

@@ -119,7 +119,7 @@ export default async function AdminCourseDetailPage({
       {/* Back */}
       <Link
         href="/admin/courses"
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
+        className="flex items-center gap-2 text-body text-muted-foreground hover:text-foreground mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
         All Courses
@@ -144,7 +144,7 @@ export default async function AdminCourseDetailPage({
           {course.description && (
             <p className="text-muted-foreground">{course.description}</p>
           )}
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-body text-muted-foreground mt-1">
             {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
           </p>
         </div>
@@ -233,7 +233,7 @@ export default async function AdminCourseDetailPage({
             return (
               <div key={module.id}>
                 {modules && modules.length > 1 && (
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                  <h2 className="text-body font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                     {module.title}
                   </h2>
                 )}
@@ -244,14 +244,14 @@ export default async function AdminCourseDetailPage({
                       className="flex items-center justify-between px-4 py-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-xs text-muted-foreground w-5 shrink-0">
+                        <span className="text-meta text-muted-foreground w-5 shrink-0">
                           {i + 1}
                         </span>
                         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate">{lesson.title}</span>
+                        <span className="text-body truncate">{lesson.title}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
-                        <Badge variant="outline" className="text-xs capitalize">
+                        <Badge variant="outline" className="text-meta capitalize">
                           {lesson.type}
                         </Badge>
                         <Button asChild size="sm" variant="ghost" className="h-7 px-2">

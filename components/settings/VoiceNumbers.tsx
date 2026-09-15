@@ -78,19 +78,19 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-body text-red-600">{error}</p>}
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
         <div>
-          <label className="text-xs text-muted-foreground">Number</label>
+          <label className="text-meta text-muted-foreground">Number</label>
           <Input value={e164} onChange={(e) => setE164(e.target.value)} placeholder="+14155551234" className="w-40" />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Label</label>
+          <label className="text-meta text-muted-foreground">Label</label>
           <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Optional" className="w-40" />
         </div>
         <div>
-          <label className="text-xs text-muted-foreground">Assign to</label>
+          <label className="text-meta text-muted-foreground">Assign to</label>
           <Select value={assignee} onValueChange={setAssignee}>
             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -117,7 +117,7 @@ export function VoiceNumbers({ numbers, members }: { numbers: VoiceNumberRow[]; 
         <TBody>
           {rows.map((r) => (
             <TR key={r.id}>
-              <TD className="tabular-nums">{r.e164}{r.label && <span className="ml-2 text-xs text-muted-foreground">{r.label}</span>}</TD>
+              <TD className="tabular-nums">{r.e164}{r.label && <span className="ml-2 text-meta text-muted-foreground">{r.label}</span>}</TD>
               <TD className="text-muted-foreground">{r.assigned_member_name ?? "Shared pool"}</TD>
               <TD className="tabular-nums">{r.calls_placed}</TD>
               <TD className="text-muted-foreground">{r.last_used_at ? new Date(r.last_used_at).toLocaleString() : "Never"}</TD>

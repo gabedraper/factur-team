@@ -39,7 +39,7 @@ export default async function ClientMarketPage({
     <div className="space-y-4 p-6">
       <Link
         href={`/clients/${clientId}`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         {report.client.name}
@@ -49,14 +49,14 @@ export default async function ClientMarketPage({
         title="Market"
         actions={<><Chip colour="slate">Census {report.vintage}</Chip>
         {report.computedAt && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-meta text-muted-foreground">
             {asOf.format(new Date(report.computedAt))}
           </span>
         )}</>}
       />
 
       {report.markets.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           No mapped markets for this client.
         </p>
       ) : (

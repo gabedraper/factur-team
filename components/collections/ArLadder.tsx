@@ -68,12 +68,12 @@ export function ArLadder({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
       {note && (
-        <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+        <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-body text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
           {note}
         </p>
       )}
@@ -99,8 +99,8 @@ export function ArLadder({
       {/* The rungs, and which are live */}
       <Surface as="section" pad="none">
         <div className="flex items-center justify-between border-b px-3 py-2">
-          <h2 className="text-sm font-semibold">Ladder</h2>
-          <span className="text-xs text-muted-foreground">
+          <h2 className="text-body font-semibold">Ladder</h2>
+          <span className="text-meta text-muted-foreground">
             Starts at invoices due on or after {when(settings.start_from)} · {mode === "full" ? "sends automatically" : "creates drafts"}
           </span>
         </div>
@@ -108,8 +108,8 @@ export function ArLadder({
           {steps.map((s) => {
             const waiting = rows.filter((r) => r.step_id === s.id).length;
             return (
-              <div key={s.id} className="grid grid-cols-[5rem_1fr_5rem_7.5rem] items-center gap-3 px-3 py-2 text-sm">
-                <span className={`font-mono text-xs ${tone(s.offset_days)}`}>
+              <div key={s.id} className="grid grid-cols-[5rem_1fr_5rem_7.5rem] items-center gap-3 px-3 py-2 text-body">
+                <span className={`font-mono text-meta ${tone(s.offset_days)}`}>
                   {rung(s.offset_days)}
                 </span>
                 <span className="min-w-0 truncate">
@@ -132,7 +132,7 @@ export function ArLadder({
                   type="button"
                   disabled={pending}
                   onClick={() => run(() => setArStepActive(s.id, !s.active))}
-                  className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-50 ${
+                  className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-meta disabled:opacity-50 ${
                     s.active
                       ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
                       : "hover:bg-muted"
@@ -187,7 +187,7 @@ export function ArLadder({
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <Surface pad="tight">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-meta text-muted-foreground">{label}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${tone ?? ""}`}>{value}</div>
     </Surface>
   );
@@ -212,15 +212,15 @@ function Queue({
   return (
     <Surface as="section" pad="none">
       <div className="border-b px-3 py-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="text-body font-semibold">{title}</h2>
       </div>
       {rows.length === 0 ? (
-        <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nothing here.</p>
+        <p className="px-3 py-6 text-center text-body text-muted-foreground">Nothing here.</p>
       ) : (
         <div className="divide-y">
           {rows.map((r) => (
             <div key={`${r.qb_invoice_id}-${r.step_id}`}>
-              <div className="grid grid-cols-[minmax(9rem,1.4fr)_5.5rem_5rem_6rem_1fr_auto] items-center gap-3 px-3 py-2 text-sm">
+              <div className="grid grid-cols-[minmax(9rem,1.4fr)_5.5rem_5rem_6rem_1fr_auto] items-center gap-3 px-3 py-2 text-body">
                 <Link
                   href={`/clients/${r.client_id}`}
                   className="min-w-0 truncate font-medium hover:underline"
@@ -228,16 +228,16 @@ function Queue({
                 >
                   {r.client_name}
                 </Link>
-                <span className="truncate font-mono text-xs text-muted-foreground" title={`Invoice ${r.invoice_no}`}>
+                <span className="truncate font-mono text-meta text-muted-foreground" title={`Invoice ${r.invoice_no}`}>
                   #{r.invoice_no}
                 </span>
-                <span className={`font-mono text-xs ${tone(r.age_days)}`}>
+                <span className={`font-mono text-meta ${tone(r.age_days)}`}>
                   {rung(r.age_days)}
                 </span>
                 <span className="text-right tabular-nums">
                   {money.format(r.invoice_balance)}
                 </span>
-                <span className="min-w-0 truncate text-xs text-muted-foreground">
+                <span className="min-w-0 truncate text-meta text-muted-foreground">
                   {blocked ? r.blocked : r.step_name}
                 </span>
                 <div className="flex items-center gap-1">
@@ -247,7 +247,7 @@ function Queue({
                         type="button"
                         disabled={pending}
                         onClick={() => setOpen(open === r.qb_invoice_id ? null : r.qb_invoice_id)}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                       >
                         <Mail className="h-3 w-3" /> Read
                       </button>
@@ -255,7 +255,7 @@ function Queue({
                         type="button"
                         disabled={pending}
                         onClick={() => onDraft?.(r)}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                       >
                         Test
                       </button>
@@ -263,7 +263,7 @@ function Queue({
                         type="button"
                         disabled={pending}
                         onClick={() => onSend?.(r)}
-                        className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs hover:bg-primary/20 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-meta hover:bg-primary/20 disabled:opacity-50"
                       >
                         {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                         {mode === "full" ? "Send" : "Draft"}
@@ -272,7 +272,7 @@ function Queue({
                         type="button"
                         disabled={pending}
                         onClick={() => onHold?.(r)}
-                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                       >
                         <Clock className="h-3 w-3" /> Hold
                       </button>
@@ -283,7 +283,7 @@ function Queue({
                       type="button"
                       disabled={pending}
                       onClick={() => onRelease?.(r)}
-                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-meta hover:bg-muted disabled:opacity-50"
                     >
                       <Check className="h-3 w-3" /> Release
                     </button>
@@ -293,7 +293,7 @@ function Queue({
 
               {open === r.qb_invoice_id && !blocked && (
                 <div className="space-y-2 border-t bg-muted/30 px-3 py-3">
-                  <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                  <div className="grid gap-1 text-meta text-muted-foreground sm:grid-cols-2">
                     <span>To: {r.to_email ?? "—"}</span>
                     <span>Cc: {r.cc_emails ?? "—"}</span>
                     <span>Due: {when(r.due_date)}</span>
@@ -303,11 +303,11 @@ function Queue({
                     href={`/api/ar/statement/${r.client_id}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    className="inline-flex items-center gap-1 text-meta text-muted-foreground hover:text-foreground"
                   >
                     <FileText className="h-3 w-3" /> Statement
                   </a>
-                  <Surface pad="tight" inset className="text-sm font-medium">
+                  <Surface pad="tight" inset className="text-body font-medium">
                     {r.rendered_subject}
                   </Surface>
                   <Surface
@@ -315,7 +315,7 @@ function Queue({
                     dangerouslySetInnerHTML={{ __html: r.rendered_body }}
                   />
                   {r.internal_subject && (
-                    <div className="rounded-md border border-dashed bg-card px-3 py-2 text-xs text-muted-foreground">
+                    <div className="rounded-md border border-dashed bg-card px-3 py-2 text-meta text-muted-foreground">
                       Task to {r.internal_to?.join(", ")}: {r.internal_subject}
                     </div>
                   )}

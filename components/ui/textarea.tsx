@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { control } from "@/components/ui/control";
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
@@ -8,10 +9,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
     return (
       <textarea
-        className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-field px-3 py-2 text-sm aria-[invalid=true]:border-destructive ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
+        className={control({ multiline: true, className: cn("flex w-full", className) })}
         ref={ref}
         {...props}
       />

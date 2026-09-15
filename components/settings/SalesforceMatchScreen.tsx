@@ -45,7 +45,7 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
   return (
     <div className="space-y-4">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -67,21 +67,21 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
                 <TR key={s.memberId} >
                   <TD>
                     <div className="font-medium">{s.fullName ?? s.email}</div>
-                    <div className="text-xs text-muted-foreground">{s.email}</div>
+                    <div className="text-meta text-muted-foreground">{s.email}</div>
                   </TD>
                   <TD>
                     <div>{s.sfName}</div>
-                    <div className="text-xs text-muted-foreground">{s.sfEmail}</div>
+                    <div className="text-meta text-muted-foreground">{s.sfEmail}</div>
                   </TD>
                   <TD>
                     <span className={b.cls}>{b.label}</span>
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-meta text-muted-foreground">
                       {s.score?.toFixed(2)} · {s.basis}
                     </span>
                   </TD>
                   <TD numeric>
                     <button
-                      className="h-7 rounded-md border px-2 text-xs disabled:opacity-50"
+                      className="h-7 rounded-md border px-2 text-meta disabled:opacity-50"
                       disabled={pending}
                       onClick={() => accept(s)}
                     >
@@ -102,26 +102,26 @@ export function SalesforceMatchScreen({ suggestions }: { suggestions: MatchSugge
 
       {without.length > 0 && (
         <details className={surface()}>
-          <summary className="cursor-pointer text-sm font-medium">
+          <summary className="cursor-pointer text-body font-medium">
             {without.length} people with no Salesforce match at all
           </summary>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-meta text-muted-foreground">
             Nobody in Salesforce resembles them. Usually that means they genuinely have no Salesforce
             account — which is fine, it only means no opportunities or activity will ever be
             attributed to them.
           </p>
-          <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+          <ul className="mt-2 grid gap-1 text-body sm:grid-cols-2">
             {without.map((s) => (
               <li key={s.memberId} className="truncate">
                 {s.fullName ?? s.email}
-                <span className="ml-1 text-xs text-muted-foreground">{s.email}</span>
+                <span className="ml-1 text-meta text-muted-foreground">{s.email}</span>
               </li>
             ))}
           </ul>
         </details>
       )}
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-meta text-muted-foreground">
         Nothing is linked automatically. Near-misses score high enough to be dangerous — “Matt Cool”
         scores 0.50 against “Matt Beaver” — so every link is a decision someone makes.
       </p>

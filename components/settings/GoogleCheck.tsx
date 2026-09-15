@@ -94,7 +94,7 @@ export function GoogleCheck() {
         <button
           onClick={run}
           disabled={pending || progress !== null}
-          className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+          className="h-8 rounded-md border px-3 text-body disabled:opacity-50"
         >
           {pending ? "Working…" : "Check connection"}
         </button>
@@ -103,7 +103,7 @@ export function GoogleCheck() {
             key={lane.kind}
             onClick={() => pull(lane.kind)}
             disabled={pending || progress !== null}
-            className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+            className="h-8 rounded-md border px-3 text-body disabled:opacity-50"
           >
             {progress?.kind === lane.kind
               ? `${lane.doing} ${progress.done + 1} of ${progress.total}…`
@@ -113,20 +113,20 @@ export function GoogleCheck() {
       </div>
 
       {result?.problem && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {result.problem}
         </p>
       )}
 
       {ingestProblem && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {ingestProblem}
         </p>
       )}
 
       {reports.some((r) => r.kind === lane) && (
         <div className="space-y-2">
-          <p className="text-sm">
+          <p className="text-body">
             {(() => {
               const shown = reports.filter((r) => r.kind === lane);
               const sum = (f: (r: IngestReport) => number) =>
@@ -163,7 +163,7 @@ export function GoogleCheck() {
                     <TD numeric className="text-muted-foreground">{r.byDomain}</TD>
                     <TD numeric className="text-muted-foreground">{r.byThread}</TD>
                     <TD numeric className="text-muted-foreground">{r.byName}</TD>
-                    <TD className="max-w-xs text-xs text-muted-foreground">
+                    <TD className="max-w-xs text-meta text-muted-foreground">
                       {r.problem
                         ? <span className="text-red-600 dark:text-red-400">{r.problem}</span>
                         : r.hitCap
@@ -180,11 +180,11 @@ export function GoogleCheck() {
 
       {result && !result.problem && (
         <>
-          <p className="text-sm">
+          <p className="text-body">
             <span className="text-muted-foreground">Service account: </span>
-            <span className="font-mono text-xs">{result.serviceAccount}</span>
+            <span className="font-mono text-meta">{result.serviceAccount}</span>
           </p>
-          <p className="text-sm">
+          <p className="text-body">
             {([
               ["Mail", (a: AccountCheck) => a.scopes.mail],
               ["Chat", (a: AccountCheck) => a.scopes.chat],
@@ -217,7 +217,7 @@ export function GoogleCheck() {
                   <TR key={a.email} >
                     <TD>
                       <div className="font-medium">{a.name ?? a.email}</div>
-                      <div className="text-xs text-muted-foreground">{a.email}</div>
+                      <div className="text-meta text-muted-foreground">{a.email}</div>
                     </TD>
                     <TD className="text-muted-foreground">
                       {a.why}
@@ -233,7 +233,7 @@ export function GoogleCheck() {
                       ) : (
                         <span className="text-red-600 dark:text-red-400">{a.problem}</span>
                       )}
-                      <div className="mt-0.5 flex gap-2 text-xs">
+                      <div className="mt-0.5 flex gap-2 text-meta">
                         {([
                           ["Mail", a.scopes.mail],
                           ["Chat", a.scopes.chat],

@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { createTeam, renameTeam, setTeamActive, setMemberTeam, setPodManager } from "@/actions/org";
 import type { TeamRow, MemberRow } from "@/lib/org";
 import { Surface, surface } from "@/components/ui/surface";
+import { control } from "@/components/ui/control";
+import { Field } from "@/components/ui/field";
 
 export function TeamsScreen({
   teams, members,
@@ -34,22 +36,22 @@ export function TeamsScreen({
   return (
     <div className="space-y-6">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
 
       <Surface as="section">
-        <h2 className="mb-2 text-sm font-medium">New pod</h2>
+        <h2 className="mb-2 text-body font-medium">New pod</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
-            className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm"
+            className={control({ size: "sm", className: "min-w-48" })}
             placeholder="Pod name"
             value={newPod}
             onChange={(e) => setNewPod(e.target.value)}
           />
           <button
-            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
+            className="h-8 rounded-md bg-primary px-3 text-body text-primary-foreground disabled:opacity-50"
             disabled={!newPod.trim() || pending}
             onClick={() => { run(() => createTeam(newPod, "pod")); setNewPod(""); }}
           >
@@ -59,28 +61,27 @@ export function TeamsScreen({
       </Surface>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium">
-          Pods {pending && <span className="text-xs text-muted-foreground">· saving…</span>}
+        <h2 className="text-body font-medium">
+          Pods {pending && <span className="text-meta text-muted-foreground">· saving…</span>}
         </h2>
 
         {pods.length === 0 && (
-          <p className={`${surface()} text-sm text-muted-foreground`}>No pods yet.</p>
+          <p className={`${surface()} text-body text-muted-foreground`}>No pods yet.</p>
         )}
 
         {pods.map((pod) => (
           <Surface key={pod.id} className={`space-y-3 ${pod.active ? "" : "opacity-60"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm font-medium"
+                className={control({ size: "sm", className: "min-w-48 font-medium" })}
                 defaultValue={pod.name}
                 onBlur={(e) => {
                   if (e.target.value.trim() !== pod.name) run(() => renameTeam(pod.id, e.target.value));
                 }}
               />
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                Manager
+              <Field label="Manager">
                 <select
-                  className="h-8 rounded-md border bg-field px-2 text-sm"
+                  className={control({ size: "sm" })}
                   defaultValue={pod.manager_member_id ?? ""}
                   onChange={(e) => run(() => setPodManager(pod.id, e.target.value || null))}
                 >
@@ -89,8 +90,8 @@ export function TeamsScreen({
                     <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
                   ))}
                 </select>
-              </label>
-              <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              </Field>
+              <label className="ml-auto flex items-center gap-1.5 text-meta text-muted-foreground">
                 <input type="checkbox" checked={pod.active}
                        onChange={(e) => run(() => setTeamActive(pod.id, e.target.checked))} />
                 Active
@@ -99,19 +100,19 @@ export function TeamsScreen({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1 text-meta font-medium uppercase tracking-wide text-muted-foreground">
                   Members ({pod.memberIds.length})
                 </p>
                 <div className="space-y-1">
                   {pod.memberIds.map((id) => (
-                    <div key={id} className="flex items-center gap-2 text-sm">
+                    <div key={id} className="flex items-center gap-2 text-body">
                       <span className="flex-1 truncate">{nameOf(id)}</span>
                       <button className="text-muted-foreground hover:text-foreground"
                               onClick={() => run(() => setMemberTeam(id, pod.id, false))}>×</button>
                     </div>
                   ))}
                   <select
-                    className="h-7 rounded-md border bg-field px-1.5 text-xs text-muted-foreground"
+                    className={control({ size: "sm", className: "text-meta text-muted-foreground" })}
                     value=""
                     onChange={(e) => { if (e.target.value) run(() => setMemberTeam(e.target.value, pod.id, true)); }}
                   >
@@ -123,15 +124,15 @@ export function TeamsScreen({
               </div>
 
               <div>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1 text-meta font-medium uppercase tracking-wide text-muted-foreground">
                   Clients ({pod.clients.length})
                 </p>
                 {pod.clients.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body text-muted-foreground">
                     None yet — assign this pod on the client record.
                   </p>
                 ) : (
-                  <ul className="space-y-0.5 text-sm">
+                  <ul className="space-y-0.5 text-body">
                     {pod.clients.map((c) => <li key={c.id} className="truncate">{c.name}</li>)}
                   </ul>
                 )}

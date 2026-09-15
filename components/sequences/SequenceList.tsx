@@ -28,7 +28,7 @@ export function SequenceList({ sequences }: { sequences: SequenceRow[] }) {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
+            className={`rounded-md border px-3 py-1.5 text-body ${
               tab === key ? "bg-primary text-primary-foreground" : "hover:bg-muted"
             }`}
           >
@@ -38,7 +38,7 @@ export function SequenceList({ sequences }: { sequences: SequenceRow[] }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {tab === "shared" ? "No shared sequences." : "You have no sequences of your own."}
         </p>
       ) : (
@@ -52,18 +52,18 @@ export function SequenceList({ sequences }: { sequences: SequenceRow[] }) {
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-medium">{s.name}</span>
                 {s.visibility === "private" && s.ownerName && (
-                  <span className="text-xs text-muted-foreground">{s.ownerName}</span>
+                  <span className="text-meta text-muted-foreground">{s.ownerName}</span>
                 )}
-                <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                <span className="ml-auto text-meta tabular-nums text-muted-foreground">
                   {s.enrolled} enrolled · {s.activeSteps} active{" "}
                   {s.activeSteps === 1 ? "step" : "steps"}
                 </span>
               </div>
               {s.description && (
-                <p className="mt-1 text-sm text-muted-foreground">{s.description}</p>
+                <p className="mt-1 text-body text-muted-foreground">{s.description}</p>
               )}
               {s.activeSteps === 0 && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                <p className="mt-1 text-meta text-amber-600 dark:text-amber-400">
                   Every step is off, so nothing will send.
                 </p>
               )}

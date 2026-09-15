@@ -59,7 +59,7 @@ export default async function IntegrationsPage() {
     return (
       <div className="p-6 max-w-3xl">
         <PageHeader title="Integrations" />
-        <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-body text-destructive">
           {report.problem}
         </p>
       </div>
@@ -76,7 +76,7 @@ export default async function IntegrationsPage() {
       {/* Anything actually wrong, before anything merely informative. */}
       {(report.failing.length > 0 || report.undocumented.length > 0) && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">Needs attention</h2>
+          <h2 className="text-body font-medium">Needs attention</h2>
 
           {report.failing.length > 0 && (
             <TableScroll className="rounded-md border border-destructive/40">
@@ -104,10 +104,10 @@ export default async function IntegrationsPage() {
           )}
 
           {report.undocumented.length > 0 && (
-            <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+            <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-body">
               <span className="font-medium">Not described below:</span>{" "}
-              <span className="font-mono text-xs">{report.undocumented.join(", ")}</span>
-              <span className="block text-xs text-muted-foreground">
+              <span className="font-mono text-meta">{report.undocumented.join(", ")}</span>
+              <span className="block text-meta text-muted-foreground">
                 These tables exist but no integration claims them. Add them to
                 lib/integrations/catalogue.ts.
               </span>
@@ -122,28 +122,28 @@ export default async function IntegrationsPage() {
           <Surface key={i.key} as="section" className="space-y-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="text-base font-medium">{i.name}</h2>
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-meta text-muted-foreground">
                 <Direction className="h-3.5 w-3.5" />
                 {DIRECTION[i.direction].label}
               </span>
-              <span className="ml-auto text-xs text-muted-foreground">{i.ownedBy}</span>
+              <span className="ml-auto text-meta text-muted-foreground">{i.ownedBy}</span>
             </div>
 
-            <p className="max-w-3xl text-sm">{i.what}</p>
+            <p className="max-w-3xl text-body">{i.what}</p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
                   How it moves
                 </h3>
-                <p className="text-sm text-muted-foreground">{i.transport}</p>
+                <p className="text-body text-muted-foreground">{i.transport}</p>
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
                   Deliberately not included
                 </h3>
-                <ul className="space-y-1 text-sm text-muted-foreground">
+                <ul className="space-y-1 text-body text-muted-foreground">
                   {i.excluded.map((e) => (
                     <li key={e}>— {e}</li>
                   ))}
@@ -165,7 +165,7 @@ export default async function IntegrationsPage() {
                   <TBody>
                     {i.tableState.map((t) => (
                       <TR key={t.name} className="border-t">
-                        <TD className="font-mono text-xs">{t.name}</TD>
+                        <TD className="font-mono text-meta">{t.name}</TD>
                         <TD numeric>
                           {t.missing ? (
                             <span className="text-destructive">absent</span>
@@ -189,7 +189,7 @@ export default async function IntegrationsPage() {
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Feeds: {i.feeds.join(" · ")}
               </p>
               {/* Where to go and change it, beside the description of what it
@@ -198,7 +198,7 @@ export default async function IntegrationsPage() {
                 <Link
                   href={i.configure.href}
                   title={i.configure.what}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-1.5 text-body hover:bg-accent"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   {i.configure.label}
@@ -210,7 +210,7 @@ export default async function IntegrationsPage() {
       })}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium">Schedules</h2>
+        <h2 className="text-body font-medium">Schedules</h2>
         <TableScroll className="rounded-md border">
           <Table>
             <THead>
@@ -224,9 +224,9 @@ export default async function IntegrationsPage() {
             <TBody>
               {report.schedules.map((s) => (
                 <TR key={s.name} className="border-t">
-                  <TD className="font-mono text-xs">{s.name}</TD>
+                  <TD className="font-mono text-meta">{s.name}</TD>
                   <TD>{s.runs}</TD>
-                  <TD className="font-mono text-xs text-muted-foreground">{s.cron}</TD>
+                  <TD className="font-mono text-meta text-muted-foreground">{s.cron}</TD>
                   <TD>
                     {s.active ? (
                       <span className="text-success">on</span>
@@ -239,7 +239,7 @@ export default async function IntegrationsPage() {
             </TBody>
           </Table>
         </TableScroll>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Coupler runs Salesforce and QuickBooks on its own schedule, outside
           this list. The last-changed column above is the app&apos;s only view of
           when those arrived.
@@ -247,7 +247,7 @@ export default async function IntegrationsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium">What Google is allowed to do</h2>
+        <h2 className="text-body font-medium">What Google is allowed to do</h2>
         <TableScroll className="rounded-md border">
           <Table>
             <THead>
@@ -260,7 +260,7 @@ export default async function IntegrationsPage() {
               {report.googleScopes.map((g) => (
                 <TR key={g.service} className="border-t align-top">
                   <TD>{g.service}</TD>
-                  <TD className="font-mono text-xs text-muted-foreground">
+                  <TD className="font-mono text-meta text-muted-foreground">
                     {g.scopes.map((s) => (
                       <span key={s} className="block">
                         {s.replace("https://www.googleapis.com/auth/", "")}
@@ -275,20 +275,20 @@ export default async function IntegrationsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium">Which mail is read</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">
+        <h2 className="text-body font-medium">Which mail is read</h2>
+        <p className="max-w-3xl text-body text-muted-foreground">
           The exact search sent to Gmail. Subjects only — Gmail&apos;s default
           searches whole messages, which pulled in sales threads that merely
           mentioned money.
         </p>
-        <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-xs">
+        <pre className="overflow-x-auto rounded-md border bg-muted/30 p-3 text-meta">
           {report.billingQuery}
         </pre>
       </section>
 
       {report.recentRuns.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">Recent reads</h2>
+          <h2 className="text-body font-medium">Recent reads</h2>
           <TableScroll className="rounded-md border">
             <Table>
               <THead>

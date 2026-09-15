@@ -101,12 +101,12 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="flex items-baseline gap-2 text-sm font-medium text-muted-foreground">
+      <h2 className="flex items-baseline gap-2 text-body font-medium text-muted-foreground">
         {title}
-        <span className="text-xs tabular-nums">{count}</span>
+        <span className="text-meta tabular-nums">{count}</span>
       </h2>
       {count === 0 ? (
-        <p className="text-sm text-muted-foreground">—</p>
+        <p className="text-body text-muted-foreground">—</p>
       ) : (
         <div className="space-y-3">{children}</div>
       )}

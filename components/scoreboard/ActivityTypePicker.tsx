@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setActivityType } from "@/actions/scoreboard";
+import { control } from "@/components/ui/control";
 
 export function ActivityTypePicker({
   activityId,
@@ -45,9 +46,11 @@ export function ActivityTypePicker({
         value={value}
         disabled={pending}
         onChange={(e) => submit(e.target.value)}
-        className={`rounded border bg-field px-1.5 py-0.5 text-[11px] ${
-          overridden ? "border-amber-700 text-amber-300" : " text-foreground"
-        } disabled:opacity-50`}
+        /* Amber marks a type somebody has overridden by hand. */
+        className={control({
+          size: "sm",
+          className: `text-meta ${overridden ? "border-warning text-warning" : ""}`,
+        })}
       >
         {types.map((t) => (
           <option key={t} value={t}>

@@ -8,6 +8,7 @@ import {
 import { FIELD } from "@/lib/field-class";
 import { FileText, Pencil } from "lucide-react";
 import { Surface } from "@/components/ui/surface";
+import { Field } from "@/components/ui/field";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -132,17 +133,17 @@ export function AgreementPanel({
   return (
     <div className="space-y-2">
       {problem && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {problem}
         </p>
       )}
 
       <Surface pad="none">
         <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          <span className="text-meta uppercase tracking-wide text-muted-foreground">
             Agreement
           </span>
-          <span className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-3 text-meta">
             {agreement?.agreement_id && (
               <a
                 href={`/api/agreements/${agreement.agreement_id}/pdf`}
@@ -166,7 +167,7 @@ export function AgreementPanel({
 
         {agreement?.agreement_id && !editing && (
           <div className="border-b px-3 py-3">
-            <div className="flex items-baseline justify-between gap-2 pb-2 text-xs">
+            <div className="flex items-baseline justify-between gap-2 pb-2 text-meta">
               <span className="truncate font-medium" title={agreement.agreement_name ?? ""}>
                 {agreement.agreement_name ?? "Signed agreement"}
               </span>
@@ -195,8 +196,7 @@ export function AgreementPanel({
           <div className="space-y-2 px-3 py-3">
             <div className="grid gap-2 sm:grid-cols-2">
               {FIELDS.map((f) => (
-                <label key={String(f.key)} className="text-xs">
-                  <span className="text-muted-foreground">{f.label}</span>
+                <Field label={<>{f.label}</>}>
                   <input
                     type={f.type ?? "text"}
                     value={(draft[f.key] as string | number | null) ?? ""}
@@ -211,11 +211,11 @@ export function AgreementPanel({
                               : e.target.value,
                       }))
                     }
-                    className={`${FIELD} mt-0.5 w-full px-2 py-1 text-sm`}
+                    className={`${FIELD} mt-0.5 w-full px-2 py-1 text-body`}
                   />
-                </label>
+                </Field>
               ))}
-              <label className="flex items-center gap-1.5 text-xs">
+              <label className="flex items-center gap-1.5 text-meta">
                 <input
                   type="checkbox"
                   checked={Boolean(draft.auto_renew)}
@@ -223,7 +223,7 @@ export function AgreementPanel({
                 />
                 Auto renew
               </label>
-              <div className="text-xs sm:col-span-2">
+              <div className="text-meta sm:col-span-2">
                 <span className="text-muted-foreground">Past due interest</span>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <input
@@ -237,7 +237,7 @@ export function AgreementPanel({
                         past_due_interest_pct: e.target.value === "" ? null : Number(e.target.value),
                       }))
                     }
-                    className={`${FIELD} w-20 px-2 py-1 text-right text-sm`}
+                    className={`${FIELD} w-20 px-2 py-1 text-right text-body`}
                   />
                   <span>% per</span>
                   <select
@@ -249,7 +249,7 @@ export function AgreementPanel({
                           e.target.value === "" ? null : (e.target.value as "month" | "year"),
                       }))
                     }
-                    className={`${FIELD} px-2 py-1 text-sm`}
+                    className={`${FIELD} px-2 py-1 text-body`}
                   >
                     <option value=""></option>
                     <option value="month">month</option>
@@ -267,7 +267,7 @@ export function AgreementPanel({
                           e.target.value === "" ? null : Number(e.target.value),
                       }))
                     }
-                    className={`${FIELD} w-16 px-2 py-1 text-right text-sm`}
+                    className={`${FIELD} w-16 px-2 py-1 text-right text-body`}
                   />
                   <span>days</span>
                 </div>
@@ -275,64 +275,61 @@ export function AgreementPanel({
             </div>
 
             {(["opt_outs", "other_terms"] as const).map((k) => (
-              <label key={k} className="block text-xs">
-                <span className="text-muted-foreground">
-                  {k === "opt_outs" ? "Opt outs" : "Other terms"}
-                </span>
+              <Field label={<>{k === "opt_outs" ? "Opt outs" : "Other terms"}</>}>
                 <textarea
                   rows={2}
                   value={(draft[k] as string | null) ?? ""}
                   onChange={(e) =>
                     setDraft((d) => ({ ...d, [k]: e.target.value === "" ? null : e.target.value }))
                   }
-                  className={`${FIELD} mt-0.5 w-full px-2 py-1 text-sm`}
+                  className={`${FIELD} mt-0.5 w-full px-2 py-1 text-body`}
                 />
-              </label>
+              </Field>
             ))}
 
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setEditing(false)}
-                className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                className="rounded-md border px-2 py-1 text-meta hover:bg-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={saveTerms}
                 disabled={pending}
-                className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="rounded-md bg-primary px-2 py-1 text-meta text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 Save
               </button>
             </div>
           </div>
         ) : (
-          <div className="grid gap-x-6 gap-y-1 px-3 py-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-x-6 gap-y-1 px-3 py-3 text-body sm:grid-cols-2 lg:grid-cols-3">
             {FIELDS.map((f) => (
               <div key={String(f.key)} className="flex justify-between gap-2">
-                <span className="text-xs text-muted-foreground">{f.label}</span>
+                <span className="text-meta text-muted-foreground">{f.label}</span>
                 <span className="text-right">{show(terms?.[f.key] as never, f.as)}</span>
               </div>
             ))}
             <div className="flex justify-between gap-2">
-              <span className="text-xs text-muted-foreground">Auto renew</span>
+              <span className="text-meta text-muted-foreground">Auto renew</span>
               <span className="text-right">{show(terms?.auto_renew)}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-xs text-muted-foreground">Past due interest</span>
+              <span className="text-meta text-muted-foreground">Past due interest</span>
               <span className="text-right" title={terms?.past_due_interest_clause ?? undefined}>
                 {interest(terms)}
               </span>
             </div>
             {terms?.opt_outs && (
               <div className="sm:col-span-2 lg:col-span-3">
-                <span className="text-xs text-muted-foreground">Opt outs</span>
+                <span className="text-meta text-muted-foreground">Opt outs</span>
                 <div className="whitespace-pre-wrap">{terms.opt_outs}</div>
               </div>
             )}
             {terms?.other_terms && (
               <div className="sm:col-span-2 lg:col-span-3">
-                <span className="text-xs text-muted-foreground">Other terms</span>
+                <span className="text-meta text-muted-foreground">Other terms</span>
                 <div className="whitespace-pre-wrap">{terms.other_terms}</div>
               </div>
             )}
@@ -341,13 +338,13 @@ export function AgreementPanel({
       </Surface>
 
       <Surface pad="none">
-        <div className="border-b px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="border-b px-3 py-2 text-meta uppercase tracking-wide text-muted-foreground">
           KPIs per month
         </div>
         <div className="grid gap-x-6 gap-y-2 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
           {kpis.map((k) => (
-            <div key={k.metric} className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-xs text-muted-foreground">{k.label}</span>
+            <div key={k.metric} className="flex items-center justify-between gap-2 text-body">
+              <span className="text-meta text-muted-foreground">{k.label}</span>
               <span className="flex items-center gap-2">
                 <input
                   type="number"
@@ -358,7 +355,7 @@ export function AgreementPanel({
                       saveTarget(k.metric, e.target.value);
                     }
                   }}
-                  className={`${FIELD} w-16 px-1 py-0.5 text-right text-sm tabular-nums`}
+                  className={`${FIELD} w-16 px-1 py-0.5 text-right text-body tabular-nums`}
                 />
                 <span className={`w-14 text-right tabular-nums ${tone(k)}`}>
                   {k.actual === null ? "—" : k.actual}

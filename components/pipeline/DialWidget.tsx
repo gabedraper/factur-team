@@ -197,14 +197,14 @@ export function DialWidget() {
     >
       <div className="space-y-3">
         {error && (
-          <p className="mx-3 mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="mx-3 mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             {error}
           </p>
         )}
 
         {target && (
           <div className="flex flex-wrap items-center gap-2 px-3 pt-3">
-            <span className="w-full truncate text-sm font-medium">{target.contactName}</span>
+            <span className="w-full truncate text-body font-medium">{target.contactName}</span>
             {callState === "ringing" || callState === "dialing" ? (
               <Button variant="destructive" size="sm" onClick={hangUp} className="gap-2">
                 <PhoneOff className="h-4 w-4" /> Hang up
@@ -227,7 +227,7 @@ export function DialWidget() {
             >
               Log a call
             </Button>
-            {!target.phoneNumber && <span className="text-xs text-muted-foreground">No phone on file</span>}
+            {!target.phoneNumber && <span className="text-meta text-muted-foreground">No phone on file</span>}
           </div>
         )}
 

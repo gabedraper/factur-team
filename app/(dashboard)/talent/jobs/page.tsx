@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ago, place, salaryRange } from "@/lib/talent/format";
 import { JOB_KIND, JOB_STATUS, label } from "@/lib/talent/types";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -63,13 +64,13 @@ export default async function JobsPage({
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Search jobs"
-          className="w-56 rounded-md border bg-background px-3 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-56" })}
         />
         <input type="hidden" name="status" value={status} />
         <select
           name="owner"
           defaultValue={params.owner ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm" })}
         >
           <option value="">Anyone</option>
           {members.map((m) => (
@@ -84,7 +85,7 @@ export default async function JobsPage({
           <Link
             key={f.key}
             href={href({ status: f.key })}
-            className={`rounded-full px-3 py-1 text-xs ${
+            className={`rounded-full px-3 py-1 text-meta ${
               status === f.key
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground"
@@ -121,7 +122,7 @@ export default async function JobsPage({
                     </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <Chip colour={STATUS_TONE[j.status]}>{label(JOB_STATUS, j.status)}</Chip>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-meta text-muted-foreground">
                         {label(JOB_KIND, j.job_kind)} · {place(j.city, j.state)}
                       </span>
                       {j.confidential && (

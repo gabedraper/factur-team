@@ -45,7 +45,7 @@ export default async function CampaignPage({
           <Chip colour={campaign.status === "active" ? "emerald" : "slate"}>{campaign.status}</Chip>
         </PageHeader>
         {campaign.tal_jobs && (
-          <p className="mt-1 text-sm">
+          <p className="mt-1 text-body">
             <Link href={`/talent/jobs/${campaign.tal_jobs.id}`} className="text-primary hover:underline">
               {campaign.tal_jobs.title}
             </Link>

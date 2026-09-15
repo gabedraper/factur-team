@@ -283,7 +283,7 @@ export default function LearningPathsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <CardTitle className="text-lg">{path.name}</CardTitle>
-                      <span className="text-xs px-2 py-0.5 rounded-full border font-medium text-muted-foreground">
+                      <span className="text-meta px-2 py-0.5 rounded-full border font-medium text-muted-foreground">
                         {path.target_role || "Everyone"}
                       </span>
                     </div>
@@ -309,21 +309,21 @@ export default function LearningPathsPage() {
             {expandedPath === path.id && (
               <CardContent className="pt-0">
                 <div className="border-t pt-4 space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">Courses in this path</p>
+                  <p className="text-body font-medium text-muted-foreground">Courses in this path</p>
 
                   {/* Current courses */}
                   {(pathCourses[path.id] || []).length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No courses added yet.</p>
+                    <p className="text-body text-muted-foreground italic">No courses added yet.</p>
                   ) : (
                     <div className="space-y-2">
                       {(pathCourses[path.id] || []).map((pc, idx) => (
                         <div key={pc.id} className="flex items-center justify-between p-2 rounded-md bg-muted/40">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
+                            <span className="text-meta text-muted-foreground w-5">{idx + 1}.</span>
                             <BookOpen className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{pc.courses?.title}</span>
+                            <span className="text-body">{pc.courses?.title}</span>
                             {!pc.courses?.is_published && (
-                              <Badge variant="secondary" className="text-xs">Draft</Badge>
+                              <Badge variant="secondary" className="text-meta">Draft</Badge>
                             )}
                           </div>
                           <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => handleRemoveCourse(path.id, pc.id)}>

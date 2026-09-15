@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Chip, Empty, Panel } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
 import { CAMPAIGN_CHANNEL, label } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
 
 type Step = {
   id: string; position: number; channel: string; delay_days: number;
@@ -66,8 +67,8 @@ export function CampaignEditor({
 
   return (
     <div className="space-y-4">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {note && <p className="text-sm text-muted-foreground">{note}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
+      {note && <p className="text-body text-muted-foreground">{note}</p>}
 
       <Panel
         title="Steps"
@@ -105,7 +106,7 @@ export function CampaignEditor({
                   <div className="flex flex-wrap items-center gap-2">
                     <Chip>{s.position + 1}</Chip>
                     <select
-                      className="rounded-md border bg-background px-2 py-1 text-sm"
+                      className={control({ size: "sm" })}
                       value={v.channel}
                       disabled={!canEdit}
                       onChange={(e) => setDraft((d) => ({ ...d, [s.id]: { ...d[s.id], channel: e.target.value } }))}
@@ -114,9 +115,9 @@ export function CampaignEditor({
                         <option key={k} value={k}>{val}</option>
                       ))}
                     </select>
-                    <label className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <label className="flex items-center gap-1 text-body text-muted-foreground">
                       <input
-                        className={`w-16 px-2 py-1 text-sm ${FIELD}`}
+                        className={`w-16 px-2 py-1 text-body ${FIELD}`}
                         type="number"
                         min={0}
                         value={v.delay_days}
@@ -227,12 +228,12 @@ export function CampaignEditor({
           )}
 
           {!emailConnected && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               Sending needs a mailbox connected · drafts only
             </span>
           )}
           {emailConnected && mode === "semi" && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               Semi-automatic · each message lands in your Drafts
             </span>
           )}

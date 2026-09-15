@@ -213,7 +213,7 @@ export default function LessonViewerPage() {
   return (
     <div className="p-6 max-w-4xl pb-20">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+      <div className="flex items-center gap-2 text-body text-muted-foreground mb-6">
         <Link href="/learner" className="hover:text-foreground">
           My Learning
         </Link>
@@ -234,7 +234,7 @@ export default function LessonViewerPage() {
           <Eye className="h-5 w-5 text-yellow-600 shrink-0" />
           <div>
             <p className="font-semibold text-yellow-800">Preview Mode</p>
-            <p className="text-sm text-yellow-700">
+            <p className="text-body text-yellow-700">
               You are previewing this lesson. Progress will not be tracked and quizzes won't count.
             </p>
           </div>
@@ -252,7 +252,7 @@ export default function LessonViewerPage() {
             <p className="font-semibold text-green-800">
               Congratulations! You've completed the course!
             </p>
-            <p className="text-sm text-green-700">
+            <p className="text-body text-green-700">
               Your certificate has been issued.{" "}
               <Link
                 href="/learner/certificates"
@@ -281,7 +281,7 @@ export default function LessonViewerPage() {
                   {lesson.type}
                 </Badge>
                 {lesson.duration_minutes && (
-                  <span className="text-sm text-white/80">{lesson.duration_minutes} min</span>
+                  <span className="text-body text-white/80">{lesson.duration_minutes} min</span>
                 )}
                 {isCompleted && (
                   <Badge className="bg-green-500 text-white border-transparent">
@@ -299,7 +299,7 @@ export default function LessonViewerPage() {
 
       {progress > 0 && (
         <div className="mb-6">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+          <div className="flex justify-between text-meta text-muted-foreground mb-1">
             <span>Course Progress</span>
             <span>{progress}%</span>
           </div>
@@ -332,7 +332,7 @@ export default function LessonViewerPage() {
               )}
             </div>
             {/* Always show the address, so a player that won't load isn't a dead end */}
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-body text-muted-foreground">
               Trouble playing? Watch it here instead:{" "}
               <a
                 href={toExternalHref(content.url)}
@@ -432,7 +432,7 @@ export default function LessonViewerPage() {
                             disabled={quizSubmitted}
                             className="w-4 h-4"
                           />
-                          <span className="text-sm">{opt}</span>
+                          <span className="text-body">{opt}</span>
                         </label>
                       );
                     })}
@@ -450,7 +450,7 @@ export default function LessonViewerPage() {
                     {quizPassed ? "Quiz Passed!" : "Quiz Failed"}
                   </p>
                   <p
-                    className={`text-sm ${quizPassed ? "text-green-700" : "text-red-700"}`}
+                    className={`text-body ${quizPassed ? "text-green-700" : "text-red-700"}`}
                   >
                     Score: {quizScore}%{" "}
                     {!quizPassed && "(Need 70% to pass)"}
@@ -487,7 +487,7 @@ export default function LessonViewerPage() {
       {/* Sticky bottom progress bar */}
       <div className="fixed bottom-0 left-64 right-0 bg-background border-t px-6 py-3 z-10">
         <div className="max-w-4xl flex items-center gap-4">
-          <span className="text-sm text-muted-foreground shrink-0">Course Progress</span>
+          <span className="text-body text-muted-foreground shrink-0">Course Progress</span>
           <div className="flex-1">
             <div className="h-2.5 bg-muted rounded-full overflow-hidden">
               <div
@@ -496,7 +496,7 @@ export default function LessonViewerPage() {
               />
             </div>
           </div>
-          <span className="text-sm font-semibold shrink-0">{progress}%</span>
+          <span className="text-body font-semibold shrink-0">{progress}%</span>
         </div>
       </div>
 

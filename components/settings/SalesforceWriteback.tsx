@@ -8,6 +8,7 @@ import {
   setWritebackEnabled, addWritebackTester, removeWritebackTester, pushWritebackNow,
   type WritebackTester,
 } from "@/actions/salesforce-writeback";
+import { control } from "@/components/ui/control";
 
 /*
  * The switch, who is in the test, and a way to push what is waiting.
@@ -17,9 +18,7 @@ import {
  * sending, immediately, without a deploy.
  */
 
-const SELECT =
-  "h-9 rounded-md border border-input bg-field px-2 text-body ring-offset-background " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+const SELECT = control({ size: "sm" });
 
 export function SalesforceWritebackControls({
   enabled, testers, members,

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { requireTalent } from "@/lib/talent/access";
 import { listMembers, masterPipeline } from "@/lib/talent/queries";
-import { Avatar, Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
+import { Chip, Empty, PageHeader, Panel } from "@/components/talent/bits";
 import { Button } from "@/components/ui/button";
 import { ago } from "@/lib/talent/format";
 import { CANDIDATE_STATUS, STAGE_KIND } from "@/lib/talent/types";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -40,27 +41,27 @@ export default async function MasterPipelinePage({
 
       <form className="flex flex-wrap items-center gap-2" action="/talent/pipeline">
         <select name="owner" defaultValue={params.owner ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm">
+          className={control({ size: "sm" })}>
           <option value="">Anyone</option>
           {members.map((m) => (
             <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
           ))}
         </select>
         <select name="kind" defaultValue={params.kind ?? ""}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm">
+          className={control({ size: "sm" })}>
           <option value="">Any stage</option>
           {Object.entries(STAGE_KIND).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
         <select name="status" defaultValue={params.status ?? "active"}
-          className="rounded-md border bg-background px-2 py-1.5 text-sm">
+          className={control({ size: "sm" })}>
           {Object.entries(CANDIDATE_STATUS).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
           <option value="all">All</option>
         </select>
-        <label className="flex items-center gap-1.5 text-sm">
+        <label className="flex items-center gap-1.5 text-body">
           <input type="checkbox" name="stale" value="1" defaultChecked={params.stale === "1"} />
           Untouched 7 days
         </label>
@@ -82,25 +83,22 @@ export default async function MasterPipelinePage({
             </THead>
             <TBody>
               {rows.map((c) => (
-                <TR key={c.candidate_id} >
+                <TR key={c.candidate_id}>
                   <TD>
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={c.person_name} size={6} />
-                      <div className="min-w-0">
-                        <Link href={`/talent/people/${c.person_id}`} className="font-medium hover:underline">
-                          {c.person_name}
-                        </Link>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {[c.person_title, c.person_company].filter(Boolean).join(" · ") || "—"}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <Link href={`/talent/people/${c.person_id}`} className="font-medium hover:underline">
+                        {c.person_name}
+                      </Link>
+                      <p className="truncate text-meta text-muted-foreground">
+                        {[c.person_title, c.person_company].filter(Boolean).join(" · ") || "—"}
+                      </p>
                     </div>
                   </TD>
                   <TD>
                     <Link href={`/talent/jobs/${c.job_id}`} className="hover:underline">
                       {c.job_title}
                     </Link>
-                    <p className="text-xs text-muted-foreground">{c.company_name ?? "—"}</p>
+                    <p className="text-meta text-muted-foreground">{c.company_name ?? "—"}</p>
                   </TD>
                   <TD>
                     <Chip colour={c.stage_color}>{c.stage_name ?? "—"}</Chip>

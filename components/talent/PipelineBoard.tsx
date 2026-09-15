@@ -1,11 +1,10 @@
 "use client";
-
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GripVertical, Mail, Phone } from "lucide-react";
 import { moveCandidate, rateCandidate, setCandidateStatus } from "@/actions/talent-jobs";
-import { Avatar, Chip, Stars } from "@/components/talent/bits";
+import { Chip, Stars } from "@/components/talent/bits";
 import { tone } from "@/lib/talent/types";
 import type { PipelineRow, WorkflowStage } from "@/lib/talent/types";
 import { cn } from "@/lib/utils";
@@ -113,13 +112,13 @@ export function PipelineBoard({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
 
       {unstaged.length > 0 && (
-        <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed px-3 py-2 text-body text-muted-foreground">
           {unstaged.length} not in a stage
         </div>
       )}
@@ -144,8 +143,8 @@ export function PipelineBoard({
             >
               <header className="flex items-center gap-2 border-b px-3 py-2">
                 <span className={cn("h-2 w-2 rounded-full", tone(stage.color).dot)} />
-                <span className="truncate text-sm font-medium">{stage.name}</span>
-                <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                <span className="truncate text-body font-medium">{stage.name}</span>
+                <span className="ml-auto text-meta tabular-nums text-muted-foreground">
                   {cards.length}
                 </span>
               </header>
@@ -168,7 +167,6 @@ export function PipelineBoard({
                       {canEdit && (
                         <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
                       )}
-                      <Avatar name={c.person_name} size={8} />
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/talent/people/${c.person_id}`}
@@ -177,7 +175,7 @@ export function PipelineBoard({
                           {c.person_name}
                         </Link>
                         {(c.person_title || c.person_company) && (
-                          <p className="truncate text-xs text-muted-foreground">
+                          <p className="truncate text-meta text-muted-foreground">
                             {[c.person_title, c.person_company].filter(Boolean).join(" · ")}
                           </p>
                         )}
@@ -192,7 +190,7 @@ export function PipelineBoard({
                       </span>
                     </div>
 
-                    <div className="mt-2 flex items-center gap-2 text-xs">
+                    <div className="mt-2 flex items-center gap-2 text-meta">
                       <span
                         className={cn(
                           "tabular-nums",

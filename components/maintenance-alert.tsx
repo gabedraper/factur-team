@@ -15,7 +15,7 @@ export async function MaintenanceAlert({ canSee }: { canSee: boolean }) {
   const stale = health.hours_since_success;
 
   return (
-    <div className="flex items-start gap-2 border-b border-red-300 bg-red-100 px-4 py-2 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+    <div className="flex items-start gap-2 border-b border-red-300 bg-red-100 px-4 py-2 text-body text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
       <div>
         <b>Data is not refreshing.</b> {health.problem}.

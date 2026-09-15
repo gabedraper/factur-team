@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { control } from "@/components/ui/control";
+import { Field } from "@/components/ui/field";
 
 /**
  * The public application form.
@@ -73,7 +75,7 @@ export function ApplyForm({ slug }: { slug: string }) {
 
   if (sent) {
     return (
-      <p className="mt-4 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
+      <p className="mt-4 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-3 text-body text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
         Thanks — your application is in. Somebody will be in touch.
       </p>
     );
@@ -84,51 +86,43 @@ export function ApplyForm({ slug }: { slug: string }) {
   return (
     <div className="mt-4 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-sm">First name</span>
-          <input className="w-full rounded-md border bg-background px-3 py-2"
+        <Field label="First name">
+          <input className={control({ className: "w-full" })}
             value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm">Last name</span>
-          <input className="w-full rounded-md border bg-background px-3 py-2"
+        </Field>
+        <Field label="Last name">
+          <input className={control({ className: "w-full" })}
             value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm">Email</span>
-          <input type="email" className="w-full rounded-md border bg-background px-3 py-2"
+        </Field>
+        <Field label="Email">
+          <input type="email" className={control({ className: "w-full" })}
             value={form.email} onChange={(e) => set("email", e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm">Phone</span>
-          <input className="w-full rounded-md border bg-background px-3 py-2"
+        </Field>
+        <Field label="Phone">
+          <input className={control({ className: "w-full" })}
             value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm">Location</span>
-          <input className="w-full rounded-md border bg-background px-3 py-2"
+        </Field>
+        <Field label="Location">
+          <input className={control({ className: "w-full" })}
             value={form.location} onChange={(e) => set("location", e.target.value)} />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm">LinkedIn</span>
-          <input className="w-full rounded-md border bg-background px-3 py-2"
+        </Field>
+        <Field label="LinkedIn">
+          <input className={control({ className: "w-full" })}
             value={form.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} />
-        </label>
+        </Field>
       </div>
 
-      <label className="block">
-        <span className="mb-1 block text-sm">Resume</span>
+      <Field label="Resume">
         <input ref={file} type="file" accept=".pdf,.doc,.docx,.txt"
-          className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm" />
-      </label>
+          className="block w-full text-body file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-body" />
+      </Field>
 
-      <label className="block">
-        <span className="mb-1 block text-sm">Anything else</span>
-        <textarea className="min-h-28 w-full rounded-md border bg-background px-3 py-2"
+      <Field label="Anything else">
+        <textarea className={control({ multiline: true, className: "min-h-28 w-full" })}
           value={form.cover_note} onChange={(e) => set("cover_note", e.target.value)} />
-      </label>
+      </Field>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
       <Button onClick={submit} disabled={busy || !ready}>
         {busy ? "Sending…" : "Apply"}

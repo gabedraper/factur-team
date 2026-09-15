@@ -44,7 +44,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {label}
             </div>
-            <div className="mt-0.5 text-sm font-semibold tabular-nums">{value}</div>
+            <div className="mt-0.5 text-body font-semibold tabular-nums">{value}</div>
           </Surface>
         ))}
       </div>
@@ -58,13 +58,13 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
             })
           }
           disabled={pending || Boolean(last?.finished)}
-          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-body text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
           {pending ? "Importing…" : last?.finished ? "Nothing left to import" : "Import next 40"}
         </button>
         {last?.problem && (
-          <span className="text-sm text-red-600 dark:text-red-400">{last.problem}</span>
+          <span className="text-body text-red-600 dark:text-red-400">{last.problem}</span>
         )}
       </div>
 
@@ -83,7 +83,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
             })
           }
           disabled={pending || Boolean(reads[reads.length - 1]?.finished)}
-          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-body hover:bg-muted disabled:opacity-50"
         >
           <BookOpen className="h-4 w-4" />
           {pending
@@ -93,14 +93,14 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
               : "Read next 5 documents"}
         </button>
         {reads[reads.length - 1]?.problem && (
-          <span className="text-sm text-red-600 dark:text-red-400">
+          <span className="text-body text-red-600 dark:text-red-400">
             {reads[reads.length - 1]?.problem}
           </span>
         )}
       </div>
 
       {reads.length > 0 && (
-        <Surface pad="none" className="text-sm">
+        <Surface pad="none" className="text-body">
           {reads.map((r, i) => (
             <div key={i} className="border-b px-3 py-2 last:border-0">
               <span className="tabular-nums">
@@ -108,7 +108,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
                 {r.skipped} skipped
               </span>
               {r.problems.slice(0, 3).map((p) => (
-                <div key={p} className="text-xs text-amber-600 dark:text-amber-400">{p}</div>
+                <div key={p} className="text-meta text-amber-600 dark:text-amber-400">{p}</div>
               ))}
             </div>
           ))}
@@ -116,7 +116,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
       )}
 
       {runs.length > 0 && (
-        <Surface pad="none" className="text-sm">
+        <Surface pad="none" className="text-body">
           {runs.map((r, i) => (
             <div key={i} className="border-b px-3 py-2 last:border-0">
               <span className="tabular-nums">
@@ -124,7 +124,7 @@ export function AgreementImport({ counts }: { counts: AgreementCounts }) {
                 {r.terms_filled} with terms
               </span>
               {Object.keys(r.by_match).length > 0 && (
-                <span className="ml-2 text-xs text-muted-foreground">
+                <span className="ml-2 text-meta text-muted-foreground">
                   by {Object.entries(r.by_match).map(([k, v]) => `${k} ${v}`).join(", ")}
                 </span>
               )}

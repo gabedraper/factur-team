@@ -81,7 +81,7 @@ export default function RoleTrainingPage() {
       />
 
       {message && (
-        <div className={`mb-6 p-3 rounded-md text-sm ${message.type === "success" ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+        <div className={`mb-6 p-3 rounded-md text-body ${message.type === "success" ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
           {message.text}
         </div>
       )}
@@ -108,7 +108,7 @@ export default function RoleTrainingPage() {
                     {assigned.map((rc) => (
                       <div
                         key={rc.id}
-                        className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 text-sm"
+                        className="flex items-center gap-2 bg-muted rounded-md px-3 py-1.5 text-body"
                       >
                         <span>{rc.courses.title}</span>
                         <button
@@ -121,7 +121,7 @@ export default function RoleTrainingPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">No courses assigned yet.</p>
+                  <p className="text-body text-muted-foreground italic">No courses assigned yet.</p>
                 )}
 
                 {/* Add course */}

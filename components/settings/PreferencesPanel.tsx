@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Moon, Sun, Eye, X } from "lucide-react";
 import { setPreviewUser, clearPreviewUser } from "@/actions/preview";
+import { control } from "@/components/ui/control";
+import { Field } from "@/components/ui/field";
 
 const THEME_KEY = "factur-theme";
 
@@ -33,7 +35,7 @@ export function ThemePanel() {
           key={t}
           onClick={() => choose(t)}
           aria-pressed={theme === t}
-          className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+          className={`flex items-center gap-2 rounded-md border px-3 py-2 text-body transition-colors ${
             theme === t ? "border-primary bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent"
           }`}
         >
@@ -66,10 +68,9 @@ export function PreviewPanel({
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Preview as person</span>
+        <Field label="Preview as person">
           <select
-            className="h-8 w-full rounded-md border bg-field px-2 text-sm"
+            className={control({ size: "sm", className: "w-full" })}
             value={currentMemberId ?? ""}
             disabled={pending}
             onChange={(e) => {
@@ -81,12 +82,12 @@ export function PreviewPanel({
             <option value="">— not previewing —</option>
             {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-        </label>
+        </Field>
       </div>
 
       {previewing && (
         <button
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm"
+          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-body"
           disabled={pending}
           onClick={() => act(() => clearPreviewUser(), "/settings")}
         >
@@ -94,7 +95,7 @@ export function PreviewPanel({
         </button>
       )}
 
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
+      <p className="flex items-start gap-2 text-meta text-muted-foreground">
         <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         Previewing a person shows the app exactly as their permissions allow, including what they
         cannot see. It lasts an hour, and it is a view only — anything you change is still changed

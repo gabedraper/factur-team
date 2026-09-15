@@ -31,7 +31,7 @@ export const dynamic = "force-dynamic";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      <h2 className="mb-2 text-body font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h2>
       {children}
@@ -97,7 +97,7 @@ export default async function ClientPage({
       <div>
         <Link
           href="/clients/health"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" /> Client Health
         </Link>
@@ -105,7 +105,7 @@ export default async function ClientPage({
           title={(client as { name: string }).name}
           actions={<Link
             href={`/clients/${clientId}/market`}
-            className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="text-body text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             Market
           </Link>}

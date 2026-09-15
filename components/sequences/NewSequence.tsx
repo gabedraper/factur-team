@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { createSequence } from "@/actions/sequences";
 import { FIELD } from "@/lib/field-class";
 import { Surface } from "@/components/ui/surface";
+import { control } from "@/components/ui/control";
 
 /**
  * Start a new ladder.
@@ -26,7 +27,7 @@ export function NewSequence() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-sm"
+        className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-body"
       >
         <Plus className="h-4 w-4" /> New sequence
       </button>
@@ -36,19 +37,19 @@ export function NewSequence() {
   return (
     <Surface pad="tight" className="space-y-2">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
       <input
         autoFocus
-        className={`h-8 w-full rounded-md border px-2 text-sm ${FIELD}`}
+        className={control({ size: "sm", className: `w-full ${FIELD}` })}
         placeholder="Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <input
-        className={`h-8 w-full rounded-md border px-2 text-sm ${FIELD}`}
+        className={control({ size: "sm", className: `w-full ${FIELD}` })}
         placeholder="What it is for"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
@@ -56,7 +57,7 @@ export function NewSequence() {
       <div className="flex gap-2">
         <button
           disabled={pending}
-          className="h-8 rounded-md border px-3 text-sm disabled:opacity-50"
+          className="h-8 rounded-md border px-3 text-body disabled:opacity-50"
           onClick={() =>
             startTransition(async () => {
               setError("");
@@ -70,7 +71,7 @@ export function NewSequence() {
         </button>
         <button
           disabled={pending}
-          className="h-8 rounded-md border px-3 text-sm text-muted-foreground disabled:opacity-50"
+          className="h-8 rounded-md border px-3 text-body text-muted-foreground disabled:opacity-50"
           onClick={() => { setOpen(false); setError(""); }}
         >
           Cancel

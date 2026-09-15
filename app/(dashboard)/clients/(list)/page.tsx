@@ -11,6 +11,7 @@ import { ClientsList, type ClientRow } from "@/components/clients/ClientsList";
 import { resolveViews, clientIdsForScope } from "@/lib/list-views/resolve";
 import { LIVE_CLIENT_STATUSES } from "@/lib/list-views/catalogue";
 import { cn } from "@/lib/utils";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export default async function ClientsIndexPage({
             defaultValue={q}
             placeholder="Search clients"
             aria-label="Search clients"
-            className="w-full rounded-md bg-card px-3 py-1.5 text-body outline-none ring-ring focus-visible:ring-2"
+            className={control({ size: "sm", plain: true, className: "w-full" })}
           />
         </form>
         <nav aria-label="Status" className="flex flex-wrap gap-1">

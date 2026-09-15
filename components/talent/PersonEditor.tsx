@@ -12,8 +12,10 @@ import { Panel } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
 import { onDay } from "@/lib/talent/format";
 import type { Contact, Member, Person } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
+import { Field } from "@/components/ui/field";
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
 
 /**
  * A field that shows its value until it is clicked.
@@ -49,7 +51,7 @@ function Inline({
       <div className="group min-w-0">
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className="flex items-center gap-1.5">
-          <span className={`text-sm ${value ? "" : "text-muted-foreground"} ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>
+          <span className={`text-body ${value ? "" : "text-muted-foreground"} ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>
             {value || "—"}
           </span>
           {!disabled && (
@@ -131,9 +133,9 @@ function Contacts({
         {kind === "emails" ? "Email" : "Phone"}
       </div>
       <ul className="space-y-0.5">
-        {list.length === 0 && <li className="text-sm text-muted-foreground">—</li>}
+        {list.length === 0 && <li className="text-body text-muted-foreground">—</li>}
         {list.map((c, i) => (
-          <li key={`${c.value}-${i}`} className="group flex items-center gap-1.5 text-sm">
+          <li key={`${c.value}-${i}`} className="group flex items-center gap-1.5 text-body">
             <a
               href={kind === "emails" ? `mailto:${c.value}` : `tel:${c.value}`}
               className="truncate hover:underline"
@@ -147,7 +149,7 @@ function Contacts({
                   <button
                     type="button"
                     onClick={() => persist([list[i], ...list.filter((_, j) => j !== i)])}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="text-meta text-muted-foreground hover:text-foreground"
                   >
                     Make primary
                   </button>
@@ -168,7 +170,7 @@ function Contacts({
       {canEdit && (
         <div className="mt-1 flex gap-1">
           <input
-            className={`${input} py-1 text-xs`}
+            className={`${input} py-1 text-meta`}
             value={adding}
             placeholder={kind === "emails" ? "Add email" : "Add phone"}
             onChange={(e) => setAdding(e.target.value)}
@@ -305,19 +307,19 @@ export function PersonEditor({
       >
         {newRole && <RoleForm personId={person.id} onDone={() => setNewRole(false)} />}
         {history.length === 0 && !newRole ? (
-          <p className="px-4 py-4 text-sm text-muted-foreground">—</p>
+          <p className="px-4 py-4 text-body text-muted-foreground">—</p>
         ) : (
           <ul className="divide-y">
             {history.map((h) => (
               <li key={h.id} className="group flex gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{h.title ?? "—"}</p>
-                  <p className="text-sm text-muted-foreground">{h.company_name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-body font-medium">{h.title ?? "—"}</p>
+                  <p className="text-body text-muted-foreground">{h.company_name ?? "—"}</p>
+                  <p className="text-meta text-muted-foreground">
                     {onDay(h.started_on)} – {h.is_current ? "present" : onDay(h.ended_on)}
                   </p>
                   {h.description && (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{h.description}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-body text-muted-foreground">{h.description}</p>
                   )}
                 </div>
                 {canEdit && (
@@ -349,17 +351,17 @@ export function PersonEditor({
       >
         {newSchool && <SchoolForm personId={person.id} onDone={() => setNewSchool(false)} />}
         {education.length === 0 && !newSchool ? (
-          <p className="px-4 py-4 text-sm text-muted-foreground">—</p>
+          <p className="px-4 py-4 text-body text-muted-foreground">—</p>
         ) : (
           <ul className="divide-y">
             {education.map((e) => (
               <li key={e.id} className="group flex gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{e.school ?? "—"}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-body font-medium">{e.school ?? "—"}</p>
+                  <p className="text-body text-muted-foreground">
                     {[e.degree, e.field_of_study].filter(Boolean).join(", ") || "—"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-meta text-muted-foreground">
                     {onDay(e.started_on)} – {onDay(e.ended_on)}
                   </p>
                 </div>
@@ -385,10 +387,9 @@ export function PersonEditor({
       {canEdit && (
         <Panel title="Record">
           <div className="grid grid-cols-2 gap-4 px-4 py-3">
-            <label className="block">
-              <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Owner</span>
+            <Field label="Owner">
               <select
-                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                className={control({ size: "sm", className: "w-full" })}
                 defaultValue={person.owner_member_id ?? ""}
                 onChange={(e) => start(async () => {
                   await setPersonField(person.id, "owner_member_id", e.target.value || null);
@@ -400,9 +401,9 @@ export function PersonEditor({
                   <option key={m.id} value={m.id}>{m.full_name ?? m.email}</option>
                 ))}
               </select>
-            </label>
+            </Field>
 
-            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+            <label className="flex items-center gap-2 self-end pb-2 text-body">
               <input
                 type="checkbox"
                 defaultChecked={person.do_not_contact}
@@ -437,7 +438,7 @@ function RoleForm({ personId, onDone }: { personId: string; onDone: () => void }
         onChange={(e) => setForm({ ...form, started_on: e.target.value })} />
       <input className={input} type="date" value={form.ended_on} disabled={form.is_current}
         onChange={(e) => setForm({ ...form, ended_on: e.target.value })} />
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-body">
         <input type="checkbox" checked={form.is_current}
           onChange={(e) => setForm({ ...form, is_current: e.target.checked })} />
         Current

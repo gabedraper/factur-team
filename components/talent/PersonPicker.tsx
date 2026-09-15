@@ -1,9 +1,7 @@
 "use client";
-
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { quickSearchPeople } from "@/actions/talent";
-import { Avatar } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
 import { Surface } from "@/components/ui/surface";
 
@@ -48,7 +46,7 @@ export function PersonPicker({
       <div className="relative">
         <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <input
-          className={`w-full py-1.5 pl-8 pr-2 text-sm ${FIELD}`}
+          className={`w-full py-1.5 pl-8 pr-2 text-body ${FIELD}`}
           value={term}
           autoFocus={autoFocus}
           placeholder={placeholder}
@@ -63,12 +61,11 @@ export function PersonPicker({
               <button
                 type="button"
                 onClick={() => { onPick(p); setTerm(""); setResults([]); }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-body hover:bg-accent"
               >
-                <Avatar name={p.name} size={6} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{p.name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="block truncate text-meta text-muted-foreground">
                     {[p.title, p.company, p.primary_email].filter(Boolean).join(" · ") || "—"}
                   </span>
                 </span>

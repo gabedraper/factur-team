@@ -23,7 +23,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-meta font-medium whitespace-nowrap",
         tone(colour).chip,
         className
       )}
@@ -39,7 +39,7 @@ export function Dot({ colour }: { colour?: string | null }) {
 
 /** Initials in a circle. An avatar image would need a source we do not have. */
 export function Avatar({ name, size = 8 }: { name: string | null; size?: 6 | 8 | 10 | 12 }) {
-  const px = { 6: "h-6 w-6 text-[10px]", 8: "h-8 w-8 text-xs", 10: "h-10 w-10 text-sm", 12: "h-12 w-12 text-base" }[size];
+  const px = { 6: "h-6 w-6 text-[10px]", 8: "h-8 w-8 text-meta", 10: "h-10 w-10 text-body", 12: "h-12 w-12 text-base" }[size];
   return (
     <span
       className={cn(
@@ -147,7 +147,7 @@ export function Stat({
   return (
     <div className="min-w-0">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={cn("truncate text-sm tabular-nums", tint)}>{value}</div>
+      <div className={cn("truncate text-body tabular-nums", tint)}>{value}</div>
     </div>
   );
 }
@@ -170,14 +170,14 @@ export function NotConnected({
     <div className="rounded-lg border border-dashed bg-muted/30 p-4">
       <div className="flex items-center gap-2">
         <Plug className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="text-sm font-medium">{name}</span>
+        <span className="text-body font-medium">{name}</span>
         <Chip colour="amber">Not connected</Chip>
       </div>
-      {requires && <p className="mt-2 text-sm text-muted-foreground">{requires}</p>}
+      {requires && <p className="mt-2 text-body text-muted-foreground">{requires}</p>}
       {canAdmin && (
         <Link
           href="/settings/talent?tab=integrations"
-          className="mt-3 inline-block text-sm text-primary underline-offset-4 hover:underline"
+          className="mt-3 inline-block text-body text-primary underline-offset-4 hover:underline"
         >
           Integrations
         </Link>
@@ -201,7 +201,7 @@ export function Tabs({
           key={t.key}
           href={t.key === tabs[0].key ? base : `${base}?tab=${t.key}`}
           className={cn(
-            "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+            "-mb-px border-b-2 px-3 py-2 text-body transition-colors",
             active === t.key
               ? "border-primary font-medium text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -209,7 +209,7 @@ export function Tabs({
         >
           {t.label}
           {t.count !== undefined && (
-            <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">{t.count}</span>
+            <span className="ml-1.5 text-meta tabular-nums text-muted-foreground">{t.count}</span>
           )}
         </Link>
       ))}

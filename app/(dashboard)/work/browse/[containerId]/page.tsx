@@ -44,7 +44,7 @@ export default async function ContainerPage({
   return (
     <div className="max-w-5xl space-y-4 p-6">
       <div>
-        <nav className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        <nav className="flex flex-wrap items-center gap-1 text-body text-muted-foreground">
           <Link href="/work/browse" className="hover:text-foreground">Spaces</Link>
           {path.map((crumb) => (
             <span key={crumb.clickupId} className="flex items-center gap-1">
@@ -58,7 +58,7 @@ export default async function ContainerPage({
 
         <PageHeader
           title={node.name}
-          actions={<div className="flex items-baseline gap-3 text-xs text-muted-foreground">
+          actions={<div className="flex items-baseline gap-3 text-meta text-muted-foreground">
             <span>{KIND_LABEL[node.kind]}</span>
             {isList && (
               <span className="tabular-nums">
@@ -83,7 +83,7 @@ export default async function ContainerPage({
       {isList ? (
         items.length === 0 ? (
           <Surface pad="tight">
-            <p className="text-sm text-muted-foreground">No tasks mirrored.</p>
+            <p className="text-body text-muted-foreground">No tasks mirrored.</p>
           </Surface>
         ) : (
           <ListView items={items} />

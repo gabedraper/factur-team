@@ -159,7 +159,7 @@ export default async function CourseOutlinePage({
             {course.description && (
               <p className="text-muted-foreground mt-2">{course.description}</p>
             )}
-            <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 mt-3 text-body text-muted-foreground">
               {totalDuration > 0 && (
                 <span className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
@@ -175,7 +175,7 @@ export default async function CourseOutlinePage({
 
         {isEnrolled && (
           <div className="mt-6">
-            <div className="flex justify-between text-sm mb-2">
+            <div className="flex justify-between text-body mb-2">
               <span className="text-muted-foreground">Course Progress</span>
               <span className="font-medium">{progress}%</span>
             </div>
@@ -240,20 +240,20 @@ export default async function CourseOutlinePage({
                       <span className="text-muted-foreground">
                         {lessonTypeIcons[lesson.type]}
                       </span>
-                      <span className="flex-1 text-sm">
+                      <span className="flex-1 text-body">
                         {lIdx + 1}. {lesson.title}
                       </span>
                       <div className="flex items-center gap-2">
                         {lesson.duration_minutes && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-meta text-muted-foreground">
                             {lesson.duration_minutes} min
                           </span>
                         )}
-                        <Badge variant="outline" className="text-xs capitalize">
+                        <Badge variant="outline" className="text-meta capitalize">
                           {lesson.type}
                         </Badge>
                         {isEnrolled && (
-                          <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                          <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-meta">
                             <Link
                               href={`/learner/courses/${courseId}/lessons/${lesson.id}`}
                             >
@@ -280,7 +280,7 @@ export default async function CourseOutlinePage({
       {isEnrolled && allLessonIds.length > 0 && (
         <div className="fixed bottom-0 left-64 right-0 bg-background border-t px-8 py-3 z-10">
           <div className="max-w-4xl flex items-center gap-4">
-            <span className="text-sm text-muted-foreground shrink-0">Course Progress</span>
+            <span className="text-body text-muted-foreground shrink-0">Course Progress</span>
             <div className="flex-1">
               <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                 <div
@@ -289,7 +289,7 @@ export default async function CourseOutlinePage({
                 />
               </div>
             </div>
-            <span className="text-sm font-semibold shrink-0">{progress}%</span>
+            <span className="text-body font-semibold shrink-0">{progress}%</span>
           </div>
         </div>
       )}

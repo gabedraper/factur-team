@@ -6,6 +6,7 @@ import { useSort, SortHeader } from "@/components/ui/sortable";
 import { HEADLINE_LABEL, type ClientResult } from "@/lib/clients/result-metrics";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { TableScroll, Table, THead, TBody, TR, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 const nf = new Intl.NumberFormat("en-US");
 const money = new Intl.NumberFormat("en-US", {
@@ -42,7 +43,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-md border bg-background px-2 py-1 text-sm"
+      className={control({ size: "sm" })}
     >
       <option value="">{all}</option>
       {options.map((o) => (
@@ -230,7 +231,7 @@ export function ResultsTable({
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder="Search"
-          className="rounded-md border bg-background px-2 py-1 text-sm"
+          className={control({ size: "sm" })}
         />
         <Select value={status} onChange={setStatus} options={options.status} all="All statuses" />
         <Select value={service} onChange={setService} options={options.service} all="All services" />
@@ -267,7 +268,7 @@ export function ResultsTable({
           <Select value={material} onChange={setMaterial}
                   options={options.material} all="All materials" />
         )}
-        <label className="flex items-center gap-1.5 text-sm">
+        <label className="flex items-center gap-1.5 text-body">
           <input
             type="checkbox"
             checked={onlySwitched}
@@ -275,7 +276,7 @@ export function ResultsTable({
           />
           Changed service
         </label>
-        <span className="ml-auto text-sm text-muted-foreground tabular-nums">
+        <span className="ml-auto text-body text-muted-foreground tabular-nums">
           {nf.format(shown.length)} clients · {nf.format(totals.leads)} leads ·{" "}
           {nf.format(totals.appointments)} appts · {nf.format(totals.quotes)} quotes{" "}
           ({money.format(totals.quoteAmount)}) · {nf.format(totals.pos)} POs{" "}
@@ -324,7 +325,7 @@ export function ResultsTable({
                     ? c.servicesDelivered.join(" → ")
                     : c.primaryService ?? "—"}
                   {c.headlineMetric && (
-                    <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-meta text-muted-foreground">
                       {HEADLINE_LABEL[c.headlineMetric]}
                     </span>
                   )}

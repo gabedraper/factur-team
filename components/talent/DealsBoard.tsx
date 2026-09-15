@@ -56,7 +56,7 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
       <div className="flex gap-3 overflow-x-auto pb-4">
         {ORDER.map((stage) => {
           const cards = board.filter((d) => d.stage === stage);
@@ -73,8 +73,8 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
               )}
             >
               <header className="flex items-center gap-2 border-b px-3 py-2">
-                <span className="text-sm font-medium">{DEAL_STAGE[stage]}</span>
-                <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                <span className="text-body font-medium">{DEAL_STAGE[stage]}</span>
+                <span className="ml-auto text-meta tabular-nums text-muted-foreground">
                   {cards.length} · {money(total)}
                 </span>
               </header>
@@ -96,12 +96,12 @@ export function DealsBoard({ deals, canEdit }: { deals: Deal[]; canEdit: boolean
                     {d.tal_companies && (
                       <Link
                         href={`/talent/companies/${d.tal_companies.id}`}
-                        className="block truncate text-xs text-muted-foreground hover:underline"
+                        className="block truncate text-meta text-muted-foreground hover:underline"
                       >
                         {d.tal_companies.name}
                       </Link>
                     )}
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-2 text-meta text-muted-foreground">
                       <span className="tabular-nums">{money(d.value)}</span>
                       {d.probability != null && <span className="tabular-nums">{d.probability}%</span>}
                       <span className="ml-auto">{onDay(d.expected_close_on)}</span>

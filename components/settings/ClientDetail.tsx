@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { setClientRole, setClientLead, setClientOwner } from "@/actions/org";
 import { Surface } from "@/components/ui/surface";
+import { control } from "@/components/ui/control";
 
 type Person = { id: string; name: string };
 type Team = Record<string, unknown> | null;
@@ -42,7 +43,7 @@ export function ClientDetail({
     value, onChange, placeholder = "— none —",
   }: { value: string; onChange: (v: string | null) => void; placeholder?: string }) => (
     <select
-      className="h-8 w-full max-w-64 rounded-md border bg-field px-2 text-sm"
+      className={control({ size: "sm", className: "w-full max-w-64" })}
       value={value}
       disabled={pending}
       onChange={(e) => onChange(e.target.value || null)}
@@ -57,23 +58,23 @@ export function ClientDetail({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
 
       <Surface as="section" className="space-y-3">
-        <h2 className="text-sm font-medium">Team {pending && <span className="text-xs text-muted-foreground">· saving…</span>}</h2>
+        <h2 className="text-body font-medium">Team {pending && <span className="text-meta text-muted-foreground">· saving…</span>}</h2>
 
         <div className="grid gap-3 sm:grid-cols-2">
           {roles.length === 0 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               No roles are set to be assigned per client.
             </p>
           )}
           {roles.map((r) => (
             <label key={r.id} className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">{r.name}</span>
+              <span className="mb-1 block text-meta text-muted-foreground">{r.name}</span>
               <Picker
                 value={String(assignments[r.id] ?? "")}
                 onChange={(v) => run(() => setClientRole(id, r.id, v))}
@@ -90,7 +91,7 @@ export function ClientDetail({
             const overridden = Boolean(team?.[flagKey]);
             return (
               <label key={field} className="block">
-                <span className="mb-1 block text-xs text-muted-foreground">{label}</span>
+                <span className="mb-1 block text-meta text-muted-foreground">{label}</span>
                 <Picker
                   value={String(client[field] ?? "")}
                   onChange={(v) => run(() => setClientLead(id, field, v))}
@@ -98,7 +99,7 @@ export function ClientDetail({
                     team?.[nameKey] ? `${team[nameKey]} (from ${derivedFrom})` : "— nobody —"
                   }
                 />
-                <span className="mt-1 block text-xs text-muted-foreground">
+                <span className="mt-1 block text-meta text-muted-foreground">
                   {overridden
                     ? "Set by hand. Clear it to follow the reporting line again."
                     : `Follows ${derivedFrom}.`}
@@ -111,11 +112,11 @@ export function ClientDetail({
 
       {salesforce && (
         <Surface as="section">
-          <h2 className="mb-1 text-sm font-medium">From Salesforce</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
+          <h2 className="mb-1 text-body font-medium">From Salesforce</h2>
+          <p className="mb-3 text-meta text-muted-foreground">
             Read-only. Change these in Salesforce; they refresh on the next sync.
           </p>
-          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+          <dl className="grid gap-x-6 gap-y-2 text-body sm:grid-cols-2">
             {([
               ["Status", text(salesforce.client_status__c)],
               ["Account", text(salesforce.client_account__r_name)],

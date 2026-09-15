@@ -77,7 +77,7 @@ export default function AdminCoursesPage() {
           <button
             key={l}
             onClick={() => { setLetter(l); setSearch(""); }}
-            className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
+            className={`px-2 py-1 text-meta rounded font-medium transition-colors ${
               letter === l
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -90,7 +90,7 @@ export default function AdminCoursesPage() {
 
       {/* Results count */}
       {(search || letter !== "All") && (
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-body text-muted-foreground mb-4">
           {filtered.length} result{filtered.length !== 1 ? "s" : ""}
         </p>
       )}
@@ -99,7 +99,7 @@ export default function AdminCoursesPage() {
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : loadError ? (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {loadError}
         </div>
       ) : filtered.length === 0 ? (
@@ -135,21 +135,21 @@ export default function AdminCoursesPage() {
               </div>
 
               {/* Stats */}
-              <div className="p-3 flex-1 space-y-2 text-xs text-muted-foreground">
+              <div className="p-3 flex-1 space-y-2 text-meta text-muted-foreground">
                 <div className="grid grid-cols-3 gap-1 text-center">
                   <div className="flex flex-col items-center gap-0.5">
                     <BookMarked className="h-3.5 w-3.5" />
-                    <span className="font-semibold text-foreground text-sm">{course.lessonCount}</span>
+                    <span className="font-semibold text-foreground text-body">{course.lessonCount}</span>
                     <span>lessons</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <Users className="h-3.5 w-3.5" />
-                    <span className="font-semibold text-foreground text-sm">{course.enrolledCount}</span>
+                    <span className="font-semibold text-foreground text-body">{course.enrolledCount}</span>
                     <span>enrolled</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                    <span className="font-semibold text-foreground text-sm">{course.completedCount}</span>
+                    <span className="font-semibold text-foreground text-body">{course.completedCount}</span>
                     <span>done</span>
                   </div>
                 </div>

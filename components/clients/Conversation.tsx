@@ -6,6 +6,7 @@ import { getMessageBody, type ConversationEntry } from "@/actions/conversation";
 import { editClientNote, setNotePinned, deleteClientNote } from "@/actions/client-notes";
 import { Mail, MessageSquare, MessageSquareText, Phone, Video, FileText, CircleDollarSign, AlertTriangle, MailWarning, StickyNote, Pin, ListChecks } from "lucide-react";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 0,
@@ -108,7 +109,7 @@ export function Conversation({
   }
 
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nothing recorded for this client yet.</p>;
+    return <p className="text-body text-muted-foreground">Nothing recorded for this client yet.</p>;
   }
 
   return (
@@ -119,7 +120,7 @@ export function Conversation({
         if (e.kind === "gap") {
           return (
             <div key={key} className="flex justify-end">
-              <div className="flex max-w-[80%] items-center gap-2 rounded-lg border border-red-400/60 bg-red-500/10 px-3 py-1.5 text-xs text-red-700 dark:border-red-800 dark:text-red-300">
+              <div className="flex max-w-[80%] items-center gap-2 rounded-lg border border-red-400/60 bg-red-500/10 px-3 py-1.5 text-meta text-red-700 dark:border-red-800 dark:text-red-300">
                 <Icon entry={e} />
                 <span>
                   No invoice raised for{" "}
@@ -170,7 +171,7 @@ export function Conversation({
           return (
             <div key={key} className="flex justify-center">
               <div className="w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                   <Icon entry={e} />
                   <span className="font-medium text-foreground">{e.author}</span>
                   <span className="italic">note</span>
@@ -212,30 +213,30 @@ export function Conversation({
                       rows={3}
                       value={noteDraft}
                       onChange={(ev) => setNoteDraft(ev.target.value)}
-                      className="w-full rounded-md border bg-background px-2 py-1 text-sm"
+                      className={control({ multiline: true, className: "w-full" })}
                     />
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => setEditing(null)}
-                        className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                        className="rounded-md border px-2 py-1 text-meta hover:bg-muted"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={save}
                         disabled={pending || !noteDraft.trim()}
-                        className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        className="rounded-md bg-primary px-2 py-1 text-meta text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       >
                         Save
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-0.5 whitespace-pre-wrap text-sm">{e.preview}</div>
+                  <div className="mt-0.5 whitespace-pre-wrap text-body">{e.preview}</div>
                 )}
 
                 {noteProblem && isEditing && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{noteProblem}</p>
+                  <p className="mt-1 text-meta text-red-600 dark:text-red-400">{noteProblem}</p>
                 )}
               </div>
             </div>
@@ -252,7 +253,7 @@ export function Conversation({
           return (
             <div key={key} className="flex justify-end">
               <div
-                className={`flex max-w-[80%] items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-xs ${
+                className={`flex max-w-[80%] items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-meta ${
                   overdue
                     ? "border-amber-400/60 bg-amber-500/10 text-amber-700 dark:border-amber-800 dark:text-amber-300"
                     : "text-muted-foreground"
@@ -280,7 +281,7 @@ export function Conversation({
           return (
             <div key={key} className="flex justify-end">
               <div className="max-w-[80%] rounded-lg border border-dashed bg-primary/5 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                   <Icon entry={e} />
                   <span className="font-medium text-foreground">
                     {drafted ? "Chase drafted" : "Chase sent"}
@@ -288,13 +289,13 @@ export function Conversation({
                   <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
                   {e.bill_email && <span>to {e.bill_email}</span>}
                 </div>
-                <div className="mt-0.5 text-sm font-medium">{e.title}</div>
+                <div className="mt-0.5 text-body font-medium">{e.title}</div>
                 {e.preview && (
-                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.preview}</div>
+                  <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{e.preview}</div>
                 )}
                 {e.url && (
                   <a href={e.url} target="_blank" rel="noopener noreferrer"
-                     className="mt-1 inline-block text-xs underline">
+                     className="mt-1 inline-block text-meta underline">
                     Open in Gmail
                   </a>
                 )}
@@ -309,14 +310,14 @@ export function Conversation({
           return (
             <div key={key} className="flex justify-end">
               <div className="max-w-[80%] rounded-lg border border-dashed bg-primary/5 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                   <Icon entry={e} />
                   <span className="font-medium text-foreground">Text sent</span>
                   <span>{e.occurred_at ? when(e.occurred_at) : ""}</span>
                   {e.bill_email && <span>to {e.bill_email}</span>}
                 </div>
                 {e.preview && (
-                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.preview}</div>
+                  <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{e.preview}</div>
                 )}
               </div>
             </div>
@@ -328,13 +329,13 @@ export function Conversation({
           return (
             <div key={key} className="flex justify-center">
               <div className="w-[80%] rounded-lg border border-dashed bg-muted/40 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                   <Icon entry={e} />
                   {e.author && <span>{e.author}</span>}
                   {e.preview && <span>{e.preview}</span>}
                   {e.due_date && <span>due {onDay(e.due_date)}</span>}
                 </div>
-                <div className="mt-0.5 text-sm font-medium">
+                <div className="mt-0.5 text-body font-medium">
                   {e.url ? (
                     <a href={e.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {e.title}
@@ -365,7 +366,7 @@ export function Conversation({
                   onClick={() =>
                     isInvoice && setOpen(openHere ? null : `inv-${e.external_id}`)
                   }
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-meta ${
                     isInvoice ? "cursor-pointer" : "cursor-default"
                   }`}
                 >
@@ -405,9 +406,9 @@ export function Conversation({
                   * These are the same figures off the same record.
                   */}
                 {openHere && (
-                  <div className="border-t border-dashed px-3 py-2 text-xs">
+                  <div className="border-t border-dashed px-3 py-2 text-meta">
                     <div className="mb-2 flex items-baseline justify-between gap-4">
-                      <span className="text-sm font-semibold">Invoice {e.invoice_no}</span>
+                      <span className="text-body font-semibold">Invoice {e.invoice_no}</span>
                       <span className="text-muted-foreground">
                         {e.on_date ? onDay(e.on_date) : ""}
                         {e.due_date && <> · due {onDay(e.due_date)}</>}
@@ -495,7 +496,7 @@ export function Conversation({
                     : "bg-card hover:bg-muted"
               }`}
             >
-              <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 text-meta text-muted-foreground">
                 <Icon entry={e} />
                 <span className="font-medium text-foreground">{e.author ?? "unknown"}</span>
                 {internal && <span className="italic">internal</span>}
@@ -503,22 +504,22 @@ export function Conversation({
                 <MatchNote by={e.matched_by} />
               </div>
 
-              <div className="mt-0.5 text-sm font-medium">{e.title}</div>
+              <div className="mt-0.5 text-body font-medium">{e.title}</div>
 
               {!isOpen && e.preview && (
-                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.preview}</div>
+                <div className="mt-1 line-clamp-2 text-meta text-muted-foreground">{e.preview}</div>
               )}
 
               {isOpen && (
                 <div className="mt-2 border-t pt-2">
                   {pending && !body && (
-                    <p className="text-xs text-muted-foreground">Fetching the message…</p>
+                    <p className="text-meta text-muted-foreground">Fetching the message…</p>
                   )}
                   {body?.problem && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{body.problem}</p>
+                    <p className="text-meta text-red-600 dark:text-red-400">{body.problem}</p>
                   )}
                   {body?.text && (
-                    <pre className="max-h-96 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed">
+                    <pre className="max-h-96 overflow-auto whitespace-pre-wrap font-sans text-meta leading-relaxed">
                       {body.text}
                     </pre>
                   )}
@@ -528,7 +529,7 @@ export function Conversation({
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(ev) => ev.stopPropagation()}
-                      className="mt-2 inline-block text-xs underline"
+                      className="mt-2 inline-block text-meta underline"
                     >
                       Open in Gmail
                     </a>

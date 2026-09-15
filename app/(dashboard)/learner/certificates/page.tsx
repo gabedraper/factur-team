@@ -67,12 +67,12 @@ export default async function CertificatesPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-body">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
                         Certificate No.
                       </span>
-                      <span className="font-mono text-xs">{cert.cert_number}</span>
+                      <span className="font-mono text-meta">{cert.cert_number}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Issued by</span>
@@ -104,7 +104,7 @@ export default async function CertificatesPage() {
         <div className="text-center py-16 text-muted-foreground">
           <Award className="h-16 w-16 mx-auto mb-4 opacity-20" />
           <p className="text-lg font-medium mb-1">No certificates yet</p>
-          <p className="text-sm mb-4">
+          <p className="text-body mb-4">
             Complete a course to earn your first certificate
           </p>
           <Button asChild variant="outline">

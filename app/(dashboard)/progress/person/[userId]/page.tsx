@@ -87,7 +87,7 @@ export default async function TeamMemberDetailPage({
       <div className="grid grid-cols-3 gap-4 mb-8">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Courses Enrolled
             </CardTitle>
           </CardHeader>
@@ -99,7 +99,7 @@ export default async function TeamMemberDetailPage({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Avg. Progress
             </CardTitle>
           </CardHeader>
@@ -109,7 +109,7 @@ export default async function TeamMemberDetailPage({
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-body font-medium text-muted-foreground">
               Certificates
             </CardTitle>
           </CardHeader>
@@ -136,7 +136,7 @@ export default async function TeamMemberDetailPage({
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-medium">{course?.title || "Course"}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-meta text-muted-foreground">
                       Enrolled{" "}
                       {new Date(enrollment.enrolled_at).toLocaleDateString()}
                     </p>
@@ -148,7 +148,7 @@ export default async function TeamMemberDetailPage({
                         Completed
                       </Badge>
                     )}
-                    <span className="font-medium text-sm">
+                    <span className="font-medium text-body">
                       {enrollment.progress}%
                     </span>
                   </div>
@@ -159,7 +159,7 @@ export default async function TeamMemberDetailPage({
           );
         })}
         {enrollmentProgress.length === 0 && (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-body">
             Not enrolled in any courses yet.
           </p>
         )}
@@ -184,10 +184,10 @@ export default async function TeamMemberDetailPage({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-xs text-muted-foreground font-mono">
+                  <p className="text-meta text-muted-foreground font-mono">
                     {cert.cert_number}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-meta text-muted-foreground mt-1">
                     {new Date(cert.issued_at).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "long",

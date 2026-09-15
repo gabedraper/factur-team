@@ -9,7 +9,7 @@ export function MaskedBlurb({ side = "left" }: { side?: "left" | "right" }) {
         isLeft ? "right-full pr-3" : "left-full pl-3"
       }`}
     >
-      <div className="relative w-80 rounded-md bg-popover p-3 text-xs opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
+      <div className="relative w-80 rounded-md bg-popover p-3 text-meta opacity-0 text-popover-foreground shadow-overlay transition-opacity group-hover:opacity-100">
         <div
           className={`absolute top-8 h-2 w-2 -translate-y-1/2 rotate-45 bg-popover ${
             isLeft ? "-right-1 border-r border-t" : "-left-1 border-b border-l"

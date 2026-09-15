@@ -34,9 +34,9 @@ const METRIC_LABEL: Record<Trend["metric"], string> = {
 function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Surface >
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-meta uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">{sub}</div>}
+      {sub && <div className="mt-0.5 text-meta text-muted-foreground tabular-nums">{sub}</div>}
     </Surface>
   );
 }
@@ -149,8 +149,8 @@ function TrendCard({ trend }: { trend: Trend }) {
   return (
     <Surface pad="tight" className="flex items-center justify-between gap-4">
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{trend.market}</div>
-        <div className="truncate text-xs text-muted-foreground">
+        <div className="truncate text-body font-medium">{trend.market}</div>
+        <div className="truncate text-meta text-muted-foreground">
           {METRIC_LABEL[trend.metric]} · {trend.title}
         </div>
       </div>
@@ -158,7 +158,7 @@ function TrendCard({ trend }: { trend: Trend }) {
       <div className="w-16 text-right">
         <div
           className={
-            "text-sm font-semibold tabular-nums " +
+            "text-body font-semibold tabular-nums " +
             (up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")
           }
         >
@@ -240,7 +240,7 @@ export function MarketReportView({ report }: { report: MarketReport }) {
             {rows.map((r) => (
               <TR key={r.market} >
                 <TD className="font-medium">{r.market}</TD>
-                <TD className="text-xs text-muted-foreground">
+                <TD className="text-meta text-muted-foreground">
                   {r.naics.map((n) => n.code).join(", ")}
                 </TD>
                 <TD numeric>

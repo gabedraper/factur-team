@@ -71,7 +71,7 @@ export default async function JobPage({
               </Chip>
             )}
           </PageHeader>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {job.tal_companies?.id ? (
               <Link href={`/talent/companies/${job.tal_companies.id}`} className="hover:underline">
                 {job.tal_companies.name}
@@ -128,17 +128,17 @@ export default async function JobPage({
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <Panel title="Description">
-              <div className="whitespace-pre-wrap px-4 py-3 text-sm">
+              <div className="whitespace-pre-wrap px-4 py-3 text-body">
                 {job.description || <span className="text-muted-foreground">—</span>}
               </div>
             </Panel>
             <Panel title="Requirements">
-              <div className="whitespace-pre-wrap px-4 py-3 text-sm">
+              <div className="whitespace-pre-wrap px-4 py-3 text-body">
                 {job.requirements || <span className="text-muted-foreground">—</span>}
               </div>
             </Panel>
             <Panel title="Internal notes">
-              <div className="whitespace-pre-wrap px-4 py-3 text-sm">
+              <div className="whitespace-pre-wrap px-4 py-3 text-body">
                 {job.internal_notes || <span className="text-muted-foreground">—</span>}
               </div>
             </Panel>
@@ -180,11 +180,11 @@ export default async function JobPage({
 
             <Panel title="Open tasks" >
               {tasks.length === 0 ? <Empty>None</Empty> : (
-                <ul className="divide-y text-sm">
+                <ul className="divide-y text-body">
                   {tasks.map((t) => (
                     <li key={t.id} className="flex gap-2 px-4 py-2">
                       <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{onDay(t.due_at)}</span>
+                      <span className="shrink-0 text-meta text-muted-foreground">{onDay(t.due_at)}</span>
                     </li>
                   ))}
                 </ul>
@@ -253,7 +253,7 @@ export default async function JobPage({
         <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="Target companies">
             {targets.length === 0 ? <Empty>None named</Empty> : (
-              <ul className="divide-y text-sm">
+              <ul className="divide-y text-body">
                 {targets.map((t) => {
                   const row = t as Record<string, unknown> & {
                     company_id: string; status: string;
@@ -264,7 +264,7 @@ export default async function JobPage({
                       <Link href={`/talent/companies/${row.company_id}`} className="hover:underline">
                         {row.tal_companies?.name ?? "—"}
                       </Link>
-                      <span className="text-xs text-muted-foreground">{row.tal_companies?.industry}</span>
+                      <span className="text-meta text-muted-foreground">{row.tal_companies?.industry}</span>
                       <Chip className="ml-auto" colour={row.status === "off_limits" ? "rose" : "slate"}>
                         {row.status.replace("_", " ")}
                       </Chip>
@@ -279,7 +279,7 @@ export default async function JobPage({
             {matches.length === 0 ? (
               <Empty>None — matching needs the Claude API connected</Empty>
             ) : (
-              <ul className="divide-y text-sm">
+              <ul className="divide-y text-body">
                 {matches.map((m) => {
                   const row = m as Record<string, unknown> & {
                     id: string; score: number | null;
@@ -290,7 +290,7 @@ export default async function JobPage({
                       <Link href={`/talent/people/${row.tal_people?.id}`} className="hover:underline">
                         {row.tal_people?.name}
                       </Link>
-                      <span className="text-xs text-muted-foreground">{row.tal_people?.title}</span>
+                      <span className="text-meta text-muted-foreground">{row.tal_people?.title}</span>
                       <span className="ml-auto tabular-nums">{row.score ?? "—"}</span>
                     </li>
                   );

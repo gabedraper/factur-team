@@ -56,8 +56,8 @@ export function CodingRules({
           />
         </button>
         <div>
-          <p className="text-sm font-medium">Ship safe fixes without review</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-body font-medium">Ship safe fixes without review</p>
+          <p className="text-meta text-muted-foreground">
             {autoShip
               ? "Safe bug fixes commit straight to main."
               : "Every fix opens a pull request."}
@@ -71,7 +71,7 @@ export function CodingRules({
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-meta font-medium text-muted-foreground">
           Extra protected paths — one per line
         </p>
         <Textarea
@@ -79,18 +79,18 @@ export function CodingRules({
           onChange={(e) => setExtra(e.target.value)}
           rows={5}
           placeholder={"components/talent/**\nlib/timelines/**"}
-          className="font-mono text-xs"
+          className="font-mono text-meta"
         />
       </div>
 
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={pending}>Save</Button>
-        {saved && <span className="text-sm text-muted-foreground">Saved</span>}
-        {error && <span className="text-sm text-destructive">{error}</span>}
+        {saved && <span className="text-body text-muted-foreground">Saved</span>}
+        {error && <span className="text-body text-destructive">{error}</span>}
       </div>
 
       <div className="space-y-2">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-meta font-medium text-muted-foreground">
           <Lock className="h-3 w-3" />
           Always protected — {builtIn.length} paths, editable only in code
         </p>
@@ -121,7 +121,7 @@ function Limit({
 }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">
+      <p className="text-meta font-medium text-muted-foreground">
         {label} — max {max}
       </p>
       <Input

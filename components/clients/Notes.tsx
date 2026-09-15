@@ -115,7 +115,7 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
   return (
     <div className="space-y-2">
       {problem && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {problem}
         </p>
       )}
@@ -135,26 +135,26 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
                     rows={3}
                     value={editDraft}
                     onChange={(e) => setEditDraft(e.target.value)}
-                    className={`${FIELD} w-full px-2 py-1 text-sm`}
+                    className={`${FIELD} w-full px-2 py-1 text-body`}
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => setEditing(null)}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                      className="rounded-md border px-2 py-1 text-meta hover:bg-muted"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={() => save(n)}
                       disabled={pending || !editDraft.trim()}
-                      className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="rounded-md bg-primary px-2 py-1 text-meta text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       Save
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="whitespace-pre-wrap text-sm">{n.body}</div>
+                <div className="whitespace-pre-wrap text-body">{n.body}</div>
               )}
               <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                 <span>
@@ -199,10 +199,10 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
             rows={3}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className={`${FIELD} w-full px-2 py-1 text-sm`}
+            className={`${FIELD} w-full px-2 py-1 text-body`}
           />
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-xs">
+            <label className="flex items-center gap-1.5 text-meta">
               <input
                 type="checkbox"
                 checked={pinNew}
@@ -213,14 +213,14 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
             <span className="ml-auto flex gap-2">
               <button
                 onClick={() => { setWriting(false); setDraft(""); }}
-                className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+                className="rounded-md border px-2 py-1 text-meta hover:bg-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={add}
                 disabled={pending || !draft.trim()}
-                className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="rounded-md bg-primary px-2 py-1 text-meta text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 Save note
               </button>
@@ -230,7 +230,7 @@ export function Notes({ clientId, notes }: { clientId: string; notes: ClientNote
       ) : (
         <button
           onClick={() => setWriting(true)}
-          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-body hover:bg-muted"
         >
           <Plus className="h-4 w-4" /> Add note
         </button>

@@ -102,11 +102,11 @@ export function NewOpportunityDialog({
         <DialogHeader><DialogTitle>New Opportunity</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {collisionNote && <p className="text-sm text-amber-600">{collisionNote}</p>}
+          {error && <p className="text-body text-red-600">{error}</p>}
+          {collisionNote && <p className="text-body text-amber-600">{collisionNote}</p>}
 
           <div>
-            <label className="text-xs text-muted-foreground">Client</label>
+            <label className="text-meta text-muted-foreground">Client</label>
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger><SelectValue placeholder="Which client?" /></SelectTrigger>
               <SelectContent>
@@ -118,9 +118,9 @@ export function NewOpportunityDialog({
           </div>
 
           <div>
-            <label className="text-xs text-muted-foreground">Contact</label>
+            <label className="text-meta text-muted-foreground">Contact</label>
             {contact ? (
-              <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+              <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-body">
                 <span className="flex-1">
                   {[contact.first_name, contact.last_name].filter(Boolean).join(" ")}
                   {contact.account_name && <span className="text-muted-foreground"> · {contact.account_name}</span>}
@@ -143,11 +143,11 @@ export function NewOpportunityDialog({
                         <button
                           type="button"
                           onClick={() => { setContact(r); setResults([]); }}
-                          className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                          className="block w-full px-3 py-2 text-left text-body hover:bg-muted"
                         >
                           {[r.first_name, r.last_name].filter(Boolean).join(" ") || r.email}
                           {(r.title || r.account_name) && (
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block text-meta text-muted-foreground">
                               {[r.title, r.account_name].filter(Boolean).join(" · ")}
                             </span>
                           )}
@@ -156,7 +156,7 @@ export function NewOpportunityDialog({
                     ))}
                   </ul>
                 )}
-                {searching && <p className="mt-1 text-xs text-muted-foreground">Searching…</p>}
+                {searching && <p className="mt-1 text-meta text-muted-foreground">Searching…</p>}
               </>
             )}
           </div>

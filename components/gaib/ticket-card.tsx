@@ -154,19 +154,19 @@ export function TicketCard({
      */
     <div id={`gaib-${ticket.ref}`} className="scroll-mt-6 rounded-lg border p-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 shrink-0 text-sm tabular-nums text-muted-foreground">
+        <span className="mt-0.5 shrink-0 text-body tabular-nums text-muted-foreground">
           {ticket.ref}
         </span>
         <div className="min-w-0 flex-1">
           <button
             onClick={() => setOpen((o) => !o)}
-            className="text-left text-sm font-medium hover:underline"
+            className="text-left text-body font-medium hover:underline"
           >
             {ticket.title}
           </button>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {raisedByName && (
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-meta font-medium text-muted-foreground">
                 {raisedByName}
               </span>
             )}
@@ -177,7 +177,7 @@ export function TicketCard({
               The full date and time is on hover.
             */}
             <span
-              className="text-xs text-muted-foreground"
+              className="text-meta text-muted-foreground"
               title={new Date(ticket.created_at).toLocaleString()}
             >
               {submitted(ticket.created_at)}
@@ -187,7 +187,7 @@ export function TicketCard({
               {ticket.severity} — {SEVERITY_MEANS[ticket.severity] ?? ""}
             </Badge>
             <Badge variant="outline">{ticket.lane}</Badge>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               {STATUS[ticket.status] ?? ticket.status}
             </span>
           </div>
@@ -198,7 +198,7 @@ export function TicketCard({
             which is what somebody scanning the queue is actually asking.
           */}
           {latest && (
-            <p className="mt-1.5 text-xs text-muted-foreground" title={new Date(latest.created_at).toLocaleString()}>
+            <p className="mt-1.5 text-meta text-muted-foreground" title={new Date(latest.created_at).toLocaleString()}>
               {describe(latest)} · {submitted(latest.created_at)}
             </p>
           )}
@@ -208,7 +208,7 @@ export function TicketCard({
             always worth reading, so it is shown without opening anything.
           */}
           {ticket.guard_tripped && (
-            <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+            <p className="mt-2 flex items-start gap-1.5 text-meta text-amber-700 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
               {ticket.guard_tripped}
             </p>
@@ -220,7 +220,7 @@ export function TicketCard({
             href={ticket.pr_url}
             target="_blank"
             rel="noreferrer"
-            className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:underline"
+            className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground hover:underline"
           >
             <GitPullRequest className="h-3.5 w-3.5" />
             PR
@@ -231,7 +231,7 @@ export function TicketCard({
             href={ticket.run_url}
             target="_blank"
             rel="noreferrer"
-            className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:underline"
+            className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground hover:underline"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Run
@@ -241,7 +241,7 @@ export function TicketCard({
 
       {open && (
         <div className="mt-4 space-y-4 border-t pt-4">
-          <div className="whitespace-pre-wrap text-sm">{ticket.body}</div>
+          <div className="whitespace-pre-wrap text-body">{ticket.body}</div>
 
           {/*
             The whole history, so "where did it go" has an answer on the card:
@@ -251,7 +251,7 @@ export function TicketCard({
           {history.length > 0 && (
             <ol className="space-y-1 border-l-2 border-muted-foreground/30 pl-3">
               {history.map((e, i) => (
-                <li key={i} className="text-xs text-muted-foreground">
+                <li key={i} className="text-meta text-muted-foreground">
                   <span className="tabular-nums">
                     {new Date(e.created_at).toLocaleString(undefined, {
                       day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
@@ -281,21 +281,21 @@ export function TicketCard({
           {thread === null ? (
             <button
               onClick={() => void ticketConversation(ticket.id).then(setThread)}
-              className="text-xs text-muted-foreground hover:underline"
+              className="text-meta text-muted-foreground hover:underline"
             >
               Show questions
             </button>
           ) : thread.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nothing asked yet</p>
+            <p className="text-meta text-muted-foreground">Nothing asked yet</p>
           ) : (
             <div className="space-y-2">
               {thread.map((q) => (
                 <div key={q.id} className="rounded-md border-l-2 border-muted-foreground/30 pl-3">
-                  <p className="text-sm">{q.question}</p>
+                  <p className="text-body">{q.question}</p>
                   {q.answer ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{q.answer}</p>
+                    <p className="mt-1 text-body text-muted-foreground">{q.answer}</p>
                   ) : (
-                    <p className="mt-1 text-xs italic text-muted-foreground">
+                    <p className="mt-1 text-meta italic text-muted-foreground">
                       {q.closed_at ? "closed without an answer" : "waiting on them"}
                     </p>
                   )}
@@ -307,14 +307,14 @@ export function TicketCard({
           {ticket.page_url && (
             <a
               href={ticket.page_url}
-              className="block truncate text-xs text-muted-foreground hover:underline"
+              className="block truncate text-meta text-muted-foreground hover:underline"
             >
               {ticket.page_url}
             </a>
           )}
 
           {ticket.lane_reason && (
-            <p className="text-xs text-muted-foreground">{ticket.lane_reason}</p>
+            <p className="text-meta text-muted-foreground">{ticket.lane_reason}</p>
           )}
 
           {/*
@@ -329,13 +329,13 @@ export function TicketCard({
                   c === null ? setChatDenied(true) : setChat(c)
                 )
               }
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
+              className="flex items-center gap-1.5 text-meta text-muted-foreground hover:underline"
             >
               <MessagesSquare className="h-3 w-3" />
               Show the conversation
             </button>
           ) : chat.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               No conversation recorded — this one was raised another way.
             </p>
           ) : (
@@ -350,7 +350,7 @@ export function TicketCard({
               </p>
               {chat.map((line, i) =>
                 line.kind === "ticket" ? (
-                  <p key={i} className="text-xs italic text-muted-foreground">
+                  <p key={i} className="text-meta italic text-muted-foreground">
                     raised Ticket {line.ref}
                   </p>
                 ) : (
@@ -358,8 +358,8 @@ export function TicketCard({
                     key={i}
                     className={
                       line.who === "you"
-                        ? "ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-2.5 py-1.5 text-xs text-primary-foreground"
-                        : "w-fit max-w-[85%] rounded-lg bg-background px-2.5 py-1.5 text-xs whitespace-pre-wrap"
+                        ? "ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-2.5 py-1.5 text-meta text-primary-foreground"
+                        : "w-fit max-w-[85%] rounded-lg bg-background px-2.5 py-1.5 text-meta whitespace-pre-wrap"
                     }
                   >
                     {line.text}
@@ -369,13 +369,13 @@ export function TicketCard({
             </div>
           )}
           {chatDenied && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Reading conversations needs the transcripts permission.
             </p>
           )}
 
           {ticket.brief && (
-            <div className="rounded-md bg-muted p-3 whitespace-pre-wrap text-sm">
+            <div className="rounded-md bg-muted p-3 whitespace-pre-wrap text-body">
               {ticket.brief}
             </div>
           )}
@@ -383,9 +383,9 @@ export function TicketCard({
           {(ticket.directions ?? []).length > 0 && (
             <div className="space-y-1">
               {ticket.directions.map((d, i) => (
-                <p key={i} className="rounded-md border-l-2 border-primary/50 pl-3 text-sm">
+                <p key={i} className="rounded-md border-l-2 border-primary/50 pl-3 text-body">
                   {d.text}
-                  <span className="ml-2 text-xs text-muted-foreground">{d.by} · {submitted(d.at)}</span>
+                  <span className="ml-2 text-meta text-muted-foreground">{d.by} · {submitted(d.at)}</span>
                 </p>
               ))}
             </div>
@@ -406,7 +406,7 @@ export function TicketCard({
             onChange={(e) => setDirection(e.target.value)}
             rows={1}
             placeholder="Tell Gaib"
-            className="resize-none text-sm"
+            className="resize-none text-body"
           />
           <Button
             size="sm"
@@ -488,7 +488,7 @@ export function TicketCard({
               onChange={(e) => setWhy(e.target.value)}
               rows={1}
               placeholder="Reason"
-              className="resize-none text-sm"
+              className="resize-none text-body"
             />
             <div className="flex flex-wrap gap-2">
               <Button
@@ -528,7 +528,7 @@ export function TicketCard({
               onChange={(e) => { setQuestion(e.target.value); setAsked(false); }}
               rows={1}
               placeholder={`Ask ${raisedByName ?? "them"} something`}
-              className="min-h-0 resize-none text-sm"
+              className="min-h-0 resize-none text-body"
             />
             <Button
               size="sm"
@@ -548,13 +548,13 @@ export function TicketCard({
             </Button>
           </div>
           {asked && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Gaib will put that to them and bring the answer back here.
             </p>
           )}
 
-          {done && <p className="text-sm text-muted-foreground">{done}</p>}
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {done && <p className="text-body text-muted-foreground">{done}</p>}
+          {error && <p className="text-body text-destructive">{error}</p>}
         </div>
       )}
     </div>

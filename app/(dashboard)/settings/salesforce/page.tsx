@@ -26,7 +26,7 @@ export default async function SalesforceMatchPage() {
 
       <section className="pt-4">
         <h2 className="text-lg font-semibold">Client cover</h2>
-        <p className="mb-3 text-sm text-muted-foreground">
+        <p className="mb-3 text-body text-muted-foreground">
           Who covers a client is set here, in the app. These are the clients
           where Salesforce still says someone else — nothing is changed
           automatically, because which side is right depends on who actually

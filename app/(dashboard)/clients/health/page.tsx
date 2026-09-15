@@ -60,7 +60,7 @@ export default async function ClientHealthPage({
       <PageHeader
         title="Client Health"
         actions={<>{scope.canSeeAll && (
-          <div className="flex overflow-hidden rounded-md border text-sm">
+          <div className="flex overflow-hidden rounded-md border text-body">
             {([
               ["mine", "My Clients", false],
               ["all", "All Clients", true],

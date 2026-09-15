@@ -28,8 +28,8 @@ function Section({
   return (
     <Surface pad="none">
       <div className="flex items-baseline justify-between border-b px-3 py-2">
-        <h2 className={`text-sm font-semibold ${tone ?? ""}`}>{title}</h2>
-        <span className="text-xs tabular-nums text-muted-foreground">{items.length}</span>
+        <h2 className={`text-body font-semibold ${tone ?? ""}`}>{title}</h2>
+        <span className="text-meta tabular-nums text-muted-foreground">{items.length}</span>
       </div>
       <div className="px-3 py-1">
         <WorkRows items={items} show={{ client: true, process: true }} />
@@ -57,13 +57,13 @@ export default async function WorkPage() {
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <PageHeader
           title="My work"
-          actions={<><Link href="/work/browse" className="text-sm text-muted-foreground hover:text-foreground">
+          actions={<><Link href="/work/browse" className="text-body text-muted-foreground hover:text-foreground">
             Spaces
           </Link>
-          <span className="text-xs tabular-nums text-muted-foreground">{total} open</span></>}
+          <span className="text-meta tabular-nums text-muted-foreground">{total} open</span></>}
         />
         {sync?.finishedAt && (
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="text-meta tabular-nums text-muted-foreground">
             synced{" "}
             {new Date(sync.finishedAt).toLocaleString("en-GB", {
               day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
@@ -74,7 +74,7 @@ export default async function WorkPage() {
 
       {total === 0 && (
         <Surface pad="tight">
-          <p className="text-sm text-muted-foreground">Nothing open.</p>
+          <p className="text-body text-muted-foreground">Nothing open.</p>
         </Surface>
       )}
 
@@ -85,16 +85,16 @@ export default async function WorkPage() {
       {blocked.length > 0 && (
         <Surface pad="none">
           <div className="flex items-baseline justify-between border-b px-3 py-2">
-            <h2 className="text-sm font-semibold">Waiting on</h2>
-            <span className="text-xs tabular-nums text-muted-foreground">{blocked.length}</span>
+            <h2 className="text-body font-semibold">Waiting on</h2>
+            <span className="text-meta tabular-nums text-muted-foreground">{blocked.length}</span>
           </div>
           <div className="px-3 py-1">
             {blocked.map((b) => (
               <div key={`${b.item.id}-${b.blockerUrl}`} className="border-b py-1.5 last:border-0">
-                <Link href={`/work/task/${b.item.clickupId}`} className="text-sm hover:underline">
+                <Link href={`/work/task/${b.item.clickupId}`} className="text-body hover:underline">
                   {b.item.title}
                 </Link>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-meta text-muted-foreground">
                   <Link href={`/work/task/${b.blockerClickupId}`} className="hover:text-foreground hover:underline">
                     {b.blockerTitle}
                   </Link>
@@ -113,17 +113,17 @@ export default async function WorkPage() {
       {processes.length > 0 && (
         <Surface pad="none">
           <div className="border-b px-3 py-2">
-            <h2 className="text-sm font-semibold">Processes</h2>
+            <h2 className="text-body font-semibold">Processes</h2>
           </div>
           <div className="px-3 py-1">
             {processes.map((p) => (
               <Link
                 key={p.slug}
                 href={`/work/${p.slug}`}
-                className="flex items-baseline justify-between border-b px-1 py-1.5 text-sm last:border-0 hover:bg-accent/50"
+                className="flex items-baseline justify-between border-b px-1 py-1.5 text-body last:border-0 hover:bg-accent/50"
               >
                 <span>{p.name}</span>
-                <span className="text-xs tabular-nums text-muted-foreground">{p.open}</span>
+                <span className="text-meta tabular-nums text-muted-foreground">{p.open}</span>
               </Link>
             ))}
           </div>

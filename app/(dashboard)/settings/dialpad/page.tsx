@@ -22,7 +22,7 @@ export default async function DialerSettingsPage() {
       />
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+        <div className="flex items-center gap-2 rounded-lg border p-3 text-body">
           <span>Dialpad Mini Dialer (CTI Client ID)</span>
           <Chip colour={ctiConfigured ? "emerald" : "amber"}>{ctiConfigured ? "Configured" : "Not set"}</Chip>
           {!ctiConfigured && (

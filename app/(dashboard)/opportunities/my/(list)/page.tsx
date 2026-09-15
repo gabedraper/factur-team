@@ -15,6 +15,7 @@ import { RememberView } from "@/components/list/RememberView";
 import { ListEmpty } from "@/components/list/EmptyState";
 import { OpportunityTable, OpportunityBoard, type Row } from "@/components/pipeline/OpportunityList";
 import { OpportunityViewTools, NewViewButton } from "@/components/pipeline/OpportunityViewEditor";
+import { control } from "@/components/ui/control";
 
 export const dynamic = "force-dynamic";
 
@@ -170,7 +171,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                 defaultValue={q}
                 placeholder="Search by opportunity, company or contact"
                 aria-label="Search opportunities"
-                className="w-full rounded-md bg-card px-3 py-1.5 text-body outline-none ring-ring focus-visible:ring-2"
+                className={control({ size: "sm", plain: true, className: "w-full" })}
               />
             </form>
             <div className="ml-auto">

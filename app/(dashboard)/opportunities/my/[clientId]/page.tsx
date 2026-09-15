@@ -90,7 +90,7 @@ export default async function ClientOpportunitiesPage({
   return (
     <div className="p-6 space-y-4">
       <div>
-        <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" /> My Opportunities
         </Link>
         <PageHeader title={(client as { name: string }).name} count={rows.length}>
@@ -100,33 +100,33 @@ export default async function ClientOpportunitiesPage({
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Stage</span>
+          <span className="text-meta font-medium text-muted-foreground">Stage</span>
           <Link href={filterHref(clientId, { stage: undefined }, filters)}
-                className={`rounded-full border px-2 py-0.5 text-xs ${!stage ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`rounded-full border px-2 py-0.5 text-meta ${!stage ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
             Open (default)
           </Link>
           {STAGE_GROUPS.flatMap((g) => g.values).map((v) => (
             <Link key={v} href={filterHref(clientId, { stage: v }, filters)}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${stage === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  className={`rounded-full border px-2 py-0.5 text-meta ${stage === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
               {v}
             </Link>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Lead status</span>
+          <span className="text-meta font-medium text-muted-foreground">Lead status</span>
           <Link href={filterHref(clientId, { status: undefined }, filters)}
-                className={`rounded-full border px-2 py-0.5 text-xs ${!status ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`rounded-full border px-2 py-0.5 text-meta ${!status ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
             Any
           </Link>
           {LEAD_STATUSES.map((v) => (
             <Link key={v} href={filterHref(clientId, { status: v }, filters)}
-                  className={`rounded-full border px-2 py-0.5 text-xs ${status === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
+                  className={`rounded-full border px-2 py-0.5 text-meta ${status === v ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
               {v}
             </Link>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Contact</span>
+          <span className="text-meta font-medium text-muted-foreground">Contact</span>
           <AlphaFilter
             active={letter ?? null}
             hrefFor={(l) => filterHref(clientId, { letter: l ?? undefined }, filters)}
@@ -151,7 +151,7 @@ export default async function ClientOpportunitiesPage({
             </THead>
             <TBody>
               {rows.map((r) => (
-                <TR key={r.id} >
+                <TR key={r.id}>
                   <TD>
                     <Link href={`/opportunities/${r.id}`} className="font-medium hover:underline">
                       {[r.crm_contacts?.first_name, r.crm_contacts?.last_name].filter(Boolean).join(" ") || r.name}

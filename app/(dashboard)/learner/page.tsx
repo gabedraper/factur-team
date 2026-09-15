@@ -79,7 +79,7 @@ export default async function LearnerDashboard() {
         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
           <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No training assigned yet.</p>
-          <p className="text-sm mt-1">Your administrator will assign courses to your role.</p>
+          <p className="text-body mt-1">Your administrator will assign courses to your role.</p>
         </div>
       ) : (
         <div className="space-y-10">
@@ -124,7 +124,7 @@ function CourseGrid({ courses }: { courses: any[] }) {
             <div className="flex items-start justify-between gap-2">
               <CardTitle className="text-base line-clamp-1">{course.title}</CardTitle>
               {course.enrollment?.completed_at && (
-                <Badge variant="default" className="text-xs shrink-0">Completed</Badge>
+                <Badge variant="default" className="text-meta shrink-0">Completed</Badge>
               )}
             </div>
             {course.description && (
@@ -134,7 +134,7 @@ function CourseGrid({ courses }: { courses: any[] }) {
           <CardContent>
             {!course.enrollment?.completed_at && (
               <div className="mb-3">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <div className="flex justify-between text-meta text-muted-foreground mb-1">
                   <span>Progress</span>
                   <span>{course.progress}%</span>
                 </div>

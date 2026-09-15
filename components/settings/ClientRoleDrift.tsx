@@ -11,7 +11,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 export function ClientRoleDrift({ rows }: { rows: RoleDrift[] }) {
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Every client&apos;s cover matches Salesforce.
       </p>
     );
@@ -40,7 +40,7 @@ export function ClientRoleDrift({ rows }: { rows: RoleDrift[] }) {
               <TD className="text-muted-foreground">{r.role_label}</TD>
               <TD>{r.in_app ?? <span className="text-muted-foreground">— none —</span>}</TD>
               <TD>{r.in_salesforce}</TD>
-              <TD className="text-xs text-muted-foreground">{r.kind}</TD>
+              <TD className="text-meta text-muted-foreground">{r.kind}</TD>
             </TR>
           ))}
         </TBody>

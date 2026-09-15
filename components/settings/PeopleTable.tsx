@@ -7,6 +7,7 @@ import { isJobRole } from "@/lib/org-roles";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 type Role = { id: string; slug: string; name: string; service_id: string | null; active: boolean };
 type Service = { id: string; name: string };
@@ -91,26 +92,26 @@ export function PeopleTable(
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm", className: "min-w-56" })}
           placeholder="Search name or email…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-body text-muted-foreground">
           <input type="checkbox" checked={onlyReview} onChange={(e) => setOnlyReview(e.target.checked)} />
           Needs review ({reviewCount})
         </label>
-        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-body text-muted-foreground">
           <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
           Show inactive ({inactiveCount})
         </label>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-meta text-muted-foreground">
           {shown.length} of {inScope.length}{pending && " · saving…"}
         </span>
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -138,11 +139,11 @@ export function PeopleTable(
                 <TR key={m.id} className={`${m.needs_review ? "bg-amber-50/60 dark:bg-amber-950/20" : ""}`}>
                   <TD>
                     <div className="font-medium">{m.full_name ?? m.email}</div>
-                    <div className="text-xs text-muted-foreground">{m.email}</div>
+                    <div className="text-meta text-muted-foreground">{m.email}</div>
                   </TD>
                   <TD>
                     <select
-                      className="h-8 rounded-md border bg-field px-2 text-sm"
+                      className={control({ size: "sm" })}
                       value={roleId}
                       onChange={(e) => {
                         const next = e.target.value || null;
@@ -167,7 +168,7 @@ export function PeopleTable(
                   </TD>
                   <TD>
                     <select
-                      className="h-8 max-w-48 rounded-md border bg-field px-2 text-sm"
+                      className={control({ size: "sm", className: "max-w-48" })}
                       value={m.manager_member_id ?? ""}
                       onChange={(e) => {
                         const next = e.target.value || null;
@@ -228,7 +229,7 @@ export function PeopleTable(
         </Table>
       </Surface>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-meta text-muted-foreground">
         Amber rows came from Salesforce without a role that could be resolved — picking one clears
         the flag. <b>Mgr</b> lets someone see their team unmasked on the scoreboards;
         <b> Admin</b> grants full control including this screen.

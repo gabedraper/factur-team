@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { submitNpsResponse } from "@/actions/nps-response";
+import { control } from "@/components/ui/control";
 
 const SCALE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -116,7 +117,7 @@ export function NpsResponseForm({
               onClick={() => choose(n)}
               aria-pressed={score === n}
               aria-label={String(n)}
-              className={`flex h-11 items-center justify-center rounded-md border text-sm tabular-nums transition-colors sm:h-14 sm:text-base ${
+              className={`flex h-11 items-center justify-center rounded-md border text-body tabular-nums transition-colors sm:h-14 sm:text-base ${
                 score === n
                   ? "border-transparent bg-primary font-semibold text-primary-foreground"
                   : "bg-card hover:bg-muted"
@@ -126,14 +127,14 @@ export function NpsResponseForm({
             </button>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="flex justify-between text-meta text-muted-foreground">
           <span>Not at all likely</span>
           <span>Extremely likely</span>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -141,7 +142,7 @@ export function NpsResponseForm({
       {score !== null && (
         <div className="space-y-6">
           <div className="space-y-3">
-            <label htmlFor="nps-comment" className="block text-sm">
+            <label htmlFor="nps-comment" className="block text-body">
               What influenced your rating?
             </label>
             <textarea
@@ -149,25 +150,25 @@ export function NpsResponseForm({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
-              className="block w-full rounded-md border bg-field px-3 py-2 text-sm"
+              className={control({ multiline: true, className: "w-full" })}
             />
             <div className="flex items-center gap-3">
               <button
                 onClick={saveComment}
                 disabled={pending || comment === savedComment}
-                className="h-9 rounded-md border px-4 text-sm disabled:opacity-50"
+                className="h-9 rounded-md border px-4 text-body disabled:opacity-50"
               >
                 Send
               </button>
               {comment === savedComment && (
-                <span className="text-sm text-muted-foreground">Thank you.</span>
+                <span className="text-body text-muted-foreground">Thank you.</span>
               )}
             </div>
           </div>
 
           {asksFollowUp && (
             <div className="space-y-3">
-              <p className="text-sm">
+              <p className="text-body">
                 Would you like a member of your Factur team to follow up with you?
               </p>
               <div className="flex gap-2">
@@ -180,7 +181,7 @@ export function NpsResponseForm({
                     onClick={() => answerFollowUp(option.value)}
                     aria-pressed={followUp === option.value}
                     disabled={pending}
-                    className={`h-9 rounded-md border px-4 text-sm transition-colors disabled:opacity-50 ${
+                    className={`h-9 rounded-md border px-4 text-body transition-colors disabled:opacity-50 ${
                       followUp === option.value
                         ? "border-transparent bg-primary text-primary-foreground"
                         : "bg-card hover:bg-muted"

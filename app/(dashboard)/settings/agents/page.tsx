@@ -47,7 +47,7 @@ export default async function AgentsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/gaib"
-            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-body hover:bg-accent"
           >
             <MessageCircle className="h-4 w-4" />
             Tickets
@@ -55,7 +55,7 @@ export default async function AgentsPage() {
           {canReadTranscripts && (
             <Link
               href="/gaib/transcripts"
-              className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-body hover:bg-accent"
             >
               <ScrollText className="h-4 w-4" />
               Conversations
@@ -63,7 +63,7 @@ export default async function AgentsPage() {
           )}
           <Link
             href="/settings/agents/coding"
-            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+            className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-body hover:bg-accent"
           >
             <Wrench className="h-4 w-4" />
             Coding agent

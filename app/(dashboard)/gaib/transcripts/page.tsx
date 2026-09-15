@@ -80,8 +80,8 @@ export default async function TranscriptsPage({
                 s.id === selectedId ? "border-primary bg-accent" : "hover:bg-accent"
               }`}
             >
-              <p className="truncate text-sm">{s.title ?? "Untitled"}</p>
-              <p className="mt-0.5 flex items-baseline gap-1.5 text-xs text-muted-foreground">
+              <p className="truncate text-body">{s.title ?? "Untitled"}</p>
+              <p className="mt-0.5 flex items-baseline gap-1.5 text-meta text-muted-foreground">
                 <span className="truncate">{names.get(s.user_id) ?? "Unknown"}</span>
                 <span className="ml-auto shrink-0">
                   {new Date(s.last_message_at).toLocaleDateString()}
@@ -89,7 +89,7 @@ export default async function TranscriptsPage({
               </p>
             </Link>
           ))}
-          {!sessions.length && <p className="text-sm text-muted-foreground">—</p>}
+          {!sessions.length && <p className="text-body text-muted-foreground">—</p>}
         </div>
 
         {selected ? (
@@ -108,7 +108,7 @@ export default async function TranscriptsPage({
             }
           />
         ) : (
-          <p className="text-sm text-muted-foreground">—</p>
+          <p className="text-body text-muted-foreground">—</p>
         )}
       </div>
     </div>

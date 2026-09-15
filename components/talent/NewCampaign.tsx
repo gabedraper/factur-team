@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { saveCampaign } from "@/actions/talent-engage";
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/lib/field-class";
+import { control } from "@/components/ui/control";
 
 export function NewCampaign({ jobs }: { jobs: { id: string; title: string }[] }) {
   const router = useRouter();
@@ -29,21 +30,21 @@ export function NewCampaign({ jobs }: { jobs: { id: string; title: string }[] })
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-24">
       <div className="w-full max-w-md space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center">
-          <h2 className="text-sm font-semibold">New campaign</h2>
+          <h2 className="text-body font-semibold">New campaign</h2>
           <button type="button" onClick={() => setOpen(false)} className="ml-auto" aria-label="Close">
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
 
         <input
-          className={`w-full px-2 py-1.5 text-sm ${FIELD}`}
+          className={`w-full px-2 py-1.5 text-body ${FIELD}`}
           placeholder="Name"
           value={name}
           autoFocus
           onChange={(e) => setName(e.target.value)}
         />
         <select
-          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-full" })}
           value={jobId}
           onChange={(e) => setJobId(e.target.value)}
         >
@@ -53,7 +54,7 @@ export function NewCampaign({ jobs }: { jobs: { id: string; title: string }[] })
           ))}
         </select>
         <select
-          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+          className={control({ size: "sm", className: "w-full" })}
           value={audience}
           onChange={(e) => setAudience(e.target.value)}
         >
@@ -61,7 +62,7 @@ export function NewCampaign({ jobs }: { jobs: { id: string; title: string }[] })
           <option value="client">Clients</option>
         </select>
 
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="flex gap-2">
           <Button

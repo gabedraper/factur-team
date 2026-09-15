@@ -354,7 +354,7 @@ export default function LessonEditPage() {
                             updateQuestion(qIdx, "options", newOptions);
                           }}
                           placeholder={`Option ${oIdx + 1}`}
-                          className="h-8 text-sm"
+                          className="h-8 text-body"
                         />
                       </div>
                     ))}
@@ -362,7 +362,7 @@ export default function LessonEditPage() {
                 </div>
               ))}
               {questions.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">
+                <p className="text-muted-foreground text-body text-center py-4">
                   No questions yet. Click &quot;Add Question&quot; to get started.
                 </p>
               )}

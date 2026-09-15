@@ -13,13 +13,13 @@ import { Surface } from "@/components/ui/surface";
 
 type CompanyOption = { id: string; name: string };
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
-const select = "w-full rounded-md border bg-background px-2 py-1.5 text-sm";
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
+const select = "w-full rounded-md border bg-background px-2 py-1.5 text-body";
 
 function Row({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
   return (
     <label className={wide ? "col-span-2 block" : "block"}>
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="mb-1 block text-meta font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -241,7 +241,7 @@ export function JobForm({
           </select>
         </Row>
 
-        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+        <label className="flex items-center gap-2 self-end pb-2 text-body">
           <input
             type="checkbox"
             checked={form.confidential ?? false}
@@ -304,7 +304,7 @@ export function JobForm({
       </Surface>
 
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}

@@ -45,21 +45,21 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
   return (
     <Surface className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">Google Chat</h2>
-        <span className="text-xs text-muted-foreground">
+        <h2 className="text-body font-medium">Google Chat</h2>
+        <span className="text-meta text-muted-foreground">
           {people.length - closed.length} of {people.length} reachable
         </span>
       </div>
 
       {closed.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Everyone can be reached.</p>
+        <p className="text-body text-muted-foreground">Everyone can be reached.</p>
       ) : (
         <>
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {people.map((p) => (
               <label
                 key={p.memberId}
-                className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-body ${
                   p.open ? "text-muted-foreground" : "cursor-pointer hover:bg-accent"
                 }`}
               >
@@ -98,10 +98,10 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
           */}
           {armed && (
             <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
-              <p className="mb-1.5 text-xs font-medium">
+              <p className="mb-1.5 text-meta font-medium">
                 Gaib messages {chosen.length}:
               </p>
-              <p className="text-sm">
+              <p className="text-body">
                 {chosen.map((p) => p.name).join(", ")}
               </p>
             </div>
@@ -151,7 +151,7 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
                 </Button>
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground hover:underline"
+                  className="text-meta text-muted-foreground hover:underline"
                   onClick={() => setPicked(new Set(closed.map((p) => p.memberId)))}
                 >
                   Select all {closed.length}
@@ -163,13 +163,13 @@ export function ChatReachPanel({ people }: { people: ChatReach[] }) {
       )}
 
       {said && (
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+        <p className="flex items-start gap-1.5 text-meta text-muted-foreground">
           <Check className="mt-0.5 h-3 w-3 shrink-0" />
           {said}
         </p>
       )}
       {failures.map((f) => (
-        <p key={f.name} className="text-xs text-destructive">
+        <p key={f.name} className="text-meta text-destructive">
           {f.name}: {f.why}
         </p>
       ))}

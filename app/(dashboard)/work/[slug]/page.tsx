@@ -37,20 +37,20 @@ export default async function ProcessBoardPage({
       <div>
         <Link
           href="/work"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" /> My work
         </Link>
         <PageHeader
           title={process?.name ?? slug}
-          actions={<span className="text-xs tabular-nums text-muted-foreground">{items.length} open</span>}
+          actions={<span className="text-meta tabular-nums text-muted-foreground">{items.length} open</span>}
           className="mt-1"
         />
       </div>
 
       <Surface pad="tight">
         {items.length === 0 ? (
-          <p className="py-3 text-sm text-muted-foreground">Nothing open.</p>
+          <p className="py-3 text-body text-muted-foreground">Nothing open.</p>
         ) : (
           <WorkRows items={items} show={{ client: true }} />
         )}

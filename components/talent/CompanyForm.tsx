@@ -7,13 +7,14 @@ import { createCompany, updateCompany, type CompanyInput } from "@/actions/talen
 import { Button } from "@/components/ui/button";
 import { FIELD } from "@/lib/field-class";
 import { COMPANY_KIND } from "@/lib/talent/types";
+import { control } from "@/components/ui/control";
 
-const input = `w-full px-2 py-1.5 text-sm ${FIELD}`;
+const input = `w-full px-2 py-1.5 text-body ${FIELD}`;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="mb-1 block text-meta font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -90,7 +91,7 @@ export function CompanyForm({
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-20">
       <div className="w-full max-w-lg space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center">
-          <h2 className="text-sm font-semibold">{company ? "Edit company" : "Add company"}</h2>
+          <h2 className="text-body font-semibold">{company ? "Edit company" : "Add company"}</h2>
           <button
             type="button" onClick={() => setOpen(false)}
             className="ml-auto text-muted-foreground hover:text-foreground" aria-label="Close"
@@ -131,7 +132,7 @@ export function CompanyForm({
               onChange={(e) => set("phone", e.target.value)} />
           </Field>
           <Field label="Type">
-            <select className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            <select className={control({ size: "sm", className: "w-full" })}
               value={form.kind} onChange={(e) => set("kind", e.target.value)}>
               {Object.entries(COMPANY_KIND).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
@@ -139,7 +140,7 @@ export function CompanyForm({
             </select>
           </Field>
           <Field label="Factur client">
-            <select className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+            <select className={control({ size: "sm", className: "w-full" })}
               value={form.org_client_id ?? ""}
               onChange={(e) => set("org_client_id", e.target.value || null)}>
               <option value="">—</option>
@@ -156,7 +157,7 @@ export function CompanyForm({
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="flex gap-2">
           <Button size="sm" onClick={submit} disabled={pending || !form.name.trim()}>

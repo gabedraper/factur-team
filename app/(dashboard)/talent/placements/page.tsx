@@ -54,7 +54,7 @@ export default async function PlacementsPage({
             <Link
               key={f.key || "all"}
               href={f.key ? `/talent/placements?status=${f.key}` : "/talent/placements"}
-              className={`rounded-full px-3 py-1 text-xs ${
+              className={`rounded-full px-3 py-1 text-meta ${
                 (params.status ?? "") === f.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground hover:text-foreground"
@@ -84,7 +84,7 @@ export default async function PlacementsPage({
               {rows.map((r) => {
                 const inGuarantee = r.guarantee_ends_on && r.guarantee_ends_on >= today;
                 return (
-                  <TR key={r.id} >
+                  <TR key={r.id}>
                     <TD>
                       {r.tal_people ? (
                         <Link href={`/talent/people/${r.tal_people.id}`} className="font-medium hover:underline">
@@ -113,7 +113,7 @@ export default async function PlacementsPage({
                     <TD numeric>
                       {money(r.fee_amount)}
                       {r.fee_percent ? (
-                        <span className="ml-1 text-xs text-muted-foreground">{r.fee_percent}%</span>
+                        <span className="ml-1 text-meta text-muted-foreground">{r.fee_percent}%</span>
                       ) : null}
                     </TD>
                     <TD>

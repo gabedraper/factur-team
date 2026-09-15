@@ -26,6 +26,7 @@ import { roleLabelsAction } from "@/actions/org";
 import { useSort, SortHeader } from "@/components/ui/sortable";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 interface Enrollment {
   id: string;
@@ -223,7 +224,7 @@ export default function AdminEnrollmentsPage() {
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : loadError ? (
-        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {loadError}
         </div>
       ) : filtered.length === 0 ? (
@@ -250,10 +251,10 @@ export default function AdminEnrollmentsPage() {
                   ? new Date(e.deadline).toISOString().split("T")[0]
                   : "";
                 return (
-                  <TR key={e.id} >
+                  <TR key={e.id}>
                     <TD className="py-3">
                       <p className="font-medium">{e.profiles?.full_name ?? "—"}</p>
-                      <p className="text-xs text-muted-foreground">{roleLabels[e.profiles?.id ?? ""] ?? "No role set"}</p>
+                      <p className="text-meta text-muted-foreground">{roleLabels[e.profiles?.id ?? ""] ?? "No role set"}</p>
                     </TD>
                     <TD className="py-3">
                       <p className="max-w-[220px] truncate">{e.courses?.title ?? "—"}</p>
@@ -272,7 +273,7 @@ export default function AdminEnrollmentsPage() {
                         type="date"
                         defaultValue={deadlineValue}
                         onBlur={(ev) => handleDeadlineChange(e.id, ev.target.value)}
-                        className="text-xs border rounded px-2 py-1 bg-background"
+                        className={control({ size: "sm" })}
                       />
                     </TD>
                     <TD numeric className="py-3">

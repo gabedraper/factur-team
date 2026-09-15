@@ -158,7 +158,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
       </div>
 
       {error && (
-        <p className="text-sm text-red-400">
+        <p className="text-body text-red-400">
           Couldn&apos;t load deals: {error.message}
         </p>
       )}
@@ -173,20 +173,20 @@ export default async function DealsPage(props: ScoreboardPageProps) {
             {avgSplit && i === avgSplit.insertAt && (
               <li className="flex items-center gap-3 py-2">
                 <span className="h-px flex-1 bg-muted" />
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                <span className="shrink-0 text-meta font-medium text-muted-foreground">
                   Company Average — {Math.round(avgSplit.average)}
                 </span>
                 <span className="h-px flex-1 bg-muted" />
               </li>
             )}
             <li className="group relative flex items-center gap-4 py-3">
-              <span className="w-6 text-sm text-muted-foreground">{i + 1}</span>
+              <span className="w-6 text-body text-muted-foreground">{i + 1}</span>
               {/* Never on a masked row -- a face names somebody as well as
                   their name does. */}
               {!maskRow && (
                 <Avatar name={rep.display_name} src={avatars[rep.rep_id]} size={28} />
               )}
-              <span className="flex-1 text-sm">
+              <span className="flex-1 text-body">
                 {maskRow ? (
                   <MaskedName />
                 ) : (
@@ -200,7 +200,7 @@ export default async function DealsPage(props: ScoreboardPageProps) {
                   </>
                 )}
               </span>
-              <span className="w-16 text-right text-sm font-medium">
+              <span className="w-16 text-right text-body font-medium">
                 {rep.isManager ? Math.round(rep.totalPoints) : rep.totalPoints}
               </span>
               {maskRow ? (
@@ -225,14 +225,14 @@ export default async function DealsPage(props: ScoreboardPageProps) {
         {avgSplit && avgSplit.insertAt === ranked.length && (
           <li className="flex items-center gap-3 py-2">
             <span className="h-px flex-1 bg-muted" />
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0 text-meta font-medium text-muted-foreground">
               Company Average — {Math.round(avgSplit.average)}
             </span>
             <span className="h-px flex-1 bg-muted" />
           </li>
         )}
         {ranked.length === 0 && !error && (
-          <li className="py-6 text-center text-sm text-muted-foreground">
+          <li className="py-6 text-center text-body text-muted-foreground">
             No deals in this period.
           </li>
         )}

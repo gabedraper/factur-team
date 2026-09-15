@@ -17,7 +17,7 @@ const ICON = {
  */
 export function ContainerRows({ items }: { items: Container[] }) {
   if (items.length === 0) {
-    return <p className="px-1 py-3 text-sm text-muted-foreground">Empty.</p>;
+    return <p className="px-1 py-3 text-body text-muted-foreground">Empty.</p>;
   }
 
   return (
@@ -31,11 +31,11 @@ export function ContainerRows({ items }: { items: Container[] }) {
             className="flex items-baseline gap-3 border-b px-1 py-2 last:border-0 hover:bg-accent/50"
           >
             <Icon className="h-4 w-4 shrink-0 self-center text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate text-sm">{c.name}</span>
+            <span className="min-w-0 flex-1 truncate text-body">{c.name}</span>
             {c.openCount !== null && c.openCount > 0 && (
-              <span className="shrink-0 text-xs tabular-nums">{c.openCount} open</span>
+              <span className="shrink-0 text-meta tabular-nums">{c.openCount} open</span>
             )}
-            <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+            <span className="w-20 shrink-0 text-right text-meta tabular-nums text-muted-foreground">
               {c.taskCount || ""}
             </span>
           </Link>

@@ -5,6 +5,8 @@ import { Surface } from "@/components/ui/surface";
 import { clearHref, SEARCH_KEY } from "@/lib/reports/params";
 import type { Sort } from "@/lib/reports/run";
 import type { AnyReport, Option, Values } from "@/lib/reports/types";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 
 /**
  * The filter bar, drawn from the report's parameter list.
@@ -15,10 +17,8 @@ import type { AnyReport, Option, Values } from "@/lib/reports/types";
  * a picklist is a native select for the same reason: it posts.
  */
 
-/* The Input's own recipe at the bar's height, so a select sits level with it. */
-const FIELD =
-  "flex h-9 w-full rounded-md border border-input bg-field px-3 py-1 text-sm ring-offset-background " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+/* Every control on the filter bar, from the app's one recipe. */
+const FIELD = control({ size: "sm", className: "flex w-full" });
 
 export function ReportFilters({
   report,
@@ -51,8 +51,7 @@ export function ReportFilters({
         ) : null}
 
         {report.params.map((p) => (
-          <label key={p.key} className="flex min-w-[10rem] flex-col gap-1">
-            <span className="text-meta font-medium text-muted-foreground">{p.label}</span>
+          <Field label={<>{p.label}</>}>
             {p.type === "picklist" ? (
               <select name={p.key} defaultValue={values[p.key] ?? ""} className={FIELD}>
                 {p.default ? null : <option value="">{p.any ?? "Any"}</option>}
@@ -69,12 +68,11 @@ export function ReportFilters({
                 className="h-9"
               />
             )}
-          </label>
+          </Field>
         ))}
 
         {report.search ? (
-          <label className="flex min-w-[12rem] flex-col gap-1">
-            <span className="text-meta font-medium text-muted-foreground">Search</span>
+          <Field label="Search">
             <Input
               name={SEARCH_KEY}
               type="search"
@@ -82,7 +80,7 @@ export function ReportFilters({
               placeholder="Name or keyword"
               className="h-9"
             />
-          </label>
+          </Field>
         ) : null}
 
         <div className="flex h-9 items-center gap-3">

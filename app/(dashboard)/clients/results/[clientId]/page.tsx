@@ -27,7 +27,7 @@ const SIZE_LABEL: Record<string, string> = {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-meta text-muted-foreground">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );
@@ -37,9 +37,9 @@ function Tags({ label, items }: { label: string; items: string[] }) {
   if (!items.length) return null;
   return (
     <div className="flex flex-wrap items-baseline gap-1.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-meta text-muted-foreground">{label}</span>
       {items.map((i) => (
-        <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+        <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-meta">
           {i}
         </span>
       ))}
@@ -80,9 +80,9 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className="font-semibold">{series.service}</h2>
         {headline && (
-          <span className="text-xs text-muted-foreground">{HEADLINE_LABEL[headline]}</span>
+          <span className="text-meta text-muted-foreground">{HEADLINE_LABEL[headline]}</span>
         )}
-        <span className="text-sm text-muted-foreground tabular-nums">
+        <span className="text-body text-muted-foreground tabular-nums">
           {monthLabel.format(new Date(`${series.months[0].monthStart}T00:00:00Z`))} –{" "}
           {monthLabel.format(
             new Date(`${series.months[series.months.length - 1].monthStart}T00:00:00Z`),
@@ -165,17 +165,17 @@ export default async function ClientResultPage({
   return (
     <div className="space-y-5 p-6">
       <div className="flex flex-wrap items-baseline gap-3">
-        <Link href="/clients/results" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/clients/results" className="text-body text-muted-foreground hover:underline">
           Client Results
         </Link>
         <PageHeader title={client.name} />
-        <span className="text-sm text-muted-foreground">{client.status ?? "—"}</span>
+        <span className="text-body text-muted-foreground">{client.status ?? "—"}</span>
         {client.website && (
           <a
             href={client.website}
             target="_blank"
             rel="noreferrer noopener"
-            className="text-sm text-muted-foreground hover:underline"
+            className="text-body text-muted-foreground hover:underline"
           >
             {client.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
           </a>
@@ -200,15 +200,15 @@ export default async function ClientResultPage({
       <ServicePeriods clientId={clientId} periods={periods} />
 
       <div className="space-y-2 rounded-md border p-3">
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm">
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-body">
           <span>
-            <span className="text-xs text-muted-foreground">Type of work </span>
+            <span className="text-meta text-muted-foreground">Type of work </span>
             <span className={client.businessTypeInferred ? "italic" : ""}>
               {client.businessType ?? "—"}
             </span>
           </span>
           <span>
-            <span className="text-xs text-muted-foreground">Size </span>
+            <span className="text-meta text-muted-foreground">Size </span>
             <span className={client.sizeInferred ? "italic" : ""}>
               {client.sizeBand ? SIZE_LABEL[client.sizeBand] : "—"}
               {client.employees ? ` · ${nf.format(client.employees)}` : ""}
@@ -216,12 +216,12 @@ export default async function ClientResultPage({
           </span>
           {client.industry && (
             <span>
-              <span className="text-xs text-muted-foreground">Industry </span>
+              <span className="text-meta text-muted-foreground">Industry </span>
               {client.industry}
             </span>
           )}
         </div>
-        {client.summary && <p className="text-sm">{client.summary}</p>}
+        {client.summary && <p className="text-body">{client.summary}</p>}
         <Tags label="Capabilities" items={client.capabilities} />
         <Tags label="Materials" items={client.materials} />
         <Tags label="Certifications" items={client.certifications} />
@@ -232,7 +232,7 @@ export default async function ClientResultPage({
         <ServiceTable key={s.service} series={s} />
       ))}
       {!series.length && (
-        <p className="rounded-md border p-4 text-sm text-muted-foreground">
+        <p className="rounded-md border p-4 text-body text-muted-foreground">
           No results recorded.
         </p>
       )}

@@ -22,7 +22,7 @@ export default async function ListsPage() {
 
       <Panel>
         {lists.length === 0 ? <Empty>No lists</Empty> : (
-          <ul className="divide-y text-sm">
+          <ul className="divide-y text-body">
             {lists.map((l) => (
               <li key={l.id} className="flex items-center gap-2 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
@@ -32,16 +32,16 @@ export default async function ListsPage() {
                   >
                     {l.name}
                   </Link>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-meta text-muted-foreground">
                     {l.description ?? l.entity}
                     {l.org_members?.full_name ? ` · ${l.org_members.full_name}` : ""}
                   </p>
                 </div>
                 {l.is_smart && <Chip colour="violet">Smart</Chip>}
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                   {l.tal_list_members?.[0]?.count ?? 0}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{ago(l.created_at)}</span>
+                <span className="shrink-0 text-meta text-muted-foreground">{ago(l.created_at)}</span>
               </li>
             ))}
           </ul>

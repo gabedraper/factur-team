@@ -44,9 +44,9 @@ export default async function SequencesPage() {
           >
             <div className="min-w-0">
               <div className="font-medium">{s.name}</div>
-              <div className="truncate text-sm text-muted-foreground">{s.description}</div>
+              <div className="truncate text-body text-muted-foreground">{s.description}</div>
             </div>
-            <div className="ml-auto shrink-0 text-sm text-muted-foreground">
+            <div className="ml-auto shrink-0 text-body text-muted-foreground">
               {s.steps?.[0]?.count ?? 0} steps ·{" "}
               {s.mode === "full" ? "sends" : "drafts"}
             </div>

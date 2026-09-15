@@ -6,6 +6,7 @@ import { addToSequence } from "@/actions/sequence-audience";
 import { parseCsv, type Candidate } from "@/lib/sequences/audience";
 import { Surface, surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 /**
  * Pick where the people come from, then look at them before anybody is added.
@@ -88,20 +89,20 @@ export function AddContacts({
           className={`${surface({ pad: "tight", interactive: true })} block w-full text-left`}
         >
           <span className="block font-medium">Contacts in the app</span>
-          <span className="block text-sm text-muted-foreground">
+          <span className="block text-body text-muted-foreground">
             {contacts.length} contacts, opted-out and bounced addresses already excluded
           </span>
         </button>
 
         <label className={`${surface({ pad: "tight", interactive: true })} block cursor-pointer`}>
           <span className="block font-medium">CSV upload</span>
-          <span className="block text-sm text-muted-foreground">
+          <span className="block text-body text-muted-foreground">
             Any file with a column of email addresses
           </span>
           <input
             type="file"
             accept=".csv,text/csv,text/plain"
-            className="mt-2 block w-full text-sm"
+            className="mt-2 block w-full text-body"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onFile(f);
@@ -111,13 +112,13 @@ export function AddContacts({
 
         <Surface pad="tight" className="opacity-60">
           <span className="block font-medium">Salesforce list or report</span>
-          <span className="block text-sm text-muted-foreground">
+          <span className="block text-body text-muted-foreground">
             Needs a Salesforce connection the app does not have yet
           </span>
         </Surface>
 
         {error && (
-          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             {error}
           </p>
         )}
@@ -128,16 +129,16 @@ export function AddContacts({
   return (
     <div className="space-y-3">
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
-      {note && <p className="text-sm text-muted-foreground">{note}</p>}
+      {note && <p className="text-body text-muted-foreground">{note}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => { setSource(null); setRows([]); setChosen(new Set()); }}
-          className="h-8 rounded-md border px-3 text-sm"
+          className="h-8 rounded-md border px-3 text-body"
         >
           Back
         </button>
@@ -145,7 +146,7 @@ export function AddContacts({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Search"
-          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm", className: "min-w-56" })}
         />
         <button
           onClick={() =>
@@ -157,17 +158,17 @@ export function AddContacts({
               return next;
             })
           }
-          className="h-8 rounded-md border px-3 text-sm"
+          className="h-8 rounded-md border px-3 text-body"
         >
           {allShownChosen ? "Deselect all" : "Select all"}
         </button>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-meta text-muted-foreground">
           {chosen.size} of {rows.filter((r) => !r.problem).length} selected
         </span>
         <button
           onClick={add}
           disabled={pending || chosen.size === 0}
-          className="h-8 rounded-md bg-primary px-4 text-sm text-primary-foreground disabled:opacity-50"
+          className="h-8 rounded-md bg-primary px-4 text-body text-primary-foreground disabled:opacity-50"
         >
           Add {chosen.size} to sequence
         </button>

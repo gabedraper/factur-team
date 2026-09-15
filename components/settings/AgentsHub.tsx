@@ -51,12 +51,12 @@ export function AgentsHub({
             }`}
           >
             <div className="flex items-center gap-1.5">
-              <span className="truncate text-sm font-medium">{a.name}</span>
+              <span className="truncate text-body font-medium">{a.name}</span>
               {a.isDefault && <Star className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
               {!a.enabled && <EyeOff className="h-3 w-3 shrink-0 text-muted-foreground" />}
             </div>
             {a.tagline && (
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">{a.tagline}</p>
+              <p className="mt-0.5 truncate text-meta text-muted-foreground">{a.tagline}</p>
             )}
           </button>
         ))}
@@ -96,10 +96,10 @@ export function AgentsHub({
           run={run}
         />
       ) : (
-        <p className="text-sm text-muted-foreground">—</p>
+        <p className="text-body text-muted-foreground">—</p>
       )}
 
-      {error && <p className="text-sm text-destructive md:col-span-2">{error}</p>}
+      {error && <p className="text-body text-destructive md:col-span-2">{error}</p>}
     </div>
   );
 }
@@ -170,7 +170,7 @@ function Editor({
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
           rows={16}
-          className="font-mono text-xs"
+          className="font-mono text-meta"
         />
       </Field>
 
@@ -185,7 +185,7 @@ function Editor({
               </Button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             {MODELS.find((m) => m.id === model)?.note}
           </p>
         </Field>
@@ -230,14 +230,14 @@ function Editor({
               />
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">{t.label}</span>
+                  <span className="text-body font-medium">{t.label}</span>
                   {t.reads && (
                     <Badge variant="outline" className="text-[10px] font-normal">
                       {t.reads}
                     </Badge>
                   )}
                 </span>
-                <span className="block text-xs text-muted-foreground">{t.blurb}</span>
+                <span className="block text-meta text-muted-foreground">{t.blurb}</span>
               </span>
             </label>
           ))}
@@ -281,7 +281,7 @@ function Editor({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-meta font-medium text-muted-foreground">{label}</p>
       {children}
     </div>
   );

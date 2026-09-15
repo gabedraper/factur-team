@@ -34,50 +34,50 @@ export default async function TalentTodayPage() {
 
       <div className="grid gap-3 sm:grid-cols-4">
         <Link href="/talent/tasks" className={surface({ pad: "tight", interactive: true })}>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta uppercase tracking-wide text-muted-foreground">
             <ListTodo className="h-3.5 w-3.5" />
             Tasks
           </div>
           <div className="mt-1 text-2xl font-semibold tabular-nums">{tasks.length}</div>
           {overdue > 0 && (
-            <div className="text-xs text-red-600 dark:text-red-400">{overdue} overdue</div>
+            <div className="text-meta text-red-600 dark:text-red-400">{overdue} overdue</div>
           )}
         </Link>
 
         <Link href="/talent/schedule" className={surface({ pad: "tight", interactive: true })}>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta uppercase tracking-wide text-muted-foreground">
             <CalendarClock className="h-3.5 w-3.5" />
             Interviews
           </div>
           <div className="mt-1 text-2xl font-semibold tabular-nums">{interviews.length}</div>
-          <div className="text-xs text-muted-foreground">next 7 days</div>
+          <div className="text-meta text-muted-foreground">next 7 days</div>
         </Link>
 
         <Link href="/talent/pipeline?stale=1" className={surface({ pad: "tight", interactive: true })}>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta uppercase tracking-wide text-muted-foreground">
             <AlertTriangle className="h-3.5 w-3.5" />
             Going cold
           </div>
           <div className={`mt-1 text-2xl font-semibold tabular-nums ${stale.length ? "text-amber-600 dark:text-amber-400" : ""}`}>
             {stale.length}
           </div>
-          <div className="text-xs text-muted-foreground">7 days untouched</div>
+          <div className="text-meta text-muted-foreground">7 days untouched</div>
         </Link>
 
         <Link href="/talent/applications" className={surface({ pad: "tight", interactive: true })}>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta uppercase tracking-wide text-muted-foreground">
             <Inbox className="h-3.5 w-3.5" />
             Applications
           </div>
           <div className="mt-1 text-2xl font-semibold tabular-nums">{newApplications}</div>
-          <div className="text-xs text-muted-foreground">unreviewed</div>
+          <div className="text-meta text-muted-foreground">unreviewed</div>
         </Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="My tasks">
           {tasks.length === 0 ? <Empty>Nothing due</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {tasks.map((t) => {
                 const row = t as Record<string, unknown> & {
                   id: string; title: string; due_at: string | null; priority: string;
@@ -89,7 +89,7 @@ export default async function TalentTodayPage() {
                   <li key={row.id} className="flex items-center gap-2 px-4 py-2">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate">{row.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block truncate text-meta text-muted-foreground">
                         {row.tal_people ? (
                           <Link href={`/talent/people/${row.tal_people.id}`} className="hover:underline">
                             {row.tal_people.name}
@@ -103,7 +103,7 @@ export default async function TalentTodayPage() {
                         ) : null}
                       </span>
                     </span>
-                    <span className={`shrink-0 text-xs tabular-nums ${late ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                    <span className={`shrink-0 text-meta tabular-nums ${late ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                       {onDay(row.due_at)}
                     </span>
                   </li>
@@ -115,7 +115,7 @@ export default async function TalentTodayPage() {
 
         <Panel title="This week">
           {interviews.length === 0 ? <Empty>Nothing scheduled</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {interviews.map((i) => {
                 const row = i as Record<string, unknown> & {
                   id: string; starts_at: string; kind: string;
@@ -132,11 +132,11 @@ export default async function TalentTodayPage() {
                           </Link>
                         ) : "—"}
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block truncate text-meta text-muted-foreground">
                         {row.tal_jobs?.title ?? "—"}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-meta text-muted-foreground">
                       {onDayTime(row.starts_at)}
                     </span>
                   </li>
@@ -148,18 +148,18 @@ export default async function TalentTodayPage() {
 
         <Panel title="Going cold">
           {stale.length === 0 ? <Empty>Nothing sitting</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {stale.map((c) => (
                 <li key={c.candidate_id} className="flex items-center gap-2 px-4 py-2">
                   <span className="min-w-0 flex-1">
                     <Link href={`/talent/people/${c.person_id}`} className="block truncate hover:underline">
                       {c.person_name}
                     </Link>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block truncate text-meta text-muted-foreground">
                       {c.job_title} · {c.stage_name ?? "—"}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs tabular-nums text-amber-600 dark:text-amber-400">
+                  <span className="shrink-0 text-meta tabular-nums text-amber-600 dark:text-amber-400">
                     {c.days_since_touch}d
                   </span>
                 </li>
@@ -170,16 +170,16 @@ export default async function TalentTodayPage() {
 
         <Panel title="My jobs">
           {jobs.length === 0 ? <Empty>None</Empty> : (
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {jobs.map((j) => (
                 <li key={j.id} className="flex items-center gap-2 px-4 py-2">
                   <Link href={`/talent/jobs/${j.id}`} className="min-w-0 flex-1 truncate hover:underline">
                     {j.title}
                   </Link>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                     {j.active_count} active
                   </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{ago(j.last_activity_at)}</span>
+                  <span className="shrink-0 text-meta text-muted-foreground">{ago(j.last_activity_at)}</span>
                 </li>
               ))}
             </ul>
@@ -188,7 +188,7 @@ export default async function TalentTodayPage() {
 
         {awaitingFeedback.length > 0 && (
           <Panel title="Waiting on the client" className="lg:col-span-2">
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {awaitingFeedback.map((s) => {
                 const row = s as Record<string, unknown> & {
                   id: string; status: string; shared_at: string | null; view_count: number;
@@ -201,7 +201,7 @@ export default async function TalentTodayPage() {
                       <span className="text-muted-foreground"> · {row.tal_jobs?.title ?? "—"}</span>
                     </span>
                     <Chip colour={row.status === "viewed" ? "amber" : "slate"}>{row.status}</Chip>
-                    <span className="shrink-0 text-xs text-muted-foreground">{ago(row.shared_at)}</span>
+                    <span className="shrink-0 text-meta text-muted-foreground">{ago(row.shared_at)}</span>
                   </li>
                 );
               })}
@@ -211,7 +211,7 @@ export default async function TalentTodayPage() {
       </div>
 
       {!access.recruit && (
-        <p className="text-sm text-muted-foreground">Read only</p>
+        <p className="text-body text-muted-foreground">Read only</p>
       )}
     </div>
   );

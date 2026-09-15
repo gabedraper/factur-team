@@ -71,7 +71,7 @@ export default async function SchedulePage() {
               </span>
             }
           >
-            <ul className="divide-y text-sm">
+            <ul className="divide-y text-body">
               {items.map((i) => (
                 <li key={i.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
                   <span className="w-20 shrink-0 tabular-nums text-muted-foreground">
@@ -85,7 +85,7 @@ export default async function SchedulePage() {
                         {i.tal_people.name}
                       </Link>
                     ) : "—"}
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block truncate text-meta text-muted-foreground">
                       {i.tal_jobs ? (
                         <Link href={`/talent/jobs/${i.tal_jobs.id}`} className="hover:underline">
                           {i.tal_jobs.title}
@@ -104,7 +104,7 @@ export default async function SchedulePage() {
                       href={i.video_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="shrink-0 text-xs text-primary hover:underline"
+                      className="shrink-0 text-meta text-primary hover:underline"
                     >
                       Join
                     </a>

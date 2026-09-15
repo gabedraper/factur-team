@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { pinView } from "@/actions/list-views";
 import type { ResolvedView } from "@/lib/list-views/catalogue";
+import { control } from "@/components/ui/control";
 
 /**
  * The row of views at the top of every list.
@@ -118,7 +119,7 @@ export function ViewSwitcher({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Find a view"
-                  className="mb-2 w-full rounded-sm bg-field px-2 py-1.5 text-body outline-none ring-ring focus-visible:ring-2"
+                  className={control({ size: "sm", className: "mb-2 w-full text-body" })}
                 />
                 <div className="max-h-72 overflow-y-auto">
                   {matches.length === 0 ? (

@@ -36,7 +36,7 @@ export function ContactEditor({
 
   return (
     <Panel title="Contact">
-      <dl className="space-y-2 p-4 text-sm">
+      <dl className="space-y-2 p-4 text-body">
         <div className="flex items-center justify-between gap-2">
           <dt className="text-muted-foreground">Phone</dt>
           <dd className="flex items-center gap-2 tabular-nums">

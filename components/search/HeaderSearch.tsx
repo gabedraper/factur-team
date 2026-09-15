@@ -10,6 +10,7 @@ import {
   SEARCH_OBJECTS, OBJECT_LABEL, defaultScopeFor, hrefFor, isSearchObject,
   type SearchGroup, type SearchObject, type SearchScope,
 } from "@/lib/search/objects";
+import { control } from "@/components/ui/control";
 
 /*
  * The search in the top bar. An object picker, then the box -- Salesforce's
@@ -157,7 +158,7 @@ export function HeaderSearch({ allowed }: { allowed: SearchObject[] }) {
 
   return (
     <div ref={boxRef} className="relative w-full max-w-xl">
-      <div className="flex h-8 items-center rounded-md bg-field ring-ring focus-within:ring-2">
+      <div className={control({ size: "sm", className: "flex items-center border-0 px-0 ring-ring focus-within:ring-2" })}>
         <select
           aria-label="Search in"
           value={scope}
@@ -166,7 +167,7 @@ export function HeaderSearch({ allowed }: { allowed: SearchObject[] }) {
             inputRef.current?.focus();
             setOpen(true);
           }}
-          className="h-full max-w-[10rem] shrink-0 cursor-pointer rounded-l-md border-r border-border bg-transparent pl-2 pr-1 text-meta text-muted-foreground outline-none hover:text-foreground"
+          className={control({ className: "h-full max-w-[10rem] shrink-0 cursor-pointer bg-transparent pl-2 pr-1 text-meta text-muted-foreground hover:text-foreground" })}
         >
           <option value="all">All</option>
           {options.map((o) => (

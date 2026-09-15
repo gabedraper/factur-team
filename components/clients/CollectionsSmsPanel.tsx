@@ -54,7 +54,7 @@ export function CollectionsSmsPanel({
   }
 
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-body">
       {error && <p className="text-red-600">{error}</p>}
 
       <div className="flex justify-between gap-2">
@@ -95,7 +95,7 @@ export function CollectionsSmsPanel({
             rows={3}
           />
           <div className="flex items-center justify-end gap-2">
-            {sent && <span className="mr-auto text-xs text-emerald-600">Sent.</span>}
+            {sent && <span className="mr-auto text-meta text-emerald-600">Sent.</span>}
             <Button size="sm" onClick={send} disabled={pending || !target.phone || !body.trim()}>
               Send
             </Button>

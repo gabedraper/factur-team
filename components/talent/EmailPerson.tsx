@@ -7,6 +7,7 @@ import { sendTalentEmail } from "@/actions/talent-mail";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/talent/bits";
 import { FIELD } from "@/lib/field-class";
+import { control } from "@/components/ui/control";
 
 type Template = { id: string; name: string; subject: string; body: string };
 
@@ -85,7 +86,7 @@ export function EmailPerson({
     <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-6 pt-20">
       <div className="w-full max-w-2xl space-y-3 rounded-md bg-card p-card shadow-modal">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">Email {personName}</h2>
+          <h2 className="text-body font-semibold">Email {personName}</h2>
           <button
             type="button"
             onClick={() => { setOpen(false); setResult(null); setError(null); }}
@@ -98,14 +99,14 @@ export function EmailPerson({
 
         <div className="flex flex-wrap gap-2">
           <input
-            className={`min-w-56 flex-1 px-2 py-1.5 text-sm ${FIELD}`}
+            className={`min-w-56 flex-1 px-2 py-1.5 text-body ${FIELD}`}
             value={address}
             placeholder="To"
             onChange={(e) => setAddress(e.target.value)}
           />
           {templates.length > 0 && (
             <select
-              className="rounded-md border bg-background px-2 py-1.5 text-sm"
+              className={control({ size: "sm" })}
               value=""
               onChange={(e) => {
                 const t = templates.find((x) => x.id === e.target.value);
@@ -121,7 +122,7 @@ export function EmailPerson({
         </div>
 
         <input
-          className={`w-full px-2 py-1.5 text-sm ${FIELD}`}
+          className={`w-full px-2 py-1.5 text-body ${FIELD}`}
           value={subject}
           placeholder="Subject"
           autoFocus
@@ -129,7 +130,7 @@ export function EmailPerson({
         />
 
         <textarea
-          className={`min-h-48 w-full px-3 py-2 text-sm ${FIELD}`}
+          className={`min-h-48 w-full px-3 py-2 text-body ${FIELD}`}
           value={body}
           placeholder="Hi {{first_name}},"
           onChange={(e) => setBody(e.target.value)}
@@ -149,12 +150,12 @@ export function EmailPerson({
         </div>
 
         {result && (
-          <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+          <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-body text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
             {result}
           </p>
         )}
         {error && (
-          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             {error}
           </p>
         )}

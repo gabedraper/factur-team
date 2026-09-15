@@ -63,17 +63,17 @@ export function Transcript({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 border-b pb-3">
-        <span className="text-sm font-medium">{who}</span>
+        <span className="text-body font-medium">{who}</span>
         <Badge variant="outline">
           {openedBy === "gaib" ? "Gaib started it" : "They started it"}
         </Badge>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           {new Date(startedAt).toLocaleString()}
         </span>
       </div>
 
       {pages.length > 0 && (
-        <p className="truncate text-xs text-muted-foreground">{pages.join(" · ")}</p>
+        <p className="truncate text-meta text-muted-foreground">{pages.join(" · ")}</p>
       )}
 
       <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
@@ -87,8 +87,8 @@ export function Transcript({
                 <div
                   className={
                     m.role === "user"
-                      ? "ml-auto w-fit max-w-[80%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-                      : "w-fit max-w-[80%] rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap"
+                      ? "ml-auto w-fit max-w-[80%] rounded-lg bg-primary px-3 py-2 text-body text-primary-foreground"
+                      : "w-fit max-w-[80%] rounded-lg bg-muted px-3 py-2 text-body whitespace-pre-wrap"
                   }
                 >
                   {m.content}
@@ -102,7 +102,7 @@ export function Transcript({
                 return (
                   <div
                     key={j}
-                    className="flex items-start gap-2 rounded-md border border-dashed px-3 py-1.5 text-xs"
+                    className="flex items-start gap-2 rounded-md border border-dashed px-3 py-1.5 text-meta"
                   >
                     {sensitive ? (
                       <Search className="mt-0.5 h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -121,7 +121,7 @@ export function Transcript({
             </div>
           );
         })}
-        {!messages.length && <p className="text-sm text-muted-foreground">Nothing said yet</p>}
+        {!messages.length && <p className="text-body text-muted-foreground">Nothing said yet</p>}
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ import { FIELD } from "@/lib/field-class";
 import { STEP_ACTIONS, resolveAction } from "@/lib/sequences/step-actions";
 import RichTextEditor from "@/components/rich-text-editor";
 import { Surface } from "@/components/ui/surface";
+import { Field } from "@/components/ui/field";
+import { control } from "@/components/ui/control";
 
 /*
  * The settings this screen offers, and the ones it does not yet.
@@ -220,7 +222,7 @@ export function SequenceBuilder({
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm transition-colors ${
+            className={`-mb-px border-b-2 px-3 py-2 text-body transition-colors ${
               tab === key
                 ? "border-primary font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -232,12 +234,12 @@ export function SequenceBuilder({
       </div>
 
       {note && (
-        <p className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
+        <p className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-body text-success">
           {note}
         </p>
       )}
       {error && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-body text-destructive">
           {error}
         </p>
       )}
@@ -245,7 +247,7 @@ export function SequenceBuilder({
       {tab === "settings" ? (
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* What is on offer, and what is not yet. */}
-          <nav className="w-full shrink-0 space-y-1 text-sm lg:w-48">
+          <nav className="w-full shrink-0 space-y-1 text-body lg:w-48">
             {SETTING_SECTIONS.map((sec) => (
               <a
                 key={sec.id}
@@ -264,9 +266,9 @@ export function SequenceBuilder({
 
           <div className="min-w-0 flex-1 space-y-6">
             <section id="sending" className="space-y-3">
-              <h2 className="text-sm font-medium">Sending</h2>
+              <h2 className="text-body font-medium">Sending</h2>
               <Surface pad="tight" className="flex flex-wrap items-center gap-2">
-                <span className="text-sm">When a step comes due</span>
+                <span className="text-body">When a step comes due</span>
                 {([
                   ["semi", "leave me a draft"],
                   ["full", "send it"],
@@ -275,21 +277,21 @@ export function SequenceBuilder({
                     key={value}
                     disabled={pending}
                     onClick={() => { setMode(value); run(() => setSequenceMode(sequence.slug, value)); }}
-                    className={`h-8 rounded-md border px-3 text-sm ${
+                    className={`h-8 rounded-md border px-3 text-body ${
                       mode === value ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                     }`}
                   >
                     {label}
                   </button>
                 ))}
-                <span className="ml-auto text-xs text-muted-foreground">{senderNote}</span>
+                <span className="ml-auto text-meta text-muted-foreground">{senderNote}</span>
               </Surface>
 
               {writers.length > 0 && (
                 <Surface pad="tight" className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm">Wording for</span>
+                  <span className="text-body">Wording for</span>
                   <select
-                    className={`h-8 rounded-md border px-2 text-sm ${FIELD}`}
+                    className={control({ size: "sm", className: FIELD })}
                     value={writerId ?? ""}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -306,8 +308,8 @@ export function SequenceBuilder({
             </section>
 
             <section id="recipients" className="space-y-3">
-              <h2 className="text-sm font-medium">Recipients</h2>
-              <Surface pad="tight" className="space-y-2 text-sm">
+              <h2 className="text-body font-medium">Recipients</h2>
+              <Surface pad="tight" className="space-y-2 text-body">
                 <label className="flex items-start gap-2">
                   <input
                     type="checkbox"
@@ -336,8 +338,8 @@ export function SequenceBuilder({
             </section>
 
             <section id="exit" className="space-y-3">
-              <h2 className="text-sm font-medium">Exit criteria</h2>
-              <Surface pad="tight" className="space-y-2 text-sm">
+              <h2 className="text-body font-medium">Exit criteria</h2>
+              <Surface pad="tight" className="space-y-2 text-body">
                 {ENDINGS.filter((e) => !e.only || e.only === sequence.slug).map((e) => (
                   <label key={e.key} className="flex items-start gap-2">
                     <input
@@ -374,7 +376,7 @@ export function SequenceBuilder({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           {/* The ladder itself: every step at a glance, none of their contents. */}
           <div className="w-full shrink-0 space-y-2 lg:w-72">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="text-meta uppercase tracking-wide text-muted-foreground">
               {rows.length} {rows.length === 1 ? "step" : "steps"}
               {span > 0 && `, ${span} days`}
             </p>
@@ -392,7 +394,7 @@ export function SequenceBuilder({
                   >
                     <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <span className="flex items-center gap-1.5 text-body font-medium">
                         {row.position}. Email
                         {dirty.has(i) && (
                           <span
@@ -401,14 +403,14 @@ export function SequenceBuilder({
                           />
                         )}
                         {!row.active && (
-                          <span className="text-xs font-normal text-muted-foreground">off</span>
+                          <span className="text-meta font-normal text-muted-foreground">off</span>
                         )}
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block truncate text-meta text-muted-foreground">
                         {row.config.subject?.trim() || "No subject"}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    <span className="shrink-0 text-meta tabular-nums text-muted-foreground">
                       Day {row.offset_days}
                     </span>
                   </button>
@@ -419,7 +421,7 @@ export function SequenceBuilder({
             <button
               onClick={add}
               disabled={pending}
-              className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-md border border-dashed text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+              className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-md border border-dashed text-body text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               <Plus className="h-4 w-4" /> Add step
             </button>
@@ -430,10 +432,10 @@ export function SequenceBuilder({
             <Surface className="min-w-0 flex-1 space-y-3">
               <div className="flex flex-wrap items-center gap-2 border-b pb-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{step.position}. Email</span>
-                <span className="text-xs text-muted-foreground">{senderNote}</span>
+                <span className="text-body font-medium">{step.position}. Email</span>
+                <span className="text-meta text-muted-foreground">{senderNote}</span>
                 {writerId && step.id && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-meta text-muted-foreground">
                     · {own.has(step.id) ? "their own wording" : "the shared wording"}
                   </span>
                 )}
@@ -441,7 +443,7 @@ export function SequenceBuilder({
 
               <input
                 ref={subjectRef}
-                className={`h-9 w-full rounded-md border px-3 text-sm ${FIELD}`}
+                className={control({ size: "sm", className: `w-full ${FIELD}` })}
                 placeholder="Subject"
                 value={step.config.subject ?? ""}
                 onChange={(e) => changeConfig(selected, "subject", e.target.value)}
@@ -456,13 +458,13 @@ export function SequenceBuilder({
 
               {/* Into the subject. The body has its own inserter in the toolbar. */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Subject fields</span>
+                <span className="text-meta text-muted-foreground">Subject fields</span>
                 {placeholders.map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => insertIntoSubject(p)}
-                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-meta text-muted-foreground hover:bg-accent hover:text-foreground"
                   >{`{{${p}}}`}</button>
                 ))}
               </div>
@@ -471,7 +473,7 @@ export function SequenceBuilder({
                 <button
                   disabled={pending}
                   onClick={() => save(selected)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-body text-primary-foreground hover:opacity-90 disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
                   {dirty.has(selected) ? "Save" : "Saved"}
@@ -479,7 +481,7 @@ export function SequenceBuilder({
                 <button
                   disabled={pending || !step.id}
                   title="Draft this step to yourself"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-sm disabled:opacity-40"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-body disabled:opacity-40"
                   onClick={() =>
                     run(
                       () => testStep(sequence.slug, step.id!, writerId),
@@ -492,7 +494,7 @@ export function SequenceBuilder({
               </div>
             </Surface>
           ) : (
-            <div className="flex min-w-0 flex-1 items-center justify-center rounded-md border border-dashed p-12 text-sm text-muted-foreground">
+            <div className="flex min-w-0 flex-1 items-center justify-center rounded-md border border-dashed p-12 text-body text-muted-foreground">
               No steps yet.
             </div>
           )}
@@ -500,14 +502,13 @@ export function SequenceBuilder({
           {/* What this step does, as opposed to what it says. */}
           {step && (
             <Surface className="w-full shrink-0 space-y-3 lg:w-64">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <p className="text-meta uppercase tracking-wide text-muted-foreground">
                 Step settings
               </p>
 
-              <label className="block space-y-1 text-sm">
-                <span className="text-muted-foreground">Action</span>
+              <Field label="Action">
                 <select
-                  className={`h-9 w-full rounded-md border px-2 text-sm ${FIELD}`}
+                  className={control({ size: "sm", className: `w-full ${FIELD}` })}
                   value={resolveAction(step.config.action, mode).key}
                   onChange={(e) => changeConfig(selected, "action", e.target.value)}
                 >
@@ -524,20 +525,19 @@ export function SequenceBuilder({
                     </option>
                   ))}
                 </select>
-              </label>
+              </Field>
 
-              <label className="block space-y-1 text-sm">
-                <span className="text-muted-foreground">Days after start</span>
+              <Field label="Days after start">
                 <input
                   type="number"
                   min={0}
-                  className={`h-9 w-full rounded-md border px-3 text-sm ${FIELD}`}
+                  className={control({ size: "sm", className: `w-full ${FIELD}` })}
                   value={step.offset_days}
                   onChange={(e) => change(selected, { offset_days: Number(e.target.value) })}
                 />
-              </label>
+              </Field>
 
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-body">
                 <input
                   type="checkbox"
                   checked={step.active}
@@ -549,7 +549,7 @@ export function SequenceBuilder({
               <button
                 disabled={pending}
                 onClick={() => remove(selected)}
-                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border text-sm text-muted-foreground hover:border-destructive/40 hover:text-destructive disabled:opacity-40"
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border text-body text-muted-foreground hover:border-destructive/40 hover:text-destructive disabled:opacity-40"
               >
                 <Trash2 className="h-4 w-4" /> Delete step
               </button>

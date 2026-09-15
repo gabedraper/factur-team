@@ -9,6 +9,7 @@ import { useSort, SortHeader } from "@/components/ui/sortable";
 import { CompanyLogo } from "@/components/ui/thumbnail";
 import { Surface } from "@/components/ui/surface";
 import { Table, THead, TBody, TR, TD } from "@/components/ui/table";
+import { control } from "@/components/ui/control";
 
 export function ClientsScreen({
   clients, teams, members,
@@ -98,29 +99,29 @@ export function ClientsScreen({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+          className={control({ size: "sm", className: "min-w-56" })}
           placeholder="Search clients…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <select className="h-8 rounded-md border bg-field px-2 text-sm"
+        <select className={control({ size: "sm" })}
                 value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="current">Current clients</option>
           <option value="all">All statuses</option>
           {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <label className="flex items-center gap-1.5 text-body text-muted-foreground">
           <input type="checkbox" checked={onlyUnassigned}
                  onChange={(e) => setOnlyUnassigned(e.target.checked)} />
           Unassigned ({unassigned})
         </label>
-        <span className="ml-auto text-xs text-muted-foreground">
+        <span className="ml-auto text-meta text-muted-foreground">
           {shown.length} of {rows.length}{pending && " · saving…"}
         </span>
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-body text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           {error}
         </p>
       )}
@@ -148,7 +149,7 @@ export function ClientsScreen({
                 <TD className="text-muted-foreground">{c.status ?? "—"}</TD>
                 <TD>
                   <select
-                    className="h-8 max-w-56 rounded-md border bg-field px-2 text-sm"
+                    className={control({ size: "sm", className: "max-w-56" })}
                     value={ownerValue(c)}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -191,7 +192,7 @@ export function ClientsScreen({
         </Table>
       </Surface>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-meta text-muted-foreground">
         Coverage is set here, not on the pod — a client has exactly one owner, and the pod screen
         shows what points at it. Amber rows have nobody. “Current clients” hides the {" "}
         {rows.filter((c) => c.status === "Inactive").length} inactive ones.

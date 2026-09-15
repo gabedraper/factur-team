@@ -32,15 +32,15 @@ export function ActivityFeed({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Chip colour={type?.color}>{type?.name ?? "Activity"}</Chip>
-                {a.subject && <span className="text-sm font-medium">{a.subject}</span>}
+                {a.subject && <span className="text-body font-medium">{a.subject}</span>}
                 {a.direction && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-meta text-muted-foreground">
                     {a.direction === "inbound" ? "in" : "out"}
                   </span>
                 )}
                 {a.pinned && <Pin className="h-3 w-3 text-amber-500" aria-label="Pinned" />}
                 <span
-                  className="ml-auto text-xs text-muted-foreground"
+                  className="ml-auto text-meta text-muted-foreground"
                   title={onDayTime(a.occurred_at)}
                 >
                   {ago(a.occurred_at)}
@@ -48,10 +48,10 @@ export function ActivityFeed({
               </div>
 
               {a.body && (
-                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-body text-muted-foreground">{a.body}</p>
               )}
 
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-meta text-muted-foreground">
                 {a.created_by ? authors.get(a.created_by) ?? "Someone" : "System"}
                 {a.outcome ? ` · ${a.outcome}` : ""}
               </p>

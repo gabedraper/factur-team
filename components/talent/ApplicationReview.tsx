@@ -46,7 +46,7 @@ export function ApplicationReview({ applications }: { applications: App[] }) {
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="text-body text-red-600 dark:text-red-400">{error}</p>}
       {applications.map((a) => (
         <Panel key={a.id}>
           <div className="space-y-2 px-4 py-3">
@@ -55,22 +55,22 @@ export function ApplicationReview({ applications }: { applications: App[] }) {
                 <p className="font-medium">
                   {[a.first_name, a.last_name].filter(Boolean).join(" ") || "—"}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-body text-muted-foreground">
                   {[a.email, a.phone, a.location].filter(Boolean).join(" · ") || "—"}
                 </p>
                 {a.tal_jobs && (
-                  <p className="text-sm">
+                  <p className="text-body">
                     <Link href={`/talent/jobs/${a.tal_jobs.id}`} className="text-primary hover:underline">
                       {a.tal_jobs.title}
                     </Link>
                   </p>
                 )}
               </div>
-              <span className="ml-auto text-xs text-muted-foreground">{ago(a.created_at)}</span>
+              <span className="ml-auto text-meta text-muted-foreground">{ago(a.created_at)}</span>
             </div>
 
             {a.cover_note && (
-              <p className="whitespace-pre-wrap rounded-md bg-muted/50 px-3 py-2 text-sm">{a.cover_note}</p>
+              <p className="whitespace-pre-wrap rounded-md bg-muted/50 px-3 py-2 text-body">{a.cover_note}</p>
             )}
 
             <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +84,7 @@ export function ApplicationReview({ applications }: { applications: App[] }) {
                   href={a.linkedin_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-primary hover:underline"
+                  className="text-body text-primary hover:underline"
                 >
                   LinkedIn
                 </a>
