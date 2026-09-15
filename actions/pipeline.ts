@@ -10,9 +10,11 @@ import { queueEdit, pushEdits, PUSHABLE_FIELDS } from "@/lib/salesforce/writebac
 /**
  * Opportunities: one Client's pursuit of one Contact.
  *
- * createOpportunity checks for an existing (client_id, contact_id) row itself,
- * ahead of the insert, so a duplicate pursuit comes back as a plain message
- * instead of a raw Postgres unique-violation. It also checks for a rep
+ * createOpportunity checks for an existing *active* (client_id, contact_id)
+ * row itself, ahead of the insert, so a duplicate pursuit comes back as a
+ * plain message. A client may pursue the same person again once the last
+ * pursuit is finished on both ladders -- Salesforce allows that and the sync
+ * brings every one of them in -- so only a live one blocks. It also checks for a rep
  * collision -- the same Account Manager already representing a different
  * Client against this same Contact -- and returns that as a warning rather
  * than blocking the write; whether it's a problem is a human's call.
@@ -90,6 +92,8 @@ export async function createOpportunity(
       .select("id")
       .eq("client_id", input.client_id)
       .eq("contact_id", input.contact_id)
+      .or("active_by_stage.is.true,active_by_lead_status.is.true")
+      .limit(1)
       .maybeSingle();
     if (existing) {
       return { ok: false, error: "This client already has a pursuit open against that contact." };

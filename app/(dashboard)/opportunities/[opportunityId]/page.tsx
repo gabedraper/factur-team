@@ -3,10 +3,13 @@ import Link from "next/link";
 import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
+import { readsField } from "@/lib/pipeline/ladder";
+import { myLadder } from "@/lib/pipeline/ladder-server";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 import { ContactEditor } from "@/components/pipeline/ContactEditor";
+import { PotentialDuplicates, type Duplicate } from "@/components/pipeline/PotentialDuplicates";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,7 @@ type Opportunity = {
   name: string;
   stage: string;
   lead_status: string | null;
+  is_duplicate: boolean;
   notes: string | null;
   next_action_date: string | null;
   updates: string | null;
@@ -88,11 +92,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const { opportunityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: opp, error }, { data: activities }] = await Promise.all([
+  const [{ data: opp, error }, { data: activities }, ladder, { data: duplicates }] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates," +
+        "id,name,stage,lead_status,is_duplicate,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
         "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,linkedin_url)"
       )
@@ -104,6 +108,10 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .eq("opportunity_id", opportunityId)
       .order("occurred_at", { ascending: false })
       .limit(50),
+    myLadder(),
+    /* The rest of this client's records against this contact, as the viewer
+       may see them. Empty for the common case, one row per sibling otherwise. */
+    supabase.rpc("opportunity_duplicates", { p_id: opportunityId }),
   ]);
 
   if (error || !opp) notFound();
@@ -121,9 +129,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" /> My Opportunities
         </Link>
+        {/* The progress the viewer's own ladder reports. Both, for somebody
+            who reads both; a BDM sees only the lead status. */}
         <PageHeader title={contactName}>
-          <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
-          {o.lead_status && <Chip>{o.lead_status}</Chip>}
+          {readsField(ladder, "stage") && <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>}
+          {readsField(ladder, "lead_status") && o.lead_status && <Chip>{o.lead_status}</Chip>}
         </PageHeader>
         <p className="text-body text-muted-foreground">
           {[o.crm_contacts?.title, o.crm_accounts?.name, o.org_clients?.name && `for ${o.org_clients.name}`]
@@ -138,6 +148,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <OpportunityEditor
+            ladder={ladder}
             opportunity={{
               id: o.id,
               stage: o.stage,
@@ -168,6 +179,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         </div>
 
         <div className="space-y-4">
+          <PotentialDuplicates
+            rows={((duplicates ?? []) as Duplicate[])}
+            isMain={!o.is_duplicate}
+            ladder={ladder}
+          />
           <Panel title="Activity">
             {!activities || activities.length === 0 ? (
               <Empty>Nothing logged against this opportunity yet.</Empty>

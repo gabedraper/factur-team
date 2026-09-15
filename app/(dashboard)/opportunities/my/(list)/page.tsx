@@ -6,6 +6,8 @@ import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { listOpportunities, getView } from "@/actions/opportunity-views";
 import { knownColumns, DEFAULT_COLUMNS, type ListView } from "@/lib/pipeline/list-views";
+import { columnsForLadder, primaryField, resolveForLadder } from "@/lib/pipeline/ladder";
+import { myLadder } from "@/lib/pipeline/ladder-server";
 import { resolveViews } from "@/lib/list-views/resolve";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
@@ -37,6 +39,12 @@ export const dynamic = "force-dynamic";
  * runs no query and shows nothing but the chips and a way to make a new view.
  * It is not remembered -- the cookie keeps only the view keys -- so coming
  * back to the page later lands on "My opportunities", not on a blank list.
+ *
+ * Everything progress-shaped follows the viewer's ladder (lib/pipeline/ladder):
+ * a BDM's default columns, board lanes and filter fields say Lead status where
+ * an account manager's say Stage, and ?active=1 means "still being worked" on
+ * whichever ladder that is. The system views set it; clearing the chip shows
+ * the archive too.
  */
 
 const PAGE = 50;
@@ -44,11 +52,14 @@ const BOARD_LIMIT = 200;
 const REMEMBER = "opp_list_query";
 /* The parameters that choose a view. Only these are remembered; a search or a
    page number is not somewhere anybody wants to be returned to. */
-const VIEW_KEYS = ["scope", "client", "view", "as"] as const;
-/* A board needs these whatever the view's own columns are. */
+const VIEW_KEYS = ["scope", "client", "view", "as", "active"] as const;
+/* A board needs these whatever the view's own columns are; the progress column
+   is the viewer's ladder. */
 const BOARD_COLUMNS = ["contact_name", "account_name", "client_name", "stage", "next_action_date"];
 
-type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string };
+type Search = {
+  scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string; active?: string;
+};
 
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requirePipeline("view");
@@ -73,15 +84,18 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
 
   const scope = sp.scope === "mine" || sp.scope === "team" ? sp.scope : null;
   const board = sp.as === "board";
+  const active = sp.active === "1";
   const q = (sp.q ?? "").trim();
   const page = Math.max(0, Number(sp.page ?? 0) || 0);
 
-  const [views, perms, saved] = await Promise.all([
+  const [views, perms, saved, ladder] = await Promise.all([
     resolveViews("opportunities"),
     myPermissions(),
     sp.view ? getView(sp.view) : Promise.resolve(null),
+    myLadder(),
   ]);
   const canShare = perms.has("org.manage");
+  const viewColumns = columnsForLadder(saved?.columns ?? DEFAULT_COLUMNS, ladder);
 
   let rows: Row[] = [];
   let hasMore = false;
@@ -95,13 +109,15 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   } else {
     try {
       const res = await listOpportunities({
-        columns: board ? BOARD_COLUMNS : saved?.columns ?? DEFAULT_COLUMNS,
+        columns: board ? columnsForLadder(BOARD_COLUMNS, ladder) : viewColumns,
         filters: saved?.filters ?? [],
         sortField: saved?.sort_field ?? null,
         sortDir: saved?.sort_dir ?? "asc",
         search: q,
         clientId: sp.client ?? null,
         scope,
+        active,
+        ladder,
         page: board ? 0 : page,
         limit: board ? BOARD_LIMIT : PAGE,
       });
@@ -111,7 +127,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     }
   }
 
-  const columns = knownColumns(saved?.columns ?? DEFAULT_COLUMNS);
+  const columns = resolveForLadder(knownColumns(viewColumns), ladder);
 
   /* Builds a link to this list with some parameters changed. Anything set to
      null is dropped, which is how "clear the search" and "first page" work. */
@@ -129,7 +145,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
      only returns private views to their owner, so "private" means "yours". */
   const editable: ListView | null = saved && (!saved.shared || canShare) ? saved : null;
 
-  const activeFilters = q ? [`“${q}”`] : [];
+  const activeFilters = [...(active ? ["Active only"] : []), ...(q ? [`“${q}”`] : [])];
 
   const clearQuery = new URLSearchParams({ none: "1" });
   if (sp.as) clearQuery.set("as", sp.as);
@@ -150,14 +166,14 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         <Suspense fallback={<div className="h-7" />}>
           <ViewSwitcher entity="opportunities" pinned={views.pinned} rest={views.rest} clearHref={clearHref} />
         </Suspense>
-        <OpportunityViewTools current={editable} canShare={canShare} />
+        <OpportunityViewTools current={editable} canShare={canShare} ladder={ladder} />
       </div>
 
       {none ? (
         <Surface>
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <p className="text-body text-muted-foreground">Select a view, or create a new one.</p>
-            <NewViewButton canShare={canShare} />
+            <NewViewButton canShare={canShare} ladder={ladder} />
           </div>
         </Surface>
       ) : (
@@ -174,6 +190,15 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                 className={control({ size: "sm", plain: true, className: "w-full" })}
               />
             </form>
+            {active && (
+              <Link
+                href={href({ active: null, page: null })}
+                className="rounded-full bg-card px-3 py-1 text-meta text-muted-foreground transition-colors duration-fast ease-out hover:bg-card-hover hover:text-foreground"
+                title="Show finished opportunities too"
+              >
+                Active only ×
+              </Link>
+            )}
             <div className="ml-auto">
               <RendererSwitch
                 options={[
@@ -195,10 +220,10 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               noun="opportunities"
               error={error}
               activeFilters={activeFilters}
-              clearHref={href({ q: null, page: null })}
+              clearHref={href({ q: null, page: null, active: null })}
             />
           ) : board ? (
-            <OpportunityBoard key={viewQuery.toString() + q} rows={rows} />
+            <OpportunityBoard key={viewQuery.toString() + q} rows={rows} field={primaryField(ladder)} />
           ) : (
             <OpportunityTable key={viewQuery.toString() + q + page} rows={rows} columns={columns} />
           )}

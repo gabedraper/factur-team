@@ -13,6 +13,7 @@ import {
   LIST_FIELDS, FIELD_BY_KEY, OPERATOR_LABELS, operatorsFor, opTakesNoValue, DEFAULT_COLUMNS,
   type Filter, type ListView, type Operator,
 } from "@/lib/pipeline/list-views";
+import { columnsForLadder, fieldsForLadder, primaryField, type Ladder } from "@/lib/pipeline/ladder";
 
 /*
  * Making and changing a saved view: its name, its columns, its filters, its
@@ -22,22 +23,35 @@ import {
  * Saving navigates to the view. A view is an address (?view=<id>), so the new
  * one opens the same way any other chip does, and the chip row -- read on the
  * server -- picks it up on the refresh.
+ *
+ * The fields offered follow the viewer's ladder: a BDM is not offered Stage as
+ * a column, a filter or a sort, and an account manager is not offered Lead
+ * status. Somebody who reads both sees both. A saved view keeps whatever it
+ * was saved with; this only shapes what is offered while editing.
  */
 
 const SELECT = control({ size: "sm" });
 
-const BLANK: ListView = {
-  id: "", name: "", owner_member_id: null, shared: false,
-  columns: [...DEFAULT_COLUMNS], filters: [], sort_field: null, sort_dir: "asc",
-};
+/* A new view starts on the viewer's own progress column and on active rows,
+   which is the list almost everyone is about to build anyway. */
+function blank(ladder: Ladder): ListView {
+  return {
+    id: "", name: "", owner_member_id: null, shared: false,
+    columns: columnsForLadder(DEFAULT_COLUMNS, ladder),
+    filters: [{ field: "active", op: "is_true" }],
+    sort_field: null, sort_dir: "asc",
+  };
+}
 
 export function OpportunityViewTools({
   current,
   canShare,
+  ladder = "both",
 }: {
   /** The saved view on screen, when it is one this person may edit. */
   current: ListView | null;
   canShare: boolean;
+  ladder?: Ladder;
 }) {
   const [editing, setEditing] = useState<ListView | null>(null);
   return (
@@ -47,34 +61,40 @@ export function OpportunityViewTools({
           <Pencil className="mr-1 h-3.5 w-3.5" /> Edit view
         </Button>
       )}
-      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...BLANK })}>
+      <Button variant="ghost" size="sm" onClick={() => setEditing(blank(ladder))}>
         <Plus className="mr-1 h-3.5 w-3.5" /> New view
       </Button>
-      {editing && <ViewEditor view={editing} canShare={canShare} onClose={() => setEditing(null)} />}
+      {editing && <ViewEditor view={editing} canShare={canShare} ladder={ladder} onClose={() => setEditing(null)} />}
     </>
   );
 }
 
 /* The same editor, opened from the "no view selected" prompt. */
-export function NewViewButton({ canShare }: { canShare: boolean }) {
+export function NewViewButton({ canShare, ladder = "both" }: { canShare: boolean; ladder?: Ladder }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
         <Plus className="mr-1 h-3.5 w-3.5" /> New view
       </Button>
-      {open && <ViewEditor view={{ ...BLANK }} canShare={canShare} onClose={() => setOpen(false)} />}
+      {open && <ViewEditor view={blank(ladder)} canShare={canShare} ladder={ladder} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
 function ViewEditor({
-  view, canShare, onClose,
+  view, canShare, ladder, onClose,
 }: {
   view: ListView;
   canShare: boolean;
+  ladder: Ladder;
   onClose: () => void;
 }) {
+  /* What this person is offered. A column the view already holds from the
+     other ladder stays selectable, so an inherited view can still be edited
+     without silently losing it. */
+  const offered = fieldsForLadder(LIST_FIELDS, ladder);
+  const fields = LIST_FIELDS.filter((f) => offered.includes(f) || view.columns.includes(f.key));
   const router = useRouter();
   const pathname = usePathname();
   const [name, setName] = useState(view.name);
@@ -143,7 +163,7 @@ function ViewEditor({
           <section className="space-y-2">
             <h3 className="text-section-title">Columns <span className="font-normal text-muted-foreground">{columns.length}</span></h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {LIST_FIELDS.map((f) => (
+              {fields.map((f) => (
                 <label key={f.key} className="flex items-center gap-2 text-body">
                   <input type="checkbox" checked={columns.includes(f.key)} onChange={() => toggleColumn(f.key)} />
                   <span className="truncate">{f.label}</span>
@@ -157,7 +177,7 @@ function ViewEditor({
               <h3 className="text-section-title">Filters</h3>
               <Button
                 variant="outline" size="sm" className="ml-auto"
-                onClick={() => setFilters((fs) => [...fs, { field: "stage", op: "equals", value: "" }])}
+                onClick={() => setFilters((fs) => [...fs, { field: primaryField(ladder), op: "equals", value: "" }])}
               >
                 <Plus className="mr-1 h-3.5 w-3.5" /> Add filter
               </Button>
@@ -182,7 +202,9 @@ function ViewEditor({
                           setFilter(i, { field: nf.key, op: operatorsFor(nf.type)[0], value: "" });
                         }}
                       >
-                        {LIST_FIELDS.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        {offered.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        {/* A filter inherited from the other ladder keeps its name. */}
+                        {field && !offered.includes(field) && <option value={field.key}>{field.label}</option>}
                       </select>
                       <select
                         aria-label="Operator"
@@ -233,7 +255,7 @@ function ViewEditor({
               <select aria-label="Sort field" className={SELECT} value={sortField ?? ""}
                 onChange={(e) => setSortField(e.target.value || null)}>
                 <option value="">Last modified</option>
-                {LIST_FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                {offered.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
               </select>
               <select aria-label="Sort direction" className={SELECT} value={sortDir}
                 onChange={(e) => setSortDir(e.target.value as "asc" | "desc")}>

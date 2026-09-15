@@ -9,8 +9,9 @@ import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/ta
 import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 import { Chip } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
-import { STAGE_GROUPS } from "@/lib/pipeline/picklists";
+import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
 import { progressTone } from "@/lib/pipeline/targets";
+import { PROGRESS_LABEL, type ProgressKey } from "@/lib/pipeline/ladder";
 import { toE164 } from "@/lib/phone";
 import { useDialer } from "@/components/work-panel/dialer-context";
 import type { ListField } from "@/lib/pipeline/list-views";
@@ -52,8 +53,15 @@ function shortDate(v: unknown) {
 
 /* Plain text for a field -- what the CSV holds, and what a cell shows when the
    field has no special look. */
+/* "Active" is resolved per viewer to one flag column or, for somebody who
+   reads both ladders, to both -- and then it is on when either is. */
+function isActive(row: Row, field: ListField): boolean {
+  return [field.path, ...(field.extraSelect ?? [])].some((p) => Boolean(raw(row, p)));
+}
+
 function text(row: Row, field: ListField): string {
   if (field.key === "contact_name") return contactName(row);
+  if (field.key === "active") return isActive(row, field) ? "Yes" : "";
   const v = raw(row, field.path);
   if (field.type === "boolean") return v ? "Yes" : "";
   return v == null ? "" : String(v);
@@ -65,7 +73,7 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
   if (field.key === "contact_name") {
     return <span className="font-medium">{contactName(row) || "—"}</span>;
   }
-  const v = raw(row, field.path);
+  const v = field.key === "active" ? isActive(row, field) : raw(row, field.path);
   if (field.type === "boolean") {
     return v ? <Check className="h-4 w-4 text-success" aria-label="Yes" /> : null;
   }
@@ -211,31 +219,34 @@ export function OpportunityTable({ rows, columns }: { rows: Row[]; columns: List
 }
 
 /*
- * The board: one column per stage, and dragging a card to another column
- * changes its stage -- through updateOpportunity, the same write the record
- * page's stage picker makes, so history is recorded and Salesforce hears
- * about it the same way.
+ * The board: one lane per value of the viewer's ladder, and dragging a card to
+ * another lane changes that field -- through updateOpportunity, the same write
+ * the record page's picker makes, so history is recorded and Salesforce hears
+ * about it the same way. An account manager's lanes are stages; a BDM's are
+ * lead statuses.
  *
- * Every stage gets a column, including empty ones, because an empty column is
- * still somewhere a card can be moved to. Empty columns are drawn narrow so
+ * Every value gets a lane, including empty ones, because an empty lane is
+ * still somewhere a card can be moved to. Empty lanes are drawn narrow so
  * twenty-two stages do not push the busy ones off the screen.
  */
-export function OpportunityBoard({ rows }: { rows: Row[] }) {
+export function OpportunityBoard({ rows, field = "stage" }: { rows: Row[]; field?: ProgressKey }) {
   const [items, setItems] = useState(rows);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
 
-  const move = (id: string, stage: string) => {
+  const lanes = field === "lead_status" ? LEAD_STATUSES : STAGE_GROUPS.flatMap((g) => g.values);
+
+  const move = (id: string, value: string) => {
     const before = items;
     const current = before.find((r) => String(r.id) === id);
-    if (!current || current.stage === stage) return;
+    if (!current || current[field] === value) return;
     setError(null);
     // Moved at once, and put back if the write is refused.
-    setItems((xs) => xs.map((r) => (String(r.id) === id ? { ...r, stage } : r)));
+    setItems((xs) => xs.map((r) => (String(r.id) === id ? { ...r, [field]: value } : r)));
     start(async () => {
-      const res = await updateOpportunity(id, { stage });
+      const res = await updateOpportunity(id, { [field]: value });
       if (!res.ok) {
         setItems(before);
         setError(res.error);
@@ -245,15 +256,15 @@ export function OpportunityBoard({ rows }: { rows: Row[] }) {
 
   const byStage = new Map<string, Row[]>();
   for (const r of items) {
-    const s = String(r.stage ?? "");
+    const s = String(r[field] ?? "");
     byStage.set(s, [...(byStage.get(s) ?? []), r]);
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" aria-label={`Board by ${PROGRESS_LABEL[field].toLowerCase()}`}>
       {error && <p className="text-body text-destructive">{error}</p>}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {STAGE_GROUPS.flatMap((g) => g.values).map((stage) => {
+        {lanes.map((stage) => {
           const cards = byStage.get(stage) ?? [];
           const target = over === stage && dragging !== null;
           return (
