@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote } from "lucide-react";
+import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
@@ -31,15 +31,57 @@ type Opportunity = {
 
 type Activity = {
   id: string;
-  activity_type: "call" | "email" | "task" | "note";
+  activity_type: "call" | "email" | "task" | "note" | "meeting";
   subject: string | null;
   body: string | null;
   direction: "inbound" | "outbound" | null;
   outcome: string | null;
   occurred_at: string;
+  org_members: { full_name: string | null } | null;
 };
 
-const ACTIVITY_ICON = { call: Phone, email: Mail, task: ClipboardList, note: StickyNote };
+const ACTIVITY_ICON = { call: Phone, email: Mail, task: ClipboardList, note: StickyNote, meeting: CalendarDays };
+
+/*
+ * One line per activity: who did what, then the subject, then the date. The
+ * thread used to print every email in full -- signature, tracking links and
+ * the quoted reply underneath -- so three emails filled the panel. The body
+ * is still there, a click away.
+ *
+ * Who did it comes from Salesforce's logging conventions rather than a field:
+ * an email logged as "Sent (Reply): ..." was sent by the rep, "Replied: ..."
+ * was the prospect writing back, and either way the task's owner is the rep.
+ * Calls carry a direction; a meeting is named by its subject; a task from
+ * Salesforce's field tracking reads as the change it recorded.
+ */
+function activityLine(a: Activity, rep: string, prospect: string): { who: string; verb: string; subject: string | null } {
+  const subject = a.subject ?? "";
+  const strip = (prefix: RegExp) => subject.replace(prefix, "").trim() || null;
+  switch (a.activity_type) {
+    case "email":
+      if (/^Replied\b/i.test(subject)) return { who: prospect, verb: "replied", subject: strip(/^Replied:?\s*/i) };
+      if (/^Sent\b/i.test(subject)) return { who: rep, verb: "emailed", subject: strip(/^Sent\s*\([^)]*\)\s*(\[[^\]]*\])?:?\s*/i) };
+      return { who: rep, verb: "emailed", subject: subject || null };
+    case "call": {
+      const minutes = subject.match(/(\d+)\s*min/i)?.[1];
+      const length = minutes ? `${minutes} min` : null;
+      if (a.direction === "inbound") return { who: prospect, verb: "called", subject: length ?? a.outcome };
+      if (/missed/i.test(subject)) return { who: rep, verb: "called, no answer", subject: null };
+      return { who: rep, verb: "called", subject: length ?? (subject.startsWith("Dialpad") ? null : subject) };
+    }
+    case "meeting":
+      return { who: subject || "Meeting", verb: "", subject: null };
+    default: {
+      const change = subject.match(/^Field Change\s+(.+?):\s*(.+)$/i);
+      if (change) return { who: rep, verb: `set ${change[1].toLowerCase()}`, subject: change[2] };
+      return { who: rep, verb: a.activity_type === "note" ? "noted" : "logged a task", subject: subject || null };
+    }
+  }
+}
+
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+}
 
 export default async function OpportunityPage({ params }: { params: Promise<{ opportunityId: string }> }) {
   await requirePipeline("view");
@@ -58,7 +100,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .maybeSingle(),
     supabase
       .from("opp_activities")
-      .select("id,activity_type,subject,body,direction,outcome,occurred_at")
+      .select("id,activity_type,subject,body,direction,outcome,occurred_at,org_members(full_name)")
       .eq("opportunity_id", opportunityId)
       .order("occurred_at", { ascending: false })
       .limit(50),
@@ -132,22 +174,37 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
             ) : (
               <ul className="divide-y">
                 {(activities as unknown as Activity[]).map((a) => {
-                  const Icon = ACTIVITY_ICON[a.activity_type];
-                  return (
-                    <li key={a.id} className="flex gap-3 px-4 py-3">
-                      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium capitalize">{a.activity_type}</span>
-                          {a.direction && <span className="text-xs text-muted-foreground">{a.direction}</span>}
-                          {a.outcome && <Chip colour="slate">{a.outcome}</Chip>}
-                        </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {new Date(a.occurred_at).toLocaleString()}
-                        </span>
-                        {a.body && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>}
-                      </div>
+                  const Icon = ACTIVITY_ICON[a.activity_type] ?? ClipboardList;
+                  const rep = a.org_members?.full_name ?? "Factur";
+                  const line = activityLine(a, rep, contactName);
+                  const row = (
+                    <span className="flex min-w-0 flex-1 items-baseline gap-2 text-body">
+                      <Icon className="h-4 w-4 shrink-0 self-center text-muted-foreground" aria-hidden />
+                      <span className="min-w-0 truncate">
+                        <span className="font-medium">{line.who}</span>
+                        {line.verb && <span> {line.verb}</span>}
+                        {line.subject && <span className="text-muted-foreground"> · {line.subject}</span>}
+                      </span>
+                      <span className="ml-auto shrink-0 text-meta tabular-nums text-muted-foreground">
+                        {shortDate(a.occurred_at)}
+                      </span>
+                    </span>
+                  );
+                  /* Native details: the line is the summary, the body opens
+                     under it, no script and no state to lose on a refresh. */
+                  return a.body ? (
+                    <li key={a.id}>
+                      <details className="group">
+                        <summary className="flex cursor-pointer list-none items-center px-4 py-2 transition-colors duration-fast ease-out hover:bg-card-hover [&::-webkit-details-marker]:hidden">
+                          {row}
+                        </summary>
+                        <p className="max-h-96 overflow-y-auto whitespace-pre-wrap px-4 pb-3 pl-11 text-meta text-muted-foreground">
+                          {a.body}
+                        </p>
+                      </details>
                     </li>
+                  ) : (
+                    <li key={a.id} className="flex items-center px-4 py-2">{row}</li>
                   );
                 })}
               </ul>
