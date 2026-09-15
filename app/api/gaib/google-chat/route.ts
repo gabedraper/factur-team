@@ -421,13 +421,19 @@ async function answer(event: ChatEvent) {
       finishing = true;
       const space = event.spaceName;
 
+      // In the thread the question was asked in. Posted without it, the
+      // answer landed at the bottom of the room while the person watched the
+      // thread, and "give me a minute" was the last thing they ever saw.
+      const thread = event.threadName;
+
       after(async () => {
         try {
           const text = await work;
           await postToSpace(
             space,
             text ||
-              "I could not get to the bottom of that one. Ask me again and I will try a different way."
+              "I could not get to the bottom of that one. Ask me again and I will try a different way.",
+            thread
           );
           await sendGifs();
         } catch {
@@ -437,7 +443,7 @@ async function answer(event: ChatEvent) {
             "that one beat me, something broke on my end.",
             "ugh, that one got me. something went wrong on my side.",
             "yeah that didn't work, my fault. try me again in a bit.",
-          ])).catch(() => {});
+          ]), thread).catch(() => {});
         } finally {
           await acting.session.release();
         }

@@ -45,6 +45,51 @@ const MAX_PER_OBJECT = 20_000;
  * statement finishes well inside the timeout. */
 const WRITE_BATCH = 500;
 
+/** Ids per SOQL request. Well inside the query-length limit at 18 characters each. */
+const IDS_PER_QUERY = 200;
+const MISSING_PER_RUN = 2000;
+
+async function fetchMissingContacts(db: ReturnType<typeof createServiceClient>) {
+  const { data: missing } = await db.rpc("salesforce_missing_contact_ids", { p_limit: MISSING_PER_RUN });
+  const ids = (missing as string[] | null) ?? [];
+  if (ids.length === 0) return { fetched: 0 };
+
+  const { data: cols } = await db.rpc("salesforce_mirror_columns", { p_table: "sky_Contact" });
+  const fields = (cols as string[] | null) ?? [];
+  if (fields.length === 0) return { skipped: "mirror sky_Contact does not exist" };
+
+  let fetched = 0;
+  let gone = 0;
+  for (let i = 0; i < ids.length; i += IDS_PER_QUERY) {
+    const slice = ids.slice(i, i + IDS_PER_QUERY);
+    const rows = await soql<Record<string, unknown>>(
+      `SELECT ${fields.join(", ")} FROM Contact WHERE Id IN (${slice.map((id) => `'${id}'`).join(",")})`,
+    );
+
+    const payload = rows.map((r) => {
+      const flat = stripAttributes(r);
+      const out: Record<string, string | null> = {};
+      for (const [k, v] of Object.entries(flat)) out[k] = v === null || v === undefined ? null : String(v);
+      return out;
+    });
+    const found = new Set(payload.map((p) => p.Id));
+    // Salesforce answered with nothing for these: deleted or merged away.
+    for (const id of slice) {
+      if (!found.has(id)) { payload.push({ Id: id, IsDeleted: "true" }); gone++; }
+    }
+
+    const { error } = await db.from("sky_Contact").upsert(payload, { onConflict: "Id" });
+    if (error) throw new Error(`missing contacts: writing to sky_Contact failed - ${error.message}`);
+
+    const { error: queued } = await db.from("salesforce_contact_backfill").upsert(
+      slice.map((id) => ({ id })), { onConflict: "id", ignoreDuplicates: true },
+    );
+    if (queued) throw new Error(`missing contacts: queueing failed - ${queued.message}`);
+    fetched += rows.length;
+  }
+  return { fetched, gone, remainingHint: ids.length === MISSING_PER_RUN ? "more next run" : "caught up" };
+}
+
 /* Salesforce writes timestamps as 2026-09-09T11:22:33.000+0000. */
 function soqlTime(iso: string) {
   return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -147,6 +192,19 @@ export async function POST(request: NextRequest) {
       summary[name] = { changed: rows.length, watermark: newest };
       if (!oldestWatermark || since < oldestWatermark) oldestWatermark = since;
     }
+
+    /*
+     * Contacts the mirror never had.
+     *
+     * The bulk load took 377 thousand of Salesforce's 4.25 million contacts,
+     * and an opportunity only becomes a row here once its contact exists on
+     * our side -- so nearly 400 thousand opportunities have been sitting in
+     * the mirror unseen. Each run asks Salesforce for a couple of thousand of
+     * the missing contacts by id, newest opportunity first, and queues them
+     * for the transforms. A contact Salesforce no longer has gets a deleted
+     * stub, so it is not asked for again every three minutes.
+     */
+    summary.missingContacts = await fetchMissingContacts(db);
 
     /*
      * The transforms are not called from here. They are pure SQL over tables
