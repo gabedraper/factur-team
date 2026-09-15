@@ -1,6 +1,7 @@
 "use server";
 
-import { clientIdsForScope } from "@/lib/list-views/resolve";
+import { clientIdsForScope, memberIdsForScope } from "@/lib/list-views/resolve";
+import { activeColumns, resolveForLadder, type Ladder } from "@/lib/pipeline/ladder";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -52,6 +53,17 @@ export async function listOpportunities(input: {
    * database, from the session -- see clientIdsForScope.
    */
   scope?: "mine" | "team" | null;
+  /**
+   * Only rows still being worked, on the viewer's ladder. The system views set
+   * this; a saved view says the same thing with an "Active is checked" filter.
+   */
+  active?: boolean;
+  /**
+   * Which progress ladder the viewer reads (see lib/pipeline/ladder). It decides
+   * which flag column "active" means, nothing more: what a person may see is
+   * still the database's decision, so this is safe to take from the page.
+   */
+  ladder?: Ladder;
   page?: number;
   /**
    * Rows per page. The table pages by 50; the board asks for more at once
@@ -63,7 +75,8 @@ export async function listOpportunities(input: {
   await assertPipeline("view");
   const db = await createClient();
 
-  const fields = knownColumns(input.columns.length ? input.columns : DEFAULT_COLUMNS);
+  const ladder: Ladder = input.ladder ?? "both";
+  const fields = resolveForLadder(knownColumns(input.columns.length ? input.columns : DEFAULT_COLUMNS), ladder);
   const filters = knownFilters(input.filters ?? []);
 
   /*
@@ -87,7 +100,9 @@ export async function listOpportunities(input: {
   /* A filtered embed column is selected too. PostgREST does not require it, but
      an embed selected as just its id while something filters another of its
      columns is the kind of thing that works until it doesn't. */
-  const filterPaths = filters.map((f) => FIELD_BY_KEY.get(f.field)!.path);
+  const filterPaths = filters.flatMap((f) =>
+    f.field === "active" ? activeColumns(ladder) : [FIELD_BY_KEY.get(f.field)!.path],
+  );
   /*
    * The search box. PostgREST cannot or() across a table and its embed, so a
    * term is answered by one side or the other: an email only ever lives on the
@@ -156,20 +171,48 @@ export async function listOpportunities(input: {
   if (input.clientId) q = q.eq("client_id", input.clientId);
   if (input.scope) {
     /*
-     * An empty scope means "none of your clients", and it has to stay empty.
-     * Return early rather than hand .in() an empty list and trust how that is
-     * interpreted: if it were ever read as "no filter", somebody staffed on no
-     * clients would open "My opportunities" and be shown everyone's.
+     * Your clients' rows, or the rows you own -- either side is enough. An
+     * empty scope means "none of your clients and nothing you own", and it has
+     * to stay empty. Return early rather than hand .in() an empty list and
+     * trust how that is interpreted: if it were ever read as "no filter",
+     * somebody staffed on no clients would open "My opportunities" and be
+     * shown everyone's.
      */
-    const ids = await clientIdsForScope(input.scope, { liveOnly: true });
-    if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
-    q = q.in("client_id", ids);
+    const [ids, members] = await Promise.all([
+      clientIdsForScope(input.scope, { liveOnly: true }),
+      memberIdsForScope(input.scope),
+    ]);
+    if (ids.length === 0 && members.length === 0) return { rows: [], hasMore: false, tooBroad: false };
+    const sides: string[] = [];
+    if (ids.length) sides.push(`client_id.in.(${ids.join(",")})`);
+    if (members.length) sides.push(`owner_member_id.in.(${members.join(",")})`);
+    q = q.or(sides.join(","));
   }
+
+  /*
+   * "Active" on this viewer's ladder. One flag is a plain equals; somebody who
+   * reads both ladders is shown a row still moving on either, and "not active"
+   * for them means finished on both.
+   */
+  const activeOn = (on: boolean) => {
+    const cols = activeColumns(ladder);
+    if (cols.length === 1) return q.is(cols[0], on);
+    return on
+      ? q.or(cols.map((c) => `${c}.is.true`).join(","))
+      : cols.reduce((acc, c) => acc.is(c, false), q);
+  };
+  if (input.active) q = activeOn(true);
 
   for (const f of filters) {
     const field = FIELD_BY_KEY.get(f.field)!;
     const p = field.path;
     const raw = (f.value ?? "").trim();
+
+    if (f.field === "active") {
+      if (f.op === "is_true") q = activeOn(true);
+      else if (f.op === "is_false") q = activeOn(false);
+      continue;
+    }
 
     switch (f.op) {
       case "contains":       if (raw) q = q.ilike(p, `%${raw}%`); break;

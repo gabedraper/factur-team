@@ -54,6 +54,11 @@ export const LIST_FIELDS: ListField[] = [
 
   { key: "stage",            label: "Stage",          type: "picklist", path: "stage",       picklist: "stage" },
   { key: "lead_status",      label: "Lead status",    type: "picklist", path: "lead_status", picklist: "lead_status" },
+  /* Still being worked, on the ladder the viewer reads. The row carries a flag
+     per ladder (active_by_stage, active_by_lead_status, set by trigger from
+     opportunity_closed_values); which one this points at is decided per viewer
+     by resolveForLadder, so the path here is only a placeholder. */
+  { key: "active",           label: "Active",         type: "boolean",  path: "active_by_stage" },
 
   { key: "next_action_date", label: "Next action",    type: "date", path: "next_action_date" },
   { key: "opened_on",        label: "Opened",         type: "date", path: "opened_on" },

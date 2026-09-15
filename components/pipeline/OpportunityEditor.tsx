@@ -11,6 +11,7 @@ import {
 import { Panel } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
 import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
+import { readsField, type Ladder } from "@/lib/pipeline/ladder";
 
 const FUNNEL_STEPS = [
   { key: "reached_lead", label: "Lead" },
@@ -45,7 +46,17 @@ export type EditableOpportunity = {
   updates: string | null;
 } & Record<FunnelKey, boolean>;
 
-export function OpportunityEditor({ opportunity }: { opportunity: EditableOpportunity }) {
+/*
+ * The pickers follow the viewer's ladder: an account manager sets Stage, a
+ * BDM sets Lead status, and somebody who reads both gets both. The other
+ * field is not hidden from the record so much as not theirs to move.
+ */
+export function OpportunityEditor({
+  opportunity, ladder = "both",
+}: {
+  opportunity: EditableOpportunity;
+  ladder?: Ladder;
+}) {
   const [state, setState] = useState(opportunity);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
@@ -81,7 +92,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
       <div className="space-y-3 p-4">
         {error && <p className="text-body text-red-600">{error}</p>}
 
-        <div>
+        {readsField(ladder, "stage") && <div>
           <label className="text-meta text-muted-foreground">Stage</label>
           <Select value={state.stage} onValueChange={(v) => save({ stage: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -94,9 +105,9 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </div>}
 
-        <div>
+        {readsField(ladder, "lead_status") && <div>
           <label className="text-meta text-muted-foreground">Lead status</label>
           <Select value={state.lead_status ?? ""} onValueChange={(v) => save({ lead_status: v })}>
             <SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger>
@@ -104,7 +115,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
               {LEAD_STATUSES.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
+        </div>}
 
         <div>
           <label className="mb-1 block text-meta text-muted-foreground">Funnel reached</label>

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
+import { readsField } from "@/lib/pipeline/ladder";
+import { myLadder } from "@/lib/pipeline/ladder-server";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
@@ -88,7 +90,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const { opportunityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: opp, error }, { data: activities }] = await Promise.all([
+  const [{ data: opp, error }, { data: activities }, ladder] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
@@ -104,6 +106,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .eq("opportunity_id", opportunityId)
       .order("occurred_at", { ascending: false })
       .limit(50),
+    myLadder(),
   ]);
 
   if (error || !opp) notFound();
@@ -121,9 +124,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         <Link href="/opportunities/my" className="inline-flex items-center gap-1 text-body text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" /> My Opportunities
         </Link>
+        {/* The progress the viewer's own ladder reports. Both, for somebody
+            who reads both; a BDM sees only the lead status. */}
         <PageHeader title={contactName}>
-          <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
-          {o.lead_status && <Chip>{o.lead_status}</Chip>}
+          {readsField(ladder, "stage") && <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>}
+          {readsField(ladder, "lead_status") && o.lead_status && <Chip>{o.lead_status}</Chip>}
         </PageHeader>
         <p className="text-body text-muted-foreground">
           {[o.crm_contacts?.title, o.crm_accounts?.name, o.org_clients?.name && `for ${o.org_clients.name}`]
@@ -138,6 +143,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <OpportunityEditor
+            ladder={ladder}
             opportunity={{
               id: o.id,
               stage: o.stage,

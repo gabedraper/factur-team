@@ -156,3 +156,25 @@ export async function clientIdsForScope(
   const liveIds = new Set(((live.data ?? []) as { id: string }[]).map((r) => r.id));
   return ids.filter((id) => liveIds.has(id));
 }
+
+/**
+ * The member ids a scope resolves to, for lists whose rows carry an owner.
+ *
+ * "mine" is the person themselves; "team" is them and everyone down their
+ * reporting line, which my_member_circle() draws from the session the same way
+ * my_client_ids() does. An opportunity a BDM owns sits under a client nobody
+ * is named on, so without this "My opportunities" would be empty for exactly
+ * the people with the most of them.
+ */
+export async function memberIdsForScope(scope: "mine" | "team"): Promise<string[]> {
+  const db = await createClient();
+  if (scope === "mine") {
+    const { data, error } = await db.rpc("pipeline_my_scope");
+    if (error) throw new Error(`pipeline_my_scope: ${error.message}`);
+    const me = ((data ?? []) as { member_id: string }[])[0]?.member_id;
+    return me ? [me] : [];
+  }
+  const { data, error } = await db.rpc("my_member_circle");
+  if (error) throw new Error(`my_member_circle: ${error.message}`);
+  return ((data ?? []) as { member_id: string }[]).map((r) => r.member_id);
+}

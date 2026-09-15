@@ -79,6 +79,15 @@ export type EntityDef = {
   /** The column a board groups by, when there is one. */
   stageField?: string;
   /**
+   * Whether the system views open on the active rows only.
+   *
+   * Opportunities are 900,000 rows and most are finished; "My opportunities"
+   * means the ones still being worked, and a person who wants the archive
+   * clears the Active chip or saves a view without it. Set as a query
+   * parameter (active=1) so the choice is in the URL like every other filter.
+   */
+  activeByDefault?: boolean;
+  /**
    * Whether rows carry a thumbnail.
    *
    * True for companies, false for people, and the asymmetry is the point: a
@@ -101,6 +110,7 @@ export const ENTITIES: Record<string, EntityDef> = {
     clientPath: "direct",
     myScope: "via_client",
     allView: false,
+    activeByDefault: true,
     rowIdentity: false,
   },
   candidates: {
@@ -198,7 +208,9 @@ export type ResolvedView = {
  * "Mine" and "my team's" are two different questions and the database already
  * answers both: `my_client_ids_direct()` is the clients you are staffed on
  * yourself, and `my_client_ids()` is the same rolled up through the reporting
- * line. Neither is computed here — this only names them.
+ * line. For opportunities, "mine" also means the ones you own in Salesforce
+ * (and "my team's", the ones your reports own) -- a BDM's pipeline sits under
+ * a client nobody is named on. Neither is computed here — this only names them.
  */
 export function systemViews(entity: EntityDef): ResolvedView[] {
   const all: ResolvedView[] = entity.allView
@@ -216,13 +228,14 @@ export function systemViews(entity: EntityDef): ResolvedView[] {
   // Asked of myScope, not clientPath. A client has no route "to a client" --
   // it is one -- and yet "My clients" is the most natural view in the app.
   if (!entity.myScope) return all;
+  const active: Record<string, string> = entity.activeByDefault ? { active: "1" } : {};
   return [
     ...all,
     {
       key: viewKey.system("mine"),
       label: `My ${entity.label.toLowerCase()}`,
       kind: "system",
-      params: { scope: "mine" },
+      params: { scope: "mine", ...active },
       pinned: true,
       hidden: false,
       position: 0,
@@ -231,7 +244,7 @@ export function systemViews(entity: EntityDef): ResolvedView[] {
       key: viewKey.system("team"),
       label: `My team's ${entity.label.toLowerCase()}`,
       kind: "system",
-      params: { scope: "team" },
+      params: { scope: "team", ...active },
       pinned: true,
       hidden: false,
       position: 1,

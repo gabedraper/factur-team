@@ -8,6 +8,8 @@ import { PageHeader, Panel, Empty, Chip, stageTone, AlphaFilter } from "@/compon
 import { NewOpportunityDialog } from "@/components/pipeline/NewOpportunityDialog";
 import { OpportunityListFilters } from "@/components/pipeline/OpportunityListFilters";
 import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
+import { activeColumns, readsField } from "@/lib/pipeline/ladder";
+import { myLadder } from "@/lib/pipeline/ladder-server";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +50,10 @@ export default async function ClientOpportunitiesPage({
   const { stage, status, letter, person, company } = filters;
   const supabase = await createClient();
 
-  const { data: client } = await supabase.from("org_clients").select("id,name").eq("id", clientId).maybeSingle();
+  const [{ data: client }, ladder] = await Promise.all([
+    supabase.from("org_clients").select("id,name").eq("id", clientId).maybeSingle(),
+    myLadder(),
+  ]);
   if (!client) notFound();
 
   // crm_contacts/crm_accounts default to a left-embed so a row with no
@@ -66,10 +71,13 @@ export default async function ClientOpportunitiesPage({
 
   if (stage) query = query.eq("stage", stage);
   if (status) query = query.eq("lead_status", status);
-  // With no filter chosen, default to the open pipeline -- this client alone
-  // can carry tens of thousands of historical Closed/DQ rows, and that's an
-  // archive to filter into on purpose, not the working list.
-  if (!stage && !status) query = query.not("stage", "ilike", "Closed:%");
+  // With no filter chosen, default to the open pipeline on the viewer's own
+  // ladder -- this client alone can carry tens of thousands of finished rows,
+  // and that's an archive to filter into on purpose, not the working list.
+  if (!stage && !status) {
+    const flags = activeColumns(ladder);
+    query = flags.length === 1 ? query.is(flags[0], true) : query.or(flags.map((f) => `${f}.is.true`).join(","));
+  }
   if (letter) query = query.ilike("crm_contacts.last_name", `${letter}%`);
   if (person) {
     const p = person.trim().replace(/[,()]/g, " ").trim();
@@ -98,8 +106,10 @@ export default async function ClientOpportunitiesPage({
         </PageHeader>
       </div>
 
+      {/* Only the ladder the viewer works: a BDM filters by lead status, an
+          account manager by stage, and the table shows the same column. */}
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+        {readsField(ladder, "stage") && <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-meta font-medium text-muted-foreground">Stage</span>
           <Link href={filterHref(clientId, { stage: undefined }, filters)}
                 className={`rounded-full border px-2 py-0.5 text-meta ${!stage ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
@@ -111,12 +121,12 @@ export default async function ClientOpportunitiesPage({
               {v}
             </Link>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        </div>}
+        {readsField(ladder, "lead_status") && <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-meta font-medium text-muted-foreground">Lead status</span>
           <Link href={filterHref(clientId, { status: undefined }, filters)}
                 className={`rounded-full border px-2 py-0.5 text-meta ${!status ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
-            Any
+            {readsField(ladder, "stage") ? "Any" : "Open (default)"}
           </Link>
           {LEAD_STATUSES.map((v) => (
             <Link key={v} href={filterHref(clientId, { status: v }, filters)}
@@ -124,7 +134,7 @@ export default async function ClientOpportunitiesPage({
               {v}
             </Link>
           ))}
-        </div>
+        </div>}
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-meta font-medium text-muted-foreground">Contact</span>
           <AlphaFilter
@@ -144,8 +154,8 @@ export default async function ClientOpportunitiesPage({
               <TR>
                 <TH>Contact</TH>
                 <TH>Account</TH>
-                <TH>Stage</TH>
-                <TH>Lead status</TH>
+                {readsField(ladder, "stage") && <TH>Stage</TH>}
+                {readsField(ladder, "lead_status") && <TH>Lead status</TH>}
                 <TH>Next action</TH>
               </TR>
             </THead>
@@ -158,8 +168,8 @@ export default async function ClientOpportunitiesPage({
                     </Link>
                   </TD>
                   <TD className="text-muted-foreground">{r.crm_accounts?.name ?? "—"}</TD>
-                  <TD><Chip colour={stageTone(r.stage)}>{r.stage}</Chip></TD>
-                  <TD className="text-muted-foreground">{r.lead_status ?? "—"}</TD>
+                  {readsField(ladder, "stage") && <TD><Chip colour={stageTone(r.stage)}>{r.stage}</Chip></TD>}
+                  {readsField(ladder, "lead_status") && <TD className="text-muted-foreground">{r.lead_status ?? "—"}</TD>}
                   <TD className="tabular-nums text-muted-foreground">{r.next_action_date ?? "—"}</TD>
                 </TR>
               ))}
