@@ -4,6 +4,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 import { containerWithPath, children, listItems } from "@/actions/work-tree";
 import { ContainerRows } from "@/components/work/ContainerRows";
 import { ListView } from "@/components/work/ListView";
+import { NewTaskDialog } from "@/components/work/NewTaskDialog";
 import { KIND_LABEL } from "@/lib/work-tree";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
@@ -58,7 +59,7 @@ export default async function ContainerPage({
 
         <PageHeader
           title={node.name}
-          actions={<div className="flex items-baseline gap-3 text-xs text-muted-foreground">
+          actions={<><div className="flex items-baseline gap-3 text-xs text-muted-foreground">
             <span>{KIND_LABEL[node.kind]}</span>
             {isList && (
               <span className="tabular-nums">
@@ -75,7 +76,8 @@ export default async function ContainerPage({
                 ClickUp <ExternalLink className="h-3 w-3" />
               </a>
             )}
-          </div>}
+          </div>
+          {isList && <NewTaskDialog listId={node.clickupId} listName={node.name} />}</>}
           className="mt-1"
         />
       </div>
