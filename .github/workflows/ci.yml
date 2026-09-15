@@ -1,0 +1,47 @@
+# What a pull request has to pass before it can be merged.
+#
+# The same two things Vercel runs on deploy -- the design check and the build
+# -- run here first, so a failure is a red cross on the pull request rather
+# than a blocked production deploy that everyone shares.
+#
+# The ruleset on main lists the job below as a required check. It looks for
+# the job by its `name`, so renaming it means updating the ruleset too.
+
+name: Pull request checks
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  # A new push to the same pull request supersedes the run in progress.
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Design check and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: |
+          # Same fallback as the Gaib workflow. A lock file written on a Mac can
+          # be missing the optional packages Linux needs, and npm ci refuses it.
+          if ! npm ci; then
+            echo "::warning::npm ci refused the lock file -- falling back to npm install."
+            echo "::warning::Regenerate it: rm -rf node_modules package-lock.json && npm install"
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Design check
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

@@ -76,9 +76,10 @@ When the work is done, from inside the copy:
   git add <the files you touched> && git commit
   git fetch origin && git rebase origin/main     # take in what others shipped
   npm run build                                  # prove it still builds
-  git push origin HEAD:main                      # straight to main, as usual
+  git push -u origin wt/$name                    # the branch, not main
+  gh pr create --fill                            # ask Gabe to approve it
 
-Then, from anywhere:
+Once the pull request is merged, from anywhere:
   git -C $main worktree remove $dir
   git -C $main branch -d wt/$name
 EOF

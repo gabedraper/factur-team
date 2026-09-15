@@ -1,0 +1,10 @@
+# Who has to approve a change before it can land on main.
+#
+# GitHub reads this file when a pull request is opened and asks the owner of
+# every touched path for a review. The ruleset on main refuses to merge until
+# that review is an approval, so this file is where "with my approval" lives.
+#
+# One line, on purpose: every path, one approver. Add a line above it for a
+# path someone else should own, and the more specific pattern wins.
+
+*   @gabedraper

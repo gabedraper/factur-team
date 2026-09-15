@@ -25,19 +25,34 @@ Finishing, from inside the copy:
 git add <the files you touched> && git commit
 git fetch origin && git rebase origin/main     # take in what others shipped
 npm run build                                  # prove it still builds
-git push origin HEAD:main                      # straight to main, as usual
-git -C ~/factur-team worktree remove <path> && git -C ~/factur-team branch -d wt/<name>
+git push -u origin wt/<name>                   # the branch, not main
+gh pr create --fill                            # ask Gabe to approve it
 ```
 
 Rebase before pushing, every time: it is where an overlap with another session
-surfaces, while both changes still exist. Still no PRs — the branch is private
-scaffolding, and `main` is where work lands.
+surfaces, while both changes still exist.
+
+**Work lands on `main` through a pull request that Gabe approves.** GitHub
+refuses a direct push to `main` from anyone but the repository admin, and
+refuses to merge a pull request until it has Gabe's approval and a green
+build. Gabe's own sessions may still `git push origin HEAD:main`; the ruleset
+lets the admin through. Once a pull request merges, GitHub deletes its branch
+and the copy can go:
+
+```
+git -C ~/factur-team worktree remove <path> && git -C ~/factur-team branch -d wt/<name>
+```
+
+Teammate onboarding — GitHub access, secrets, which Claude account, the pull
+request flow — is in `CONTRIBUTING.md`.
 
 What a copy does **not** isolate:
 
 - **The database.** There is one, shared. Two sessions changing the same table,
   function or policy still collide, and migrations land immediately for
   everyone. Hold one area at a time, and say in chat which one you are in.
+  Teammates do not apply migrations: the file goes in the pull request under
+  `supabase/migrations/` and Gabe applies it after the merge.
 - **`node_modules` after a dependency change.** `npm install` inside a copy
   updates only that copy and leaves `package-lock.json` disagreeing with the
   rest. Install in `~/factur-team`, then re-clone the copies that need it.

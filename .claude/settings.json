@@ -1,0 +1,22 @@
+{
+  "// what this is": "Claude Code settings shared by everyone who clones this repo. Personal ones go in settings.local.json, which is not committed.",
+  "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git config core.hooksPath .githooks"
+          }
+        ]
+      }
+    ]
+  }
+}
