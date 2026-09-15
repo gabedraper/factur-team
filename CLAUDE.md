@@ -1,12 +1,55 @@
 # Working in this repo
 
 Next.js App Router, TypeScript, Tailwind, Supabase. `npm run dev` on **port
-3001** — fixed, not automatic, because Supabase auth redirects are registered
-against it.
+3001** in the main checkout — fixed, not automatic, because Supabase auth
+redirects are registered against it. A worktree uses 3002-3005 (below).
 
-**Another session may be working in this repo at the same time.** Stage the
-files you actually touched. `git add -A` has repeatedly swept someone else's
-work into an unrelated commit.
+## Work in your own copy
+
+**Several sessions work on this app at once.** Sharing one checkout meant one
+session's `git add` swept up another's half-finished file, one session's push
+carried everyone's commits, and undoing a change could undo someone else's. So
+anything beyond a one-line fix starts with its own copy:
+
+```
+scripts/worktree.sh <name>          # ~/factur-<name>, branch wt/<name>
+```
+
+It branches from `origin/main`, clones `node_modules` (about seven seconds,
+and almost no disk on APFS), links the `.env` files, and tells you which port
+is free. Then work there and nowhere else.
+
+Finishing, from inside the copy:
+
+```
+git add <the files you touched> && git commit
+git fetch origin && git rebase origin/main     # take in what others shipped
+npm run build                                  # prove it still builds
+git push origin HEAD:main                      # straight to main, as usual
+git -C ~/factur-team worktree remove <path> && git -C ~/factur-team branch -d wt/<name>
+```
+
+Rebase before pushing, every time: it is where an overlap with another session
+surfaces, while both changes still exist. Still no PRs — the branch is private
+scaffolding, and `main` is where work lands.
+
+What a copy does **not** isolate:
+
+- **The database.** There is one, shared. Two sessions changing the same table,
+  function or policy still collide, and migrations land immediately for
+  everyone. Hold one area at a time, and say in chat which one you are in.
+- **`node_modules` after a dependency change.** `npm install` inside a copy
+  updates only that copy and leaves `package-lock.json` disagreeing with the
+  rest. Install in `~/factur-team`, then re-clone the copies that need it.
+- **The dev server port.** Sign-in only works on ports registered with
+  Supabase: 3001 for the main checkout, 3002-3005 for copies. The matching
+  browser-preview configs are in `.claude/launch.json`.
+- **The git stash.** It is shared across every copy. Never `git stash pop` —
+  make a temporary commit instead, or you will pop someone else's work.
+
+In the main checkout, where several sessions still overlap: stage only the
+files you touched. `git add -A` has repeatedly swept someone else's work into
+an unrelated commit.
 
 ---
 
