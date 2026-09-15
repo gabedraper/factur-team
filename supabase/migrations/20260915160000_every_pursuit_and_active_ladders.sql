@@ -85,12 +85,17 @@ insert into public.opportunity_closed_values (field, value) values
   ('stage', 'Not the DM'),
   -- A list to call from, not a pursuit. The sync never brings these in.
   ('stage', 'Prospecting: Cold Call List'),
-  -- The prospecting ladder. Customer is the prospector's closed-won; LTFU
-  -- (long-term follow up) is still being worked and stays active.
+  -- The prospecting ladder. Customer and Purchase Order are the prospector's
+  -- closed-won; Lead Handoff means the lead went to the client, which is where
+  -- the prospector's ladder stops mattering -- 660,000 rows carry it from the
+  -- old pipeline. LTFU (long-term follow up) is still being worked and stays
+  -- active.
   ('lead_status', 'No Fit Ever'),
   ('lead_status', 'No Fit Ever - Contact'),
   ('lead_status', 'No Fit Ever - Account'),
   ('lead_status', 'Lost Follow Up'),
+  ('lead_status', 'Lead Handoff'),
+  ('lead_status', 'Purchase Order'),
   ('lead_status', 'Customer')
 on conflict do nothing;
 

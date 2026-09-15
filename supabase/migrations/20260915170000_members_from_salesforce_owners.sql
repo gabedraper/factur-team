@@ -37,7 +37,9 @@ security definer
 set search_path to 'public'
 as $$
 declare
-  v_started timestamptz := clock_timestamp();
+  /* now(), not clock_timestamp(): created_at defaults to now(), the
+     transaction's start, and the role step below matches on it. */
+  v_started timestamptz := now();
   linked integer := 0;
   created integer := 0;
   roled integer := 0;
@@ -71,11 +73,14 @@ begin
      and m.salesforce_user_id is null;
   get diagnostics linked = row_count;
 
+  /* on conflict: the transforms cron runs this too, and two runs can pick the
+     same owner up in the same minute. The loser simply skips the row. */
   insert into public.org_members (email, full_name, salesforce_user_id, active, needs_review, deactivated_at)
   select o.email, o.name, o.id, o.isactive, true,
          case when o.isactive then null else v_started end
   from _owners o
-  where not exists (select 1 from public.org_members m where m.email = o.email);
+  where not exists (select 1 from public.org_members m where m.email = o.email)
+  on conflict (email) do nothing;
   get diagnostics created = row_count;
 
   /* A role for the ones just made. Salesforce's role name is the most
@@ -104,7 +109,8 @@ begin
   ) k
   join public.org_roles r on r.slug = k.slug and r.active
   where m.created_at >= v_started
-    and not exists (select 1 from public.org_assignments a where a.member_id = m.id);
+    and not exists (select 1 from public.org_assignments a where a.member_id = m.id)
+  on conflict do nothing;
   get diagnostics roled = row_count;
 
   drop table _owners;
