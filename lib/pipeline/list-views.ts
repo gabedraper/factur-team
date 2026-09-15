@@ -59,6 +59,10 @@ export const LIST_FIELDS: ListField[] = [
      opportunity_closed_values); which one this points at is decided per viewer
      by resolveForLadder, so the path here is only a placeholder. */
   { key: "active",           label: "Active",         type: "boolean",  path: "active_by_stage" },
+  /* Another record for the same client and contact was named the main one
+     (refresh_opportunity_duplicates). "is not checked" keeps a view to one row
+     per pursuit. */
+  { key: "is_duplicate",     label: "Possible duplicate", type: "boolean", path: "is_duplicate" },
 
   { key: "next_action_date", label: "Next action",    type: "date", path: "next_action_date" },
   { key: "opened_on",        label: "Opened",         type: "date", path: "opened_on" },

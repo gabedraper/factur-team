@@ -9,6 +9,7 @@ import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 import { ContactEditor } from "@/components/pipeline/ContactEditor";
+import { PotentialDuplicates, type Duplicate } from "@/components/pipeline/PotentialDuplicates";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ type Opportunity = {
   name: string;
   stage: string;
   lead_status: string | null;
+  is_duplicate: boolean;
   notes: string | null;
   next_action_date: string | null;
   updates: string | null;
@@ -90,11 +92,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const { opportunityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: opp, error }, { data: activities }, ladder] = await Promise.all([
+  const [{ data: opp, error }, { data: activities }, ladder, { data: duplicates }] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates," +
+        "id,name,stage,lead_status,is_duplicate,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
         "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,linkedin_url)"
       )
@@ -107,6 +109,9 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .order("occurred_at", { ascending: false })
       .limit(50),
     myLadder(),
+    /* The rest of this client's records against this contact, as the viewer
+       may see them. Empty for the common case, one row per sibling otherwise. */
+    supabase.rpc("opportunity_duplicates", { p_id: opportunityId }),
   ]);
 
   if (error || !opp) notFound();
@@ -174,6 +179,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         </div>
 
         <div className="space-y-4">
+          <PotentialDuplicates
+            rows={((duplicates ?? []) as Duplicate[])}
+            isMain={!o.is_duplicate}
+            ladder={ladder}
+          />
           <Panel title="Activity">
             {!activities || activities.length === 0 ? (
               <Empty>Nothing logged against this opportunity yet.</Empty>
