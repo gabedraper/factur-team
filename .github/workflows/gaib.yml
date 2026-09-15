@@ -325,11 +325,17 @@ jobs:
       # reading of the diff that actually got written. Any one of them says no
       # and this becomes a pull request instead.
       - name: Ship it
+        id: ship
         if: >-
           inputs.lane == 'auto' &&
           steps.dials.outputs.auto_ship == 'true' &&
           steps.build.outputs.built == 'yes' &&
           steps.guard.outputs.safe == 'true'
+        # A refused push is not a failed ticket: the step below turns it into
+        # a pull request instead.
+        continue-on-error: true
+        env:
+          PUSH_TOKEN: ${{ secrets.GAIB_PUSH_TOKEN }}
         run: |
           git config user.name "Gaib"
           git config user.email "gaib@bethefactur.com"
@@ -347,7 +353,18 @@ jobs:
 
           # Someone may have pushed while the agent was working.
           git pull --rebase origin main
-          git push origin HEAD:main
+
+          # main is protected: only the repository admin may push to it
+          # directly, and the runner's own token is not the admin. The push
+          # goes through a token that is, added as the GAIB_PUSH_TOKEN secret.
+          # Without one the push would be refused, so it is not attempted --
+          # the fix keeps its commit and becomes a pull request below.
+          if [ -z "$PUSH_TOKEN" ]; then
+            echo "::warning::GAIB_PUSH_TOKEN is not set and main is protected; opening a pull request instead."
+            /tmp/event.sh "main is protected" "no push token, so this becomes a pull request"
+            exit 1
+          fi
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
 
           SHA=$(git rev-parse HEAD)
           /tmp/patch.sh "$(jq -nc --arg s "$SHA" --rawfile n /tmp/notes.md \
@@ -360,12 +377,14 @@ jobs:
           steps.build.outputs.built == 'yes' &&
           (inputs.lane == 'approval' ||
            steps.guard.outputs.safe == 'false' ||
-           steps.dials.outputs.auto_ship != 'true')
+           steps.dials.outputs.auto_ship != 'true' ||
+           steps.ship.outcome == 'failure')
         env:
           # Through the environment rather than interpolated into the script:
           # one of the guard's reasons contains an apostrophe, which would end
           # a shell string early and fail the step with a syntax error.
           GUARD: ${{ steps.guard.outputs.reason }}
+          SHIP_REFUSED: ${{ steps.ship.outcome == 'failure' }}
         run: |
           REF=$(jq -r '.ref' /tmp/ticket.json)
           BRANCH="gaib/$REF"
@@ -377,7 +396,11 @@ jobs:
             echo
             echo "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
           } > /tmp/msg.txt
-          git commit -q -F /tmp/msg.txt
+          # After a refused ship the fix is already committed and there is
+          # nothing left to add; the branch just carries that commit.
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -q -F /tmp/msg.txt
+          fi
           #
           # Brought up to date before pushing.
           #
@@ -416,6 +439,10 @@ jobs:
             if [ -n "$GUARD" ]; then
               echo
               echo "> Held back from shipping automatically: $GUARD"
+            fi
+            if [ "$SHIP_REFUSED" = "true" ]; then
+              echo
+              echo "> Would have shipped on its own, but main is protected and no push token is set."
             fi
             echo
             # Read by the merge workflow to close the ticket. Do not remove.
