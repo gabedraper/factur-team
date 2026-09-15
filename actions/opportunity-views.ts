@@ -27,7 +27,7 @@ import {
 const PAGE = 50;
 
 /* Which embeds a set of fields needs, and whether a filter forces !inner. */
-type Embeds = { contacts: boolean; accounts: boolean; clients: boolean; campaigns: boolean };
+type Embeds = { contacts: boolean; accounts: boolean; clients: boolean; campaigns: boolean; owners: boolean };
 
 function tableOf(f: ListField): keyof Embeds | null {
   const [head] = f.path.split(".");
@@ -35,6 +35,7 @@ function tableOf(f: ListField): keyof Embeds | null {
   if (head === "crm_accounts") return "accounts";
   if (head === "org_clients") return "clients";
   if (head === "crm_campaigns") return "campaigns";
+  if (head === "org_members") return "owners";
   return null;
 }
 
@@ -71,8 +72,8 @@ export async function listOpportunities(input: {
    * dropping the row, which reads as a broken filter; an inner embed on a
    * column nobody filtered would silently hide rows with no contact.
    */
-  const needed: Embeds = { contacts: false, accounts: false, clients: false, campaigns: false };
-  const inner: Embeds = { contacts: false, accounts: false, clients: false, campaigns: false };
+  const needed: Embeds = { contacts: false, accounts: false, clients: false, campaigns: false, owners: false };
+  const inner: Embeds = { contacts: false, accounts: false, clients: false, campaigns: false, owners: false };
 
   for (const f of fields) {
     const t = tableOf(f);
@@ -108,6 +109,7 @@ export async function listOpportunities(input: {
   const cols = new Set<string>(["id"]);
   const embedCols: Record<string, Set<string>> = {
     crm_contacts: new Set(), crm_accounts: new Set(), org_clients: new Set(), crm_campaigns: new Set(),
+    org_members: new Set(),
   };
   const add = (path: string) => {
     const [head, col] = path.split(".");
@@ -126,14 +128,19 @@ export async function listOpportunities(input: {
   const parts = [...cols];
   const embedName = (t: keyof Embeds) => ({
     contacts: "crm_contacts", accounts: "crm_accounts",
-    clients: "org_clients", campaigns: "crm_campaigns",
+    clients: "org_clients", campaigns: "crm_campaigns", owners: "org_members",
   }[t]);
-  for (const t of ["contacts", "accounts", "clients", "campaigns"] as (keyof Embeds)[]) {
+  /* opportunities points at org_members three times (owner, created_by,
+     updated_by), so PostgREST needs telling which one "org_members" means.
+     The response key stays "org_members", which is what the field path and
+     the cell renderer look up. */
+  const embedHint = (t: keyof Embeds) => (t === "owners" ? "!opportunities_owner_member_id_fkey" : "");
+  for (const t of ["contacts", "accounts", "clients", "campaigns", "owners"] as (keyof Embeds)[]) {
     if (!needed[t]) continue;
     const name = embedName(t);
     const inside = [...embedCols[name]];
     if (inside.length === 0) inside.push("id");
-    parts.push(`${name}${inner[t] ? "!inner" : ""}(${inside.join(",")})`);
+    parts.push(`${name}${embedHint(t)}${inner[t] ? "!inner" : ""}(${inside.join(",")})`);
   }
 
   /*

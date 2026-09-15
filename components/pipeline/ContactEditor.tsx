@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone as PhoneIcon } from "lucide-react";
+import { Phone as PhoneIcon, Linkedin, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/pipeline/bits";
 import { useDialer } from "@/components/work-panel/dialer-context";
@@ -17,12 +17,15 @@ import { toE164 } from "@/lib/phone";
  * panel doesn't own; wrong numbers get fixed in Salesforce.
  */
 export function ContactEditor({
-  opportunityId, contactName, phone, email, industry, domain,
+  opportunityId, contactName, phone, email, linkedinUrl, title, company, industry, domain,
 }: {
   opportunityId: string;
   contactName: string;
   phone: string | null;
   email: string | null;
+  linkedinUrl: string | null;
+  title: string | null;
+  company: string | null;
   industry: string | null;
   domain: string | null;
 }) {
@@ -83,6 +86,56 @@ export function ContactEditor({
           <dd>{industry ?? "—"}</dd>
         </div>
       </dl>
+      <LinkedInPreview url={linkedinUrl} name={contactName} title={title} company={company} />
     </Panel>
+  );
+}
+
+/*
+ * LinkedIn refuses to be framed -- every profile page sends
+ * X-Frame-Options: DENY -- so an embedded profile is not something an app can
+ * offer, and scraping one is against their terms. What can be shown is the
+ * profile card as Salesforce holds it: the person, their headline, and the
+ * public address, one click from the real thing. The handle is the part of
+ * the URL a person actually recognises, so it is what gets printed.
+ */
+function LinkedInPreview({
+  url, name, title, company,
+}: {
+  url: string | null;
+  name: string;
+  title: string | null;
+  company: string | null;
+}) {
+  if (!url) return null;
+  const handle = url.replace(/^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\//i, "").replace(/\/.*$/, "");
+  const headline = [title, company].filter(Boolean).join(" · ");
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+
+  return (
+    <div className="border-t px-4 py-3">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="group flex items-center gap-3 rounded-md bg-card-hover/60 p-3 transition-colors duration-fast ease-out hover:bg-card-hover"
+      >
+        <span
+          aria-hidden
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-body font-semibold text-primary-foreground"
+        >
+          {initials || <Linkedin className="h-5 w-5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-body font-medium">
+            <Linkedin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="LinkedIn" />
+            <span className="truncate">{name}</span>
+          </span>
+          {headline && <span className="block truncate text-meta text-muted-foreground">{headline}</span>}
+          <span className="block truncate text-meta text-muted-foreground">linkedin.com/in/{handle}</span>
+        </span>
+        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground transition-colors duration-fast group-hover:text-foreground" aria-hidden />
+      </a>
+    </div>
   );
 }

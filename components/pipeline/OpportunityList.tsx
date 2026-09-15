@@ -82,6 +82,14 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
   if (field.type === "picklist" && typeof v === "string" && v) {
     return <Chip colour={progressTone(v)}>{v}</Chip>;
   }
+  if (field.key === "contact_linkedin" && typeof v === "string" && v) {
+    const handle = v.replace(/^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\//i, "").replace(/\/.*$/, "");
+    return (
+      <a href={v} target="_blank" rel="noreferrer" className="underline-offset-2 hover:underline">
+        {handle || v}
+      </a>
+    );
+  }
   if (field.key === "contact_phone" && typeof v === "string" && v) {
     return <PhoneCell row={row} value={v} />;
   }

@@ -36,6 +36,7 @@ export const LIST_FIELDS: ListField[] = [
   { key: "contact_title",    label: "Title",          type: "text", path: "crm_contacts.title" },
   { key: "contact_email",    label: "Email",          type: "text", path: "crm_contacts.email" },
   { key: "contact_phone",    label: "Phone",          type: "text", path: "crm_contacts.phone" },
+  { key: "contact_linkedin", label: "LinkedIn",       type: "text", path: "crm_contacts.linkedin_url" },
 
   { key: "account_name",     label: "Company",        type: "text", path: "crm_accounts.name" },
   { key: "account_domain",   label: "Website",        type: "text", path: "crm_accounts.domain" },
@@ -46,6 +47,9 @@ export const LIST_FIELDS: ListField[] = [
   { key: "account_country",  label: "Country",        type: "text", path: "crm_accounts.country" },
 
   { key: "client_name",      label: "Client",         type: "text", path: "org_clients.name" },
+  /* Salesforce's Opportunity Owner, matched to a team member by their
+     Salesforce user id. Opportunities whose owner has left stay blank here. */
+  { key: "owner_name",       label: "Owner",          type: "text", path: "org_members.full_name" },
   { key: "campaign_name",    label: "Campaign",       type: "text", path: "crm_campaigns.name" },
 
   { key: "stage",            label: "Stage",          type: "picklist", path: "stage",       picklist: "stage" },
