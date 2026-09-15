@@ -19,13 +19,23 @@ stable
 security definer
 set search_path to 'public', 'pg_catalog'
 as $$
-  select distinct on (o."Client_Contact__c") o."Client_Contact__c"
-  from public."sky_Opportunity" o
-  where o."Client_Contact__c" is not null
-    and o."Client_Contact__c" <> ''
-    and coalesce(nullif(o."IsDeleted", '')::boolean, false) = false
-    and not exists (select 1 from public."sky_Contact" c where c."Id" = o."Client_Contact__c")
-  order by o."Client_Contact__c", public.sf_ts(o."LastModifiedDate") desc nulls last
+  -- Newest opportunity first. DISTINCT ON has to sort by the contact, so the
+  -- ordering that matters is applied outside it, or the limit would take
+  -- contacts in id order and the deal somebody is asking about today would
+  -- wait behind a hundred thousand old ones.
+  select contact_id
+  from (
+    select distinct on (o."Client_Contact__c")
+           o."Client_Contact__c" as contact_id,
+           public.sf_ts(o."LastModifiedDate") as touched
+    from public."sky_Opportunity" o
+    where o."Client_Contact__c" is not null
+      and o."Client_Contact__c" <> ''
+      and coalesce(nullif(o."IsDeleted", '')::boolean, false) = false
+      and not exists (select 1 from public."sky_Contact" c where c."Id" = o."Client_Contact__c")
+    order by o."Client_Contact__c", public.sf_ts(o."LastModifiedDate") desc nulls last
+  ) m
+  order by touched desc nulls last
   limit greatest(1, least(coalesce(p_limit, 2000), 5000));
 $$;
 
