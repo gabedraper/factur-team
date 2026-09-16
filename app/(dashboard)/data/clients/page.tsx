@@ -156,6 +156,7 @@ export default async function ClientsDataPage({
           sortDir={sortDir}
           currentView={view}
           canShare={perms.has("org.manage")}
+          canEnrol={perms.has("sequences.send") || perms.has("org.manage")}
           picklists={picklists}
           afterDeleteHref={base}
         />

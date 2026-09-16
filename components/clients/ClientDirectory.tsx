@@ -8,6 +8,7 @@ import { CompanyLogo } from "@/components/ui/thumbnail";
 import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 import { SortHeader, useSort } from "@/components/ui/sortable";
 import { ViewTools, type ViewEditorSetup } from "@/components/list/ViewEditor";
+import { AddToSequence } from "@/components/clients/AddToSequence";
 import {
   CLIENT_FIELDS, CLIENT_FIELD_BY_KEY, DEFAULT_CLIENT_COLUMNS,
   type ClientField, type ClientRecord,
@@ -58,6 +59,7 @@ export function ClientDirectory({
   sortDir,
   currentView,
   canShare,
+  canEnrol,
   picklists,
   afterDeleteHref,
 }: {
@@ -68,10 +70,13 @@ export function ClientDirectory({
   /** The saved view on screen, when there is one. */
   currentView: ListView | null;
   canShare: boolean;
+  /** Whether this person may put clients onto a sequence. */
+  canEnrol: boolean;
   picklists: Record<string, string[]>;
   afterDeleteHref: string;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
+  const [addingToSequence, setAddingToSequence] = useState(false);
 
   const columns = columnKeys
     .map((k) => CLIENT_FIELD_BY_KEY.get(k))
@@ -90,26 +95,6 @@ export function ClientDirectory({
   const all = sorted.length > 0 && selected.length === sorted.length;
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  /*
-   * Export is built from the rows already on the page, in the columns already
-   * on the page: exactly what the person was looking at, with no second query
-   * that could disagree with it.
-   */
-  const exportCsv = () => {
-    const chosen = sorted.filter((r) => selected.includes(r.id));
-    const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const csv = [
-      shown.map((f) => cell(f.label)).join(","),
-      ...chosen.map((r) => shown.map((f) => cell(cellText(f, r))).join(",")),
-    ].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `clients-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const setup: ViewEditorSetup = {
     fields: CLIENT_FIELDS.map(({ key, label, type, picklist }) => ({ key, label, type, picklist })),
@@ -137,8 +122,18 @@ export function ClientDirectory({
       </div>
 
       <BulkBar count={selected.length} noun="client" onClear={() => setSelected([])}>
-        <BulkAction onClick={exportCsv}>Export</BulkAction>
+        {canEnrol && (
+          <BulkAction onClick={() => setAddingToSequence(true)}>Add to sequence</BulkAction>
+        )}
       </BulkBar>
+
+      {addingToSequence && (
+        <AddToSequence
+          clientIds={selected}
+          onClose={() => setAddingToSequence(false)}
+          onDone={() => setSelected([])}
+        />
+      )}
 
       <Surface pad="none">
         <TableScroll>
