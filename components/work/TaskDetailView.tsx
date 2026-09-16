@@ -11,9 +11,10 @@ import { Table, TBody, TR, TD } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/thumbnail";
 import { Markdown } from "./Markdown";
+import { StatusField, DatesField, PriorityField } from "./TaskFields";
 
 /**
- * A ClickUp task page, rebuilt read-only.
+ * A ClickUp task page, rebuilt here.
  *
  * Same three columns as the real one -- subtasks, the task, its activity -- and
  * the same property grid in the same order, so somebody who opens tasks all day
@@ -25,8 +26,10 @@ import { Markdown } from "./Markdown";
  * are applied as inline style rather than as classes; everything else uses the
  * app's tokens.
  *
- * Nothing edits. Every control that would change the task over there is a link
- * to do it over there.
+ * Status, dates and priority are changed here and forwarded to ClickUp, because
+ * opening another tab to move a due date is the reason people stopped using
+ * this page. Everything else -- comments, subtasks, attachments -- is still a
+ * link to do it over there.
  */
 
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -212,27 +215,21 @@ export function TaskDetailView({ t }: { t: TaskDetail }) {
           <Surface>
             <div className="grid gap-x-8 gap-y-1 md:grid-cols-2">
               <Prop icon={CircleDot} label="Status">
-                <Swatch color={t.statusColor}
-                        className="inline-flex items-center rounded px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-primary-foreground">
-                  {t.status}
-                </Swatch>
+                {/* No status set mirrored for this list: show the one it is on
+                    rather than a picker that could only offer that one. */}
+                {t.statuses.length > 0 ? <StatusField t={t} /> : (
+                  <Swatch color={t.statusColor}
+                          className="inline-flex items-center rounded px-2 py-0.5 text-meta font-semibold uppercase tracking-wide text-primary-foreground">
+                    {t.status}
+                  </Swatch>
+                )}
               </Prop>
               <Prop icon={Users} label="Assignees"><People people={t.assignees} /></Prop>
               <Prop icon={Calendar} label="Dates">
-                {!t.startAt && !t.dueAt ? <Empty /> : (
-                  <span className="tabular-nums">
-                    {day(t.startAt) || "—"} <span className="text-muted-foreground">→</span>{" "}
-                    <span className={overdue ? "text-destructive" : ""}>{day(t.dueAt) || "—"}</span>
-                  </span>
-                )}
+                <DatesField t={t} overdue={Boolean(overdue)} />
               </Prop>
               <Prop icon={Flag} label="Priority">
-                {t.priority
-                  ? <span className="inline-flex items-center gap-1.5 capitalize">
-                      <Flag className="h-3.5 w-3.5" style={t.priorityColor ? { color: t.priorityColor } : undefined} aria-hidden />
-                      {t.priority}
-                    </span>
-                  : <Empty />}
+                <PriorityField t={t} />
               </Prop>
               <Prop icon={Hourglass} label="Time estimate">{estimate(t.timeEstimateMs) || <Empty />}</Prop>
               <Prop icon={Timer} label="Track time">{estimate(t.timeSpentMs) || <Empty />}</Prop>

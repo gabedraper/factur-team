@@ -13,6 +13,23 @@ export type RelatedTask = {
   statusType: string | null;
 };
 
+/**
+ * A status the task's list offers.
+ *
+ * ClickUp's task payload names the status a task is on and no others, so the
+ * set to choose from comes from the list in the mirror.
+ */
+export type ListStatus = { status: string; color: string | null; type: string | null };
+
+/** What the page may change. A field left out is left alone. */
+export type TaskEdit = {
+  status?: string;
+  priority?: "urgent" | "high" | "normal" | "low" | null;
+  /** yyyy-mm-dd, or null to clear the date. */
+  startOn?: string | null;
+  dueOn?: string | null;
+};
+
 export type CommentSegment =
   | { kind: "text"; text: string; bold?: boolean; italic?: boolean; code?: boolean; link?: string }
   | { kind: "mention"; text: string };
@@ -33,6 +50,8 @@ export type TaskDetail = {
   status: string;
   statusType: string | null;
   statusColor: string | null;
+  /** Everything this task's list allows, current one included. */
+  statuses: ListStatus[];
   priority: string | null;
   priorityColor: string | null;
 

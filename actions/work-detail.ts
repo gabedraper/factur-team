@@ -3,9 +3,9 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { access, withoutHidden, grantedTaskIds } from "@/lib/work-access";
-import { clickup } from "@/lib/clickup/api";
+import { clickup, clickupPut } from "@/lib/clickup/api";
 import { displayValue } from "@/lib/clickup/fields.mjs";
-import type { TaskDetail, Person, RelatedTask, Comment, CommentSegment } from "@/lib/work-detail";
+import type { TaskDetail, TaskEdit, Person, RelatedTask, Comment, CommentSegment } from "@/lib/work-detail";
 import { initials } from "@/lib/work-detail";
 
 /*
@@ -212,6 +212,14 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
     ? ((task.custom_fields ?? []) as Raw[]).map((f) => ({ name: String(f.name ?? ""), display: displayValue(f) }))
     : ((m.fields ?? []) as Raw[]).map((f) => ({ name: String(f.name), display: String(f.display ?? "") }));
 
+  /* ---- The statuses this list allows, so the page can offer them -------- */
+  const { data: listRow } = m.clickup_list_id
+    ? await db.from("work_containers").select("statuses").eq("clickup_id", m.clickup_list_id).maybeSingle()
+    : { data: null };
+  const statuses = (((listRow as Raw | null)?.statuses ?? []) as Raw[])
+    .map((s) => ({ status: String(s.status ?? ""), color: s.color ?? null, type: s.type ?? null }))
+    .filter((s) => s.status);
+
   const mirrorAssignees = ((m.work_item_assignees ?? []) as Raw[])
     .map((a) => person({ username: a.name })).filter(Boolean) as Person[];
 
@@ -222,6 +230,7 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
     status: task?.status?.status ?? m.status,
     statusType: task?.status?.type ?? m.status_type,
     statusColor: task?.status?.color ?? null,
+    statuses,
     priority: task?.priority?.priority ?? m.priority ?? null,
     priorityColor: task?.priority?.color ?? null,
 
@@ -280,4 +289,111 @@ export async function taskDetail(clickupId: string): Promise<TaskDetail | null> 
 
     fetchedAt, stale,
   };
+}
+
+/*
+ * Changing one.
+ *
+ * The mirror is not a second place to edit, which is what would have given us
+ * the conflict problem it was built to avoid. An edit goes to ClickUp, and
+ * only what ClickUp answers is written back here -- so ClickUp is still the
+ * record, and the lists this task appears in stop disagreeing with the page it
+ * was just changed on.
+ *
+ * Who may edit is who may see. Access to the mirror is ClickUp's own list
+ * access, so somebody who can open this task here can open and change it
+ * there; bouncing out to do it was the whole complaint. The check is made
+ * again here rather than trusted from the page, because a server action is a
+ * URL like any other.
+ */
+
+const PRIORITY_NUMBER: Record<string, number> = { urgent: 1, high: 2, normal: 3, low: 4 };
+
+/*
+ * A picker sets the day and says nothing about the time of day.
+ *
+ * ClickUp keeps a timestamp either way -- a date-only task sits at midnight in
+ * the workspace's timezone -- so the time that was already there is kept.
+ * Moving a due date by a day must not also move a 5pm deadline to midnight.
+ *
+ * A date nobody had set lands at midday, which is the only choice that reads
+ * as the same day in every timezone ClickUp might render it in. Midnight is the
+ * one that reads as the day before.
+ */
+function onDay(day: string, previous: string | null): number {
+  const midnight = Date.parse(`${day}T00:00:00Z`);
+  if (!previous) return midnight + 12 * 3_600_000;
+  const was = new Date(previous);
+  return midnight + was.getUTCHours() * 3_600_000 + was.getUTCMinutes() * 60_000;
+}
+
+export async function editTask(
+  clickupId: string,
+  edit: TaskEdit
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const perms = await myPermissions();
+  if (!perms.has("work.view") && !perms.has("org.manage")) {
+    return { ok: false, error: "You cannot change this task." };
+  }
+
+  const db = createServiceClient();
+  const hidden = await access();
+  const COLUMNS = "clickup_id, start_at, due_at, parent_clickup_id";
+
+  /* The same two doors taskDetail opens: list access, then a direct share. */
+  let { data: mirrorRow } = await withoutHidden(
+    db.from("work_items").select(COLUMNS).eq("clickup_id", clickupId),
+    hidden
+  ).maybeSingle();
+  if (!mirrorRow) {
+    const granted = await grantedTaskIds();
+    if (granted.size) {
+      const { data: raw } = await db.from("work_items").select(COLUMNS).eq("clickup_id", clickupId).maybeSingle();
+      const parent = (raw as Raw | null)?.parent_clickup_id as string | null | undefined;
+      if (raw && (granted.has(clickupId) || (parent && granted.has(parent)))) mirrorRow = raw;
+    }
+  }
+  if (!mirrorRow) return { ok: false, error: "That task is not here any more." };
+  const m = mirrorRow as Raw;
+
+  /* Only what was actually changed. ClickUp treats every field it is handed as
+   * an instruction, so a field nobody touched must not be in the body. */
+  const body: Raw = {};
+  if (edit.status !== undefined) body.status = edit.status;
+  if (edit.priority !== undefined) {
+    body.priority = edit.priority ? PRIORITY_NUMBER[edit.priority] ?? null : null;
+  }
+  if (edit.startOn !== undefined) {
+    body.start_date = edit.startOn ? onDay(edit.startOn, m.start_at) : null;
+    if (edit.startOn && !m.start_at) body.start_date_time = false;
+  }
+  if (edit.dueOn !== undefined) {
+    body.due_date = edit.dueOn ? onDay(edit.dueOn, m.due_at) : null;
+    if (edit.dueOn && !m.due_at) body.due_date_time = false;
+  }
+  if (Object.keys(body).length === 0) return { ok: true };
+
+  let task: Raw;
+  try {
+    task = await clickupPut<Raw>(`/task/${clickupId}`, body);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "ClickUp would not take that." };
+  }
+
+  /* Both copies here now hold the task as it was a moment ago. The detail
+   * cache is dropped so the page asks ClickUp again rather than re-rendering
+   * the old answer for five minutes, and the mirror row is corrected from
+   * ClickUp's reply so the lists agree before the next sync. */
+  await db.from("work_item_details").delete().eq("clickup_id", clickupId);
+  await db.from("work_items").update({
+    status: task.status?.status ?? undefined,
+    status_type: task.status?.type ?? undefined,
+    priority: task.priority?.priority ?? null,
+    start_at: iso(task.start_date),
+    due_at: iso(task.due_date),
+    closed_at: iso(task.date_closed),
+    updated_at_remote: iso(task.date_updated),
+  }).eq("clickup_id", clickupId);
+
+  return { ok: true };
 }
