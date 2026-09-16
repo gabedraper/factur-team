@@ -37,6 +37,7 @@ import {
   Home,
   Briefcase,
   Contact,
+  Database,
   Building2,
   KanbanSquare,
   Radar,
@@ -202,17 +203,28 @@ function getNavGroups(perms: Set<string>, collections: boolean, gaibWaiting: num
    * through the work panel on the right, not the sidebar.
    */
 
-  // Data and Opportunities share the timelines.view audience -- browsing
-  // people/companies is only useful to someone who also works opportunities.
-  if (perms.has("timelines.view")) {
-    groups.push({
-      label: "Data",
-      items: [
-        { href: "/data/people", label: "People", icon: <Contact className="h-4 w-4" /> },
-        { href: "/data/companies", label: "Companies", icon: <Building2 className="h-4 w-4" /> },
-      ],
-    });
+  /*
+   * Data is the record browser: what we hold, as tables. Its members are gated
+   * one by one rather than as a block, because they do not share an audience --
+   * people and companies are prospect data and only mean something to someone
+   * working opportunities, while the clients table answers to the client
+   * grants. The index itself is open to anyone holding either, since it is a
+   * list of names and sizes rather than any of the data.
+   */
+  const dataItems: NavItem[] = [];
+  const seesClients =
+    perms.has("clients.health") || perms.has("clients.results") || perms.has("org.manage");
+  if (perms.has("timelines.view") || seesClients) {
+    dataItems.push({ href: "/data", label: "All data", icon: <Database className="h-4 w-4" /> });
   }
+  if (seesClients) {
+    dataItems.push({ href: "/data/clients", label: "Clients", icon: <Briefcase className="h-4 w-4" /> });
+  }
+  if (perms.has("timelines.view")) {
+    dataItems.push({ href: "/data/people", label: "People", icon: <Contact className="h-4 w-4" /> });
+    dataItems.push({ href: "/data/companies", label: "Companies", icon: <Building2 className="h-4 w-4" /> });
+  }
+  if (dataItems.length) groups.push({ label: "Data", items: dataItems });
 
   if (perms.has("timelines.view")) {
     groups.push({

@@ -25,6 +25,8 @@ export const ROUTES: readonly string[] = [
   "/collections",
   "/collections/ar",
   "/collections/invoices",
+  "/data",
+  "/data/clients",
   "/data/companies",
   "/data/people",
   "/gaib",
