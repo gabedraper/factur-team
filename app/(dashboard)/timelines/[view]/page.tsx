@@ -3,8 +3,8 @@ import { getLeads, getFilterOptions } from "@/lib/timelines/leads";
 import { myPermissions } from "@/lib/org";
 import { TimelineBoard, type ViewKey } from "@/components/timelines/TimelineBoard";
 
-// The staging tables are refreshed hourly by Coupler; there is nothing to gain
-// from caching a render between loads.
+// Reads the same opportunities and activity as the Opportunities pages, which
+// the sync refreshes every three minutes; nothing to gain from caching a render.
 export const dynamic = "force-dynamic";
 
 // The tile rebuild runs after the response on whichever visit finds them stale,

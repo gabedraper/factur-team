@@ -34,7 +34,7 @@ export type StageSpan = {
 };
 
 export type Lead = {
-  id: string; url: string; name: string; contact: string;
+  id: string; appId: string | null; url: string; name: string; contact: string;
   title: string | null; account: string | null; accountUrl: string | null;
   client: string | null; rep: string | null; ownerId: string | null; source: string;
   pipeline: Pipeline;
@@ -53,7 +53,11 @@ export type Lead = {
 };
 
 export type LeadRow = {
-  id: string; name: string | null; stagename: string | null;
+  /** The Salesforce id: what the activity is keyed on and the link into Salesforce. */
+  id: string;
+  /** Our own id, for the record page in the app. */
+  appId?: string;
+  name: string | null; stagename: string | null;
   createddate: string; ownerid: string | null; owner_name: string | null;
   accountid: string | null; account_name: string | null;
   account_contact_name__c: string | null; contact_title__c: string | null;
@@ -211,6 +215,7 @@ function buildLead(row: LeadRow, rawTasks: TaskRow[], now: Date, pipeline: Pipel
 
   return {
     id: row.id,
+    appId: row.appId ?? null,
     url: `${SF_BASE}/lightning/r/Opportunity/${row.id}/view`,
     name: row.name || "",
     contact: contactName(row),
@@ -360,6 +365,18 @@ export const DELIVERED_LEADS_OWNER = "005VI00000LjYe9YAF"; // Service Delivery O
  */
 export const NURTURE_STAGE = "Pipeline: LT Follow Up";
 export const NURTURE_STATUS = "LTFU";
+
+/**
+ * A list is not a lead.
+ *
+ * "Prospecting: Pipeline Cold" is the cold-call list: 31,398 records created
+ * this year that nobody was meant to respond to until they were worked, and
+ * "Cold Call List" is its older spelling. On a board that measures how fast a
+ * rep answered, they would read as 31,398 leads never touched. The Salesforce
+ * report the timelines used to be built from left them out too; this keeps
+ * that, now that the source is the opportunities table itself.
+ */
+export const COLD_LIST_STAGES = ["Prospecting: Pipeline Cold", "Prospecting: Cold Call List"];
 
 /** How far back the board itself shows leads. */
 export const DISPLAY_DAYS = 7;

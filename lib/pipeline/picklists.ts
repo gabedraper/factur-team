@@ -1,7 +1,8 @@
 /*
  * Salesforce's actual Opportunity picklists, read from the org's field
- * metadata rather than guessed. Skyvia syncs opportunities both ways, so a
- * stage or lead status the app writes has to be one Salesforce will accept
+ * metadata rather than guessed (Opportunity describe, 2026-09-16). The
+ * write-back pushes these to Salesforce, so a stage or lead status the app
+ * writes has to be one Salesforce will accept
  * -- these are shared between the editor (what a value can be set to) and
  * the pipeline list (what it can be filtered by), so the two can't drift.
  */
@@ -32,6 +33,7 @@ export const STAGE_GROUPS: { label: string; values: string[] }[] = [
 export const ALL_STAGES: string[] = STAGE_GROUPS.flatMap((g) => g.values);
 
 export const LEAD_STATUSES: string[] = [
-  "Pipeline - Cold", "Pipeline - Warm SDR", "Pipeline - Warm", "Pipeline - Selling",
+  "Pipeline - Cold", "Pipeline - Warm SDR", "Pipeline - Warm", "Pipeline - Warm - Eval Call Scheduled",
+  "Pipeline - Selling", "Pipeline - Selling - Discovery", "Pipeline - Selling - Proposal",
   "Closing", "LTFU", "Lost Follow Up", "Customer", "Relationship", "No Fit Ever - Contact", "No Fit Ever - Account",
 ];

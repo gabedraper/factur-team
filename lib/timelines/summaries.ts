@@ -1,10 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { prospectingOwnerIds } from "@/lib/org";
 import {
-  assembleLeads, summariseByOwner, ALL_REPS, DELIVERED_LEADS_OWNER,
-  NURTURE_STAGE, NURTURE_STATUS,
+  assembleLeads, summariseByOwner, ALL_REPS,
   type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
+import { leadPage, taskPage, toLeadRow, toTaskRow, type OppRow, type ActivityRow } from "./source";
 
 /**
  * The first day the tiles count from.
@@ -111,39 +111,23 @@ export async function rebuildSummaries(): Promise<{
   const db = createServiceClient();
   const prospectors = await prospectingOwnerIds();
 
-  const rows = await readAll<LeadRow>("summary leads", (from) =>
-    db
-      .from("sf_opp_leads_raw")
-      .select(
-        "id,name,stagename,createddate,ownerid,owner_name,accountid,account_name," +
-          "account_contact_name__c,contact_title__c,client__r_name,lead_source__c," +
-          "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
-          "referred_by_name__c",
-        { count: from === 0 ? "exact" : undefined }
-      )
-      .gte("createddate", `${METRICS_FROM}T00:00:00Z`)
-      .neq("ownerid", DELIVERED_LEADS_OWNER)
-      .neq("stagename", NURTURE_STAGE)
-      // Spelt as an "or" because a plain "not equal" drops nulls too, and most
-      // of these leads have no prospecting status at all.
-      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`)
-      .order("createddate", { ascending: false })
-      // Ties on createddate would let a row repeat or vanish between pages.
-      .order("id")
-      .range(from, from + PAGE - 1)
-  );
+  const since = `${METRICS_FROM}T00:00:00Z`;
+  const rows = (
+    await readAll<OppRow>("summary leads", (from) =>
+      leadPage(db, { since, owners: null }, from, PAGE, from === 0)
+    )
+  ).map(toLeadRow);
 
   /*
-   * Activity is read a hundred lead ids at a time, because whatid is the only
-   * column this table is indexed on.
-   *
-   * Reading it straight through ordered by date looks tidier and times out: a
-   * quarter of a million rows get sorted afresh for every page, and the
-   * database gives up around the thirtieth. Asking by lead id is an index
-   * lookup, and the batches run together so the round trips still overlap.
+   * Activity is read a hundred lead ids at a time -- an index lookup on
+   * (opportunity_id, occurred_at) -- with the batches running together so the
+   * round trips overlap. Reading it straight through ordered by date looks
+   * tidier and times out: the whole table gets sorted afresh for every page.
    */
+  const sfIdOf = new Map(rows.map((r) => [r.appId!, r.id]));
+  const ids = [...sfIdOf.keys()];
   const slices: string[][] = [];
-  for (let i = 0; i < rows.length; i += 100) slices.push(rows.slice(i, i + 100).map((r) => r.id));
+  for (let i = 0; i < ids.length; i += 100) slices.push(ids.slice(i, i + 100));
 
   const tasks: TaskRow[] = [];
   for (let i = 0; i < slices.length; i += WIDTH) {
@@ -151,16 +135,13 @@ export async function rebuildSummaries(): Promise<{
       slices.slice(i, i + WIDTH).map(async (slice) => {
         const out: TaskRow[] = [];
         for (let from = 0; ; from += PAGE) {
-          const { data, error } = await db
-            .from("sf_opp_tasks_raw")
-            .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name")
-            .in("whatid", slice)
-            .order("createddate", { ascending: true })
-            .order("id")
-            .range(from, from + PAGE - 1);
+          const { data, error } = await taskPage(db, slice, from, PAGE);
           if (error) throw new Error(`summary activity query failed: ${error.message}`);
-          const page = (data ?? []) as unknown as TaskRow[];
-          out.push(...page);
+          const page = (data ?? []) as unknown as ActivityRow[];
+          for (const a of page) {
+            const t = toTaskRow(a, (id) => sfIdOf.get(id));
+            if (t) out.push(t);
+          }
           if (page.length < PAGE) break;
         }
         return out;

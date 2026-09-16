@@ -35,6 +35,10 @@ export function classify(task: RawTask): [EventKind, string] {
   const status = LEAD_STATUS_RE.exec(subject);
   if (status) return ["status_change", status[1].trim()];
 
+  // A calendar Event on the opportunity is the meeting itself. They were not
+  // in the report the timelines used to read; the sync has always carried them.
+  if (task.tasksubtype === "Meeting") return ["meeting_booked", subject];
+
   if (task.tasksubtype === "Call") {
     // A dialer disposition of "Booked Meeting" is the outcome, not the call.
     if (subject.includes("Booked Meeting")) return ["meeting_booked", subject];
@@ -106,7 +110,12 @@ const PROSPECTING_BUCKETS: Record<string, string> = {
   "Pipeline - Cold":       "pls-cold",
   "Pipeline - Warm SDR":   "pls-warm-sdr",
   "Pipeline - Warm":       "pls-warm",
+  /* Salesforce added three finer steps after this was written. They share the
+     colour of the step they refine, so the lane still reads warm or selling. */
+  "Pipeline - Warm - Eval Call Scheduled": "pls-warm",
   "Pipeline - Selling":    "pls-selling",
+  "Pipeline - Selling - Discovery": "pls-selling",
+  "Pipeline - Selling - Proposal":  "pls-selling",
   "Closing":               "pls-closing",
   "LTFU":                  "pls-ltfu",
   "Customer":              "pls-customer",
@@ -220,8 +229,11 @@ export function prospectingOutcomeFor(
     case "Relationship":          return o("referred", "neutral");
     case "Closing":               return quiet("hot", "good");
     case "Pipeline - Selling":    return quiet("hot", "good");
+    case "Pipeline - Selling - Discovery": return quiet("hot", "good");
+    case "Pipeline - Selling - Proposal":  return quiet("hot", "good");
     case "Pipeline - Warm SDR":   return quiet("warm", "neutral");
     case "Pipeline - Warm":       return quiet("warm", "neutral");
+    case "Pipeline - Warm - Eval Call Scheduled": return quiet("warm", "neutral");
     case "Pipeline - Cold":       return quiet("prospecting", "neutral");
   }
   return o("other", "neutral");

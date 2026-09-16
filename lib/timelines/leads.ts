@@ -1,14 +1,14 @@
 import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { everyRow } from "@/lib/supabase/every-row.mjs";
 import { visibleOwnerIds, prospectingOwnerIds } from "@/lib/org";
 import {
   assembleLeads, contactName, summariseByOwner, ALL_REPS,
-  DISPLAY_DAYS, METRICS_DAYS, DELIVERED_LEADS_OWNER, NURTURE_STAGE, NURTURE_STATUS,
+  DISPLAY_DAYS, METRICS_DAYS,
   type Lead, type LeadRow, type TaskRow, type RepSummary,
 } from "./assemble";
 import { parseUtc } from "./business-day";
 import { readSummaries, refreshSummariesIfStale } from "./summaries";
+import { leadPage, taskPage, toLeadRow, toTaskRow, type OppRow, type ActivityRow } from "./source";
 
 export type { Lead, TimelineEvent, StageSpan, Pipeline, RepSummary } from "./assemble";
 export { ALL_REPS, DISPLAY_DAYS, METRICS_DAYS };
@@ -48,37 +48,18 @@ export async function getLeads(filters: LeadFilters = {}) {
   // rep's record rather than a description of the rows below them -- but capped
   // at METRICS_DAYS rather than everything the sync holds, since this path
   // assembles every lead and its activity in memory.
+  //
+  // Read through the viewer's own client, so the opportunities policy applies
+  // exactly as it does on the Opportunities list -- and then narrowed to the
+  // owners the timelines let them see, which is the tighter of the two.
+  const windowStart = new Date(Date.now() - METRICS_DAYS * 86400000).toISOString();
   const rows: LeadRow[] = [];
   for (let from = 0; ; from += 1000) {
-    let query = supabase
-      .from("sf_opp_leads_raw")
-      .select(
-        "id,name,stagename,createddate,ownerid,owner_name,accountid,account_name," +
-          "account_contact_name__c,contact_title__c,client__r_name,lead_source__c," +
-          "prospecting_lead_status__c,cadence__c,sequence_name__c,lost_reason__c," +
-          "referred_by_name__c"
-      )
-      .order("createddate", { ascending: false })
-      // Ties on createddate would let a row repeat or vanish between pages.
-      .order("id")
-      .gte("createddate", new Date(Date.now() - METRICS_DAYS * 86400000).toISOString())
-      .neq("ownerid", DELIVERED_LEADS_OWNER)
-      .neq("stagename", NURTURE_STAGE)
-      // Spelt as an "or" because a plain "not equal" drops nulls too, and most
-      // of these leads have no prospecting status at all.
-      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`);
-
-    if (owners !== null) query = query.in("ownerid", owners);
-    if (filters.rep) query = query.eq("ownerid", filters.rep);
-    if (filters.client) query = query.eq("client__r_name", filters.client);
-    if (filters.search) {
-      const term = `%${filters.search}%`;
-      query = query.or(`name.ilike.${term},account_name.ilike.${term}`);
-    }
-
-    const { data, error } = await query.range(from, from + 999);
+    const { data, error } = await leadPage(supabase, {
+      since: windowStart, owners, rep: filters.rep, client: filters.client, search: filters.search,
+    }, from, 1000);
     if (error) throw new Error(`leads query failed: ${error.message}`);
-    const page = (data ?? []) as unknown as LeadRow[];
+    const page = ((data ?? []) as unknown as OppRow[]).map(toLeadRow);
     rows.push(...page);
     if (page.length < 1000) break;
   }
@@ -95,23 +76,21 @@ export async function getLeads(filters: LeadFilters = {}) {
    * around fifty, which run a few at a time rather than one after another --
    * sequentially that is seconds of dead time on every page load.
    */
-  const ids = rows.map((r) => r.id);
+  const sfIdOf = new Map(rows.map((r) => [r.appId!, r.id]));
+  const ids = [...sfIdOf.keys()];
   const slices: string[][] = [];
   for (let i = 0; i < ids.length; i += 100) slices.push(ids.slice(i, i + 100));
 
   async function fetchSlice(slice: string[]): Promise<TaskRow[]> {
     const out: TaskRow[] = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error: taskErr } = await supabase
-        .from("sf_opp_tasks_raw")
-        .select("id,whatid,subject,tasksubtype,calltype,createddate,owner_name")
-        .in("whatid", slice)
-        .order("createddate", { ascending: true })
-        .order("id")
-        .range(from, from + 999);
+      const { data, error: taskErr } = await taskPage(supabase, slice, from, 1000);
       if (taskErr) throw new Error(`activity query failed: ${taskErr.message}`);
-      const page = (data ?? []) as unknown as TaskRow[];
-      out.push(...page);
+      const page = (data ?? []) as unknown as ActivityRow[];
+      for (const a of page) {
+        const t = toTaskRow(a, (id) => sfIdOf.get(id));
+        if (t) out.push(t);
+      }
       if (page.length < 1000) break;
     }
     return out;
@@ -201,23 +180,13 @@ export async function getFilterOptions() {
   // API stops at 1,000 rows without saying so, and the window holds more.
   const supabase = await createClient();
   const since = new Date(Date.now() - METRICS_DAYS * 86400000).toISOString();
-  const data = await everyRow<{ client__r_name: string | null }>(() => {
-    let leadQuery = supabase
-      .from("sf_opp_leads_raw")
-      .select("client__r_name")
-      .gte("createddate", since)
-      .neq("ownerid", DELIVERED_LEADS_OWNER)
-      .neq("stagename", NURTURE_STAGE)
-      .or(`prospecting_lead_status__c.is.null,prospecting_lead_status__c.neq.${NURTURE_STATUS}`)
-      .not("client__r_name", "is", null)
-      .order("id");
-    if (owners !== null) leadQuery = leadQuery.in("ownerid", owners);
-    return leadQuery;
-  });
-
   const clients = new Set<string>();
-  for (const r of data) {
-    if (r.client__r_name) clients.add(r.client__r_name);
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await leadPage(supabase, { since, owners }, from, 1000);
+    if (error) throw new Error(`clients query failed: ${error.message}`);
+    const page = (data ?? []) as unknown as OppRow[];
+    for (const r of page) if (r.org_clients?.name) clients.add(r.org_clients.name);
+    if (page.length < 1000) break;
   }
 
   // localeCompare so accented names sort where a reader expects, not by byte.

@@ -21,7 +21,10 @@ const buckets: [string, string][] = [
   ["Pipeline - Cold", "pls-cold"],
   ["Pipeline - Warm SDR", "pls-warm-sdr"],
   ["Pipeline - Warm", "pls-warm"],
+  ["Pipeline - Warm - Eval Call Scheduled", "pls-warm"],
   ["Pipeline - Selling", "pls-selling"],
+  ["Pipeline - Selling - Discovery", "pls-selling"],
+  ["Pipeline - Selling - Proposal", "pls-selling"],
   ["Closing", "pls-closing"],
   ["LTFU", "pls-ltfu"],
   ["Customer", "pls-customer"],
@@ -36,6 +39,11 @@ for (const [status, bucket] of buckets) {
 
 // "Pipeline - Warm" and "Pipeline - Warm SDR" differ only by a suffix; a loose
 // match on "Warm" would give them the same colour.
+// A calendar Event synced as a meeting is the meeting, whatever its subject.
+check("event is a booked meeting",
+  classify({ id: "m", subject: "Discovery Call: Factur + PDS", tasksubtype: "Meeting", calltype: null })[0],
+  "meeting_booked");
+
 check("near-identical values stay apart",
   prospectingBucket("Pipeline - Warm") !== prospectingBucket("Pipeline - Warm SDR"), true);
 check("an unknown value does not borrow another status's colour",
