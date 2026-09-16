@@ -128,6 +128,7 @@ export async function startBroadcast(input: {
       name,
       description: `One-off email to ${preview.recipients.length} client contacts.`,
       mode: "semi",
+      kind: "one_off",
       visibility: "private",
       owner_member_id: who.memberId,
       ends_on: ["manual"],

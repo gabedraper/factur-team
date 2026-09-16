@@ -52,10 +52,27 @@ async function maySeeClients() {
   return perms.has("clients.health") || perms.has("clients.results") || perms.has("org.manage");
 }
 
-/** The sequences somebody could add clients to. */
+/**
+ * The sequences somebody may add clients to.
+ *
+ * Campaigns only. A process sequence decides its own audience -- collections
+ * from how old an invoice is, NPS from the campaign built for a period -- so
+ * offering one here would let somebody add forty clients to Collections,
+ * believe chasing had started, and be wrong. A one-off had its audience fixed
+ * when it was written and is finished with.
+ */
 export async function outreachSequences(): Promise<SequenceRow[]> {
   if (!(await mayEnrol())) return [];
-  return listSequences();
+
+  const db = createServiceClient();
+  const { data } = await db
+    .from("sequences")
+    .select("slug")
+    .eq("kind", "campaign")
+    .eq("active", true);
+
+  const offered = new Set(((data ?? []) as { slug: string }[]).map((r) => r.slug));
+  return (await listSequences()).filter((s) => offered.has(s.slug));
 }
 
 /**
