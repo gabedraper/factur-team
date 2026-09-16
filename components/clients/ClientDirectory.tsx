@@ -9,6 +9,7 @@ import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 import { SortHeader, useSort } from "@/components/ui/sortable";
 import { ViewTools, type ViewEditorSetup } from "@/components/list/ViewEditor";
 import { AddToSequence } from "@/components/clients/AddToSequence";
+import { SendEmail } from "@/components/clients/SendEmail";
 import {
   CLIENT_FIELDS, CLIENT_FIELD_BY_KEY, DEFAULT_CLIENT_COLUMNS,
   type ClientField, type ClientRecord,
@@ -77,6 +78,7 @@ export function ClientDirectory({
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [addingToSequence, setAddingToSequence] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const columns = columnKeys
     .map((k) => CLIENT_FIELD_BY_KEY.get(k))
@@ -123,7 +125,10 @@ export function ClientDirectory({
 
       <BulkBar count={selected.length} noun="client" onClear={() => setSelected([])}>
         {canEnrol && (
-          <BulkAction onClick={() => setAddingToSequence(true)}>Add to sequence</BulkAction>
+          <>
+            <BulkAction onClick={() => setAddingToSequence(true)}>Add to sequence</BulkAction>
+            <BulkAction onClick={() => setSendingEmail(true)}>Send an email</BulkAction>
+          </>
         )}
       </BulkBar>
 
@@ -131,6 +136,14 @@ export function ClientDirectory({
         <AddToSequence
           clientIds={selected}
           onClose={() => setAddingToSequence(false)}
+          onDone={() => setSelected([])}
+        />
+      )}
+
+      {sendingEmail && (
+        <SendEmail
+          clientIds={selected}
+          onClose={() => setSendingEmail(false)}
           onDone={() => setSelected([])}
         />
       )}
