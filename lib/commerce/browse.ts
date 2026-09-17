@@ -37,6 +37,10 @@ export type CommerceQuery = {
   kind: CommerceKind;
   q?: string;
   clientId?: string | null;
+  /** Narrow to these clients -- how "account manager" and "team lead" are
+      answered, since who covers a client is worked out in the directory. An
+      empty list means nothing matches, never "everything". */
+  clientIds?: string[] | null;
   status?: string | null;
   page?: number;
   limit?: number;
@@ -98,6 +102,8 @@ export async function browseCommerce(input: CommerceQuery): Promise<{ rows: Comm
     .order("id")
     .range(page * limit, page * limit + limit);
 
+  if (input.clientIds && input.clientIds.length === 0) return { rows: [], hasMore: false };
+  if (input.clientIds) q = q.in("client_id", input.clientIds);
   if (input.clientId) q = q.eq("client_id", input.clientId);
   if (input.status) q = q.eq("status", input.status);
   const term = (input.q ?? "").replace(/[%,()]/g, " ").trim();
@@ -119,4 +125,11 @@ export async function commerceStatuses(kind: CommerceKind): Promise<string[]> {
   const db = await createClient();
   const { data } = await db.rpc("commerce_statuses", { p_kind: kind });
   return ((data ?? []) as { status: string }[]).map((r) => r.status);
+}
+
+/** Clients with at least one quote or order the viewer can see. */
+export async function commerceClients(kind: CommerceKind): Promise<{ id: string; name: string }[]> {
+  const db = await createClient();
+  const { data } = await db.rpc("commerce_clients", { p_kind: kind });
+  return ((data ?? []) as { id: string; name: string }[]);
 }

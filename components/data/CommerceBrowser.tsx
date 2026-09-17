@@ -3,6 +3,7 @@ import { Surface } from "@/components/ui/surface";
 import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Chip } from "@/components/pipeline/bits";
 import { control } from "@/components/ui/control";
+import { FilterSelect } from "@/components/list/FilterSelect";
 import { salesforceRecordUrl } from "@/lib/salesforce/client";
 import type { CommerceKind, CommerceRow } from "@/lib/commerce/browse";
 
@@ -37,11 +38,14 @@ export function CommerceBrowser({
   page: number;
   basePath: string;
   /** The current query, so paging and the form keep it. */
-  params: { q?: string; client?: string; status?: string };
+  params: { q?: string; client?: string; status?: string; am?: string; lead?: string };
   statuses: string[];
+  clients: { id: string; name: string }[];
+  accountManagers: string[];
+  teamLeads: string[];
   clientName?: string | null;
 }) {
-  const href = (patch: Partial<Record<"q" | "client" | "status" | "page", string | null>>) => {
+  const href = (patch: Partial<Record<"q" | "client" | "status" | "am" | "lead" | "page", string | null>>) => {
     const next = new URLSearchParams();
     const merged: Record<string, string | null | undefined> = { ...params, page: page ? String(page) : null, ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) next.set(k, v);
@@ -52,8 +56,10 @@ export function CommerceBrowser({
 
   return (
     <div className="space-y-3">
+      {/* Client, account manager and team lead narrow the list the same way
+          they do on Data > Clients; a change submits the form, so each is a
+          query parameter rather than state. */}
       <form action={basePath} className="flex flex-wrap items-center gap-2">
-        {params.client && <input type="hidden" name="client" value={params.client} />}
         <input
           name="q"
           defaultValue={params.q ?? ""}
@@ -65,18 +71,26 @@ export function CommerceBrowser({
           <option value="">Any status</option>
           {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+        <FilterSelect
+          name="client"
+          label="Client"
+          value={params.client ?? ""}
+          options={[]}
+          extra={clients.map((c) => ({ value: c.id, label: c.name }))}
+          any="Any client"
+        />
+        <FilterSelect name="am" label="Account manager" value={params.am ?? ""} options={accountManagers} any="Any account manager" />
+        <FilterSelect name="lead" label="Team lead" value={params.lead ?? ""} options={teamLeads} any="Any team lead" />
         <button type="submit" className={control({ size: "sm", className: "bg-card hover:bg-card-hover" })}>Search</button>
-        {clientName && (
-          <span className="text-meta text-muted-foreground">
-            {clientName} · <Link href={href({ client: null, page: null })} className="underline-offset-2 hover:underline">all clients</Link>
-          </span>
+        {(params.client || params.am || params.lead || params.status || params.q) && (
+          <Link href={basePath} className="text-meta text-muted-foreground underline-offset-2 hover:underline">Clear</Link>
         )}
       </form>
 
       {rows.length === 0 ? (
         <Surface>
           <p className="py-6 text-center text-body text-muted-foreground">
-            {params.q || params.status ? `No ${noun} match.` : `No ${noun} yet.`}
+            {params.q || params.status || params.client || params.am || params.lead ? `No ${noun} match.` : `No ${noun} yet.`}
           </p>
         </Surface>
       ) : (
