@@ -65,6 +65,20 @@ export const LIST_FIELDS: ListField[] = [
   { key: "stage",            label: "Stage",          type: "picklist", path: "stage",       picklist: "stage" },
   { key: "lead_status",      label: "Lead status",    type: "picklist", path: "lead_status", picklist: "lead_status" },
 
+  /* From Salesforce's Quote and Order objects, summarised onto the row by the
+     sync (refresh_opportunity_commerce) so a list can sort and filter on them.
+     "Amount" is Quote_Amount__c / PO_Amount__c -- the typed figure; Salesforce's
+     own totals are line-item sums and nobody here uses line items. */
+  { key: "order_count",         label: "Orders",         type: "number", path: "order_count" },
+  { key: "orders_total",        label: "PO total",       type: "number", path: "orders_total" },
+  { key: "latest_order_on",     label: "Last PO",        type: "date",   path: "latest_order_on" },
+  { key: "latest_order_amount", label: "Last PO amount", type: "number", path: "latest_order_amount" },
+  { key: "quote_count",         label: "Quotes",         type: "number", path: "quote_count" },
+  { key: "quotes_total",        label: "Quotes total",   type: "number", path: "quotes_total" },
+  { key: "latest_quote_on",     label: "Last quoted",    type: "date",   path: "latest_quote_on" },
+  { key: "latest_quote_status", label: "Quote status",   type: "text",   path: "latest_quote_status" },
+  { key: "latest_quote_amount", label: "Last quote amount", type: "number", path: "latest_quote_amount" },
+
   { key: "next_action_date", label: "Next action",    type: "date", path: "next_action_date" },
   { key: "opened_on",        label: "Opened",         type: "date", path: "opened_on" },
   { key: "close_date",       label: "Close date",     type: "date", path: "close_date" },

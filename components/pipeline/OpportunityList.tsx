@@ -26,6 +26,8 @@ import type { ListField } from "@/lib/pipeline/list-views";
 
 export type Row = Record<string, unknown>;
 
+const MONEY = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
 function embed(row: Row, table: string): Record<string, unknown> | null {
   const v = row[table];
   if (!v) return null;
@@ -71,6 +73,17 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
   }
   if (field.type === "date") {
     return <span className="tabular-nums">{shortDate(v)}</span>;
+  }
+  if (field.type === "number") {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    /* Money and counts share a type; the key says which this one is. */
+    const isMoney = /amount|total/.test(field.key);
+    return (
+      <span className="block text-right tabular-nums">
+        {isMoney ? MONEY.format(n) : n.toLocaleString()}
+      </span>
+    );
   }
   if (field.key === "account_domain" && typeof v === "string" && v) {
     return (

@@ -174,8 +174,8 @@ export async function listOpportunities(input: {
     switch (f.op) {
       case "contains":       if (raw) q = q.ilike(p, `%${raw}%`); break;
       case "not_contains":   if (raw) q = q.not(p, "ilike", `%${raw}%`); break;
-      case "equals":         if (raw) q = q.eq(p, raw); break;
-      case "not_equals":     if (raw) q = q.neq(p, raw); break;
+      case "equals":         if (raw) q = q.eq(p, field.type === "number" ? Number(raw.replace(/[$,\s]/g, "")) : raw); break;
+      case "not_equals":     if (raw) q = q.neq(p, field.type === "number" ? Number(raw.replace(/[$,\s]/g, "")) : raw); break;
       case "starts_with":    if (raw) q = q.ilike(p, `${raw}%`); break;
       case "not_starts_with": if (raw) q = q.not(p, "ilike", `${raw}%`); break;
       case "is_empty":       q = q.is(p, null); break;
@@ -187,6 +187,10 @@ export async function listOpportunities(input: {
       case "after":          { const d = resolveDate(raw); if (d) q = q.gt(p, d); break; }
       case "on_or_before":   { const d = resolveDate(raw); if (d) q = q.lte(p, d); break; }
       case "on_or_after":    { const d = resolveDate(raw); if (d) q = q.gte(p, d); break; }
+      /* A number typed with a currency sign or thousands separators still
+         means the number. */
+      case "greater_than":   { const n = Number(raw.replace(/[$,\s]/g, "")); if (raw && Number.isFinite(n)) q = q.gt(p, n); break; }
+      case "less_than":      { const n = Number(raw.replace(/[$,\s]/g, "")); if (raw && Number.isFinite(n)) q = q.lt(p, n); break; }
     }
   }
 
