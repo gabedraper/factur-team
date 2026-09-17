@@ -131,6 +131,7 @@ export const INTEGRATIONS: Integration[] = [
     tables: [
       "qb_invoices_raw",
       "qb_payments_raw",
+      "qb_credit_memos_raw",
       "qb_customers_raw",
       "qb_ar_aging_raw",
     ],
