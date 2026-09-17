@@ -174,6 +174,25 @@ export async function updateRecord(
   return { ok: false, error, retryable };
 }
 
+export type SalesforceField = { name: string; label: string; type: string; custom: boolean };
+
+/**
+ * An object's fields as Salesforce describes them, less the compound ones
+ * (addresses, geolocations): those come back as nested objects, which a text
+ * mirror column cannot hold, and every part of them is also a field of its own.
+ */
+export async function describeFields(object: string): Promise<SalesforceField[]> {
+  const { accessToken, instanceUrl } = await getSalesforceToken();
+  const res = await fetch(`${instanceUrl}/services/data/${API_VERSION}/sobjects/${object}/describe`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Salesforce describe of ${object} failed (${res.status})`);
+  const body = (await res.json()) as { fields: Array<SalesforceField & { type: string }> };
+  return body.fields
+    .filter((f) => f.type !== "address" && f.type !== "location")
+    .map((f) => ({ name: f.name, label: f.label, type: f.type, custom: f.custom }));
+}
+
 /** The record in Salesforce's own UI, for a log somebody has to act on. */
 export function salesforceRecordUrl(id: string): string {
   return `${LOGIN_URL}/${id}`;

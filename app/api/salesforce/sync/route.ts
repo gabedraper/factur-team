@@ -21,27 +21,19 @@ import { soql, stripAttributes } from "@/lib/salesforce/client";
 
 export const maxDuration = 300;
 
-/** Objects in dependency order, with the mirror each one lands in. */
-const OBJECTS = [
-  { name: "Clients__c", mirror: "sky_Client" },
-  { name: "Account", mirror: "sky_Account" },
-  { name: "Contact", mirror: "sky_Contact" },
-  { name: "Campaign", mirror: "sky_Campaign" },
-  { name: "CampaignMember", mirror: "sky_CampaignMember" },
-  { name: "Opportunity", mirror: "sky_Opportunity" },
-  { name: "Quote", mirror: "sky_Quote" },
-  { name: "Order", mirror: "sky_Order" },
-  { name: "Task", mirror: "sky_Task" },
-  { name: "Event", mirror: "sky_Event" },
-] as const;
-
 /*
- * A ceiling per object per run. If something in Salesforce touches half a million
- * records at once -- a mass update, a data fix -- this run takes its slice and the
- * next one continues from the new watermark, rather than one run trying to carry
- * the whole thing and timing out forever.
+ * What to fetch comes from salesforce_sync_objects -- objects in dependency
+ * order, each with its own frequency, ceiling and field list -- and is edited
+ * in Settings > Salesforce sync. The cron fires every minute; an object runs
+ * when its every_minutes have passed since its last run.
  */
-const MAX_PER_OBJECT = 20_000;
+type SyncObject = {
+  object: string; mirror_table: string; enabled: boolean;
+  every_minutes: number; max_per_run: number; fields: string[] | null; position: number;
+};
+
+/* What the sync itself needs whatever the chosen fields are. */
+const ALWAYS = ["Id", "LastModifiedDate", "IsDeleted"];
 
 /* Rows per write. Wide enough to be worth a round trip, small enough that one
  * statement finishes well inside the timeout. */
@@ -124,13 +116,25 @@ export async function POST(request: NextRequest) {
   let oldestWatermark: string | null = null;
 
   try {
-    const { data: state } = await db
-      .from("salesforce_sync_state").select("object, watermark");
+    const [{ data: state }, { data: configured }] = await Promise.all([
+      db.from("salesforce_sync_state").select("object, watermark, last_run_at"),
+      db.from("salesforce_sync_objects").select("*").order("position"),
+    ]);
     const watermarks = new Map(
       (state ?? []).map((r: { object: string; watermark: string | null }) => [r.object, r.watermark]),
     );
+    const lastRun = new Map(
+      (state ?? []).map((r: { object: string; last_run_at: string | null }) => [r.object, r.last_run_at]),
+    );
+    const now = Date.now();
 
-    for (const { name, mirror } of OBJECTS) {
+    for (const cfg of (configured ?? []) as SyncObject[]) {
+      const { object: name, mirror_table: mirror } = cfg;
+      if (!cfg.enabled) { summary[name] = { skipped: "switched off" }; continue; }
+      const ran = lastRun.get(name);
+      if (ran && now - new Date(ran).getTime() < cfg.every_minutes * 60_000 - 15_000) {
+        continue; // not due yet; nothing to say
+      }
       const since = watermarks.get(name) ?? null;
       if (!since) {
         /* No watermark means the backfill has not run for this object. Loading it
@@ -141,20 +145,25 @@ export async function POST(request: NextRequest) {
       }
 
       const { data: cols } = await db.rpc("salesforce_mirror_columns", { p_table: mirror });
-      const fields = (cols as string[] | null) ?? [];
-      if (fields.length === 0) {
+      const mirrorCols = (cols as string[] | null) ?? [];
+      if (mirrorCols.length === 0) {
         summary[name] = { skipped: `mirror ${mirror} does not exist` };
         continue;
       }
+      /* The chosen fields, or every column the mirror has; either way only
+         columns the mirror can hold, plus the three the sync needs. */
+      const chosen = cfg.fields ? new Set([...ALWAYS, ...cfg.fields]) : new Set(mirrorCols);
+      const fields = mirrorCols.filter((c) => chosen.has(c));
 
       const rows = await soql<Record<string, unknown>>(
         `SELECT ${fields.join(", ")} FROM ${name} ` +
         `WHERE LastModifiedDate > ${soqlTime(since)} ` +
-        `ORDER BY LastModifiedDate ASC LIMIT ${MAX_PER_OBJECT}`,
+        `ORDER BY LastModifiedDate ASC LIMIT ${cfg.max_per_run}`,
       );
 
       if (rows.length === 0) {
         summary[name] = { changed: 0 };
+        await db.rpc("record_salesforce_sync", { p_object: name, p_watermark: since, p_rows: 0, p_error: null });
         continue;
       }
 

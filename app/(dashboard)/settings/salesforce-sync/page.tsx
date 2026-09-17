@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { myPermissions } from "@/lib/org";
-import { getSyncState, type ReconRow } from "@/actions/salesforce-sync";
+import { getSyncState, getSyncConfig, type ReconRow } from "@/actions/salesforce-sync";
+import { SalesforceSyncObjects } from "@/components/settings/SalesforceSyncObjects";
 import { CheckNow } from "@/components/settings/SalesforceSyncCheck";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
@@ -43,7 +44,8 @@ export default async function SalesforceSyncPage() {
   const perms = await myPermissions();
   if (!perms.has("org.manage")) redirect("/settings");
 
-  const { checkedAt, previousAt, rows, previous, sync } = await getSyncState();
+  const [{ checkedAt, previousAt, rows, previous, sync }, objects] = await Promise.all([getSyncState(), getSyncConfig()]);
+  const lastRun = Object.fromEntries(sync.map((s) => [s.object, s.last_run_at]));
   const totals = rows.filter((r) => r.scope === "__all");
   const stages = rows
     .filter((r) => r.object === "Opportunity" && r.scope !== "__all")
@@ -71,6 +73,10 @@ export default async function SalesforceSyncPage() {
         actions={<CheckNow />}
       />
 
+      <h2 className="text-section-title">What is synced</h2>
+      <SalesforceSyncObjects objects={objects} lastRun={lastRun} />
+
+      <h2 className="text-section-title">Is it all here?</h2>
       <p className="text-meta text-muted-foreground">
         Last checked {when(checkedAt)}{previousAt ? `, before that ${when(previousAt)}` : ""}. Hourly.
       </p>
