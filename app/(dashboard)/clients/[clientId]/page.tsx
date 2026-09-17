@@ -20,6 +20,9 @@ import { ContactsPanel } from "@/components/clients/ContactsPanel";
 import { NpsPanel } from "@/components/clients/NpsPanel";
 import { HistoryPanel } from "@/components/clients/HistoryPanel";
 import { CollectionsSmsPanel } from "@/components/clients/CollectionsSmsPanel";
+import { CommercePanel, type CommerceMonth } from "@/components/clients/CommercePanel";
+import { browseCommerce } from "@/lib/commerce/browse";
+import { createClient } from "@/lib/supabase/server";
 import { ClientDetail } from "@/components/settings/ClientDetail";
 import { myPermissions, getClientDetail, listMembers } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
@@ -92,6 +95,19 @@ export default async function ClientPage({
     .map((m) => ({ id: m.id, name: m.full_name ?? m.email }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  /* Quotes and purchase orders: the six-month line and the most recent of
+     each. Read through the person's own client, so the same policy applies as
+     on the opportunities they hang off. */
+  const [{ data: commerceMonths }, recentQuotes, recentOrders] = await Promise.all([
+    (await createClient())
+      .from("client_commerce_months")
+      .select("month_start,quotes,quotes_total,orders,orders_total")
+      .eq("client_id", clientId)
+      .order("month_start", { ascending: false }),
+    browseCommerce({ kind: "quotes", clientId, limit: 8 }),
+    browseCommerce({ kind: "orders", clientId, limit: 8 }),
+  ]);
+
   return (
     <div className="p-6 space-y-4 max-w-7xl">
       <div>
@@ -130,6 +146,17 @@ export default async function ClientPage({
           <Section title="Contacts">
             <Surface pad="tight">
               <ContactsPanel clientId={clientId} contacts={contacts} canEdit={admin} />
+            </Surface>
+          </Section>
+
+          <Section title="Quotes & POs">
+            <Surface pad="tight">
+              <CommercePanel
+                clientId={clientId}
+                months={(commerceMonths ?? []) as CommerceMonth[]}
+                quotes={recentQuotes.rows}
+                orders={recentOrders.rows}
+              />
             </Surface>
           </Section>
 

@@ -47,8 +47,7 @@ import {
   LineChart,
   Coins,
   PhoneCall,
-  BarChart3,
-} from "lucide-react";
+  BarChart3, FileText, Receipt } from "lucide-react";
 import { AppSidebar, type NavGroup, type NavItem } from "@/components/app-sidebar";
 import { PreviewBanner } from "@/components/preview-banner";
 import { MaintenanceAlert } from "@/components/maintenance-alert";
@@ -223,6 +222,8 @@ function getNavGroups(perms: Set<string>, collections: boolean, gaibWaiting: num
   if (perms.has("timelines.view")) {
     dataItems.push({ href: "/data/people", label: "People", icon: <Contact className="h-4 w-4" /> });
     dataItems.push({ href: "/data/companies", label: "Companies", icon: <Building2 className="h-4 w-4" /> });
+    dataItems.push({ href: "/data/quotes", label: "Quotes", icon: <FileText className="h-4 w-4" /> });
+    dataItems.push({ href: "/data/orders", label: "Purchase orders", icon: <Receipt className="h-4 w-4" /> });
   }
   if (dataItems.length) groups.push({ label: "Data", items: dataItems });
 

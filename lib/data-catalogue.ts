@@ -46,6 +46,12 @@ export const DATASETS: Dataset[] = [
   },
   {
     group: "Clients",
+    label: "Quotes & POs by month",
+    description: "Quotes raised and POs won per client per month, the last six months, rebuilt hourly.",
+    table: "client_commerce_months",
+  },
+  {
+    group: "Clients",
     label: "Monthly results",
     description: "What each client was delivered, month by month, split by the service that produced it.",
     table: "client_monthly_results",
@@ -96,6 +102,20 @@ export const DATASETS: Dataset[] = [
     description: "Contacts at those companies.",
     table: "crm_contacts",
     href: "/data/people",
+  },
+  {
+    group: "Sales",
+    label: "Quotes",
+    description: "Every quote raised in Salesforce, with its opportunity, client and the amount as typed.",
+    table: "opp_quotes",
+    href: "/data/quotes",
+  },
+  {
+    group: "Sales",
+    label: "Purchase orders",
+    description: "Every PO won, with its opportunity, client, service and PO amount.",
+    table: "opp_orders",
+    href: "/data/orders",
   },
   {
     group: "Sales",
