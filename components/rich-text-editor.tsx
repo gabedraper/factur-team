@@ -36,10 +36,17 @@ interface RichTextEditorProps {
    * it is those characters, sent to a customer.
    */
   mergeFields?: string[];
+  /*
+   * Extra classes for the writing area itself, so a caller can bound its
+   * height and let it scroll. Left off, it grows with what is written, which is
+   * right for a lesson page and wrong beside two other columns: a long email
+   * pushed the step list and the settings off the bottom of the screen.
+   */
+  bodyClassName?: string;
 }
 
 export default function RichTextEditor({
-  value, onChange, placeholder, mergeFields,
+  value, onChange, placeholder, mergeFields, bodyClassName = "",
 }: RichTextEditorProps) {
   const [showImageInput, setShowImageInput] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -198,7 +205,7 @@ export default function RichTextEditor({
       {/* Editor area */}
       <EditorContent
         editor={editor}
-        className="prose prose-sm dark:prose-invert max-w-none p-4 min-h-[200px] focus-within:outline-none [&_.tiptap]:outline-none [&_.tiptap_img]:max-w-full [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_p.is-editor-empty:first-child]:before:text-muted-foreground [&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)] [&_.tiptap_p.is-editor-empty:first-child]:before:float-left [&_.tiptap_p.is-editor-empty:first-child]:before:pointer-events-none"
+        className={`prose prose-sm dark:prose-invert max-w-none p-4 min-h-[200px] focus-within:outline-none [&_.tiptap]:outline-none [&_.tiptap_img]:max-w-full [&_.tiptap_img]:rounded-md [&_.tiptap_img]:my-2 [&_.tiptap_p.is-editor-empty:first-child]:before:text-muted-foreground [&_.tiptap_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)] [&_.tiptap_p.is-editor-empty:first-child]:before:float-left [&_.tiptap_p.is-editor-empty:first-child]:before:pointer-events-none ${bodyClassName}`}
       />
     </div>
   );

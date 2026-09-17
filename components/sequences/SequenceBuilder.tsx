@@ -267,7 +267,8 @@ export function SequenceBuilder({
             ))}
           </nav>
 
-          <div className="min-w-0 flex-1 space-y-6">
+          {/* Capped: settings are sentences, and a 1,200px line is not read. */}
+          <div className="min-w-0 max-w-3xl flex-1 space-y-6">
             <section id="sending" className="space-y-3">
               <h2 className="text-body font-medium">Sending</h2>
               <Surface pad="tight" className="flex flex-wrap items-center gap-2">
@@ -454,11 +455,17 @@ export function SequenceBuilder({
                 onChange={(e) => changeConfig(selected, "subject", e.target.value)}
               />
 
+              {/*
+                * The email scrolls inside its own box rather than running down
+                * the page, so the subject, the toolbar and Save stay put however
+                * long it gets.
+                */}
               <RichTextEditor
                 value={step.config.body ?? ""}
                 onChange={(html) => changeConfig(selected, "body", html)}
                 placeholder="Body"
                 mergeFields={placeholders}
+                bodyClassName="max-h-[55vh] overflow-y-auto"
               />
 
               {/* Into the subject. The body has its own inserter in the toolbar. */}

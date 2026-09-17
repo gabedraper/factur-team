@@ -56,8 +56,13 @@ export default async function SequencePage({
 
   const process = PROCESS[slug] ?? { fields: [], senderNote: "", defaultGap: 7 };
 
+  /*
+   * Wide on purpose. Three columns -- the ladder, the email, its settings --
+   * inside max-w-4xl left about 320px to write an email in, a column narrow
+   * enough that a paragraph ran half a page down the screen.
+   */
   return (
-    <div className="p-6 space-y-4 max-w-4xl">
+    <div className="p-6 space-y-4 max-w-7xl">
       <PageHeader
         back={{ href: "/settings/sequences", label: "Sequences" }}
         title={sequence.name}
