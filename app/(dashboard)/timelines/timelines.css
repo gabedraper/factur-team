@@ -282,3 +282,9 @@
    room to read as a sentence. */
 .tl .empty { max-width: 34rem; margin: 0 auto; line-height: 1.5; }
 .tl .empty b { color: var(--text-primary); }
+
+/* Each tile says what it counts on hover, because the rule behind a figure like
+   "Never touched" is code rather than a Salesforce field -- the ⓘ is there to
+   say the sentence exists. */
+.tl .tile { cursor: help; }
+.tl .tile .label .why { opacity: .55; }

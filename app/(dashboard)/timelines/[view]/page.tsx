@@ -28,7 +28,7 @@ export default async function TimelinesViewPage({
   if (!view) notFound();
 
   const [
-    { leads, summaries, held, generated, coldAfterDays, scope },
+    { leads, summaries, held, generated, coldAfterDays, scope, summaryWindowFrom },
     { reps, clients, showRepFilter },
     perms,
   ] = await Promise.all([getLeads(), getFilterOptions(), myPermissions()]);
@@ -43,6 +43,7 @@ export default async function TimelinesViewPage({
       clients={clients}
       generated={generated ?? new Date().toISOString()}
       coldAfterDays={coldAfterDays}
+      summaryWindowFrom={summaryWindowFrom}
       showRepFilter={showRepFilter}
       scope={scope}
       canManageOrg={perms.has("org.manage")}
