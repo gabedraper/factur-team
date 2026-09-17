@@ -53,7 +53,6 @@ export default async function PurchaseordersDataPage({ searchParams }: { searchP
         clients={clients}
         accountManagers={picklists.account_manager ?? []}
         teamLeads={picklists.team_lead ?? []}
-        clientName={clientName}
       />
     </div>
   );

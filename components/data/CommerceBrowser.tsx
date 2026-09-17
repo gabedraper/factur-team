@@ -30,7 +30,7 @@ function tone(status: string | null, internal: string | null): "emerald" | "ambe
 }
 
 export function CommerceBrowser({
-  kind, rows, hasMore, page, basePath, params, statuses, clientName,
+  kind, rows, hasMore, page, basePath, params, statuses, clients, accountManagers, teamLeads,
 }: {
   kind: CommerceKind;
   rows: CommerceRow[];
@@ -43,7 +43,6 @@ export function CommerceBrowser({
   clients: { id: string; name: string }[];
   accountManagers: string[];
   teamLeads: string[];
-  clientName?: string | null;
 }) {
   const href = (patch: Partial<Record<"q" | "client" | "status" | "am" | "lead" | "page", string | null>>) => {
     const next = new URLSearchParams();

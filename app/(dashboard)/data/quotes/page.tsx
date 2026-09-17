@@ -53,7 +53,6 @@ export default async function QuotesDataPage({ searchParams }: { searchParams: P
         clients={clients}
         accountManagers={picklists.account_manager ?? []}
         teamLeads={picklists.team_lead ?? []}
-        clientName={clientName}
       />
     </div>
   );
