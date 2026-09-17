@@ -127,9 +127,3 @@ export async function commerceStatuses(kind: CommerceKind): Promise<string[]> {
   return ((data ?? []) as { status: string }[]).map((r) => r.status);
 }
 
-/** Clients with at least one quote or order the viewer can see. */
-export async function commerceClients(kind: CommerceKind): Promise<{ id: string; name: string }[]> {
-  const db = await createClient();
-  const { data } = await db.rpc("commerce_clients", { p_kind: kind });
-  return ((data ?? []) as { id: string; name: string }[]);
-}

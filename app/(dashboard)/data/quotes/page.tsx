@@ -1,7 +1,7 @@
 import { requirePipeline } from "@/lib/pipeline/access";
 import { PageHeader } from "@/components/ui/page-header";
 import { CommerceBrowser } from "@/components/data/CommerceBrowser";
-import { browseCommerce, commerceStatuses, commerceClients } from "@/lib/commerce/browse";
+import { browseCommerce, commerceStatuses } from "@/lib/commerce/browse";
 import { clientDirectory, clientPicklists } from "@/lib/clients/directory";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +28,15 @@ export default async function QuotesDataPage({ searchParams }: { searchParams: P
         .map((c) => c.id)
     : null;
 
-  const [{ rows, hasMore }, statuses, clients] = await Promise.all([
+  const [{ rows, hasMore }, statuses] = await Promise.all([
     browseCommerce({ kind: "quotes", q: sp.q, clientId: sp.client ?? null, clientIds: covered, status: sp.status ?? null, page }),
     commerceStatuses("quotes"),
-    commerceClients("quotes"),
   ]);
+  /* Every client, whether or not it has any -- picking one with none is a
+     real answer ("no quotes for this client"), not a dead end to hide. */
+  const clients = directory
+    .map((c) => ({ id: c.id, name: c.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const clientName = sp.client ? clients.find((c) => c.id === sp.client)?.name ?? null : null;
 
   return (
@@ -49,6 +53,7 @@ export default async function QuotesDataPage({ searchParams }: { searchParams: P
         page={page}
         basePath="/data/quotes"
         params={{ q: sp.q, client: sp.client, status: sp.status, am: sp.am, lead: sp.lead }}
+        clientName={clientName}
         statuses={statuses}
         clients={clients}
         accountManagers={picklists.account_manager ?? []}

@@ -30,7 +30,7 @@ function tone(status: string | null, internal: string | null): "emerald" | "ambe
 }
 
 export function CommerceBrowser({
-  kind, rows, hasMore, page, basePath, params, statuses, clients, accountManagers, teamLeads,
+  kind, rows, hasMore, page, basePath, params, statuses, clients, accountManagers, teamLeads, clientName,
 }: {
   kind: CommerceKind;
   rows: CommerceRow[];
@@ -43,6 +43,8 @@ export function CommerceBrowser({
   clients: { id: string; name: string }[];
   accountManagers: string[];
   teamLeads: string[];
+  /** The chosen client's name, for the message when it has none. */
+  clientName?: string | null;
 }) {
   const href = (patch: Partial<Record<"q" | "client" | "status" | "am" | "lead" | "page", string | null>>) => {
     const next = new URLSearchParams();
@@ -89,7 +91,11 @@ export function CommerceBrowser({
       {rows.length === 0 ? (
         <Surface>
           <p className="py-6 text-center text-body text-muted-foreground">
-            {params.q || params.status || params.client || params.am || params.lead ? `No ${noun} match.` : `No ${noun} yet.`}
+            {clientName && !params.q && !params.status && !params.am && !params.lead
+              ? `No ${noun} for ${clientName}.`
+              : params.q || params.status || params.client || params.am || params.lead
+                ? `No ${noun} match.`
+                : `No ${noun} yet.`}
           </p>
         </Surface>
       ) : (
