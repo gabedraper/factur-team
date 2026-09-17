@@ -57,7 +57,7 @@ export default async function IntegrationsPage() {
 
   if (report.problem) {
     return (
-      <div className="p-6 max-w-3xl">
+      <div className="max-w-3xl p-section">
         <PageHeader title="Integrations" />
         <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-body text-destructive">
           {report.problem}
@@ -67,7 +67,9 @@ export default async function IntegrationsPage() {
   }
 
   return (
-    <div className="space-y-8 p-6 max-w-5xl">
+    /* Full width: the tables need it. The prose keeps its own reading width
+       (max-w-3xl on each paragraph), which is what the page cap was for. */
+    <div className="space-y-8 p-section">
       <PageHeader
         title="Integrations"
         description="Every tool this app reads from or writes to, what it takes, what it deliberately leaves out, and when it last ran. Read from the running system rather than written down, so it stays true as things change."
