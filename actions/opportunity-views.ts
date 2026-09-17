@@ -59,7 +59,14 @@ export async function listOpportunities(input: {
    * a broad view cannot turn into a scan.
    */
   limit?: number;
-}): Promise<{ rows: Record<string, unknown>[]; hasMore: boolean; tooBroad: boolean }> {
+  /**
+   * Ask for the size of the whole filtered set as well as a page of it. Off by
+   * default for the reason below; the board's LT Follow Up section turns it on
+   * because the count is the point of that section, and it is asking about one
+   * stage of one view rather than the whole table.
+   */
+  count?: boolean;
+}): Promise<{ rows: Record<string, unknown>[]; hasMore: boolean; tooBroad: boolean; total: number | null }> {
   await assertPipeline("view");
   const db = await createClient();
 
@@ -151,7 +158,7 @@ export async function listOpportunities(input: {
    * there is a next page, which is the only thing the number was being used
    * for.
    */
-  let q = db.from("opportunities").select(parts.join(","));
+  let q = db.from("opportunities").select(parts.join(","), input.count ? { count: "exact" } : undefined);
 
   if (input.clientId) q = q.eq("client_id", input.clientId);
   if (input.scope) {
@@ -162,7 +169,7 @@ export async function listOpportunities(input: {
      * clients would open "My opportunities" and be shown everyone's.
      */
     const ids = await clientIdsForScope(input.scope, { liveOnly: true });
-    if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
+    if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false, total: 0 };
     q = q.in("client_id", ids);
   }
 
@@ -209,7 +216,7 @@ export async function listOpportunities(input: {
 
   const size = Math.min(Math.max(input.limit ?? PAGE, 1), 200);
   const page = Math.max(0, input.page ?? 0);
-  const { data, error } = await q.range(page * size, page * size + size);
+  const { data, error, count } = await q.range(page * size, page * size + size);
 
   if (error) {
     /*
@@ -219,13 +226,13 @@ export async function listOpportunities(input: {
      * screen says so and asks for a filter rather than showing a broken page.
      */
     const timedOut = error.code === "57014" || /statement timeout|canceling statement/i.test(error.message);
-    if (timedOut) return { rows: [], hasMore: false, tooBroad: true };
+    if (timedOut) return { rows: [], hasMore: false, tooBroad: true, total: null };
     throw new Error(error.message);
   }
 
   const rows = (data ?? []) as unknown as Record<string, unknown>[];
   const hasMore = rows.length > size;
-  return { rows: hasMore ? rows.slice(0, size) : rows, hasMore, tooBroad: false };
+  return { rows: hasMore ? rows.slice(0, size) : rows, hasMore, tooBroad: false, total: count ?? null };
 }
 
 /** One saved view, or null when it is gone or not yours to see -- RLS decides. */

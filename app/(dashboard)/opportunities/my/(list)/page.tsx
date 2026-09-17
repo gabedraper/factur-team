@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { requirePipeline } from "@/lib/pipeline/access";
 import { myPermissions } from "@/lib/org";
 import { listOpportunities, getView } from "@/actions/opportunity-views";
-import { knownColumns, DEFAULT_COLUMNS, type ListView } from "@/lib/pipeline/list-views";
+import { knownColumns, DEFAULT_COLUMNS, type Filter, type ListView } from "@/lib/pipeline/list-views";
+import { CLOSED_STAGES, NURTURE_STAGE } from "@/lib/pipeline/picklists";
 import { resolveViews } from "@/lib/list-views/resolve";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface } from "@/components/ui/surface";
@@ -47,6 +48,11 @@ const REMEMBER = "opp_list_query";
 const VIEW_KEYS = ["scope", "client", "view", "as"] as const;
 /* A board needs these whatever the view's own columns are. */
 const BOARD_COLUMNS = ["contact_name", "account_name", "client_name", "stage", "next_action_date"];
+/* What the board draws, as filters the query can be given. Stage is a picklist
+   field, so "not closed" is each closed stage ruled out rather than a prefix. */
+const NOT_CLOSED: Filter[] = CLOSED_STAGES.map((v) => ({ field: "stage", op: "not_equals", value: v }));
+const NOT_PARKED: Filter = { field: "stage", op: "not_equals", value: NURTURE_STAGE };
+const PARKED: Filter = { field: "stage", op: "equals", value: NURTURE_STAGE };
 
 type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string };
 
@@ -84,6 +90,8 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const canShare = perms.has("org.manage");
 
   let rows: Row[] = [];
+  let parked: Row[] = [];
+  let parkedTotal: number | null = null;
   let hasMore = false;
   let tooBroad = false;
   let error: string | null = null;
@@ -94,7 +102,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     error = "That view has been deleted, or is private to somebody else.";
   } else {
     try {
-      const res = await listOpportunities({
+      const ask = {
         columns: board ? BOARD_COLUMNS : saved?.columns ?? DEFAULT_COLUMNS,
         filters: saved?.filters ?? [],
         sortField: saved?.sort_field ?? null,
@@ -104,8 +112,25 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         scope,
         page: board ? 0 : page,
         limit: board ? BOARD_LIMIT : PAGE,
-      });
-      ({ rows, hasMore, tooBroad } = res);
+      } as const;
+
+      if (board) {
+        /* Two queries, because the board shows two different things: the
+           working stages as columns, and the parked pile as a count that
+           opens. Asked for together they would share one row budget, and the
+           parked deals -- 365 against 54 live ones at Riverside -- would
+           crowd the columns out of it. */
+        const [live, park] = await Promise.all([
+          listOpportunities({ ...ask, filters: [...ask.filters, ...NOT_CLOSED, NOT_PARKED] }),
+          listOpportunities({ ...ask, filters: [...ask.filters, PARKED], count: true }),
+        ]);
+        ({ rows, hasMore, tooBroad } = live);
+        parked = park.rows;
+        parkedTotal = park.total;
+        tooBroad = tooBroad || park.tooBroad;
+      } else {
+        ({ rows, hasMore, tooBroad } = await listOpportunities(ask));
+      }
     } catch (e) {
       error = e instanceof Error ? e.message : "The query failed.";
     }
@@ -190,7 +215,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                 Too broad to load. Add a filter, or sort by a date.
               </p>
             </Surface>
-          ) : error || rows.length === 0 ? (
+          ) : error || (rows.length === 0 && parked.length === 0) ? (
             <ListEmpty
               noun="opportunities"
               error={error}
@@ -198,7 +223,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               clearHref={href({ q: null, page: null })}
             />
           ) : board ? (
-            <OpportunityBoard key={viewQuery.toString() + q} rows={rows} />
+            <OpportunityBoard key={viewQuery.toString() + q} rows={rows} parked={parked} parkedTotal={parkedTotal} />
           ) : (
             <OpportunityTable key={viewQuery.toString() + q + page} rows={rows} columns={columns} />
           )}
