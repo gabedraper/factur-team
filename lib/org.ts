@@ -32,6 +32,9 @@ export type Permission =
   | "scoreboard.retention.unmask" | "scoreboard.weights.edit"
   | "timelines.view" | "timelines.view.all" | "clients.health"
   | "clients.results"
+  // The vendor event feed carries prospect phone numbers and addresses, so
+  // seeing everyone's is its own right; a person always sees their own.
+  | "clients.activity_feed"
   | "finance.collections"
   // Separate from finance.collections (the email chase flow everyone with
   // that permission can run): SMS consent isn't documented for every
