@@ -50,6 +50,12 @@ export type ClientHealth = {
   overall: number | null;
   inputsMeasured: number;
   inputs: HealthInput[];
+  /*
+   * Measures shown beside the five but not scored into Health: quotes and
+   * purchase orders, straight from Salesforce. A count and a total rather than
+   * a rank -- a PO is a PO, and nobody needs it graded against the book.
+   */
+  extras: HealthInput[];
   /** Null where QuickBooks has no receivables record for them. */
   ageing: Ageing | null;
   collectionsStage: string | null;

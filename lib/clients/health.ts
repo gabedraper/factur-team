@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { everyRow } from "@/lib/supabase/every-row.mjs";
-import type { ClientHealth } from "./health-score";
+import type { ClientHealth, HealthInput } from "./health-score";
 import { terciles } from "./health-score";
 
 export * from "./health-score";
@@ -29,6 +29,11 @@ type LeadMonthRow = {
   client_id: string; month_start: string; leads: number;
   source: "daily" | "backfill"; computed_at: string;
 };
+type CommerceMonthRow = {
+  client_id: string; month_start: string;
+  quotes: number; quotes_total: number | null; orders: number; orders_total: number | null;
+};
+
 
 const asOfLabel = new Intl.DateTimeFormat("en-US", {
   month: "short", day: "numeric", timeZone: "UTC",
@@ -152,7 +157,7 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
   // with the service key there is no token to read, so it would answer "not a
   // Factur user" and return nothing at all.
   const supabase = await createClient();
-  const [{ data, error }, perf, { data: nps }, months, leadMonths] =
+  const [{ data, error }, perf, { data: nps }, months, leadMonths, commerceMonths] =
     await Promise.all([
     supabase.rpc("get_client_health"),
     /*
@@ -182,6 +187,13 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
      */
     everyRow<LeadMonthRow>(() => supabase.from("client_lead_months_by_client")
       .select("client_id,month_start,leads,source,computed_at")
+      .order("month_start", { ascending: false }).order("client_id")),
+    /*
+     * Quotes and purchase orders by month, from the Salesforce Quote and
+     * Order objects. Six months, rebuilt hourly.
+     */
+    everyRow<CommerceMonthRow>(() => supabase.from("client_commerce_months")
+      .select("client_id,month_start,quotes,quotes_total,orders,orders_total")
       .order("month_start", { ascending: false }).order("client_id")),
   ]);
   if (error) throw new Error(`client health query failed: ${error.message}`);
@@ -290,6 +302,56 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
     monthsByClient.set(m.client_id, rows);
   }
 
+  /*
+   * Quotes and POs: a count for the last three months in the row, every
+   * month in the card. Toned month by month against every other client's same
+   * month, the way leads and activity are, so a slow month reads as slow.
+   */
+  const commerceRows = (commerceMonths ?? []) as CommerceMonthRow[];
+  const quoteBands = new Map<string, [number, number] | null>();
+  const orderBands = new Map<string, [number, number] | null>();
+  for (const m of commerceRows) {
+    if (quoteBands.has(m.month_start)) continue;
+    const same = commerceRows.filter((x) => x.month_start === m.month_start);
+    quoteBands.set(m.month_start, terciles(same.map((x) => x.quotes)));
+    orderBands.set(m.month_start, terciles(same.map((x) => x.orders)));
+  }
+  const recentFrom = new Date();
+  recentFrom.setUTCMonth(recentFrom.getUTCMonth() - 2, 1);
+  const recentKey = recentFrom.toISOString().slice(0, 10);
+  type Card = { count: number; total: number; rows: NonNullable<HealthInput["rows"]> };
+  const quotesByClient = new Map<string, Card>();
+  const ordersByClient = new Map<string, Card>();
+  for (const m of commerceRows) {
+    const label = npsMonth.format(new Date(`${m.month_start}T00:00:00Z`));
+    const recent = m.month_start >= recentKey;
+    const q = quotesByClient.get(m.client_id) ?? { count: 0, total: 0, rows: [] };
+    if (recent) { q.count += m.quotes; q.total += Number(m.quotes_total ?? 0); }
+    q.rows.push({
+      label,
+      value: m.quotes_total ? `${nf.format(m.quotes)} · ${money.format(Number(m.quotes_total))}` : nf.format(m.quotes),
+      tone: m.quotes ? toneFor(m.quotes, quoteBands.get(m.month_start) ?? null) : undefined,
+    });
+    quotesByClient.set(m.client_id, q);
+    const o = ordersByClient.get(m.client_id) ?? { count: 0, total: 0, rows: [] };
+    if (recent) { o.count += m.orders; o.total += Number(m.orders_total ?? 0); }
+    o.rows.push({
+      label,
+      value: m.orders_total ? `${nf.format(m.orders)} · ${money.format(Number(m.orders_total))}` : nf.format(m.orders),
+      tone: m.orders ? toneFor(m.orders, orderBands.get(m.month_start) ?? null) : undefined,
+    });
+    ordersByClient.set(m.client_id, o);
+  }
+  const commerceCard = (key: "quotes" | "orders", label: string, c: Card | undefined): HealthInput => ({
+    key,
+    label,
+    score: null,
+    detail: c
+      ? `${nf.format(c.count)} in 3 months${c.total ? ` · ${money.format(c.total)}` : ""}`
+      : "",
+    rows: c?.rows ?? [],
+  });
+
   return ((data ?? []) as Row[])
     .map((r) => ({
       clientId: r.client_id,
@@ -311,6 +373,10 @@ export async function getClientHealth(): Promise<ClientHealth[]> {
               b91_plus: Number(r.ar_91_plus ?? 0),
             },
       collectionsStage: r.collections_stage,
+      extras: [
+        commerceCard("quotes", "Quotes", quotesByClient.get(r.client_id)),
+        commerceCard("orders", "POs", ordersByClient.get(r.client_id)),
+      ],
       inputs: [
         {
           key: "lead_flow",

@@ -77,6 +77,17 @@ const HEALTH_BLURB =
   "them are.\n\n" +
   "Blank where none of the five could be measured.";
 
+const nf = new Intl.NumberFormat("en-US");
+
+const QUOTES_BLURB =
+  "Quotes created in Salesforce for this client in the last three months. " +
+  "Open the row for each month, with the quoted amounts.";
+
+const POS_BLURB =
+  "Purchase orders won in the last three months, with their total. From " +
+  "Salesforce Orders; the amount is the PO amount as entered, not a line-item sum. " +
+  "Open the row for each month.";
+
 const LEADS_BLURB =
   "Sales leads generated for the client, by month.\n\n" +
   "Every opportunity raised for them, whatever became of it -- including the " +
@@ -277,6 +288,15 @@ export function HealthTable({
 
   const at = (c: ClientHealth, key: string) =>
     c.inputs.find((i) => i.key === key)?.score ?? null;
+  /* The extras carry no score; the row shows their three-month count, read
+     back out of the card's own summary line ("12 in 3 months · $48,000"). */
+  const recentCount = (c: ClientHealth, key: string) => {
+    const d = c.extras?.find((i) => i.key === key)?.detail ?? "";
+    const n = Number(d.replace(/,/g, "").match(/^(\d+) in/)?.[1]);
+    return Number.isFinite(n) ? n : null;
+  };
+  const recentTotal = (c: ClientHealth, key: string) =>
+    c.extras?.find((i) => i.key === key)?.detail.match(/·\s*(\$[\d,]+)/)?.[1] ?? null;
 
   const { sorted, sortProps } = useSort(shown, {
     client: (c) => c.name,
@@ -291,6 +311,8 @@ export function HealthTable({
     receivables: (c) => at(c, "receivables"),
     measured: (c) => c.inputsMeasured,
     manual: (c) => c.manualHealth,
+    quotes: (c) => recentCount(c, "quotes"),
+    orders: (c) => recentCount(c, "orders"),
   });
 
   const disagreeCount = clients.filter(disagrees).length;
@@ -356,6 +378,12 @@ export function HealthTable({
               <SortHeader className="px-3 py-2" align="right" {...sortProps("receivables")}>
                 <span title={AR_BLURB}>AR</span>
               </SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("quotes")}>
+                <span title={QUOTES_BLURB}>Quotes</span>
+              </SortHeader>
+              <SortHeader className="px-3 py-2" align="right" {...sortProps("orders")}>
+                <span title={POS_BLURB}>POs</span>
+              </SortHeader>
               <SortHeader className="px-3 py-2" align="center" {...sortProps("measured")}>Inputs</SortHeader>
               <SortHeader className="px-3 py-2" {...sortProps("manual")}>In Salesforce</SortHeader>
             </TR>
@@ -364,7 +392,7 @@ export function HealthTable({
             {/* An empty list is an answer, not a page still loading. */}
             {sorted.length === 0 && (
               <TR>
-                <TD colSpan={12} className="py-6 text-center text-muted-foreground">
+                <TD colSpan={14} className="py-6 text-center text-muted-foreground">
                   No clients to show.
                 </TD>
               </TR>
@@ -399,6 +427,19 @@ export function HealthTable({
                   <TD numeric title={AR_BLURB}>
                     <Score value={at(c, "receivables")} />
                   </TD>
+                  <TD numeric title={QUOTES_BLURB}>
+                    {recentCount(c, "quotes") ? nf.format(recentCount(c, "quotes")!) : ""}
+                  </TD>
+                  <TD numeric title={POS_BLURB}>
+                    {recentCount(c, "orders") ? (
+                      <span className="whitespace-nowrap">
+                        {nf.format(recentCount(c, "orders")!)}
+                        {recentTotal(c, "orders") && (
+                          <span className="text-muted-foreground"> · {recentTotal(c, "orders")}</span>
+                        )}
+                      </span>
+                    ) : ""}
+                  </TD>
                   <TD className="text-center text-muted-foreground tabular-nums">
                     {c.inputsMeasured} of 5
                   </TD>
@@ -407,9 +448,9 @@ export function HealthTable({
 
                 {open === c.clientId && (
                   <TR key={`${c.clientId}-detail`} className="bg-muted/30">
-                    <TD colSpan={12} className="py-3">
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                        {c.inputs.map((i) => (
+                    <TD colSpan={14} className="py-3">
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {[...c.inputs, ...(c.extras ?? [])].map((i) => (
                           <Surface key={i.key} pad="tight" inset>
                             {/* The label keeps the left; the way out of the card
                                 sits opposite it rather than below the numbers. */}
@@ -453,7 +494,9 @@ export function HealthTable({
                                           : undefined
                                 }
                               >
-                                {i.key === "engagement" ? (
+                                {i.key === "quotes" || i.key === "orders" ? (
+                                  <span className="tabular-nums">{recentCount(c, i.key) ?? 0}</span>
+                                ) : i.key === "engagement" ? (
                                   <RankedScore value={i.score} bands={perfBands} />
                                 ) : i.key === "activity" ? (
                                   <RankedScore value={i.score} bands={actBands} />
