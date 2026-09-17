@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,23 @@ import { startBroadcast, sendBroadcastBatch } from "@/actions/client-broadcast";
  * real people, and putting both behind one button is how an announcement goes
  * out with a placeholder still in it.
  *
- * Between them sits the rehearsal: one copy, rendered exactly as the first
- * client will see it, drafted into your own mailbox. It is not recorded, so the
- * real send is untouched by it.
+ * The second stage names every recipient rather than counting them. A number is
+ * not checkable -- "194 ready" could be the right 194 or the wrong ones, and
+ * the only way to know is to look. The list it shows is the one the server
+ * enrolled, not the preview from a minute earlier.
  *
- * Sending reports as it goes. The batch call returns what is left, so a long
- * send shows a number climbing rather than a spinner that might mean anything.
+ * Between the stages sits the rehearsal: one copy, rendered exactly as the
+ * first client will see it, drafted into your own mailbox. It is not recorded,
+ * so the real send is untouched by it.
  */
 
-const MERGE_HINT = "{{first_name}}, {{company}} and {{sender}} are filled in for each client.";
+/** What fill() in lib/sequences/audience understands. Nothing else is replaced. */
+const MERGE_TAGS = [
+  { tag: "{{first_name}}", label: "First name" },
+  { tag: "{{company}}", label: "Company" },
+  { tag: "{{last_name}}", label: "Last name" },
+  { tag: "{{sender}}", label: "Your name" },
+] as const;
 
 export function SendEmail({
   clientIds,
@@ -52,11 +60,45 @@ export function SendEmail({
 
   /* Set once it is written down and the audience is fixed. */
   const [slug, setSlug] = useState<string | null>(null);
-  const [queued, setQueued] = useState(0);
+  const [queued, setQueued] = useState<{ clientName: string; email: string }[]>([]);
   const [sent, setSent] = useState(0);
   const [failed, setFailed] = useState(0);
   const [rehearsed, setRehearsed] = useState(false);
   const [finished, setFinished] = useState(false);
+
+  /*
+   * Merge tags go in at the cursor of whichever box was last used, so a tag can
+   * land mid-sentence in the message or inside the subject line. Typing them by
+   * hand worked and was a small misery -- and a mistyped one is invisible until
+   * a client reads "Hi {{frist_name}}".
+   */
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const [lastUsed, setLastUsed] = useState<"subject" | "body">("body");
+  /* Where to put the cursor once React has painted the new value. */
+  const caret = useRef<{ field: "subject" | "body"; at: number } | null>(null);
+
+  useEffect(() => {
+    const pending = caret.current;
+    if (!pending) return;
+    caret.current = null;
+    const el = pending.field === "subject" ? subjectRef.current : bodyRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(pending.at, pending.at);
+  }, [subject, body]);
+
+  const insertTag = (tag: string) => {
+    const field = lastUsed;
+    const el = field === "subject" ? subjectRef.current : bodyRef.current;
+    const current = field === "subject" ? subject : body;
+    const start = el?.selectionStart ?? current.length;
+    const end = el?.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + tag + current.slice(end);
+    caret.current = { field, at: start + tag.length };
+    if (field === "subject") setSubject(next);
+    else setBody(next);
+  };
 
   useEffect(() => {
     if (slug) return;
@@ -81,7 +123,7 @@ export function SendEmail({
       return;
     }
     setSlug(res.slug);
-    setQueued(res.recipients ?? 0);
+    setQueued(res.queued ?? []);
   };
 
   const rehearse = async () => {
@@ -147,7 +189,9 @@ export function SendEmail({
           ) : slug ? (
             <>
               <Surface>
-                <p className="text-body">{queued} ready to send.</p>
+                <p className="text-body">
+                  {queued.length} ready to send.
+                </p>
                 <p className="mt-1 text-meta text-muted-foreground">
                   Nothing has gone out yet. Draft one to yourself first — it renders exactly
                   as the first client will see it, and it is not counted as sent.
@@ -162,9 +206,26 @@ export function SendEmail({
 
               {(sent > 0 || failed > 0) && (
                 <p className="text-body tabular-nums">
-                  {sent} sent{failed > 0 ? `, ${failed} failed` : ""} of {queued}.
+                  {sent} sent{failed > 0 ? `, ${failed} failed` : ""} of {queued.length}.
                 </p>
               )}
+
+              <section className="space-y-2">
+                <h3 className="text-section-title">Going to</h3>
+                <Surface pad="none">
+                  <ul className="max-h-80 divide-y overflow-y-auto">
+                    {queued.map((q) => (
+                      <li
+                        key={q.email}
+                        className="flex items-baseline justify-between gap-2 px-3 py-1.5"
+                      >
+                        <span className="truncate text-body">{q.clientName}</span>
+                        <span className="shrink-0 text-meta text-muted-foreground">{q.email}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Surface>
+              </section>
 
               {problem && <p className="text-body text-red-600 dark:text-red-400">{problem}</p>}
             </>
@@ -180,21 +241,45 @@ export function SendEmail({
 
               <Field label="Subject">
                 <Input
+                  ref={subjectRef}
                   value={subject}
+                  onFocus={() => setLastUsed("subject")}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="A change to your reporting in October"
                 />
               </Field>
 
-              <Field label="Message" hint={MERGE_HINT} error={problem ?? undefined}>
+              <Field label="Message" error={problem ?? undefined}>
                 <textarea
+                  ref={bodyRef}
                   rows={10}
                   value={body}
+                  onFocus={() => setLastUsed("body")}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder={"Hi {{first_name}},\n\n...\n\n{{sender}}"}
                   className={control({ multiline: true, className: "w-full" })}
                 />
               </Field>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-meta text-muted-foreground">
+                  Insert into the {lastUsed === "subject" ? "subject" : "message"}:
+                </span>
+                {MERGE_TAGS.map((m) => (
+                  <button
+                    key={m.tag}
+                    type="button"
+                    /* Keeps the cursor where it was: the click would otherwise
+                       blur the box before the tag could be placed in it. */
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => insertTag(m.tag)}
+                    title={m.tag}
+                    className="rounded-md border px-2 py-0.5 text-meta transition-colors duration-fast ease-out hover:bg-card-hover"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
 
               <fieldset className="space-y-1">
                 <legend className="text-meta text-muted-foreground">Send to</legend>
@@ -216,6 +301,21 @@ export function SendEmail({
                     ? "Working out who…"
                     : `${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
                 </h3>
+                {recipients.length > 0 && (
+                  <Surface pad="none">
+                    <ul className="max-h-48 divide-y overflow-y-auto">
+                      {recipients.map((r) => (
+                        <li
+                          key={r.email}
+                          className="flex items-baseline justify-between gap-2 px-3 py-1.5"
+                        >
+                          <span className="truncate text-body">{r.clientName}</span>
+                          <span className="shrink-0 text-meta text-muted-foreground">{r.email}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Surface>
+                )}
                 {unreachable.length > 0 && (
                   <p className="text-meta text-muted-foreground">
                     {unreachable.length} of the clients picked have no address on file and will
@@ -243,7 +343,7 @@ export function SendEmail({
                 Draft one to me
               </Button>
               <Button className="ml-auto" size="sm" disabled={busy} onClick={sendAll}>
-                Send to {queued}
+                Send to {queued.length}
               </Button>
             </>
           )}

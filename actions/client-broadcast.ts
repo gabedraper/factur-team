@@ -81,8 +81,13 @@ export type BroadcastStart = {
   success: boolean;
   error?: string;
   slug?: string;
-  /** How many people it will go to, and how many clients have nobody. */
-  recipients?: number;
+  /**
+   * Who it will actually go to, as enrolled. Returned rather than counted so
+   * the screen can name them: the addresses are resolved again in here, and a
+   * list the server wrote down is worth more than the one the browser guessed
+   * a minute earlier.
+   */
+  queued?: { clientName: string; email: string }[];
   missed?: number;
 };
 
@@ -175,6 +180,7 @@ export async function startBroadcast(input: {
   if (audienceError) return { success: false, error: audienceError.message };
 
   const rows = (added ?? []) as { id: string; email: string }[];
+  const companyOf = new Map(preview.recipients.map((r) => [r.email, r.clientName]));
   const { error: runError } = await db.from("sequence_runs").insert(
     rows.map((r) => ({
       sequence_id: sequenceId,
@@ -189,7 +195,7 @@ export async function startBroadcast(input: {
   return {
     success: true,
     slug,
-    recipients: rows.length,
+    queued: rows.map((r) => ({ clientName: companyOf.get(r.email) ?? "", email: r.email })),
     missed: preview.unreachable.length,
   };
 }
