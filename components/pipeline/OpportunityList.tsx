@@ -45,9 +45,13 @@ function contactName(row: Row) {
   return [c?.first_name, c?.last_name].filter(Boolean).join(" ");
 }
 
+/* A date column is a calendar date, not an instant. "2026-09-09" on its own
+   parses as midnight UTC, which reads as the 8th anywhere west of it -- so a
+   next action showed a day early, and read as due a day before it was. Giving
+   it a time makes it local midnight and the day stays as stored. */
 function shortDate(v: unknown) {
   if (!v || typeof v !== "string") return null;
-  const d = new Date(v);
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00` : v);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "2-digit" });
 }
