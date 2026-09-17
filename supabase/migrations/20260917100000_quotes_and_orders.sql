@@ -276,7 +276,9 @@ begin
       quote_number, name, status, internal_status, amount, expires_on, completed_at, paid_on,
       time_to_quote_days, commission_payout, salesforce_created_at, salesforce_updated_at
     )
-    select s."Id", o.id, cl.id, a.id, ct.id, om.id,
+    select s."Id", o.id,
+           coalesce(cl.id, o.client_id),
+           coalesce(a.id, o.account_id), ct.id, om.id,
            nullif(s."QuoteNumber", ''),
            nullif(trim(s."Name"), ''),
            nullif(s."Status", ''),
@@ -319,6 +321,16 @@ begin
     returning 1
   )
   select count(*) into written from upserted;
+
+  update public.opp_quotes q
+     set opportunity_id = o.id,
+         client_id  = coalesce(q.client_id, o.client_id),
+         account_id = coalesce(q.account_id, o.account_id),
+         updated_at = now()
+    from public."sky_Quote" s
+    join public.opportunities o on o.salesforce_opportunity_id = nullif(s."OpportunityId", '')
+   where s."Id" = q.salesforce_quote_id and q.opportunity_id is null;
+
   return written;
 end;
 $function$;
@@ -345,7 +357,9 @@ begin
       po_date, effective_on, completed_at, paid_on, time_to_order_days, commission_payout,
       salesforce_created_at, salesforce_updated_at
     )
-    select s."Id", o.id, cl.id, a.id, om.id,
+    select s."Id", o.id,
+           coalesce(cl.id, o.client_id),
+           coalesce(a.id, o.account_id), om.id,
            nullif(s."OrderNumber", ''),
            nullif(trim(s."Name"), ''),
            nullif(s."Status", ''),
@@ -392,6 +406,16 @@ begin
     returning 1
   )
   select count(*) into written from upserted;
+
+  update public.opp_orders q
+     set opportunity_id = o.id,
+         client_id  = coalesce(q.client_id, o.client_id),
+         account_id = coalesce(q.account_id, o.account_id),
+         updated_at = now()
+    from public."sky_Order" s
+    join public.opportunities o on o.salesforce_opportunity_id = nullif(s."OpportunityId", '')
+   where s."Id" = q.salesforce_order_id and q.opportunity_id is null;
+
   return written;
 end;
 $function$;
@@ -435,3 +459,15 @@ $function$;
 insert into public.salesforce_sync_state (object, watermark)
 values ('Quote', '2000-01-01T00:00:00Z'), ('Order', '2000-01-01T00:00:00Z')
 on conflict (object) do nothing;
+
+/*
+ * Applied as 20260917100100 (quotes_orders_client_from_opportunity), folded
+ * in here so the file reads as one piece.
+ *
+ * Client__c is blank on 24,914 of the 29,954 quotes and half the orders, so
+ * the client (and company) fall back to the opportunity's -- which is also
+ * what the read policy scopes on. And a quote whose opportunity turns up
+ * later (the contact backfill brings opportunities in daily) is re-linked in
+ * a second pass over unlinked rows only, rather than waiting for Salesforce to
+ * touch the quote again.
+ */
