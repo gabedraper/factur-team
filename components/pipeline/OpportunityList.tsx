@@ -47,7 +47,11 @@ function contactName(row: Row) {
 
 function shortDate(v: unknown) {
   if (!v || typeof v !== "string") return null;
-  const d = new Date(v);
+  /* A date column holds a day, not a moment. "2026-09-09" parsed on its own is
+     midnight UTC, and drawn in a timezone behind UTC that is the evening of the
+     8th -- every date in the list a day early. Read a bare day as local
+     midnight; a timestamp already carries its own offset. */
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T00:00:00` : v);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "2-digit" });
 }
