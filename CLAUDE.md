@@ -318,6 +318,12 @@ should hear the content, not a description of grey boxes.
   card is white will break in dark mode. Read the token.
 - **A wrong Supabase table name returns zero rows, not an error.** An empty
   list is not proof of an empty table.
+- **A `fixed inset-0` overlay inside a `space-y-*` parent is pushed down.** The
+  utility sets `margin-top` on every child but the first, and a fixed element is
+  still a child — 12px of page showing above the panel and 12px missing off the
+  bottom. An ancestor with a transform, filter or `container-type` moves it too,
+  and one with `overflow: hidden` clips it. Render panels through
+  `<Portal>` (`components/ui/portal.tsx`) rather than fixing the margin.
 - **`org_clients.active` is meaningless** — `status` is the real signal.
 
 ## Data
