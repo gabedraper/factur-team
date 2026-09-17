@@ -14,6 +14,7 @@ import { RendererSwitch } from "@/components/list/RendererSwitch";
 import { RememberView } from "@/components/list/RememberView";
 import { ListEmpty } from "@/components/list/EmptyState";
 import { OpportunityTable, OpportunityBoard, type Row } from "@/components/pipeline/OpportunityList";
+import { BOARD_STAGES, LTFU_STAGE } from "@/lib/pipeline/picklists";
 import { OpportunityViewTools, NewViewButton } from "@/components/pipeline/OpportunityViewEditor";
 import { control } from "@/components/ui/control";
 
@@ -48,7 +49,7 @@ const VIEW_KEYS = ["scope", "client", "view", "as"] as const;
 /* A board needs these whatever the view's own columns are. */
 const BOARD_COLUMNS = ["contact_name", "account_name", "client_name", "stage", "next_action_date"];
 
-type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string };
+type Search = { scope?: string; client?: string; view?: string; q?: string; page?: string; as?: string; none?: string; ltfu?: string };
 
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requirePipeline("view");
@@ -73,6 +74,10 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
 
   const scope = sp.scope === "mine" || sp.scope === "team" ? sp.scope : null;
   const board = sp.as === "board";
+  /* The board draws the live pipeline, and LT Follow Up joins it only when
+     asked for -- there is more of it than every other stage put together. */
+  const ltfu = sp.ltfu === "1";
+  const boardStages = ltfu ? [...BOARD_STAGES, LTFU_STAGE] : BOARD_STAGES;
   const q = (sp.q ?? "").trim();
   const page = Math.max(0, Number(sp.page ?? 0) || 0);
 
@@ -102,6 +107,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         search: q,
         clientId: sp.client ?? null,
         scope,
+        stages: board ? boardStages : undefined,
         page: board ? 0 : page,
         limit: board ? BOARD_LIMIT : PAGE,
       });
@@ -129,7 +135,12 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
      only returns private views to their owner, so "private" means "yours". */
   const editable: ListView | null = saved && (!saved.shared || canShare) ? saved : null;
 
-  const activeFilters = q ? [`“${q}”`] : [];
+  /* The board's stages are a filter like any other, so an empty board says
+     which one -- otherwise it reads as a client with nothing live at all. */
+  const activeFilters = [
+    ...(q ? [`“${q}”`] : []),
+    ...(board ? [ltfu ? "the live pipeline" : "the working stages"] : []),
+  ];
 
   const clearQuery = new URLSearchParams({ none: "1" });
   if (sp.as) clearQuery.set("as", sp.as);
@@ -174,7 +185,16 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                 className={control({ size: "sm", plain: true, className: "w-full" })}
               />
             </form>
-            <div className="ml-auto">
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {board && (
+                <RendererSwitch
+                  label="Stages"
+                  options={[
+                    { label: "Working stages", href: href({ ltfu: null }), current: !ltfu },
+                    { label: "With LT Follow Up", href: href({ ltfu: "1" }), current: ltfu },
+                  ]}
+                />
+              )}
               <RendererSwitch
                 options={[
                   { label: "Table", href: href({ as: null, page: null }), current: !board },
@@ -195,10 +215,10 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               noun="opportunities"
               error={error}
               activeFilters={activeFilters}
-              clearHref={href({ q: null, page: null })}
+              clearHref={href({ q: null, page: null, as: null, ltfu: null })}
             />
           ) : board ? (
-            <OpportunityBoard key={viewQuery.toString() + q} rows={rows} />
+            <OpportunityBoard key={viewQuery.toString() + q + (ltfu ? "ltfu" : "")} rows={rows} stages={boardStages} />
           ) : (
             <OpportunityTable key={viewQuery.toString() + q + page} rows={rows} columns={columns} />
           )}

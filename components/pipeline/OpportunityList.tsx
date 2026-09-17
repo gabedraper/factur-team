@@ -9,7 +9,6 @@ import { Table, TableScroll, THead, TBody, TR, TH, TD } from "@/components/ui/ta
 import { BulkBar, BulkAction, SelectAllBox } from "@/components/list/BulkBar";
 import { Chip } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
-import { STAGE_GROUPS } from "@/lib/pipeline/picklists";
 import { progressTone } from "@/lib/pipeline/targets";
 import { toE164 } from "@/lib/phone";
 import { useDialer } from "@/components/work-panel/dialer-context";
@@ -229,11 +228,12 @@ export function OpportunityTable({ rows, columns }: { rows: Row[]; columns: List
  * page's stage picker makes, so history is recorded and Salesforce hears
  * about it the same way.
  *
- * Every stage gets a column, including empty ones, because an empty column is
- * still somewhere a card can be moved to. Empty columns are drawn narrow so
- * twenty-two stages do not push the busy ones off the screen.
+ * Every stage it is given gets a column, including empty ones, because an
+ * empty column is still somewhere a card can be moved to. Empty columns are
+ * drawn narrow so they do not push the busy ones off the screen. Which stages
+ * those are is the page's decision -- see BOARD_STAGES.
  */
-export function OpportunityBoard({ rows }: { rows: Row[] }) {
+export function OpportunityBoard({ rows, stages }: { rows: Row[]; stages: string[] }) {
   const [items, setItems] = useState(rows);
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -266,7 +266,7 @@ export function OpportunityBoard({ rows }: { rows: Row[] }) {
     <div className="space-y-2">
       {error && <p className="text-body text-destructive">{error}</p>}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {STAGE_GROUPS.flatMap((g) => g.values).map((stage) => {
+        {stages.map((stage) => {
           const cards = byStage.get(stage) ?? [];
           const target = over === stage && dragging !== null;
           return (

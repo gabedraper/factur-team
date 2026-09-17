@@ -37,3 +37,24 @@ export const LEAD_STATUSES: string[] = [
   "Pipeline - Selling", "Pipeline - Selling - Discovery", "Pipeline - Selling - Proposal",
   "Closing", "LTFU", "Lost Follow Up", "Customer", "Relationship", "No Fit Ever - Contact", "No Fit Ever - Account",
 ];
+
+/*
+ * The stages a board draws, in the order a deal moves through them.
+ *
+ * Not every stage, because a board is the live pipeline: the Closed family is
+ * an archive and a client can carry tens of thousands of it, and the
+ * Prospecting family is sourcing rather than a pursuit -- the same family the
+ * lead counts already leave out.
+ *
+ * Pipeline: LT Follow Up is live work, but it is parked work and there is far
+ * more of it than anything else -- 365 of Riverside's 419 open deals, against
+ * 54 in the stages a call actually gets prepared from. As a column on the
+ * board it buries the rest, so it is one you switch on rather than land on.
+ */
+export const BOARD_STAGES: string[] = [
+  "Pipeline: Warm", "Pipeline: Hot", "Pipeline Hot: Appointment set",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Quoting", "Pipeline Hot: Quote Follow up",
+  "Pipeline Hot: Supplier forms / NDA", "Pipeline - Selling", "Sales Support",
+];
+
+export const LTFU_STAGE = "Pipeline: LT Follow Up";
