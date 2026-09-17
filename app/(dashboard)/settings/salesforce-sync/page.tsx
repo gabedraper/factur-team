@@ -49,6 +49,12 @@ export default async function SalesforceSyncPage() {
     .filter((r) => r.object === "Opportunity" && r.scope !== "__all")
     .sort((a, b) => (b.sf_count ?? 0) - (a.sf_count ?? 0));
   const prevBy = new Map(previous.map((r) => [`${r.object}|${r.scope}`, r]));
+  /* The opportunity total's gap is mostly the cold-call list, which is left
+     out on purpose. Take the labelled stages out and what is left is the part
+     worth a look. */
+  const expectedGap = stages
+    .filter((r) => r.note)
+    .reduce((a, r) => a + ((r.sf_count ?? 0) - (r.app_count ?? 0)), 0);
   const movement = (r: ReconRow) => {
     const p = prevBy.get(`${r.object}|${r.scope}`);
     if (!p || p.sf_count === null || p.app_count === null || r.sf_count === null || r.app_count === null) return null;
@@ -94,10 +100,20 @@ export default async function SalesforceSyncPage() {
                       <TD numeric>{r.mirror_count === null ? "—" : nf.format(r.mirror_count)}</TD>
                       <TD numeric>{r.app_count === null ? "—" : nf.format(r.app_count)}</TD>
                       <TD numeric>
-                        <Diff sf={r.sf_count} app={r.app_count} expected={r.object === "Contact" || r.object === "Account"} />
+                        {r.object === "Opportunity" && r.sf_count !== null && r.app_count !== null ? (
+                          <Diff sf={r.sf_count - expectedGap} app={r.app_count} expected={false} />
+                        ) : (
+                          <Diff sf={r.sf_count} app={r.app_count} expected={r.object === "Contact" || r.object === "Account"} />
+                        )}
                         {movement(r) && <span className="ml-2 text-meta text-muted-foreground">{movement(r)}</span>}
                       </TD>
-                      <TD className="max-w-[26rem] text-meta text-muted-foreground">{r.note ?? ""}</TD>
+                      <TD className="max-w-[26rem] text-meta text-muted-foreground">
+                        {r.object === "Opportunity" && expectedGap
+                          ? [`${nf.format(expectedGap)} left out on purpose (see stages)`, r.note].filter(Boolean).join(" · ")
+                          : r.object === "Account"
+                            ? "The mirror holds only companies changed since the bulk load; the app holds the bulk load too."
+                            : r.note ?? ""}
+                      </TD>
                     </TR>
                   ))}
                 </TBody>
