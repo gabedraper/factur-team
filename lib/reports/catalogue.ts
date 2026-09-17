@@ -2,6 +2,7 @@ import type { Permission } from "@/lib/org";
 import { arAgeing } from "./defs/ar-ageing";
 import { clientHealth } from "./defs/client-health";
 import { clientResults } from "./defs/client-results";
+import { domainMismatches } from "./defs/domain-mismatches";
 import { hustlePoints } from "./defs/hustle-points";
 import { npsResponses } from "./defs/nps-responses";
 import { talentActivity } from "./defs/talent-activity";
@@ -25,6 +26,7 @@ export const REPORTS: AnyReport[] = [
   npsResponses,
   arAgeing,
   hustlePoints,
+  domainMismatches,
   talentActivity,
   trainingProgress,
 ];
