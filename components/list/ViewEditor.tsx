@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Portal } from "@/components/ui/portal";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { control } from "@/components/ui/control";
@@ -138,159 +139,161 @@ export function ViewEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
-      <aside
-        role="dialog"
-        aria-label={view.id ? "Edit view" : "New view"}
-        className="flex h-full w-full max-w-lg flex-col bg-card shadow-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center gap-2 border-b px-card py-3">
-          <h2 className="text-section-title">{view.id ? "Edit view" : "New view"}</h2>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </header>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-card py-4">
-          <Field label="Name" error={error ?? undefined}>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mine, by service" />
-          </Field>
-
-          {setup.canShare && (
-            <label className="flex items-center gap-2 text-body">
-              <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
-              Shared with everyone
-            </label>
-          )}
-
-          <section className="space-y-2">
-            <h3 className="text-section-title">
-              Columns <span className="font-normal text-muted-foreground">{columns.length}</span>
-            </h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {setup.fields.map((f) => (
-                <label key={f.key} className="flex items-center gap-2 text-body">
-                  <input
-                    type="checkbox"
-                    checked={columns.includes(f.key)}
-                    onChange={() => toggleColumn(f.key)}
-                  />
-                  <span className="truncate">{f.label}</span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-section-title">Filters</h3>
-              <Button
-                variant="outline" size="sm" className="ml-auto"
-                onClick={() =>
-                  setFilters((fs) => {
-                    const first = setup.fields[0];
-                    return [...fs, { field: first.key, op: operatorsFor(first.type)[0], value: "" }];
-                  })
-                }
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" /> Add filter
-              </Button>
-            </div>
-            {filters.length === 0 ? (
-              <p className="text-body text-muted-foreground">{setup.unfilteredNote}</p>
-            ) : (
-              <div className="space-y-2">
-                {filters.map((f, i) => {
-                  const field = byKey.get(f.field);
-                  const ops = operatorsFor(field?.type ?? "text");
-                  const options = field?.picklist ? setup.picklists?.[field.picklist] ?? null : null;
-                  return (
-                    <div key={i} className="flex flex-wrap items-center gap-1.5 rounded-md bg-muted/50 p-2">
-                      <select
-                        aria-label="Field"
-                        className={SELECT}
-                        value={f.field}
-                        onChange={(e) => {
-                          const nf = byKey.get(e.target.value)!;
-                          setFilter(i, { field: nf.key, op: operatorsFor(nf.type)[0], value: "" });
-                        }}
-                      >
-                        {setup.fields.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
-                      </select>
-                      <select
-                        aria-label="Operator"
-                        className={SELECT}
-                        value={f.op}
-                        onChange={(e) => setFilter(i, { ...f, op: e.target.value as Operator })}
-                      >
-                        {ops.map((o) => <option key={o} value={o}>{OPERATOR_LABELS[o]}</option>)}
-                      </select>
-                      {!opTakesNoValue(f.op) && (
-                        options ? (
-                          <select
-                            aria-label="Value"
-                            className={`${SELECT} min-w-40`}
-                            value={f.value ?? ""}
-                            onChange={(e) => setFilter(i, { ...f, value: e.target.value })}
-                          >
-                            <option value=""></option>
-                            {options.map((v) => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                        ) : (
-                          <Input
-                            aria-label="Value"
-                            className="h-9 w-40"
-                            value={f.value ?? ""}
-                            placeholder={field?.type === "date" ? "today or 2026-09-30" : "value"}
-                            onChange={(e) => setFilter(i, { ...f, value: e.target.value })}
-                          />
-                        )
-                      )}
-                      <Button
-                        variant="ghost" size="icon" className="ml-auto h-8 w-8"
-                        aria-label="Remove filter"
-                        onClick={() => setFilters((fs) => fs.filter((_, j) => j !== i))}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <section className="space-y-2">
-            <h3 className="text-section-title">Sort by</h3>
-            <div className="flex gap-1.5">
-              <select
-                aria-label="Sort field" className={SELECT} value={sortField ?? ""}
-                onChange={(e) => setSortField(e.target.value || null)}
-              >
-                <option value="">Default</option>
-                {setup.fields.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
-              </select>
-              <select
-                aria-label="Sort direction" className={SELECT} value={sortDir}
-                onChange={(e) => setSortDir(e.target.value as "asc" | "desc")}
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </div>
-          </section>
-        </div>
-
-        <footer className="flex items-center gap-2 border-t px-card py-3">
-          {view.id && (
-            <Button variant="outline" size="sm" disabled={busy} onClick={remove}>
-              <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete view
+    <Portal>
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
+        <aside
+          role="dialog"
+          aria-label={view.id ? "Edit view" : "New view"}
+          className="flex h-full w-full max-w-lg flex-col bg-card shadow-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="flex items-center gap-2 border-b px-card py-3">
+            <h2 className="text-section-title">{view.id ? "Edit view" : "New view"}</h2>
+            <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close">
+              <X className="h-4 w-4" />
             </Button>
-          )}
-          <Button className="ml-auto" size="sm" disabled={busy} onClick={save}>Save view</Button>
-        </footer>
-      </aside>
-    </div>
+          </header>
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-card py-4">
+            <Field label="Name" error={error ?? undefined}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mine, by service" />
+            </Field>
+
+            {setup.canShare && (
+              <label className="flex items-center gap-2 text-body">
+                <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+                Shared with everyone
+              </label>
+            )}
+
+            <section className="space-y-2">
+              <h3 className="text-section-title">
+                Columns <span className="font-normal text-muted-foreground">{columns.length}</span>
+              </h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {setup.fields.map((f) => (
+                  <label key={f.key} className="flex items-center gap-2 text-body">
+                    <input
+                      type="checkbox"
+                      checked={columns.includes(f.key)}
+                      onChange={() => toggleColumn(f.key)}
+                    />
+                    <span className="truncate">{f.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-section-title">Filters</h3>
+                <Button
+                  variant="outline" size="sm" className="ml-auto"
+                  onClick={() =>
+                    setFilters((fs) => {
+                      const first = setup.fields[0];
+                      return [...fs, { field: first.key, op: operatorsFor(first.type)[0], value: "" }];
+                    })
+                  }
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Add filter
+                </Button>
+              </div>
+              {filters.length === 0 ? (
+                <p className="text-body text-muted-foreground">{setup.unfilteredNote}</p>
+              ) : (
+                <div className="space-y-2">
+                  {filters.map((f, i) => {
+                    const field = byKey.get(f.field);
+                    const ops = operatorsFor(field?.type ?? "text");
+                    const options = field?.picklist ? setup.picklists?.[field.picklist] ?? null : null;
+                    return (
+                      <div key={i} className="flex flex-wrap items-center gap-1.5 rounded-md bg-muted/50 p-2">
+                        <select
+                          aria-label="Field"
+                          className={SELECT}
+                          value={f.field}
+                          onChange={(e) => {
+                            const nf = byKey.get(e.target.value)!;
+                            setFilter(i, { field: nf.key, op: operatorsFor(nf.type)[0], value: "" });
+                          }}
+                        >
+                          {setup.fields.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        </select>
+                        <select
+                          aria-label="Operator"
+                          className={SELECT}
+                          value={f.op}
+                          onChange={(e) => setFilter(i, { ...f, op: e.target.value as Operator })}
+                        >
+                          {ops.map((o) => <option key={o} value={o}>{OPERATOR_LABELS[o]}</option>)}
+                        </select>
+                        {!opTakesNoValue(f.op) && (
+                          options ? (
+                            <select
+                              aria-label="Value"
+                              className={`${SELECT} min-w-40`}
+                              value={f.value ?? ""}
+                              onChange={(e) => setFilter(i, { ...f, value: e.target.value })}
+                            >
+                              <option value=""></option>
+                              {options.map((v) => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          ) : (
+                            <Input
+                              aria-label="Value"
+                              className="h-9 w-40"
+                              value={f.value ?? ""}
+                              placeholder={field?.type === "date" ? "today or 2026-09-30" : "value"}
+                              onChange={(e) => setFilter(i, { ...f, value: e.target.value })}
+                            />
+                          )
+                        )}
+                        <Button
+                          variant="ghost" size="icon" className="ml-auto h-8 w-8"
+                          aria-label="Remove filter"
+                          onClick={() => setFilters((fs) => fs.filter((_, j) => j !== i))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <h3 className="text-section-title">Sort by</h3>
+              <div className="flex gap-1.5">
+                <select
+                  aria-label="Sort field" className={SELECT} value={sortField ?? ""}
+                  onChange={(e) => setSortField(e.target.value || null)}
+                >
+                  <option value="">Default</option>
+                  {setup.fields.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                </select>
+                <select
+                  aria-label="Sort direction" className={SELECT} value={sortDir}
+                  onChange={(e) => setSortDir(e.target.value as "asc" | "desc")}
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+              </div>
+            </section>
+          </div>
+
+          <footer className="flex items-center gap-2 border-t px-card py-3">
+            {view.id && (
+              <Button variant="outline" size="sm" disabled={busy} onClick={remove}>
+                <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete view
+              </Button>
+            )}
+            <Button className="ml-auto" size="sm" disabled={busy} onClick={save}>Save view</Button>
+          </footer>
+          </aside>
+      </div>
+    </Portal>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Portal } from "@/components/ui/portal";
 import { Field } from "@/components/ui/field";
 import { Surface } from "@/components/ui/surface";
 import { control } from "@/components/ui/control";
@@ -96,133 +97,135 @@ export function AddToSequence({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
-      <aside
-        role="dialog"
-        aria-label="Add to sequence"
-        className="flex h-full w-full max-w-lg flex-col bg-card shadow-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center gap-2 border-b px-card py-3">
-          <h2 className="text-section-title">Add to sequence</h2>
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
-        </header>
+    <Portal>
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
+        <aside
+          role="dialog"
+          aria-label="Add to sequence"
+          className="flex h-full w-full max-w-lg flex-col bg-card shadow-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="flex items-center gap-2 border-b px-card py-3">
+            <h2 className="text-section-title">Add to sequence</h2>
+            <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close">
+              <X className="h-4 w-4" />
+            </Button>
+          </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-card py-4">
-          {done ? (
-            <Surface>
-              <p className="text-body">{done}.</p>
-              <p className="mt-1 text-meta text-muted-foreground">
-                They are on the sequence. Nothing is sent until somebody opens it and sends
-                the step that is due.
-              </p>
-            </Surface>
-          ) : (
-            <>
-              {sequences !== null && sequences.length === 0 && (
-                <Surface>
-                  <p className="text-body">There are no sequences yet.</p>
-                  <p className="mt-1 text-meta text-muted-foreground">
-                    One gets built under Settings, then clients can be added to it here.
-                  </p>
-                </Surface>
-              )}
-
-              <Field label="Sequence" error={problem ?? undefined}>
-                <select
-                  className={control({ className: "w-full" })}
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  disabled={!sequences || sequences.length === 0}
-                >
-                  {(sequences ?? []).map((s) => (
-                    <option key={s.slug} value={s.slug}>{s.name}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {chosen && chosen.activeSteps === 0 && (
-                <p className="text-meta text-muted-foreground">
-                  That sequence has no active steps, so nobody on it has anything to be sent
-                  yet. Adding them now is still fine — they will be waiting when a step is
-                  turned on.
+          <div className="flex-1 space-y-4 overflow-y-auto px-card py-4">
+            {done ? (
+              <Surface>
+                <p className="text-body">{done}.</p>
+                <p className="mt-1 text-meta text-muted-foreground">
+                  They are on the sequence. Nothing is sent until somebody opens it and sends
+                  the step that is due.
                 </p>
-              )}
-
-              <fieldset className="space-y-1">
-                <legend className="text-meta text-muted-foreground">Send to</legend>
-                {ROLES.map((role) => (
-                  <label key={role} className="flex items-center gap-2 text-body">
-                    <input
-                      type="checkbox"
-                      checked={roles.includes(role)}
-                      onChange={() => toggleRole(role)}
-                    />
-                    {ROLE_LABEL[role]}
-                  </label>
-                ))}
-              </fieldset>
-
-              <section className="space-y-2">
-                <h3 className="text-section-title">
-                  {loading ? "Working out who…" : `${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
-                </h3>
-                {recipients.length > 0 && (
-                  <Surface pad="none">
-                    <ul className="max-h-56 divide-y overflow-y-auto">
-                      {recipients.map((r) => (
-                        <li key={r.email} className="flex items-baseline justify-between gap-2 px-3 py-1.5">
-                          <span className="truncate text-body">{r.clientName}</span>
-                          <span className="shrink-0 text-meta text-muted-foreground">{r.email}</span>
-                        </li>
-                      ))}
-                    </ul>
+              </Surface>
+            ) : (
+              <>
+                {sequences !== null && sequences.length === 0 && (
+                  <Surface>
+                    <p className="text-body">There are no sequences yet.</p>
+                    <p className="mt-1 text-meta text-muted-foreground">
+                      One gets built under Settings, then clients can be added to it here.
+                    </p>
                   </Surface>
                 )}
-              </section>
 
-              {unreachable.length > 0 && (
+                <Field label="Sequence" error={problem ?? undefined}>
+                  <select
+                    className={control({ className: "w-full" })}
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    disabled={!sequences || sequences.length === 0}
+                  >
+                    {(sequences ?? []).map((s) => (
+                      <option key={s.slug} value={s.slug}>{s.name}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                {chosen && chosen.activeSteps === 0 && (
+                  <p className="text-meta text-muted-foreground">
+                    That sequence has no active steps, so nobody on it has anything to be sent
+                    yet. Adding them now is still fine — they will be waiting when a step is
+                    turned on.
+                  </p>
+                )}
+
+                <fieldset className="space-y-1">
+                  <legend className="text-meta text-muted-foreground">Send to</legend>
+                  {ROLES.map((role) => (
+                    <label key={role} className="flex items-center gap-2 text-body">
+                      <input
+                        type="checkbox"
+                        checked={roles.includes(role)}
+                        onChange={() => toggleRole(role)}
+                      />
+                      {ROLE_LABEL[role]}
+                    </label>
+                  ))}
+                </fieldset>
+
                 <section className="space-y-2">
                   <h3 className="text-section-title">
-                    {unreachable.length} will be missed
+                    {loading ? "Working out who…" : `${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
                   </h3>
-                  <p className="text-meta text-muted-foreground">
-                    No address on file for the kind of contact chosen. Adding one on the
-                    client&rsquo;s own page brings them in.
-                  </p>
-                  <Surface pad="none">
-                    <ul className="max-h-40 divide-y overflow-y-auto">
-                      {unreachable.map((u) => (
-                        <li key={u.clientId} className="truncate px-3 py-1.5 text-body">
-                          {u.clientName}
-                        </li>
-                      ))}
-                    </ul>
-                  </Surface>
+                  {recipients.length > 0 && (
+                    <Surface pad="none">
+                      <ul className="max-h-56 divide-y overflow-y-auto">
+                        {recipients.map((r) => (
+                          <li key={r.email} className="flex items-baseline justify-between gap-2 px-3 py-1.5">
+                            <span className="truncate text-body">{r.clientName}</span>
+                            <span className="shrink-0 text-meta text-muted-foreground">{r.email}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </Surface>
+                  )}
                 </section>
-              )}
-            </>
-          )}
-        </div>
 
-        <footer className="flex items-center gap-2 border-t px-card py-3">
-          <Button variant="outline" size="sm" onClick={onClose}>
-            {done ? "Close" : "Cancel"}
-          </Button>
-          {!done && (
-            <Button
-              className="ml-auto"
-              size="sm"
-              disabled={saving || loading || recipients.length === 0 || !slug}
-              onClick={add}
-            >
-              Add {recipients.length} to sequence
+                {unreachable.length > 0 && (
+                  <section className="space-y-2">
+                    <h3 className="text-section-title">
+                      {unreachable.length} will be missed
+                    </h3>
+                    <p className="text-meta text-muted-foreground">
+                      No address on file for the kind of contact chosen. Adding one on the
+                      client&rsquo;s own page brings them in.
+                    </p>
+                    <Surface pad="none">
+                      <ul className="max-h-40 divide-y overflow-y-auto">
+                        {unreachable.map((u) => (
+                          <li key={u.clientId} className="truncate px-3 py-1.5 text-body">
+                            {u.clientName}
+                          </li>
+                        ))}
+                      </ul>
+                    </Surface>
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+
+          <footer className="flex items-center gap-2 border-t px-card py-3">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              {done ? "Close" : "Cancel"}
             </Button>
-          )}
-        </footer>
-      </aside>
-    </div>
+            {!done && (
+              <Button
+                className="ml-auto"
+                size="sm"
+                disabled={saving || loading || recipients.length === 0 || !slug}
+                onClick={add}
+              >
+                Add {recipients.length} to sequence
+              </Button>
+            )}
+          </footer>
+          </aside>
+      </div>
+    </Portal>
   );
 }
