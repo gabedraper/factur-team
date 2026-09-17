@@ -109,29 +109,29 @@ export function PeopleTable(
   return (
     <div className="space-y-3">
       <Surface as="section" className="space-y-2">
-        <h2 className="text-sm font-medium">New team member</h2>
+        <h2 className="text-body font-medium">New team member</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
-            className="h-8 min-w-48 rounded-md border bg-field px-2 text-sm"
+            className={control({ size: "sm", className: "min-w-48" })}
             placeholder="Full name"
             value={draft.fullName}
             onChange={(e) => setDraft((d) => ({ ...d, fullName: e.target.value }))}
           />
           <input
-            className="h-8 min-w-56 rounded-md border bg-field px-2 text-sm"
+            className={control({ size: "sm", className: "min-w-56" })}
             placeholder="name@facturmfg.com"
             value={draft.email}
             onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
           />
           <button
-            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground disabled:opacity-50"
+            className="h-8 rounded-md bg-primary px-3 text-body text-primary-foreground disabled:opacity-50"
             disabled={!draft.fullName.trim() || !draft.email.trim() || pending}
             onClick={addMember}
           >
             Add team member
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           For somebody who is in the app but not yet on the org chart — signing in makes them a
           learner and nothing more. They arrive needing a role, which is picked in their row below.
         </p>
