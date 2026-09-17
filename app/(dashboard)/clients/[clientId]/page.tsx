@@ -55,11 +55,23 @@ export default async function ClientPage({
 
   const { data: client } = await createServiceClient()
     .from("org_clients")
-    .select("id,name,status")
+    .select("id,name,status,salesforce_client_id")
     .eq("id", clientId)
     .maybeSingle();
 
   if (!client) notFound();
+
+  /*
+   * The way through to this client's months. Leads, appointments, quotes and
+   * POs by month, with the quote and PO values, already exist on Client
+   * Results -- but that page was only reachable from its own list, so "how are
+   * they doing this month" kept being asked of a person instead of the app.
+   *
+   * Keyed by the Salesforce id rather than ours, which is what that section
+   * runs on; a client without one is not in it at all.
+   */
+  const salesforceId = (client as { salesforce_client_id: string | null }).salesforce_client_id;
+  const resultsAllowed = admin || perms.has("clients.results");
 
   /*
    * The record half is what somebody who runs the org may change; the activity
@@ -103,12 +115,22 @@ export default async function ClientPage({
         </Link>
         <PageHeader
           title={(client as { name: string }).name}
-          actions={<Link
-            href={`/clients/${clientId}/market`}
-            className="text-body text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            Market
-          </Link>}
+          actions={<>
+            {salesforceId && resultsAllowed && (
+              <Link
+                href={`/clients/results/${salesforceId}`}
+                className="text-body text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Results by month
+              </Link>
+            )}
+            <Link
+              href={`/clients/${clientId}/market`}
+              className="text-body text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Market
+            </Link>
+          </>}
           className="mt-1"
         />
       </div>
