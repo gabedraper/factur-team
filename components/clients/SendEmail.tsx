@@ -63,6 +63,7 @@ export function SendEmail({
   const [rehearsed, setRehearsed] = useState(false);
   const [sent, setSent] = useState(0);
   const [failed, setFailed] = useState(0);
+  const [finishedAs, setFinishedAs] = useState<"send" | "draft">("send");
 
   /*
    * Merge tags go in at the cursor of whichever box was last used, so a tag can
@@ -130,9 +131,10 @@ export function SendEmail({
    * request timeout at this size, and batching is what lets the screen say how
    * far it got.
    */
-  const sendAll = async () => {
+  const deliverAll = async (deliver: "send" | "draft") => {
     setProblem(null);
     setBusy(true);
+    setFinishedAs(deliver);
 
     const started = await startBroadcast({ name, subject, body, clientIds, roles });
     if (!started.success || !started.slug) {
@@ -143,8 +145,8 @@ export function SendEmail({
 
     let guard = 0;
     for (;;) {
-      const res = await sendBroadcastBatch(started.slug);
-      if (!res.success) { setProblem(res.error ?? "Sending stopped."); break; }
+      const res = await sendBroadcastBatch(started.slug, deliver);
+      if (!res.success) { setProblem(res.error ?? "It stopped partway."); break; }
       setSent((n) => n + (res.done ?? 0));
       setFailed((n) => n + (res.failed ?? 0));
       if ((res.remaining ?? 0) <= 0) break;
@@ -162,7 +164,13 @@ export function SendEmail({
   const ready = Boolean(name.trim() && subject.trim() && body.trim() && recipients.length > 0);
 
   const title =
-    stage === "write" ? "Write the email" : stage === "check" ? "Check and send" : "Sent";
+    stage === "write"
+      ? "Write the email"
+      : stage === "check"
+        ? "Check and send"
+        : finishedAs === "send"
+          ? "Sent"
+          : "Drafted";
 
   return (
     <Portal>
@@ -195,11 +203,17 @@ export function SendEmail({
             {stage === "done" ? (
               <Surface>
                 <p className="text-body">
-                  Sent to {sent} {sent === 1 ? "person" : "people"}
+                  {finishedAs === "send"
+                    ? `Sent to ${sent} ${sent === 1 ? "person" : "people"}`
+                    : `${sent} draft${sent === 1 ? "" : "s"} waiting in your mailbox`}
                   {failed > 0 ? `, ${failed} failed` : ""}.
                 </p>
                 <p className="mt-1 text-meta text-muted-foreground">
-                  Every message is recorded against the client it went to.
+                  {finishedAs === "send"
+                    ? "Every message is recorded against the client it went to."
+                    : "Each one is addressed to the client and nothing has gone out. " +
+                      "Open your drafts to read them and send. They are recorded as done here, " +
+                      "so this will not draft them a second time."}
                 </p>
               </Surface>
             ) : stage === "check" ? (
@@ -207,9 +221,9 @@ export function SendEmail({
                 <Surface>
                   <p className="text-body">{recipients.length} ready to send.</p>
                   <p className="mt-1 text-meta text-muted-foreground">
-                    Nothing has gone out yet, and nothing is written down until you send.
-                    Draft one to yourself first — it renders exactly as the first client
-                    will see it.
+                    Nothing has gone out yet, and nothing is written down until you send or
+                    draft. Draft one to yourself first — it renders exactly as the first
+                    client will see it.
                   </p>
                 </Surface>
 
@@ -221,7 +235,8 @@ export function SendEmail({
 
                 {busy && (
                   <p className="text-body tabular-nums">
-                    {sent} sent{failed > 0 ? `, ${failed} failed` : ""} of {recipients.length}…
+                    {sent} {finishedAs === "send" ? "sent" : "drafted"}
+                    {failed > 0 ? `, ${failed} failed` : ""} of {recipients.length}…
                   </p>
                 )}
 
@@ -335,7 +350,7 @@ export function SendEmail({
             )}
           </div>
 
-          <footer className="flex items-center gap-2 border-t px-card py-3">
+          <footer className="flex flex-wrap items-center gap-2 border-t px-card py-3">
             {stage === "check" ? (
               <Button variant="outline" size="sm" disabled={busy} onClick={() => setStage("write")}>
                 <ChevronLeft className="mr-1 h-4 w-4" /> Back
@@ -362,7 +377,17 @@ export function SendEmail({
                 <Button variant="outline" size="sm" disabled={busy} onClick={rehearse}>
                   Draft one to me
                 </Button>
-                <Button className="ml-auto" size="sm" disabled={busy} onClick={sendAll}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  disabled={busy}
+                  onClick={() => deliverAll("draft")}
+                  title="Writes one draft per client into your mailbox. Nothing is sent."
+                >
+                  Draft {recipients.length} to them
+                </Button>
+                <Button size="sm" disabled={busy} onClick={() => deliverAll("send")}>
                   Send to {recipients.length}
                 </Button>
               </>

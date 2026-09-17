@@ -263,14 +263,27 @@ export type BroadcastBatch = {
 };
 
 /**
- * Send the next handful.
+ * Send -- or draft -- the next handful.
  *
- * Only real sends come through here, and every one is recorded before the next
- * is attempted, so a run that dies halfway has told the truth about what
- * already went. Rehearsals are draftBroadcastPreview, which writes nothing.
+ * Two ways for a message to leave, and the app already had words for both:
+ * 'full' is sent, 'semi' is a draft left in the sender's mailbox for a person
+ * to read and send themselves. Collections works exactly this way, and the log
+ * records which happened, so the history can tell "we emailed them" apart from
+ * "a draft was made".
+ *
+ * A draft is recorded as the step having been worked, which is the one thing to
+ * be careful about: if somebody drafts two hundred and never opens their
+ * mailbox, the log says a step was done and no client heard anything. That is
+ * the bargain collections already takes, and the alternative -- not recording
+ * them -- means pressing the button twice quietly doubles every draft.
+ *
+ * Either way each one is recorded before the next is attempted, so a run that
+ * dies halfway has told the truth about what already went. The rehearsal is
+ * draftBroadcastPreview, which goes to you and writes nothing.
  */
 export async function sendBroadcastBatch(
   slug: string,
+  deliver: "send" | "draft" = "send",
   limit = BATCH,
 ): Promise<BroadcastBatch> {
   if (!(await mayBroadcast())) return { success: false, error: "Not permitted." };
@@ -320,7 +333,10 @@ export async function sendBroadcastBatch(
     const from = item.send_as ?? who.email;
 
     try {
-      const placed = await sendAs({ from, fromName: who.name, to: person.email, subject, body });
+      /* Addressed to the client either way. The difference is whether it goes
+         now or waits in the sender's drafts. */
+      const outgoing = { from, fromName: who.name, to: person.email, subject, body };
+      const placed = deliver === "send" ? await sendAs(outgoing) : await draftAs(outgoing);
 
       await db.from("sequence_actions").insert({
         run_id: item.run_id,
@@ -330,7 +346,7 @@ export async function sendBroadcastBatch(
         recipient: person.email,
         sender: from,
         rendered: { subject, body },
-        mode: "full",
+        mode: deliver === "send" ? "full" : "semi",
         rfc_message_id: placed.rfcMessageId,
         external_ids: placed.draftId ? { gmail_draft_id: placed.draftId } : {},
         acted_by: who.email,
