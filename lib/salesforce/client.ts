@@ -69,12 +69,14 @@ export async function getSalesforceToken(): Promise<Token> {
 /** One page of SOQL results, following nextRecordsUrl until Salesforce stops. */
 export async function soql<T = Record<string, unknown>>(
   query: string,
-  { max = 50_000 }: { max?: number } = {},
+  { max = 50_000, includeDeleted = false }: { max?: number; includeDeleted?: boolean } = {},
 ): Promise<T[]> {
   const { accessToken, instanceUrl } = await getSalesforceToken();
   const rows: T[] = [];
+  /* queryAll is the only way to hear about a deleted record: an ordinary
+     query never returns it, which is how deletions went unlearned. */
   let url =
-    `${instanceUrl}/services/data/${API_VERSION}/query?q=` +
+    `${instanceUrl}/services/data/${API_VERSION}/${includeDeleted ? "queryAll" : "query"}?q=` +
     encodeURIComponent(query);
 
   while (url && rows.length < max) {

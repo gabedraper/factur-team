@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Users, ShieldCheck, Building2, Layers, Briefcase, SlidersHorizontal,
-  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature, Palette, UploadCloud} from "lucide-react";
+  MailWarning, Gauge, Contact, Bot, Plug, Phone, FileSignature, Palette, UploadCloud, RefreshCw } from "lucide-react";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
@@ -170,6 +170,16 @@ export default async function SettingsPage() {
                 <span className="block text-body font-medium">Signed agreements</span>
                 <span className="block text-meta text-muted-foreground">
                   Bring contracts in from PandaDoc and tie them to the right client.
+                </span>
+              </span>
+            </Link>
+            <Link href="/settings/salesforce-sync"
+                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
+              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="block text-body font-medium">Salesforce sync</span>
+                <span className="block text-meta text-muted-foreground">
+                  Salesforce&apos;s counts beside the app&apos;s, by object and stage, checked hourly.
                 </span>
               </span>
             </Link>
