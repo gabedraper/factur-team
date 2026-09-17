@@ -366,3 +366,109 @@ export async function testStep(slug: string, stepId: string, writerId?: string |
 
   return { success: true, error: undefined };
 }
+
+/*
+ * Retiring a sequence.
+ *
+ * Two doors, because a sequence that has sent mail is not the same object as
+ * one that never did. sequence_actions is the record of what went to which
+ * client, and it hangs off the run, which hangs off the sequence -- so deleting
+ * a sequence that has sent anything takes the only record of those sends with
+ * it. That is not a delete, it is a quiet rewriting of what we told people.
+ *
+ * So: archive keeps everything and takes it out of circulation, which is what
+ * is wanted nine times in ten. Delete is for the ones that never sent -- the
+ * test, the false start, the one named "t" -- and refuses the moment there is
+ * history to lose.
+ *
+ * Neither touches a process sequence. Collections and NPS rows are live
+ * configuration their own screens read for draft-or-send, and removing one
+ * would break a screen nobody was looking at.
+ */
+async function sequenceForRemoval(slug: string) {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("sequences")
+    .select("id,name,kind,active,owner_member_id")
+    .eq("slug", slug)
+    .maybeSingle();
+  return (data ?? null) as
+    | { id: string; name: string; kind: string; active: boolean; owner_member_id: string | null }
+    | null;
+}
+
+/** How much history a sequence is carrying, so the screen can say so. */
+export async function sequenceFootprint(
+  slug: string,
+): Promise<{ sent: number; enrolled: number; kind: string; active: boolean }> {
+  if (!(await mayEdit(slug))) return { sent: 0, enrolled: 0, kind: "campaign", active: true };
+  const seq = await sequenceForRemoval(slug);
+  if (!seq) return { sent: 0, enrolled: 0, kind: "campaign", active: true };
+
+  const db = createServiceClient();
+  const [{ count: enrolled }, { data: runs }] = await Promise.all([
+    db.from("sequence_audience").select("id", { count: "exact", head: true }).eq("sequence_id", seq.id),
+    db.from("sequence_runs").select("id").eq("sequence_id", seq.id),
+  ]);
+
+  const runIds = ((runs ?? []) as { id: string }[]).map((r) => r.id);
+  let sent = 0;
+  if (runIds.length > 0) {
+    const { count } = await db
+      .from("sequence_actions")
+      .select("id", { count: "exact", head: true })
+      .in("run_id", runIds);
+    sent = count ?? 0;
+  }
+
+  return { sent, enrolled: enrolled ?? 0, kind: seq.kind, active: seq.active };
+}
+
+/** Out of circulation, everything kept. Nothing new comes due on it. */
+export async function setSequenceArchived(
+  slug: string,
+  archived: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  if (!(await mayEdit(slug))) return { success: false, error: "Not permitted." };
+  const seq = await sequenceForRemoval(slug);
+  if (!seq) return { success: false, error: "That sequence no longer exists." };
+  if (seq.kind === "process") {
+    return { success: false, error: "Collections and NPS are run by the app and cannot be archived here." };
+  }
+
+  const { error } = await createServiceClient()
+    .from("sequences")
+    .update({ active: !archived })
+    .eq("id", seq.id);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/settings/sequences");
+  revalidatePath(`/settings/sequences/${slug}`);
+  return { success: true };
+}
+
+/** Gone entirely, and only ever for one that never sent. */
+export async function deleteSequence(slug: string): Promise<{ success: boolean; error?: string }> {
+  if (!(await mayEdit(slug))) return { success: false, error: "Not permitted." };
+  const seq = await sequenceForRemoval(slug);
+  if (!seq) return { success: false, error: "That sequence no longer exists." };
+  if (seq.kind === "process") {
+    return { success: false, error: "Collections and NPS are run by the app and cannot be deleted." };
+  }
+
+  const { sent } = await sequenceFootprint(slug);
+  if (sent > 0) {
+    return {
+      success: false,
+      error:
+        `“${seq.name}” has sent ${sent} email${sent === 1 ? "" : "s"}, and deleting it would ` +
+        `take the record of them with it. Archive it instead.`,
+    };
+  }
+
+  const { error } = await createServiceClient().from("sequences").delete().eq("id", seq.id);
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/settings/sequences");
+  return { success: true };
+}

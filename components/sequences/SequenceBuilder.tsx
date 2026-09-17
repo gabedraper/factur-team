@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Plus, Trash2, Send, Mail, Check } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Plus, Trash2, Send, Mail, Check, Archive } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   saveSequenceStep, deleteSequenceStep, setSequenceMode, setSequenceEndings, testStep,
-  saveStepVariant, setSequenceRules, type SequenceStep, type Sequence, type Writer,
+  saveStepVariant, setSequenceRules, sequenceFootprint, setSequenceArchived, deleteSequence,
+  type SequenceStep, type Sequence, type Writer,
 } from "@/actions/sequences";
 import { ENDINGS, type Ending } from "@/lib/sequences";
 import { FIELD } from "@/lib/field-class";
@@ -32,6 +34,7 @@ const SETTING_SECTIONS = [
   { id: "unsubscribe", label: "Unsubscribe", built: false },
   { id: "notifications", label: "Notifications", built: false },
   { id: "ccbcc", label: "CC & BCC", built: false },
+  { id: "removing", label: "Archive or delete", built: true },
 ];
 
 type Draft = {
@@ -370,6 +373,8 @@ export function SequenceBuilder({
                 </label>
               </Surface>
             </section>
+
+            <RemoveSection sequence={sequence} />
           </div>
         </div>
       ) : (
@@ -558,5 +563,117 @@ export function SequenceBuilder({
         </div>
       )}
     </div>
+  );
+}
+
+
+/*
+ * Taking a sequence out of use.
+ *
+ * Archive and delete are not two words for the same button. What a sequence has
+ * already sent is recorded against its runs, so deleting one that has sent
+ * anything takes the record of those emails with it -- which is why the button
+ * turns itself off and says so rather than asking a person to be careful.
+ *
+ * The counts are read here rather than passed in, because they are the only
+ * thing on this screen that depends on what has happened rather than on what
+ * was written.
+ */
+function RemoveSection({ sequence }: { sequence: Sequence }) {
+  const router = useRouter();
+  const [state, setState] = useState<{
+    sent: number; enrolled: number; kind: string; active: boolean;
+  } | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, run] = useTransition();
+
+  useEffect(() => {
+    let live = true;
+    sequenceFootprint(sequence.slug).then((f) => { if (live) setState(f); });
+    return () => { live = false; };
+  }, [sequence.slug]);
+
+  if (!state) return null;
+
+  const isProcess = state.kind === "process";
+  const hasHistory = state.sent > 0;
+
+  const archive = () => {
+    setProblem(null);
+    run(async () => {
+      const res = await setSequenceArchived(sequence.slug, state.active);
+      if (!res.success) { setProblem(res.error ?? "Could not archive it."); return; }
+      setState({ ...state, active: !state.active });
+      router.refresh();
+    });
+  };
+
+  const remove = () => {
+    const warning =
+      `Delete “${sequence.name}”?` +
+      (state.enrolled > 0 ? ` ${state.enrolled} enrolled will be removed with it.` : "") +
+      " This cannot be undone.";
+    if (!window.confirm(warning)) return;
+    setProblem(null);
+    run(async () => {
+      const res = await deleteSequence(sequence.slug);
+      if (!res.success) { setProblem(res.error ?? "Could not delete it."); return; }
+      router.push("/settings/sequences");
+      router.refresh();
+    });
+  };
+
+  return (
+    <section id="removing" className="space-y-3">
+      <h2 className="text-body font-medium">Archive or delete</h2>
+      <Surface pad="tight" className="space-y-3">
+        <p className="text-body text-muted-foreground">
+          {isProcess
+            ? "Collections and NPS are run by the app itself, and stay."
+            : hasHistory
+              ? `Sent ${state.sent} email${state.sent === 1 ? "" : "s"}, ${state.enrolled} enrolled.`
+              : state.enrolled > 0
+                ? `Never sent anything. ${state.enrolled} enrolled.`
+                : "Never sent anything, nobody enrolled."}
+        </p>
+
+        {!isProcess && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={archive}
+              disabled={busy}
+              className="inline-flex h-8 items-center rounded-md border px-3 text-body hover:bg-muted disabled:opacity-50"
+            >
+              <Archive className="mr-1 h-3.5 w-3.5" />
+              {state.active ? "Archive sequence" : "Bring it back"}
+            </button>
+
+            <button
+              onClick={remove}
+              disabled={busy || hasHistory}
+              title={
+                hasHistory
+                  ? "Deleting would take the record of what was sent with it. Archive it instead."
+                  : undefined
+              }
+              className="inline-flex h-8 items-center rounded-md border px-3 text-body text-red-600 hover:bg-muted disabled:opacity-50 dark:text-red-400"
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete sequence
+            </button>
+          </div>
+        )}
+
+        {!isProcess && (
+          <p className="text-meta text-muted-foreground">
+            {state.active
+              ? "Archiving keeps everything and stops anything new coming due on it."
+              : "Archived: nothing new comes due, and it is offered nowhere."}
+            {hasHistory ? " It has sent mail, so it cannot be deleted." : ""}
+          </p>
+        )}
+
+        {problem && <p className="text-body text-red-600 dark:text-red-400">{problem}</p>}
+      </Surface>
+    </section>
   );
 }
