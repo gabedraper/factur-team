@@ -93,7 +93,7 @@ export async function setWritebackEnabled(enabled: boolean): Promise<{ ok: true 
       .update({ enabled, updated_at: new Date().toISOString(), updated_by: await currentMemberId() })
       .eq("id", true);
     if (error) return { ok: false, error: error.message };
-    revalidatePath("/settings/salesforce-writeback");
+    revalidatePath("/integrations/salesforce");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not change that." };
@@ -108,7 +108,7 @@ export async function addWritebackTester(memberId: string): Promise<{ ok: true }
       .from("salesforce_writeback_testers")
       .upsert({ member_id: memberId, added_by: await currentMemberId() }, { onConflict: "member_id" });
     if (error) return { ok: false, error: error.message };
-    revalidatePath("/settings/salesforce-writeback");
+    revalidatePath("/integrations/salesforce");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not add that person." };
@@ -121,7 +121,7 @@ export async function removeWritebackTester(memberId: string): Promise<{ ok: tru
     const db = createServiceClient();
     const { error } = await db.from("salesforce_writeback_testers").delete().eq("member_id", memberId);
     if (error) return { ok: false, error: error.message };
-    revalidatePath("/settings/salesforce-writeback");
+    revalidatePath("/integrations/salesforce");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not remove that person." };
@@ -134,7 +134,7 @@ export async function pushWritebackNow(): Promise<{ ok: true; summary: string } 
     await assertAdmin();
     const requeued = await requeueStuck();
     const t = await pushEdits({ limit: 100 });
-    revalidatePath("/settings/salesforce-writeback");
+    revalidatePath("/integrations/salesforce");
     return {
       ok: true,
       summary:

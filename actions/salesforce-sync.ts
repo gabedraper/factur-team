@@ -55,7 +55,7 @@ export async function runReconcileNow(): Promise<{ ok: true; summary: string } |
   try {
     await assertAdmin();
     const r = await reconcileSalesforce();
-    revalidatePath("/settings/salesforce-sync");
+    revalidatePath("/integrations/salesforce");
     const d = r.deleted;
     return {
       ok: true,
@@ -118,7 +118,7 @@ export async function setSyncObject(input: {
     const { error } = await createServiceClient()
       .from("salesforce_sync_objects").update(patch).eq("object", input.object);
     if (error) return { ok: false, error: error.message };
-    revalidatePath("/settings/salesforce-sync");
+    revalidatePath("/integrations/salesforce");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not save." };
@@ -165,7 +165,7 @@ export async function setSyncFields(
       .update({ fields: chosen, updated_at: new Date().toISOString(), updated_by: await currentMemberId() })
       .eq("object", object);
     if (error) return { ok: false, error: error.message };
-    revalidatePath("/settings/salesforce-sync");
+    revalidatePath("/integrations/salesforce");
     return { ok: true, added };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not save." };

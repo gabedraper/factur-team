@@ -18,8 +18,41 @@
 
 export type Direction = "in" | "out" | "both";
 
+/**
+ * The tools themselves -- one card each on the Integrations page. A tool can
+ * have several connections (Salesforce reads through Coupler and through the
+ * app's own sync, and writes back through a third path); the card is where a
+ * person looks for all of them, and where its settings live.
+ */
+export type Tool = {
+  key: string;
+  name: string;
+  /** For the logo -- the favicon service reads it. */
+  domain: string;
+  what: string;
+};
+
+export const TOOLS: Tool[] = [
+  { key: "salesforce", name: "Salesforce", domain: "salesforce.com",
+    what: "The CRM: opportunities, companies, contacts, quotes, orders and the activity against them." },
+  { key: "google", name: "Google Workspace", domain: "workspace.google.com",
+    what: "Mail, chat and meetings read for context; mail sent for collections, NPS and outreach." },
+  { key: "quickbooks", name: "QuickBooks", domain: "quickbooks.intuit.com",
+    what: "Invoices, payments and what customers owe." },
+  { key: "dialpad", name: "Dialpad", domain: "dialpad.com",
+    what: "Click-to-dial and the numbers calls go out on." },
+  { key: "clickup", name: "ClickUp", domain: "clickup.com",
+    what: "The work: tasks, their owners and their state, mirrored for the Work section." },
+  { key: "pandadoc", name: "PandaDoc", domain: "pandadoc.com",
+    what: "Signed agreements, read so contract terms sit on the client." },
+];
+
+export const TOOL_BY_KEY = new Map(TOOLS.map((t) => [t.key, t]));
+
 export type Integration = {
   key: string;
+  /** Which tool's card this connection belongs to. */
+  tool: string;
   name: string;
   /** What it is, in a sentence somebody outside the team would follow. */
   what: string;
@@ -48,11 +81,12 @@ export type Integration = {
 export const INTEGRATIONS: Integration[] = [
   {
     key: "salesforce",
-    name: "Salesforce",
+    tool: "salesforce",
+    name: "Salesforce — Coupler report copy",
     what:
-      "The record of opportunities, accounts and the activity logged against them, " +
-      "mirrored for reporting. This particular connection reads and never writes " +
-      "back -- see the separate Skyvia connection below for the one that does.",
+      "An older copy of a few Salesforce reports, refreshed hourly. Client health, the " +
+      "client Leads and Activities pages and Gaib still read it; the Opportunities pages " +
+      "and Timelines moved to the app's own sync below.",
     direction: "in",
     transport:
       "Coupler.io copies whole tables on a schedule. Each sync drops the table and " +
@@ -80,13 +114,14 @@ export const INTEGRATIONS: Integration[] = [
     ],
     ownedBy: "RevOps",
     configure: {
-      href: "/settings/salesforce",
+      href: "/integrations/salesforce#accounts",
       label: "Salesforce accounts",
       what: "Match people to their Salesforce user so activity is attributed correctly.",
     },
   },
   {
     key: "quickbooks",
+    tool: "quickbooks",
     name: "QuickBooks",
     what:
       "Invoices, payments and the ageing of what customers owe. Everything the " +
@@ -108,13 +143,14 @@ export const INTEGRATIONS: Integration[] = [
     ],
     ownedBy: "Finance",
     configure: {
-      href: "/settings/quickbooks",
+      href: "/integrations/quickbooks",
       label: "QuickBooks customers",
       what: "Tie customers who owe money to the right client, where the names differ.",
     },
   },
   {
     key: "google-ingest",
+    tool: "google",
     name: "Google Workspace — reading",
     what:
       "Reads billing correspondence, chat and meeting transcripts for the accounts " +
@@ -134,13 +170,14 @@ export const INTEGRATIONS: Integration[] = [
     feeds: ["The conversation trail on a client", "Collections context"],
     ownedBy: "Operations",
     configure: {
-      href: "/settings/google",
+      href: "/integrations/google",
       label: "Google Workspace",
       what: "Check the connection, and read a mailbox on demand.",
     },
   },
   {
     key: "google-send",
+    tool: "google",
     name: "Google Workspace — sending",
     what:
       "The only connection that puts something in front of a customer. Collections " +
@@ -158,39 +195,42 @@ export const INTEGRATIONS: Integration[] = [
     feeds: ["Collections", "NPS", "Talent outreach"],
     ownedBy: "Operations",
     configure: {
-      href: "/settings/google",
+      href: "/integrations/google",
       label: "Google Workspace",
       what: "Check which addresses have been granted permission to send.",
     },
   },
   {
-    key: "skyvia",
-    name: "Skyvia — pipeline",
+    key: "salesforce-sync",
+    tool: "salesforce",
+    name: "Salesforce — sync and write-back",
     what:
-      "The one connection that writes into Salesforce. Opportunities are edited " +
-      "here now, not there, and the pursuit of a Contact by a Client needs to stay " +
-      "true in both places while people transition off Salesforce for day-to-day work.",
+      "The app's own copy of Salesforce, and the one path that writes back. Every " +
+      "minute /api/salesforce/sync asks Salesforce what changed and copies it into the " +
+      "sky_* mirror tables; every three minutes SQL transforms turn the mirror into the " +
+      "tables the app reads. Edits made in the app by the people on the write-back list " +
+      "are pushed to Salesforce, field by field, and read back to check they landed.",
     direction: "both",
     transport:
-      "Skyvia polls roughly once a minute, both directions. Writes to Salesforce " +
-      "authenticate as a dedicated integration user with a Disable_Triggers_On_Objects__c " +
-      "override on System_Settings__c, so Salesforce's own automation (naming, emails, " +
-      "contact-role upserts) doesn't fire a second time on a sync-originated write.",
+      "A Connected App with the Client Credentials flow, acting as its Run As user -- so " +
+      "what it can see is what that user can see. Reads by LastModifiedDate past each " +
+      "object's watermark, at most a set number of rows per run; the objects, fields and " +
+      "frequency are settings, below. An hourly reconciliation counts Salesforce against " +
+      "the mirror against the app, and learns deletions.",
     tables: ["opportunities", "crm_accounts", "crm_contacts", "opp_activities", "opp_quotes", "opp_orders"],
     excluded: [
-      "Only worked Opportunities sync — Prospecting: Cold Call List rows stay in " +
-      "Salesforce untouched; they aren't a pursuit of anyone yet.",
-      "Accounts and Contacts sync in only. They're read-only in the app on purpose.",
-      "Client name/status now sync both ways -- a deliberate exception to the " +
-      "insert-only rule sync_clients_from_salesforce() otherwise holds to, so a " +
-      "Salesforce-side edit can now overwrite one made here.",
+      "Prospecting: Cold Call List opportunities stay in Salesforce -- a list is not a pursuit of anyone yet.",
+      "Companies and contacts come in only; they are read-only in the app on purpose.",
+      "Six opportunity fields go back (stage, lead status, notes, updates, next action, company); " +
+      "the reached flags and close date do not, because Salesforce's own automation owns them.",
     ],
-    feeds: ["The pipeline", "Rep-collision review"],
+    feeds: ["Opportunities", "Timelines", "Target companies and contacts", "Quotes and POs", "The header search"],
     ownedBy: "RevOps",
   },
   {
     key: "dialer",
-    name: "Dialer — Dialpad Mini Dialer",
+    tool: "dialpad",
+    name: "Dialpad Mini Dialer",
     what:
       "Click-to-dial from Opportunities and the target lists. Dialpad's Mini Dialer is " +
       "embedded in the work panel and places calls as whoever is logged into it. " +
@@ -210,9 +250,55 @@ export const INTEGRATIONS: Integration[] = [
     feeds: ["Opportunity activity timeline"],
     ownedBy: "RevOps",
     configure: {
-      href: "/settings/dialpad",
+      href: "/integrations/dialpad",
       label: "Dialer",
       what: "The outbound number pool, and whether the Dialpad Mini Dialer is wired up.",
+    },
+  },
+  {
+    key: "clickup",
+    tool: "clickup",
+    name: "ClickUp — work",
+    what:
+      "Tasks, lists and who is on them, so the Work section and each client's work panel " +
+      "show what is actually in flight without opening ClickUp.",
+    direction: "in",
+    transport:
+      "/api/work/sync every fifteen minutes through the ClickUp API, and " +
+      "/api/work/access-sync four times an hour to keep who-can-see-what in step with " +
+      "ClickUp's own sharing.",
+    tables: [
+      "work_items", "work_item_details", "work_item_assignees", "work_item_dependencies",
+      "work_containers", "work_processes", "work_sync_runs",
+    ],
+    excluded: [
+      "Read only. Nothing here changes a task in ClickUp.",
+      "Private spaces are not shown to everyone -- access follows ClickUp's sharing.",
+    ],
+    feeds: ["Work", "Client work panels", "The home page"],
+    ownedBy: "Operations",
+  },
+  {
+    key: "pandadoc",
+    tool: "pandadoc",
+    name: "PandaDoc — signed agreements",
+    what:
+      "Signed contracts, imported and tied to the right client, with the terms read out " +
+      "of the PDF so late-payment interest and the rest sit on the client record.",
+    direction: "in",
+    transport:
+      "/api/agreements/sync every ten minutes through the PandaDoc API; each new agreement's " +
+      "PDF is read once for its terms.",
+    tables: ["client_agreements", "client_terms"],
+    excluded: [
+      "Read only. Documents are made and sent in PandaDoc.",
+    ],
+    feeds: ["Client agreement panel", "Collections terms", "Past-due interest"],
+    ownedBy: "Finance",
+    configure: {
+      href: "/integrations/pandadoc",
+      label: "Signed agreements",
+      what: "Bring contracts in from PandaDoc and tie them to the right client.",
     },
   },
 ];

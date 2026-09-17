@@ -76,7 +76,7 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="space-y-6 p-section">
       <div>
         <PageHeader title="Settings" />
       </div>
@@ -120,7 +120,7 @@ export default async function SettingsPage() {
       {canManage && (
         <section className="space-y-3">
           <h2 className="text-body font-medium">Administration</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Link href="/settings/people"
                   className={`${surface({ interactive: true })} flex items-start gap-3`}>
               <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -159,47 +159,7 @@ export default async function SettingsPage() {
               <span>
                 <span className="block text-body font-medium">Integrations</span>
                 <span className="block text-meta text-muted-foreground">
-                  Where the data comes from, what each sync takes, and when it last ran.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/agreements"
-                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
-              <FileSignature className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-body font-medium">Signed agreements</span>
-                <span className="block text-meta text-muted-foreground">
-                  Bring contracts in from PandaDoc and tie them to the right client.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/salesforce-sync"
-                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
-              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-body font-medium">Salesforce sync</span>
-                <span className="block text-meta text-muted-foreground">
-                  Salesforce&apos;s counts beside the app&apos;s, by object and stage, checked hourly.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/salesforce-writeback"
-                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
-              <UploadCloud className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-body font-medium">Salesforce write-back</span>
-                <span className="block text-meta text-muted-foreground">
-                  Whose app edits are pushed to Salesforce, and every field that went.
-                </span>
-              </span>
-            </Link>
-            <Link href="/settings/dialpad"
-                  className={`${surface({ interactive: true })} flex items-start gap-3`}>
-              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                <span className="block text-body font-medium">Dialpad</span>
-                <span className="block text-meta text-muted-foreground">
-                  The click-to-dial widget&apos;s outbound number pool, and whether it&apos;s wired up.
+                  Salesforce, Google, QuickBooks, Dialpad, ClickUp, PandaDoc — each with its settings.
                 </span>
               </span>
             </Link>
