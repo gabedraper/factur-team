@@ -166,10 +166,32 @@ export async function listOpportunities(input: {
     q = q.in("client_id", ids);
   }
 
+  /*
+   * Two or more "equals" on the same field mean any of them, not all of them.
+   * A row has one lead status, so three of those AND-ed together can never
+   * match -- a saved view asking for Selling, Discovery and Proposal showed
+   * nothing at all. Collapsed into one .in() they are the multi-value pick
+   * they were always meant to be.
+   */
+  const anyOf = new Map<string, string[]>();
+  for (const f of filters) {
+    const raw = (f.value ?? "").trim();
+    if (f.op !== "equals" || !raw) continue;
+    anyOf.set(f.field, [...(anyOf.get(f.field) ?? []), raw]);
+  }
+  for (const [key, values] of anyOf) {
+    if (values.length < 2) continue;
+    const field = FIELD_BY_KEY.get(key)!;
+    q = q.in(field.path, values.map((v) => (field.type === "number" ? Number(v.replace(/[$,\s]/g, "")) : v)));
+  }
+
   for (const f of filters) {
     const field = FIELD_BY_KEY.get(f.field)!;
     const p = field.path;
     const raw = (f.value ?? "").trim();
+
+    /* Already applied above as one .in(). */
+    if (f.op === "equals" && (anyOf.get(f.field)?.length ?? 0) > 1) continue;
 
     switch (f.op) {
       case "contains":       if (raw) q = q.ilike(p, `%${raw}%`); break;
