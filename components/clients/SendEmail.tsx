@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Portal } from "@/components/ui/portal";
 import { Field } from "@/components/ui/field";
@@ -11,24 +11,25 @@ import { Surface } from "@/components/ui/surface";
 import { control } from "@/components/ui/control";
 import { ROLES, ROLE_LABEL, type Role } from "@/lib/client-contacts";
 import { previewClientRecipients, type Recipient, type Unreachable } from "@/actions/client-outreach";
-import { startBroadcast, sendBroadcastBatch } from "@/actions/client-broadcast";
+import { startBroadcast, sendBroadcastBatch, draftBroadcastPreview } from "@/actions/client-broadcast";
 
 /*
  * One email to the clients that are ticked.
  *
- * Two stages, because they are two different decisions. Writing it is a
+ * Two screens, because they are two different decisions. Writing it is a
  * decision about wording; sending it is a decision about a hundred and ninety
  * real people, and putting both behind one button is how an announcement goes
  * out with a placeholder still in it.
  *
- * The second stage names every recipient rather than counting them. A number is
- * not checkable -- "194 ready" could be the right 194 or the wrong ones, and
- * the only way to know is to look. The list it shows is the one the server
- * enrolled, not the preview from a minute earlier.
+ * The second screen is a review and nothing more: it writes nothing, so Back
+ * costs nothing and closing the panel leaves nothing behind. It used to create
+ * the sequence and enrol everybody before showing the list, which made a review
+ * screen into a commitment -- going back would have had to delete real rows,
+ * and every abandoned draft left a sequence and an audience lying about.
  *
- * Between the stages sits the rehearsal: one copy, rendered exactly as the
- * first client will see it, drafted into your own mailbox. It is not recorded,
- * so the real send is untouched by it.
+ * It names every recipient rather than counting them. A number is not
+ * checkable: "194 ready" could be the right 194 or the wrong ones, and the only
+ * way to know is to look.
  */
 
 /** What fill() in lib/sequences/audience understands. Nothing else is replaced. */
@@ -49,6 +50,7 @@ export function SendEmail({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const [stage, setStage] = useState<"write" | "check" | "done">("write");
   const [roles, setRoles] = useState<Role[]>(["primary"]);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
@@ -58,14 +60,9 @@ export function SendEmail({
   const [problem, setProblem] = useState<string | null>(null);
   const [loading, startLoad] = useTransition();
   const [busy, setBusy] = useState(false);
-
-  /* Set once it is written down and the audience is fixed. */
-  const [slug, setSlug] = useState<string | null>(null);
-  const [queued, setQueued] = useState<{ clientName: string; email: string }[]>([]);
+  const [rehearsed, setRehearsed] = useState(false);
   const [sent, setSent] = useState(0);
   const [failed, setFailed] = useState(0);
-  const [rehearsed, setRehearsed] = useState(false);
-  const [finished, setFinished] = useState(false);
 
   /*
    * Merge tags go in at the cursor of whichever box was last used, so a tag can
@@ -101,65 +98,71 @@ export function SendEmail({
     else setBody(next);
   };
 
+  /* Who it would go to. Re-read while writing, since the roles change it. */
   useEffect(() => {
-    if (slug) return;
+    if (stage === "done") return;
     startLoad(async () => {
       const res = await previewClientRecipients(clientIds, roles);
       setProblem(res.error ?? null);
       setRecipients(res.recipients);
       setUnreachable(res.unreachable);
     });
-  }, [clientIds, roles, slug]);
+  }, [clientIds, roles, stage]);
 
   const toggleRole = (role: Role) =>
     setRoles((rs) => (rs.includes(role) ? rs.filter((r) => r !== role) : [...rs, role]));
 
-  const prepare = async () => {
-    setProblem(null);
-    setBusy(true);
-    const res = await startBroadcast({ name, subject, body, clientIds, roles });
-    setBusy(false);
-    if (!res.success || !res.slug) {
-      setProblem(res.error ?? "Could not prepare the email.");
-      return;
-    }
-    setSlug(res.slug);
-    setQueued(res.queued ?? []);
-  };
-
   const rehearse = async () => {
-    if (!slug) return;
     setProblem(null);
     setBusy(true);
-    const res = await sendBroadcastBatch(slug, "rehearse");
+    const res = await draftBroadcastPreview({ subject, body, clientIds, roles });
     setBusy(false);
     if (!res.success) { setProblem(res.error ?? "Could not draft it."); return; }
     setRehearsed(true);
   };
 
-  /* Twenty at a time until the queue is empty, so a long send cannot run past
-     the request timeout and can say how far it got. */
+  /*
+   * Writing it down and sending are one action from here. The audience is fixed
+   * at the moment the first message leaves rather than minutes earlier, and a
+   * send that never starts leaves nothing behind.
+   *
+   * Twenty at a time: the whole queue in one server action runs past the
+   * request timeout at this size, and batching is what lets the screen say how
+   * far it got.
+   */
   const sendAll = async () => {
-    if (!slug) return;
     setProblem(null);
     setBusy(true);
+
+    const started = await startBroadcast({ name, subject, body, clientIds, roles });
+    if (!started.success || !started.slug) {
+      setBusy(false);
+      setProblem(started.error ?? "Could not prepare the email.");
+      return;
+    }
+
     let guard = 0;
     for (;;) {
-      const res = await sendBroadcastBatch(slug, "send");
+      const res = await sendBroadcastBatch(started.slug);
       if (!res.success) { setProblem(res.error ?? "Sending stopped."); break; }
       setSent((n) => n + (res.done ?? 0));
       setFailed((n) => n + (res.failed ?? 0));
-      if ((res.remaining ?? 0) <= 0) { setFinished(true); break; }
+      if ((res.remaining ?? 0) <= 0) break;
       /* Nothing moved and nothing failed: stop rather than spin. */
       if ((res.done ?? 0) === 0 && (res.failed ?? 0) === 0) break;
       if (++guard > 100) break;
     }
+
     setBusy(false);
+    setStage("done");
     onDone();
     router.refresh();
   };
 
-  const ready = name.trim() && subject.trim() && body.trim() && recipients.length > 0;
+  const ready = Boolean(name.trim() && subject.trim() && body.trim() && recipients.length > 0);
+
+  const title =
+    stage === "write" ? "Write the email" : stage === "check" ? "Check and send" : "Sent";
 
   return (
     <Portal>
@@ -171,14 +174,25 @@ export function SendEmail({
           onClick={(e) => e.stopPropagation()}
         >
           <header className="flex items-center gap-2 border-b px-card py-3">
-            <h2 className="text-section-title">{slug ? "Check and send" : "Write the email"}</h2>
+            {stage === "check" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-ml-2"
+                disabled={busy}
+                onClick={() => setStage("write")}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" /> Back
+              </Button>
+            )}
+            <h2 className="text-section-title">{title}</h2>
             <Button variant="ghost" size="icon" className="ml-auto" onClick={onClose} aria-label="Close">
               <X className="h-4 w-4" />
             </Button>
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-card py-4">
-            {finished ? (
+            {stage === "done" ? (
               <Surface>
                 <p className="text-body">
                   Sent to {sent} {sent === 1 ? "person" : "people"}
@@ -188,15 +202,14 @@ export function SendEmail({
                   Every message is recorded against the client it went to.
                 </p>
               </Surface>
-            ) : slug ? (
+            ) : stage === "check" ? (
               <>
                 <Surface>
-                  <p className="text-body">
-                    {queued.length} ready to send.
-                  </p>
+                  <p className="text-body">{recipients.length} ready to send.</p>
                   <p className="mt-1 text-meta text-muted-foreground">
-                    Nothing has gone out yet. Draft one to yourself first — it renders exactly
-                    as the first client will see it, and it is not counted as sent.
+                    Nothing has gone out yet, and nothing is written down until you send.
+                    Draft one to yourself first — it renders exactly as the first client
+                    will see it.
                   </p>
                 </Surface>
 
@@ -206,9 +219,9 @@ export function SendEmail({
                   </p>
                 )}
 
-                {(sent > 0 || failed > 0) && (
+                {busy && (
                   <p className="text-body tabular-nums">
-                    {sent} sent{failed > 0 ? `, ${failed} failed` : ""} of {queued.length}.
+                    {sent} sent{failed > 0 ? `, ${failed} failed` : ""} of {recipients.length}…
                   </p>
                 )}
 
@@ -216,18 +229,25 @@ export function SendEmail({
                   <h3 className="text-section-title">Going to</h3>
                   <Surface pad="none">
                     <ul className="max-h-80 divide-y overflow-y-auto">
-                      {queued.map((q) => (
+                      {recipients.map((r) => (
                         <li
-                          key={q.email}
+                          key={r.email}
                           className="flex items-baseline justify-between gap-2 px-3 py-1.5"
                         >
-                          <span className="truncate text-body">{q.clientName}</span>
-                          <span className="shrink-0 text-meta text-muted-foreground">{q.email}</span>
+                          <span className="truncate text-body">{r.clientName}</span>
+                          <span className="shrink-0 text-meta text-muted-foreground">{r.email}</span>
                         </li>
                       ))}
                     </ul>
                   </Surface>
                 </section>
+
+                {unreachable.length > 0 && (
+                  <p className="text-meta text-muted-foreground">
+                    {unreachable.length} of the clients picked have no address on file and will
+                    not get this.
+                  </p>
+                )}
 
                 {problem && <p className="text-body text-red-600 dark:text-red-400">{problem}</p>}
               </>
@@ -303,21 +323,6 @@ export function SendEmail({
                       ? "Working out who…"
                       : `${recipients.length} recipient${recipients.length === 1 ? "" : "s"}`}
                   </h3>
-                  {recipients.length > 0 && (
-                    <Surface pad="none">
-                      <ul className="max-h-48 divide-y overflow-y-auto">
-                        {recipients.map((r) => (
-                          <li
-                            key={r.email}
-                            className="flex items-baseline justify-between gap-2 px-3 py-1.5"
-                          >
-                            <span className="truncate text-body">{r.clientName}</span>
-                            <span className="shrink-0 text-meta text-muted-foreground">{r.email}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </Surface>
-                  )}
                   {unreachable.length > 0 && (
                     <p className="text-meta text-muted-foreground">
                       {unreachable.length} of the clients picked have no address on file and will
@@ -331,26 +336,39 @@ export function SendEmail({
           </div>
 
           <footer className="flex items-center gap-2 border-t px-card py-3">
-            <Button variant="outline" size="sm" onClick={onClose}>
-              {finished ? "Close" : "Cancel"}
-            </Button>
-            {!slug && (
-              <Button className="ml-auto" size="sm" disabled={busy || loading || !ready} onClick={prepare}>
-                Prepare for {recipients.length}
+            {stage === "check" ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => setStage("write")}>
+                <ChevronLeft className="mr-1 h-4 w-4" /> Back
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={onClose}>
+                {stage === "done" ? "Close" : "Cancel"}
               </Button>
             )}
-            {slug && !finished && (
+
+            {stage === "write" && (
+              <Button
+                className="ml-auto"
+                size="sm"
+                disabled={busy || loading || !ready}
+                onClick={() => { setProblem(null); setStage("check"); }}
+              >
+                Check {recipients.length} recipient{recipients.length === 1 ? "" : "s"}
+              </Button>
+            )}
+
+            {stage === "check" && (
               <>
                 <Button variant="outline" size="sm" disabled={busy} onClick={rehearse}>
                   Draft one to me
                 </Button>
                 <Button className="ml-auto" size="sm" disabled={busy} onClick={sendAll}>
-                  Send to {queued.length}
+                  Send to {recipients.length}
                 </Button>
               </>
             )}
           </footer>
-          </aside>
+        </aside>
       </div>
     </Portal>
   );

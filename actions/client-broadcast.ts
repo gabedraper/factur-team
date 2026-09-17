@@ -21,6 +21,12 @@ import type { Role } from "@/lib/client-contacts";
  * The sequence is created private and owned, so a month of announcements does
  * not pile up in everybody's shared list.
  *
+ * Nothing is written until the send begins. Checking the recipients used to
+ * create the sequence and enrol everybody first, which made the review screen a
+ * commitment rather than a review: going back had to undo real rows, and every
+ * abandoned draft left a sequence and an audience behind. startBroadcast is now
+ * called by the send itself.
+ *
  * Sending is batched, and that is not a detail. The engine's own send loop does
  * every due message in one server action; at two hundred recipients and a Gmail
  * round trip each, that runs past the request timeout and nobody can tell how
@@ -200,6 +206,53 @@ export async function startBroadcast(input: {
   };
 }
 
+/**
+ * Draft one copy to yourself, from what is currently typed.
+ *
+ * Deliberately needs nothing written down first. It renders against the first
+ * real recipient so the merge fields show what a client will see, and it goes
+ * to your own mailbox and nowhere else -- the recipient is not a parameter,
+ * which is what makes it safe to call from a form that has not been committed
+ * to anything yet.
+ */
+export async function draftBroadcastPreview(input: {
+  subject: string;
+  body: string;
+  clientIds: string[];
+  roles: Role[];
+}): Promise<{ success: boolean; error?: string }> {
+  if (!(await mayBroadcast())) return { success: false, error: "Not permitted." };
+
+  const subject = input.subject.trim();
+  const body = input.body.trim();
+  if (!subject || !body) return { success: false, error: "Write a subject and a message first." };
+
+  const preview = await previewClientRecipients(input.clientIds, input.roles);
+  if (preview.error) return { success: false, error: preview.error };
+  const first = preview.recipients[0];
+  if (!first) return { success: false, error: "None of those clients has an address on file." };
+
+  const who = await me();
+  const shape = {
+    firstName: first.name ? first.name.split(" ")[0] : null,
+    lastName: first.name && first.name.includes(" ") ? first.name.split(" ").slice(1).join(" ") : null,
+    company: first.clientName,
+  };
+
+  try {
+    await draftAs({
+      from: who.email,
+      fromName: who.name,
+      to: who.email,
+      subject: `[Preview — ${first.clientName}] ${fill(subject, shape, who.name)}`,
+      body: fill(body, shape, who.name),
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Could not draft it." };
+  }
+}
+
 export type BroadcastBatch = {
   success: boolean;
   error?: string;
@@ -210,16 +263,14 @@ export type BroadcastBatch = {
 };
 
 /**
- * Send, or rehearse, the next handful.
+ * Send the next handful.
  *
- * A rehearsal drafts into your own mailbox and is not recorded, so the step
- * stays due and the real send is unaffected -- the same rule collections and
- * NPS follow, for the same reason: a preview that marked the step done would
- * mean the client never heard from us.
+ * Only real sends come through here, and every one is recorded before the next
+ * is attempted, so a run that dies halfway has told the truth about what
+ * already went. Rehearsals are draftBroadcastPreview, which writes nothing.
  */
 export async function sendBroadcastBatch(
   slug: string,
-  mode: "send" | "rehearse",
   limit = BATCH,
 ): Promise<BroadcastBatch> {
   if (!(await mayBroadcast())) return { success: false, error: "Not permitted." };
@@ -236,8 +287,7 @@ export async function sendBroadcastBatch(
   );
   if (queue.length === 0) return { success: true, done: 0, failed: 0, remaining: 0 };
 
-  /* A rehearsal only ever needs one, and it goes to the person asking. */
-  const batch = mode === "rehearse" ? queue.slice(0, 1) : queue.slice(0, limit);
+  const batch = queue.slice(0, limit);
 
   const { data: audience } = await db
     .from("sequence_audience")
@@ -267,38 +317,25 @@ export async function sendBroadcastBatch(
     const body = fill(item.config.body ?? "", shape, who.name);
     if (!subject.trim() || !body.trim()) { failed++; continue; }
 
-    const from = mode === "rehearse" ? who.email : item.send_as ?? who.email;
+    const from = item.send_as ?? who.email;
 
     try {
-      const placed =
-        mode === "send"
-          ? await sendAs({ from, fromName: who.name, to: person.email, subject, body })
-          : await draftAs({
-              from,
-              fromName: who.name,
-              to: who.email,
-              subject: `[Preview — ${person.company ?? "client"}] ${subject}`,
-              body,
-            });
+      const placed = await sendAs({ from, fromName: who.name, to: person.email, subject, body });
 
-      if (mode === "send") {
-        await db.from("sequence_actions").insert({
-          run_id: item.run_id,
-          step_id: item.step_id,
-          step_position: item.step_position,
-          channel: "email",
-          recipient: person.email,
-          sender: from,
-          rendered: { subject, body },
-          mode: "full",
-          rfc_message_id: placed.rfcMessageId,
-          external_ids: placed.draftId ? { gmail_draft_id: placed.draftId } : {},
-          acted_by: who.email,
-        });
-        done++;
-      } else {
-        done++;
-      }
+      await db.from("sequence_actions").insert({
+        run_id: item.run_id,
+        step_id: item.step_id,
+        step_position: item.step_position,
+        channel: "email",
+        recipient: person.email,
+        sender: from,
+        rendered: { subject, body },
+        mode: "full",
+        rfc_message_id: placed.rfcMessageId,
+        external_ids: placed.draftId ? { gmail_draft_id: placed.draftId } : {},
+        acted_by: who.email,
+      });
+      done++;
     } catch {
       failed++;
     }
@@ -309,7 +346,6 @@ export async function sendBroadcastBatch(
     success: true,
     done,
     failed,
-    /* Rehearsals send nothing real, so nothing has come off the queue. */
-    remaining: mode === "send" ? Math.max(queue.length - done, 0) : queue.length,
+    remaining: Math.max(queue.length - done, 0),
   };
 }
