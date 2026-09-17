@@ -29,6 +29,8 @@ const OBJECTS = [
   { name: "Campaign", mirror: "sky_Campaign" },
   { name: "CampaignMember", mirror: "sky_CampaignMember" },
   { name: "Opportunity", mirror: "sky_Opportunity" },
+  { name: "Quote", mirror: "sky_Quote" },
+  { name: "Order", mirror: "sky_Order" },
   { name: "Task", mirror: "sky_Task" },
   { name: "Event", mirror: "sky_Event" },
 ] as const;

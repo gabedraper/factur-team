@@ -7,6 +7,7 @@ import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 import { ContactEditor } from "@/components/pipeline/ContactEditor";
+import { QuotesAndOrders, type QuoteRow, type OrderRow } from "@/components/pipeline/QuotesAndOrders";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const { opportunityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: opp, error }, { data: activities }] = await Promise.all([
+  const [{ data: opp, error }, { data: activities }, { data: quotes }, { data: orders }] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
@@ -103,6 +104,18 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .select("id,activity_type,subject,body,direction,outcome,occurred_at,org_members(full_name)")
       .eq("opportunity_id", opportunityId)
       .order("occurred_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("opp_quotes")
+      .select("id,salesforce_quote_id,quote_number,name,status,internal_status,amount,expires_on,paid_on,salesforce_created_at")
+      .eq("opportunity_id", opportunityId)
+      .order("salesforce_created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("opp_orders")
+      .select("id,salesforce_order_id,order_number,name,status,internal_status,service,po_count,amount,po_date,effective_on,paid_on,salesforce_created_at")
+      .eq("opportunity_id", opportunityId)
+      .order("salesforce_created_at", { ascending: false })
       .limit(50),
   ]);
 
@@ -152,6 +165,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
               reached_proposal: o.reached_proposal,
               reached_closing: o.reached_closing,
             }}
+          />
+
+          <QuotesAndOrders
+            quotes={(quotes ?? []) as unknown as QuoteRow[]}
+            orders={(orders ?? []) as unknown as OrderRow[]}
           />
 
           <ContactEditor

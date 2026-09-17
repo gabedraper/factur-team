@@ -176,7 +176,7 @@ export const INTEGRATIONS: Integration[] = [
       "authenticate as a dedicated integration user with a Disable_Triggers_On_Objects__c " +
       "override on System_Settings__c, so Salesforce's own automation (naming, emails, " +
       "contact-role upserts) doesn't fire a second time on a sync-originated write.",
-    tables: ["opportunities", "crm_accounts", "crm_contacts"],
+    tables: ["opportunities", "crm_accounts", "crm_contacts", "opp_activities", "opp_quotes", "opp_orders"],
     excluded: [
       "Only worked Opportunities sync — Prospecting: Cold Call List rows stay in " +
       "Salesforce untouched; they aren't a pursuit of anyone yet.",
