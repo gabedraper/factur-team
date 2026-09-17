@@ -45,6 +45,10 @@ export const TOOLS: Tool[] = [
     what: "The work: tasks, their owners and their state, mirrored for the Work section." },
   { key: "pandadoc", name: "PandaDoc", domain: "pandadoc.com",
     what: "Signed agreements, read so contract terms sit on the client." },
+  { key: "orum", name: "Orum", domain: "orum.com",
+    what: "The power dialer the SDR team calls lists from." },
+  { key: "mixmax", name: "Mixmax", domain: "mixmax.com",
+    what: "Sequences and tracked email, sent through each person's own Gmail." },
 ];
 
 export const TOOL_BY_KEY = new Map(TOOLS.map((t) => [t.key, t]));
@@ -243,8 +247,6 @@ export const INTEGRATIONS: Integration[] = [
       "is which reserved number presents as caller ID, picked from voice_numbers before each call.",
     tables: ["voice_numbers"],
     excluded: [
-      "No call-duration/recording webhook — a call's outcome is " +
-      "whatever the rep dispositions by hand into opp_activities.",
       "Numbers aren't purchased or reserved here — that still happens in Dialpad. " +
       "This only tracks the pool already bought, for rotation.",
     ],
@@ -300,6 +302,88 @@ export const INTEGRATIONS: Integration[] = [
       href: "/integrations/pandadoc",
       label: "Signed agreements",
       what: "Bring contracts in from PandaDoc and tie them to the right client.",
+    },
+  },
+  {
+    key: "dialpad-events",
+    tool: "dialpad",
+    name: "Dialpad — call events",
+    what:
+      "Every call Dialpad handles, as it ends: who called whom, how long, whether it was " +
+      "answered, the recording. Landed as activity on the opportunity without waiting for " +
+      "Salesforce, and recognised as the same call when Salesforce's copy arrives.",
+    direction: "in",
+    transport:
+      "A Dialpad call-event webhook to /api/ingest/dialpad, signed as a JWT with " +
+      "DIALPAD_INGEST_SECRET. One event per state change lands on one row keyed on the " +
+      "call id; the resolver (resolve_activity_events, every minute) turns it into an " +
+      "opp_activities row and the transform attaches Salesforce's Task to it by " +
+      "Dialpad__CallId__c.",
+    tables: ["activity_events", "member_identities"],
+    excluded: [
+      "Calls to a number no contact has, or a contact with no pursuit, wait in the feed as needs review rather than being guessed onto a timeline.",
+      "SMS is not subscribed yet.",
+    ],
+    feeds: ["Opportunity activity timeline", "Activity feed"],
+    ownedBy: "RevOps",
+    configure: {
+      href: "/settings/activity-feed",
+      label: "Activity feed",
+      what: "Every event the tools sent, and where each one went.",
+    },
+  },
+  {
+    key: "orum-events",
+    tool: "orum",
+    name: "Orum — call events",
+    what:
+      "Each dispositioned call from the power dialer -- prospect, disposition, duration, " +
+      "list, notes, recording -- landed as activity on the opportunity directly. Salesforce's " +
+      "own copy of the call arrives minutes later and is matched to it by recording id or, " +
+      "where there is no recording, by who called whom when.",
+    direction: "in",
+    transport:
+      "Orum's webhook (Settings > System > Webhooks) to /api/ingest/orum, signed HMAC-SHA256 " +
+      "with ORUM_WEBHOOK_SIGNING_KEY. Retried by Orum for half an hour on any failure. The " +
+      "list name names the client; the prospect's phone finds the contact.",
+    tables: ["activity_events"],
+    excluded: [
+      "A number shared by several contacts resolves only when one of them has a pursuit on the named client or with the caller; otherwise it waits for review.",
+      "Orum's payload field names are not documented: activity_event_facts() in the database reads each field by a list of likely names, and is where to look when the first real event lands.",
+    ],
+    feeds: ["Opportunity activity timeline", "Activity feed"],
+    ownedBy: "RevOps",
+    configure: {
+      href: "/settings/activity-feed",
+      label: "Activity feed",
+      what: "Every event the tools sent, and where each one went.",
+    },
+  },
+  {
+    key: "mixmax-events",
+    tool: "mixmax",
+    name: "Mixmax — message events",
+    what:
+      "Each email sent or received through Mixmax -- sequence step or hand-written -- landed " +
+      "as activity on the opportunity with the subject the prospect actually saw. Matched to " +
+      "Salesforce's copy by person, contact, time and subject once Mixmax's logging prefix is " +
+      "stripped, since Salesforce keeps no message id.",
+    direction: "in",
+    transport:
+      "A Mixmax Rule with a Webhook action to /api/ingest/mixmax?token=MIXMAX_WEBHOOK_TOKEN " +
+      "on message:sent and message:received. Rules cannot sign, so the token is the proof. " +
+      "Opens and clicks land too and are marked skipped.",
+    tables: ["activity_events"],
+    excluded: [
+      "Replies are only as reliable as Mixmax's undocumented reply event; reading the mailbox itself is the better source and is not built yet.",
+      "Bodies are never stored, only the subject.",
+    ],
+    feeds: ["Opportunity activity timeline", "Activity feed"],
+    ownedBy: "RevOps",
+    configure: {
+      href: "/settings/activity-feed",
+      label: "Activity feed",
+      what: "Every event the tools sent, and where each one went.",
     },
   },
 ];
