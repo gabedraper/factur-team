@@ -8,8 +8,21 @@
 --
 -- Filled in as a fallback only: a number the contact already has wins, and
 -- the opportunity's is used where the contact's slot is empty.
+--
+-- Worked from the contact side, one contact's newest opportunity at a time
+-- through the index on Client_Contact__c. The first version ranked all 922k
+-- opportunities in one pass and never finished inside the statement timeout.
+-- The one-off pass marks each contact it has looked at so it can run in
+-- slices and stop; the incremental pass only looks at contacts whose
+-- opportunities changed since the last run.
 
-create or replace function public.backfill_contact_phones_from_opps(p_batch integer default 50000)
+alter table public.crm_contacts
+  add column if not exists opp_phones_checked_at timestamptz;
+
+create or replace function public.backfill_contact_phones_from_opps(
+  p_batch integer default 20000,
+  p_since timestamptz default null
+)
 returns integer
 language plpgsql
 security definer
@@ -18,48 +31,89 @@ as $$
 declare
   n integer;
 begin
-  with best as (
-    select distinct on (s."Client_Contact__c")
-           s."Client_Contact__c" as contact_sf,
-           coalesce(nullif(trim(s."Zoominfo_Mobile__c"), ''), nullif(trim(s."Contact_Mobile_Phone__c"), '')) as mobile,
-           nullif(trim(s."Zoominfo_Direct_Phone__c"), '') as direct,
-           nullif(trim(s."Phone__c"), '') as phone
-    from public."sky_Opportunity" s
-    where s."Client_Contact__c" is not null and s."Client_Contact__c" <> ''
-      and coalesce(nullif(s."IsDeleted", '')::boolean, false) = false
-      and (
-        nullif(trim(s."Zoominfo_Mobile__c"), '') is not null
-        or nullif(trim(s."Contact_Mobile_Phone__c"), '') is not null
-        or nullif(trim(s."Zoominfo_Direct_Phone__c"), '') is not null
-        or nullif(trim(s."Phone__c"), '') is not null
-      )
-    order by s."Client_Contact__c", public.sf_ts(s."LastModifiedDate") desc nulls last
-  ),
-  todo as (
-    select c.id, b.mobile, b.direct, b.phone
-    from public.crm_contacts c
-    join best b on b.contact_sf = c.salesforce_contact_id
-    where (c.mobile_phone is null and b.mobile is not null)
-       or (c.direct_phone is null and b.direct is not null)
-       or (c.phone is null and b.phone is not null)
-    limit p_batch
-  )
-  update public.crm_contacts c
-     set mobile_phone = coalesce(c.mobile_phone, todo.mobile),
-         direct_phone = coalesce(c.direct_phone, todo.direct),
-         phone        = coalesce(c.phone, todo.phone)
-    from todo
-   where c.id = todo.id;
+  if p_since is null then
+    -- The one-off pass: every contact not yet looked at, marked whether or
+    -- not anything was found, so the next slice starts where this one ended.
+    with todo as (
+      select c.id, b.mobile, b.direct, b.phone
+      from public.crm_contacts c
+      left join lateral (
+        select
+          coalesce(nullif(trim(s."Zoominfo_Mobile__c"), ''), nullif(trim(s."Contact_Mobile_Phone__c"), '')) as mobile,
+          nullif(trim(s."Zoominfo_Direct_Phone__c"), '') as direct,
+          nullif(trim(s."Phone__c"), '') as phone
+        from public."sky_Opportunity" s
+        where s."Client_Contact__c" = c.salesforce_contact_id
+          and coalesce(nullif(s."IsDeleted", '')::boolean, false) = false
+          and (
+            nullif(trim(s."Zoominfo_Mobile__c"), '') is not null
+            or nullif(trim(s."Contact_Mobile_Phone__c"), '') is not null
+            or nullif(trim(s."Zoominfo_Direct_Phone__c"), '') is not null
+            or nullif(trim(s."Phone__c"), '') is not null
+          )
+        order by public.sf_ts(s."LastModifiedDate") desc nulls last
+        limit 1
+      ) b on true
+      where c.opp_phones_checked_at is null
+      limit p_batch
+    )
+    update public.crm_contacts c
+       set mobile_phone = coalesce(c.mobile_phone, todo.mobile),
+           direct_phone = coalesce(c.direct_phone, todo.direct),
+           phone        = coalesce(c.phone, todo.phone),
+           opp_phones_checked_at = now()
+      from todo
+     where c.id = todo.id;
+  else
+    -- Kept up: contacts whose opportunities changed since the last pass.
+    with recent as (
+      select distinct s."Client_Contact__c" as contact_sf
+      from public."sky_Opportunity" s
+      where public.sf_ts(s."LastModifiedDate") > p_since
+        and s."Client_Contact__c" is not null and s."Client_Contact__c" <> ''
+    ),
+    todo as (
+      select c.id, b.mobile, b.direct, b.phone
+      from recent r
+      join public.crm_contacts c on c.salesforce_contact_id = r.contact_sf
+      cross join lateral (
+        select
+          coalesce(nullif(trim(s."Zoominfo_Mobile__c"), ''), nullif(trim(s."Contact_Mobile_Phone__c"), '')) as mobile,
+          nullif(trim(s."Zoominfo_Direct_Phone__c"), '') as direct,
+          nullif(trim(s."Phone__c"), '') as phone
+        from public."sky_Opportunity" s
+        where s."Client_Contact__c" = c.salesforce_contact_id
+          and coalesce(nullif(s."IsDeleted", '')::boolean, false) = false
+          and (
+            nullif(trim(s."Zoominfo_Mobile__c"), '') is not null
+            or nullif(trim(s."Contact_Mobile_Phone__c"), '') is not null
+            or nullif(trim(s."Zoominfo_Direct_Phone__c"), '') is not null
+            or nullif(trim(s."Phone__c"), '') is not null
+          )
+        order by public.sf_ts(s."LastModifiedDate") desc nulls last
+        limit 1
+      ) b
+      where (c.mobile_phone is null and b.mobile is not null)
+         or (c.direct_phone is null and b.direct is not null)
+         or (c.phone is null and b.phone is not null)
+      limit p_batch
+    )
+    update public.crm_contacts c
+       set mobile_phone = coalesce(c.mobile_phone, todo.mobile),
+           direct_phone = coalesce(c.direct_phone, todo.direct),
+           phone        = coalesce(c.phone, todo.phone),
+           opp_phones_checked_at = now()
+      from todo
+     where c.id = todo.id;
+  end if;
   get diagnostics n = row_count;
   return n;
 end;
 $$;
 
-revoke all on function public.backfill_contact_phones_from_opps(integer) from public;
-grant execute on function public.backfill_contact_phones_from_opps(integer) to service_role;
+revoke all on function public.backfill_contact_phones_from_opps(integer, timestamptz) from public;
+grant execute on function public.backfill_contact_phones_from_opps(integer, timestamptz) to service_role;
 
--- Kept up from now on: after each incremental pass, any contact left without
--- a number that its newest opportunity has gets it.
 create or replace function public.apply_salesforce_transforms_incremental()
 returns jsonb
 language plpgsql
@@ -95,7 +149,7 @@ begin
     r := r || jsonb_build_object('backfilled_contacts', b->'contacts', 'backfilled_opportunities', b->'opportunities');
   end if;
 
-  r := r || jsonb_build_object('phones_from_opps', public.backfill_contact_phones_from_opps(5000));
+  r := r || jsonb_build_object('phones_from_opps', public.backfill_contact_phones_from_opps(5000, v_since));
 
   insert into public.salesforce_sync_state (object, watermark, last_run_at, last_run_rows, last_error)
   values ('__transforms', v_started, v_started,
