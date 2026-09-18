@@ -124,7 +124,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
   return (
-    <div className="p-6 space-y-4 max-w-6xl">
+    <div className="space-y-4 p-section">
       <RegisterActiveOpportunity
         opportunityId={o.id}
         phoneNumber={o.crm_contacts?.phone ?? null}
@@ -148,7 +148,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       {/* Fields in the middle, activity feed on the right -- same shape as a
           Salesforce record page, so the layout is legible to anyone coming
           from there. */}
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,3fr)_minmax(380px,2fr)]">
         <div className="space-y-4">
           <OpportunityEditor
             opportunity={{
