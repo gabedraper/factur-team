@@ -1,7 +1,6 @@
 "use client";
 
 import { Phone as PhoneIcon, Linkedin, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/pipeline/bits";
 import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
@@ -39,26 +38,38 @@ export function ContactEditor({
       <dl className="space-y-2 p-4 text-body">
         <div className="flex items-center justify-between gap-2">
           <dt className="text-muted-foreground">Phone</dt>
+          {/* The number itself dials -- a rep reads it and clicks it in the
+              same movement, rather than reading it here and hitting a button
+              beside it. Still the in-app dialer and not a tel: link, so the
+              call is logged against this opportunity. */}
           <dd className="flex items-center gap-2 tabular-nums">
-            {phone ?? "—"}
-            {phone && (
-              <Button
+            {phone ? (
+              <button
                 type="button"
-                size="icon"
-                variant="outline"
-                className="h-6 w-6"
+                className="flex items-center gap-1.5 underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
                 title={dialableNumber ? `Call ${dialableNumber}` : "This number doesn't look valid"}
                 disabled={!dialableNumber}
                 onClick={() => dialableNumber && callOpportunity({ opportunityId, phoneNumber: phone, contactName })}
               >
-                <PhoneIcon className="h-3.5 w-3.5" />
-              </Button>
+                {phone}
+                <PhoneIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            ) : (
+              "—"
             )}
           </dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Email</dt>
-          <dd className="truncate">{email ?? "—"}</dd>
+          <dd className="truncate">
+            {email ? (
+              <a href={`mailto:${email}`} className="underline-offset-2 hover:underline">
+                {email}
+              </a>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Website</dt>
