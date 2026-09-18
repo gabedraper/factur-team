@@ -305,6 +305,36 @@ export const INTEGRATIONS: Integration[] = [
     },
   },
   {
+    key: "gmail-activity",
+    tool: "google",
+    name: "Google Workspace — mail as activity",
+    what:
+      "Every email a Factur mailbox sends to or receives from somebody outside the " +
+      "company, text body included, landed as activity on the opportunity it belongs " +
+      "to. The mailbox itself is the record: it has everything a person sent, through " +
+      "Mixmax or not, with ids that never change.",
+    direction: "in",
+    transport:
+      "The same service account with domain-wide delegation, acting as each mailbox in " +
+      "turn. /api/ingest/gmail every two minutes walks each mailbox's Gmail history " +
+      "cursor (the first pass sweeps fourteen days), stores the mail once per Message-ID, " +
+      "and lands an activity event the resolver puts on the pursuit.",
+    tables: ["gmail_mailboxes", "email_messages", "email_message_copies"],
+    excluded: [
+      "Mail with nobody outside the company on it is not stored.",
+      "Drafts, spam, chats, and Gmail's promotions, social and forum categories are skipped.",
+      "Mail with a person who is not a contact is stored but does not reach a timeline; it is marked skipped on the feed.",
+      "Bodies are the most sensitive thing the app holds. They are readable by whoever may read the activity feed, and by the person whose mailbox it was.",
+    ],
+    feeds: ["Opportunity activity timeline", "Activity feed"],
+    ownedBy: "RevOps",
+    configure: {
+      href: "/settings/activity-feed",
+      label: "Activity feed",
+      what: "Every email the ingest landed, and where each one went.",
+    },
+  },
+  {
     key: "dialpad-events",
     tool: "dialpad",
     name: "Dialpad — call events",
