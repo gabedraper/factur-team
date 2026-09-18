@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { digestId, landEvent, notConfigured, pick, verifyOrumSignature } from "@/lib/ingest/activity-events";
+import { checkOrumSignature, digestId, landEvent, landUnverified, notConfigured, pick } from "@/lib/ingest/activity-events";
 
 /*
  * Orum's call events, landed as activity.
@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
   if (!KEY) return notConfigured("Orum");
 
   const raw = await request.text();
-  if (!verifyOrumSignature(raw, request.headers.get("x-webhook-signature"), KEY)) {
+  const check = checkOrumSignature(raw, request.headers.get("x-webhook-signature"), KEY);
+  if (!check.ok) {
+    // On the feed as rejected, so a wrong key or a changed format is seen, not guessed at.
+    await landUnverified("orum", raw, check.reason, check.detail).catch(() => undefined);
     return new NextResponse("Invalid signature.", { status: 403 });
   }
 
