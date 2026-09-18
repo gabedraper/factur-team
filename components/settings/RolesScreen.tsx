@@ -162,7 +162,7 @@ export function RolesScreen({
                       }))}>
                 <option value="both">Stage &amp; lead status</option>
                 <option value="stage">Stage</option>
-                <option value="lead_status">Lead status</option>
+                <option value="lead_status">Prospecting Lead Status</option>
               </select>
               <span className="text-meta text-muted-foreground">
                 {r.holders} {r.holders === 1 ? "person" : "people"}

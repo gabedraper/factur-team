@@ -113,7 +113,7 @@ export default async function ClientOpportunitiesPage({
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-meta font-medium text-muted-foreground">Lead status</span>
+          <span className="text-meta font-medium text-muted-foreground">Prospecting Lead Status</span>
           <Link href={filterHref(clientId, { status: undefined }, filters)}
                 className={`rounded-full border px-2 py-0.5 text-meta ${!status ? "border-primary bg-primary/5 font-medium" : "text-muted-foreground hover:bg-muted"}`}>
             Any
@@ -145,7 +145,7 @@ export default async function ClientOpportunitiesPage({
                 <TH>Contact</TH>
                 <TH>Account</TH>
                 <TH>Stage</TH>
-                <TH>Lead status</TH>
+                <TH>Prospecting Lead Status</TH>
                 <TH>Next action</TH>
               </TR>
             </THead>

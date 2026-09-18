@@ -66,7 +66,7 @@ export const LIST_FIELDS: ListField[] = [
   { key: "campaign_name",    label: "Campaign",       type: "text", path: "crm_campaigns.name" },
 
   { key: "stage",            label: "Stage",          type: "picklist", path: "stage",       picklist: "stage" },
-  { key: "lead_status",      label: "Lead status",    type: "picklist", path: "lead_status", picklist: "lead_status" },
+  { key: "lead_status",      label: "Prospecting Lead Status", type: "picklist", path: "lead_status", picklist: "lead_status" },
 
   /* From Salesforce's Quote and Order objects, summarised onto the row by the
      sync (refresh_opportunity_commerce) so a list can sort and filter on them.

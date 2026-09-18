@@ -121,7 +121,7 @@ export function TargetContacts({
                   <TH>Phone</TH>
                   <TH>Email</TH>
                   <TH>
-                    {showBoth ? "Stage / lead status" : stageFields.show_stage ? "Stage" : "Lead status"}
+                    {showBoth ? "Stage / Prospecting Lead Status" : stageFields.show_stage ? "Stage" : "Prospecting Lead Status"}
                   </TH>
                   <TH>Next action</TH>
                   <TH>Updates</TH>

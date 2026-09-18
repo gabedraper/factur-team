@@ -97,7 +97,7 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
         </div>
 
         <div>
-          <label className="text-meta text-muted-foreground">Lead status</label>
+          <label className="text-meta text-muted-foreground">Prospecting Lead Status</label>
           <Select value={state.lead_status ?? ""} onValueChange={(v) => save({ lead_status: v })}>
             <SelectTrigger><SelectValue placeholder="Not set" /></SelectTrigger>
             <SelectContent>
