@@ -3,6 +3,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { myPermissions } from "@/lib/org";
 import { INTEGRATIONS, catalogued, type Integration } from "@/lib/integrations/catalogue";
+import { SCHEDULES, describeCommand, cronInEnglish, type ScheduleAbout } from "@/lib/integrations/schedules";
 import { SCOPES } from "@/lib/google/auth";
 import { BILLING_QUERY } from "@/lib/google/gmail";
 
@@ -26,10 +27,13 @@ export type TableState = {
 };
 
 export type Schedule = {
-  name: string;
-  cron: string;
-  active: boolean;
+  name: string; cron: string; active: boolean;
+  /** The cron, in words. */
   runs: string;
+  /** The route it posts to or the function it calls, read from the job itself. */
+  calls: string;
+  /** What it is for, from lib/integrations/schedules.ts; null when nobody has written it yet. */
+  about: ScheduleAbout | null;
 };
 
 export type IngestRun = {
@@ -58,22 +62,6 @@ export type IntegrationsReport = {
   uptime: { ok: boolean; checkedAt: string; url: string; error: string | null } | null;
   problem: string | null;
 };
-
-/*
- * Cron is written for machines. These are the schedules the app actually uses,
- * spelled out; anything else falls back to showing the expression itself
- * rather than guessing at it.
- */
-function inEnglish(cron: string): string {
-  const known: Record<string, string> = {
-    "*/5 * * * *": "Every 5 minutes",
-    "*/10 * * * *": "Every 10 minutes",
-    "5 * * * *": "Hourly, 5 past",
-    "30 13 * * *": "Daily, 13:30 UTC",
-    "15 14-23 * * 1-5": "Hourly, weekdays 14:00–23:00 UTC",
-  };
-  return known[cron] ?? cron;
-}
 
 export async function integrationsReport(): Promise<IntegrationsReport> {
   // Administrative: this reports on the plumbing rather than the figures.
@@ -141,11 +129,13 @@ export async function integrationsReport(): Promise<IntegrationsReport> {
   return {
     integrations,
     schedules: ((schedules.data ?? []) as
-      { jobname: string; schedule: string; active: boolean }[]).map((s) => ({
+      { jobname: string; schedule: string; active: boolean; command?: string | null }[]).map((s) => ({
       name: s.jobname,
       cron: s.schedule,
       active: s.active,
-      runs: inEnglish(s.schedule),
+      runs: cronInEnglish(s.schedule),
+      calls: describeCommand(s.command),
+      about: SCHEDULES[s.jobname] ?? null,
     })),
     recentRuns: allRuns.slice(0, 20),
     failing: allRuns.filter((r) => r.problem),
