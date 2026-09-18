@@ -1,9 +1,12 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import {
-  getClient, getServiceSeries, getServicePeriods, HEADLINE_LABEL,
-  type ServiceSeries,
+  getClient, getServiceSeries, getServicePeriods, getMonthRecords, HEADLINE_LABEL,
+  type MonthRecord, type ServiceSeries,
 } from "@/lib/clients/results";
+import { SF_BASE } from "@/lib/timelines/assemble";
 import { ServicePeriods } from "@/components/clients/ServicePeriods";
 import { myPermissions } from "@/lib/org";
 import { NoAccess } from "@/components/no-access";
@@ -18,6 +21,9 @@ const money = new Intl.NumberFormat("en-US", {
 });
 const monthLabel = new Intl.DateTimeFormat("en-US", {
   month: "short", year: "numeric", timeZone: "UTC",
+});
+const dayLabel = new Intl.DateTimeFormat("en-US", {
+  month: "short", day: "numeric", timeZone: "UTC",
 });
 
 const SIZE_LABEL: Record<string, string> = {
@@ -63,9 +69,102 @@ const HINTS = {
   poValue: "Sum of PO Amount. Blank on most POs, so it is a floor, not the true total.",
 };
 
+/**
+ * The records behind one month, listed under its row.
+ *
+ * The count on its own sends you to Salesforce to find out who the four leads
+ * were, which is most of the reason the breakdown was read and then left. The
+ * names are the answer, and each one links back to its record.
+ */
+function MonthRecords({ records, counted }: { records: MonthRecord[]; counted: number }) {
+  return (
+    <TD colSpan={9} className="bg-muted/30">
+      {!records.length ? (
+        <p className="text-body text-muted-foreground">
+          {counted
+            ? `${nf.format(counted)} leads are counted for this month, but the lead sync does not cover this client, so the individual records are not here.`
+            : "No leads recorded for this month."}
+        </p>
+      ) : (
+        <>
+          <TableScroll>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Created</TH>
+                  <TH>Opportunity</TH>
+                  <TH>Company</TH>
+                  <TH>Contact</TH>
+                  <TH>Stage</TH>
+                  <TH>Counted as</TH>
+                  <TH>Owner</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {records.map((r) => (
+                  <TR key={r.id}>
+                    <TD className="whitespace-nowrap tabular-nums text-muted-foreground">
+                      {dayLabel.format(new Date(r.createdOn))}
+                    </TD>
+                    <TD className="max-w-xs truncate">
+                      <a
+                        href={`${SF_BASE}/lightning/r/Opportunity/${r.id}/view`}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="hover:underline"
+                        title={r.name ?? ""}
+                      >
+                        {r.name ?? ""}
+                      </a>
+                    </TD>
+                    <TD className="max-w-xs truncate">{r.account ?? ""}</TD>
+                    <TD className="text-muted-foreground">{r.contact ?? ""}</TD>
+                    <TD className="whitespace-nowrap">{r.stage ?? ""}</TD>
+                    {/* Which of the row's four numbers this record is part of,
+                        so a cell can be read without knowing the stages. */}
+                    <TD className="whitespace-nowrap">
+                      {["Lead", r.appointment && "Appt", r.quote && "Quote", r.po && "PO"]
+                        .filter((t): t is string => Boolean(t))
+                        .map((t) => (
+                          <span key={t} className="mr-1 rounded bg-muted px-1.5 py-0.5 text-meta">
+                            {t}
+                          </span>
+                        ))}
+                    </TD>
+                    <TD className="whitespace-nowrap text-muted-foreground">{r.owner ?? ""}</TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </TableScroll>
+          {records.length !== counted && (
+            /* Said out loud: a drill-down that does not add up to the number
+               above it is how a working page gets reported as broken. */
+            <p className="pt-2 text-meta text-muted-foreground">
+              {nf.format(records.length)} listed against {nf.format(counted)} counted. The
+              records come from the hourly lead sync, which covers current clients only and
+              carries no service tag; the count is the hand-run backfill, which splits by
+              service and also credits quote and PO evidence at stages not listed here.
+            </p>
+          )}
+        </>
+      )}
+    </TD>
+  );
+}
+
 /** One service's months. The headline column is tinted; the rest sit beside it. */
-function ServiceTable({ series }: { series: ServiceSeries }) {
+function ServiceTable({
+  series, clientId, open, records,
+}: {
+  series: ServiceSeries;
+  clientId: string;
+  /** "<service>:<month start>", so two services cannot open the same month at once. */
+  open: string | null;
+  records: MonthRecord[];
+}) {
   const headline = series.headline;
+  const base = `/clients/results/${clientId}`;
   const peak = Math.max(
     1,
     ...series.months.map((m) =>
@@ -113,30 +212,57 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
             </TR>
           </THead>
           <TBody>
-            {series.months.map((m) => (
-              <TR key={m.monthIndex} className="border-t">
-                <TD className="tabular-nums">{m.monthIndex}</TD>
-                <TD className="whitespace-nowrap text-muted-foreground">
-                  {monthLabel.format(new Date(`${m.monthStart}T00:00:00Z`))}
-                </TD>
-                <TD className="tabular-nums">{m.leads || "—"}</TD>
-                <TD className="tabular-nums">{m.appointments || "—"}</TD>
-                <TD className="tabular-nums">{m.quotes || "—"}</TD>
-                <TD className="tabular-nums">{m.pos || "—"}</TD>
-                <TD className="tabular-nums">
-                  {m.quoteAmount ? money.format(m.quoteAmount) : "—"}
-                </TD>
-                <TD className="tabular-nums">
-                  {m.poAmount ? money.format(m.poAmount) : "—"}
-                </TD>
-                <TD>
-                  <span
-                    className="block h-1.5 rounded-sm bg-sky-500/70"
-                    style={{ width: `${(bar(m) / peak) * 100}%` }}
-                  />
-                </TD>
-              </TR>
-            ))}
+            {series.months.map((m) => {
+              const key = `${series.service}:${m.monthStart}`;
+              const isOpen = open === key;
+              return (
+                <Fragment key={m.monthIndex}>
+                  <TR className="border-t">
+                    <TD className="tabular-nums">{m.monthIndex}</TD>
+                    <TD className="whitespace-nowrap text-muted-foreground">
+                      {/* Which month is open is a query parameter rather than
+                          component state, so it survives a reload and pastes
+                          into Slack as the month somebody was looking at. */}
+                      <Link
+                        href={isOpen ? base : `${base}?month=${encodeURIComponent(key)}`}
+                        scroll={false}
+                        aria-expanded={isOpen}
+                        className="flex items-center gap-1 hover:underline"
+                      >
+                        <ChevronRight
+                          className={`h-3 w-3 shrink-0 transition-transform duration-fast ease-out ${
+                            isOpen ? "rotate-90" : ""
+                          }`}
+                          aria-hidden
+                        />
+                        {monthLabel.format(new Date(`${m.monthStart}T00:00:00Z`))}
+                      </Link>
+                    </TD>
+                    <TD className="tabular-nums">{m.leads || "—"}</TD>
+                    <TD className="tabular-nums">{m.appointments || "—"}</TD>
+                    <TD className="tabular-nums">{m.quotes || "—"}</TD>
+                    <TD className="tabular-nums">{m.pos || "—"}</TD>
+                    <TD className="tabular-nums">
+                      {m.quoteAmount ? money.format(m.quoteAmount) : "—"}
+                    </TD>
+                    <TD className="tabular-nums">
+                      {m.poAmount ? money.format(m.poAmount) : "—"}
+                    </TD>
+                    <TD>
+                      <span
+                        className="block h-1.5 rounded-sm bg-sky-500/70"
+                        style={{ width: `${(bar(m) / peak) * 100}%` }}
+                      />
+                    </TD>
+                  </TR>
+                  {isOpen && (
+                    <TR className="border-t">
+                      <MonthRecords records={records} counted={m.leads} />
+                    </TR>
+                  )}
+                </Fragment>
+              );
+            })}
           </TBody>
         </Table>
       </TableScroll>
@@ -146,19 +272,26 @@ function ServiceTable({ series }: { series: ServiceSeries }) {
 
 export default async function ClientResultPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clientId: string }>;
+  searchParams: Promise<{ month?: string }>;
 }) {
   const perms = await myPermissions();
   if (!perms.has("clients.results") && !perms.has("org.manage")) {
     return <NoAccess section="Client results" need="View client results" />;
   }
 
-  const { clientId } = await params;
-  const [client, series, periods] = await Promise.all([
+  const [{ clientId }, { month }] = await Promise.all([params, searchParams]);
+  const open = month ?? null;
+  // Only the month that is open is fetched, so a page nobody drills into costs
+  // what it always did.
+  const openMonth = open?.split(":")[1] ?? "";
+  const [client, series, periods, records] = await Promise.all([
     getClient(clientId),
     getServiceSeries(clientId),
     getServicePeriods(clientId),
+    /^\d{4}-\d{2}-\d{2}$/.test(openMonth) ? getMonthRecords(clientId, openMonth) : [],
   ]);
   if (!client) notFound();
 
@@ -242,7 +375,13 @@ export default async function ClientResultPage({
       </div>
 
       {series.map((s) => (
-        <ServiceTable key={s.service} series={s} />
+        <ServiceTable
+          key={s.service}
+          series={s}
+          clientId={clientId}
+          open={open}
+          records={records}
+        />
       ))}
       {!series.length && (
         <p className="rounded-md border p-4 text-body text-muted-foreground">

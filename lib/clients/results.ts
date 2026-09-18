@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { everyRow } from "@/lib/supabase/every-row.mjs";
-import type { ClientResult, MonthRow, ServiceSeries, ServicePeriod } from "./result-metrics";
+import type { ClientResult, MonthRecord, MonthRow, ServiceSeries, ServicePeriod } from "./result-metrics";
 import { serviceHeadline } from "./result-metrics";
 
 export * from "./result-metrics";
@@ -229,4 +229,74 @@ export async function getServiceSeries(id: string): Promise<ServiceSeries[]> {
 
   // Busiest first, so the service that defined the engagement leads the page.
   return series.sort((a, b) => b.totals.leads - a.totals.leads);
+}
+
+/*
+ * The stages the loader counts, and what each one means. Copied from its own
+ * sets rather than loosened: a drill-down that lists records the month never
+ * counted is not a drill-down, it is a second opinion.
+ */
+const DELIVERED = [
+  "Lead Generated", "Lead Generated: Scheduled", "Pipeline Hot: Appointment set",
+  "Pipeline Hot: Quoting", "Pipeline Hot: Quote Follow up",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Supplier forms / NDA",
+  "Pipeline - Selling", "Closed: Closed Won", "Closed: Closed Lost",
+  "Closed: No Quote", "Sales Support", "Appointment Set", "Proposal",
+  "Needs Analysis",
+];
+const APPOINTMENT = new Set([
+  "Pipeline Hot: Appointment set", "Appointment Set", "Lead Generated: Scheduled",
+]);
+const QUOTE_STAGES = new Set([
+  "Pipeline Hot: Quoting", "Pipeline Hot: Quote Follow up",
+  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Supplier forms / NDA",
+  "Pipeline - Selling", "Proposal", "Closed: Closed Won",
+]);
+const WON = "Closed: Closed Won";
+
+/** First day of the month after the one given. */
+function nextMonth(start: string): string {
+  const d = new Date(`${start}T00:00:00Z`);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * The opportunities behind one month of a client's breakdown.
+ *
+ * client_monthly_results holds counts and nothing else, so the names come from
+ * Coupler's lead report -- the same source the Lead Flow drill-down reads.
+ * That report refreshes hourly and covers current clients only, and it carries
+ * no service tag, where the counts are a hand-run Salesforce backfill split by
+ * service. So the rows and the number can disagree, and the panel says so
+ * where they do rather than quietly showing fewer.
+ */
+export async function getMonthRecords(id: string, monthStart: string): Promise<MonthRecord[]> {
+  const supabase = await createClient();
+  // Paged, so a busy month lists every record rather than the API's first 1,000.
+  const rows = await everyRow<any>(() =>
+    supabase
+      .from("sf_opp_leads_raw")
+      .select("id,name,stagename,createddate,account_name,account_contact_name__c,owner_name")
+      .eq("client__c", id)
+      .in("stagename", DELIVERED)
+      .gte("createddate", monthStart)
+      .lt("createddate", nextMonth(monthStart))
+      .order("createddate")
+      // Ties on the timestamp would let a row repeat or vanish between pages.
+      .order("id")
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    stage: r.stagename,
+    createdOn: r.createddate,
+    account: r.account_name,
+    contact: r.account_contact_name__c,
+    owner: r.owner_name,
+    appointment: APPOINTMENT.has(r.stagename),
+    quote: QUOTE_STAGES.has(r.stagename),
+    po: r.stagename === WON,
+  }));
 }
