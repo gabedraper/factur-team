@@ -1,6 +1,7 @@
 "use server";
 
 import { clientIdsForScope } from "@/lib/list-views/resolve";
+import { currentMemberId } from "@/lib/org";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,13 @@ function tableOf(f: ListField): keyof Embeds | null {
   if (head === "crm_campaigns") return "campaigns";
   if (head === "org_members") return "owners";
   return null;
+}
+
+/** The signed-in person and everyone below them in the reporting line. */
+async function memberCircle(db: Awaited<ReturnType<typeof createClient>>): Promise<string[]> {
+  const { data, error } = await db.rpc("my_member_circle");
+  if (error) throw new Error(`my_member_circle: ${error.message}`);
+  return ((data ?? []) as { member_id: string }[]).map((r) => r.member_id);
 }
 
 export async function listOpportunities(input: {
@@ -156,14 +164,27 @@ export async function listOpportunities(input: {
   if (input.clientId) q = q.eq("client_id", input.clientId);
   if (input.scope) {
     /*
-     * An empty scope means "none of your clients", and it has to stay empty.
-     * Return early rather than hand .in() an empty list and trust how that is
-     * interpreted: if it were ever read as "no filter", somebody staffed on no
-     * clients would open "My opportunities" and be shown everyone's.
+     * "Mine" is two things, either of which is enough: opportunities on a
+     * client you are named on in Settings, or opportunities you own yourself
+     * in Salesforce. They used to be only the first, and 271,676 open
+     * opportunities are owned by somebody not named on their client -- so a
+     * rep's own deals on a client somebody else covers were not "mine".
+     * "My team's" widens both halves to the reporting line.
+     *
+     * An empty scope means "none of your clients and none of your people",
+     * and it has to stay empty. Return early rather than hand .in() an empty
+     * list and trust how that is interpreted: if it were ever read as "no
+     * filter", somebody staffed on nothing would be shown everyone's.
      */
-    const ids = await clientIdsForScope(input.scope, { liveOnly: true });
-    if (ids.length === 0) return { rows: [], hasMore: false, tooBroad: false };
-    q = q.in("client_id", ids);
+    const [clientIds, ownerIds] = await Promise.all([
+      clientIdsForScope(input.scope, { liveOnly: true }),
+      input.scope === "team" ? memberCircle(db) : currentMemberId().then((m) => (m ? [m] : [])),
+    ]);
+    if (clientIds.length === 0 && ownerIds.length === 0) return { rows: [], hasMore: false, tooBroad: false };
+    const either: string[] = [];
+    if (clientIds.length) either.push(`client_id.in.(${clientIds.join(",")})`);
+    if (ownerIds.length) either.push(`owner_member_id.in.(${ownerIds.join(",")})`);
+    q = q.or(either.join(","));
   }
 
   /*
