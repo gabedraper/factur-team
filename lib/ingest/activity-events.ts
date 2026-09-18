@@ -110,12 +110,18 @@ export function verifyDialpadJwt(token: string, secret: string): Record<string, 
 /**
  * Orum's dialer signs with the key chosen in Settings > System > Webhooks:
  * header `x-webhook-signature: t=<timestamp>,s=<base64 HMAC-SHA256 of
- * "<timestamp>.<raw body>">`. The timestamp is checked loosely -- it is not
- * documented whether it is seconds or milliseconds -- to refuse a replay from
- * another day without refusing a clock that is a few minutes off.
+ * "<timestamp>.<body>">`. Their sample verifies against the request body as
+ * a string; whether that is the bytes on the wire or a re-serialised copy is
+ * not said, so both are accepted. The timestamp is checked loosely -- it is
+ * not documented whether it is seconds or milliseconds -- to refuse a replay
+ * from another day without refusing a clock that is a few minutes off.
+ *
+ * Returns why it failed, for the feed, rather than just that it did.
  */
-export function verifyOrumSignature(rawBody: string, header: string | null, key: string): boolean {
-  if (!header) return false;
+export type OrumSignatureCheck = { ok: true } | { ok: false; reason: string; detail?: Record<string, unknown> };
+
+export function checkOrumSignature(rawBody: string, header: string | null, key: string): OrumSignatureCheck {
+  if (!header) return { ok: false, reason: "no x-webhook-signature header" };
   const fields = Object.fromEntries(
     header.split(",").map((kv) => {
       const i = kv.indexOf("=");
@@ -124,16 +130,64 @@ export function verifyOrumSignature(rawBody: string, header: string | null, key:
   ) as Record<string, string>;
   const t = fields.t;
   const s = fields.s;
-  if (!t || !s) return false;
+  if (!t || !s) return { ok: false, reason: "header is not t=...,s=...", detail: { header: header.slice(0, 120) } };
 
   const n = Number(t);
   if (Number.isFinite(n)) {
     const ms = n > 1e11 ? n : n * 1000;
-    if (Math.abs(Date.now() - ms) > 24 * 60 * 60 * 1000) return false;
+    if (Math.abs(Date.now() - ms) > 24 * 60 * 60 * 1000) {
+      return { ok: false, reason: "timestamp more than a day off", detail: { t } };
+    }
   }
 
-  const expected = createHmac("sha256", key).update(`${t}.${rawBody}`).digest("base64");
-  return safeEqual(s, expected);
+  const candidates: [string, string][] = [["raw", rawBody]];
+  try {
+    const again = JSON.stringify(JSON.parse(rawBody));
+    if (again !== rawBody) candidates.push(["restringified", again]);
+  } catch {
+    // not JSON; the raw form is all there is
+  }
+  for (const [, body] of candidates) {
+    const expected = createHmac("sha256", key).update(`${t}.${body}`).digest("base64");
+    if (safeEqual(s, expected)) return { ok: true };
+  }
+  const expectedRaw = createHmac("sha256", key).update(`${t}.${rawBody}`).digest("base64");
+  return {
+    ok: false,
+    reason: "signature does not match the key",
+    detail: { t, got: s.slice(0, 8), expected: expectedRaw.slice(0, 8), bodyBytes: rawBody.length, forms: candidates.map((c) => c[0]) },
+  };
+}
+
+export function verifyOrumSignature(rawBody: string, header: string | null, key: string): boolean {
+  return checkOrumSignature(rawBody, header, key).ok;
+}
+
+/**
+ * A request that failed its signature check, kept on the feed so a
+ * misconfiguration is visible rather than a silent 403. Written as failed
+ * with the retry budget spent, so the resolver never treats it as real.
+ */
+export async function landUnverified(source: IngestSource, rawBody: string, reason: string, detail?: Record<string, unknown>): Promise<void> {
+  const db = createServiceClient();
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    payload = { raw: rawBody.slice(0, 2000) };
+  }
+  await db.from("activity_events").upsert(
+    {
+      source,
+      external_id: `unverified:${digestId(rawBody)}`,
+      event_type: "unverified",
+      payload,
+      status: "failed",
+      attempts: 5,
+      resolution: { error: `rejected: ${reason}`, ...(detail ? { detail } : {}) },
+    },
+    { onConflict: "source,external_id" }
+  );
 }
 
 /** A shared token for vendors that cannot sign: header first, query string second. */
