@@ -177,61 +177,7 @@ export async function setMyRole(roleId: string | null) {
   return { success: true };
 }
 
-/**
- * Put a client in your own name, or take yours back out.
- *
- * `member_id` is the same column the Clients screen writes, so a client picked
- * here and one assigned by an administrator are the same thing to everything
- * downstream -- the scoreboards, client health and the collections queue all
- * read it without caring who set it.
- *
- * Claiming a client someone else holds takes it from them. There is no check
- * for that, by request.
- */
-export async function claimClient(clientId: string, claim: boolean) {
-  const mine = await me();
-  if (!mine) return { success: false, error: "Not signed in." };
-
-  const db = createServiceClient();
-
-  if (!claim) {
-    /*
-     * Releasing only clears the column while it is still yours. Without the
-     * second condition, a stale page could unassign a client that had already
-     * moved to somebody else.
-     */
-    const { error } = await db
-      .from("org_clients")
-      .update({ member_id: null })
-      .eq("id", clientId)
-      .eq("member_id", mine.id);
-    if (error) return { success: false, error: error.message };
-  } else {
-    const { error } = await db
-      .from("org_clients")
-      .update({ member_id: mine.id })
-      .eq("id", clientId);
-    if (error) return { success: false, error: error.message };
-  }
-
-  /*
-   * The history table records who held what and when. Written on a best
-   * effort: failing to note the change is not a reason to refuse it, and the
-   * nightly run catches up.
-   */
-  try {
-    await db.rpc("record_client_history", { p_source: "manual" });
-  } catch {
-    // Deliberately swallowed -- see above.
-  }
-
-  revalidatePath("/settings");
-  revalidatePath("/settings/clients");
-  revalidatePath("/settings/teams");
-  return { success: true };
-}
-
-/** Every active client, with who holds it, for the picker. */
+/** Every active client, with who holds it. Read by the pages that list a person's clients. */
 export async function listClientsForSelf(): Promise<
   { id: string; name: string; heldBy: string | null; mine: boolean }[]
 > {

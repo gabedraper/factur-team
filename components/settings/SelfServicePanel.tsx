@@ -1,41 +1,40 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setMyRole, claimClient } from "@/actions/self-service";
+import { setMyRole } from "@/actions/self-service";
 import { FIELD } from "@/lib/field-class";
-import { Table, TBody, TR, TD } from "@/components/ui/table";
 import { control } from "@/components/ui/control";
 
 /**
- * Your own role and your own client list, set without an administrator.
+ * Your own role, set without an administrator.
  *
  * The server works out who you are from your session, so nothing this
  * component sends can name somebody else. Roles carrying administrator or
  * manager access are shown but unavailable unless you already hold
  * org.manage; the server refuses them regardless of what this sends.
+ *
+ * Clients are not here. Who works a client is decided on the client's own
+ * record (Settings > Clients), where every role on it is set together and
+ * the history is written; a second door on this page let one person take a
+ * client from another without either of them seeing it happen.
  */
 
 type Role = { id: string; name: string; service_id: string | null; restricted: boolean };
 type Service = { id: string; name: string };
-type Client = { id: string; name: string; heldBy: string | null; mine: boolean };
 
 export function SelfServicePanel({
   roles,
   services,
   currentRoleId,
-  clients,
   canAssignRestricted,
 }: {
   roles: Role[];
   services: Service[];
   currentRoleId: string | null;
-  clients: Client[];
   /** Whether this person may take a role carrying administrator or manager access. */
   canAssignRestricted: boolean;
 }) {
   const [roleId, setRoleId] = useState(currentRoleId ?? "");
-  const [rows, setRows] = useState(clients);
-  const [filter, setFilter] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -48,10 +47,6 @@ export function SelfServicePanel({
     grouped.set(key, [...(grouped.get(key) ?? []), r]);
   }
 
-  const shown = filter.trim()
-    ? rows.filter((c) => c.name.toLowerCase().includes(filter.trim().toLowerCase()))
-    : rows;
-
   function chooseRole(next: string) {
     const previous = roleId;
     setRoleId(next);
@@ -61,25 +56,6 @@ export function SelfServicePanel({
       if (!res.success) {
         setRoleId(previous);
         setProblem(res.error ?? "Could not change your role.");
-      }
-    });
-  }
-
-  function toggleClient(client: Client) {
-    const next = !client.mine;
-    // Moved straight away and put back if the server refuses, so the list does
-    // not sit still while a click is in flight.
-    setRows((r) =>
-      r.map((c) =>
-        c.id === client.id ? { ...c, mine: next, heldBy: next ? "You" : null } : c
-      )
-    );
-    setProblem(null);
-    start(async () => {
-      const res = await claimClient(client.id, next);
-      if (!res.success) {
-        setRows((r) => r.map((c) => (c.id === client.id ? client : c)));
-        setProblem(res.error ?? "Could not change that client.");
       }
     });
   }
@@ -124,52 +100,6 @@ export function SelfServicePanel({
             </optgroup>
           ))}
         </select>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="w-32 shrink-0 text-body text-muted-foreground">Clients</span>
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search clients…"
-            className={control({ size: "sm", className: `w-full ${FIELD}` })}
-          />
-          <span className="shrink-0 text-body tabular-nums text-muted-foreground">
-            {rows.filter((c) => c.mine).length}
-          </span>
-        </div>
-
-        <div className="max-h-72 overflow-y-auto rounded-md border">
-          <Table>
-            <TBody>
-              {shown.map((c) => (
-                <TR key={c.id} >
-                  <TD className="w-8">
-                    <input
-                      type="checkbox"
-                      checked={c.mine}
-                      disabled={pending}
-                      onChange={() => toggleClient(c)}
-                      aria-label={c.name}
-                    />
-                  </TD>
-                  <TD>{c.name}</TD>
-                  <TD numeric className="text-muted-foreground">
-                    {c.mine ? "You" : c.heldBy}
-                  </TD>
-                </TR>
-              ))}
-              {!shown.length && (
-                <TR>
-                  <TD colSpan={3} className="py-6 text-center text-muted-foreground">
-                    No clients match.
-                  </TD>
-                </TR>
-              )}
-            </TBody>
-          </Table>
-        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { myPermissions, myRealPermissions, listServicesAndTeams } from "@/lib/org";
 import { ThemePanel, PreviewPanel } from "@/components/settings/PreferencesPanel";
 import { SelfServicePanel } from "@/components/settings/SelfServicePanel";
-import { listClientsForSelf, listRolesForSelf } from "@/actions/self-service";
+import { listRolesForSelf } from "@/actions/self-service";
 import { PageHeader } from "@/components/ui/page-header";
 import { Surface, surface } from "@/components/ui/surface";
 
@@ -55,13 +55,11 @@ export default async function SettingsPage() {
   const { services } = await listServicesAndTeams();
 
   /*
-   * Anyone may now set their own role and take clients, so the pickers are
-   * built for everybody rather than behind the administration section.
+   * Anyone may set their own role, so the picker is built for everybody
+   * rather than behind the administration section. Clients are assigned on
+   * the client's record, not here.
    */
-  const [{ roles: selfRoles, canAssignRestricted }, myClients] = await Promise.all([
-    listRolesForSelf(),
-    listClientsForSelf(),
-  ]);
+  const { roles: selfRoles, canAssignRestricted } = await listRolesForSelf();
 
   // Already fetched above with the rest of this person's own record.
   const myRoleId = mine?.org_assignments?.[0]?.role_id ?? null;
@@ -97,7 +95,6 @@ export default async function SettingsPage() {
           roles={selfRoles}
           services={services}
           currentRoleId={myRoleId}
-          clients={myClients}
           canAssignRestricted={canAssignRestricted}
         />
       </Surface>
