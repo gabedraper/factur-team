@@ -1,6 +1,6 @@
 "use client";
 
-import { Phone as PhoneIcon, Linkedin, ExternalLink } from "lucide-react";
+import { Phone as PhoneIcon } from "lucide-react";
 import { Panel } from "@/components/pipeline/bits";
 import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
@@ -152,28 +152,41 @@ function LinkedInPreview({
 
   return (
     <div className="border-t px-4 py-3">
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        className="group flex items-center gap-3 rounded-md bg-card-hover/60 p-3 transition-colors duration-fast ease-out hover:bg-card-hover"
-      >
+      <div className="flex items-center gap-3 rounded-md bg-card-hover/60 p-3">
         <span
           aria-hidden
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-body font-semibold text-primary-foreground"
         >
-          {initials || <Linkedin className="h-5 w-5" />}
+          {initials}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-body font-medium">
-            <Linkedin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="LinkedIn" />
-            <span className="truncate">{name}</span>
-          </span>
+          <span className="block truncate text-body font-medium">{name}</span>
           {headline && <span className="block truncate text-meta text-muted-foreground">{headline}</span>}
           <span className="block truncate text-meta text-muted-foreground">linkedin.com/in/{handle}</span>
         </span>
-        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground transition-colors duration-fast group-hover:text-foreground" aria-hidden />
-      </a>
+        {/* LinkedIn's own mark, in its blue, is the link -- the one thing on
+            the card that looks like a button is the one thing that is. */}
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          title={`Open ${name} on LinkedIn`}
+          aria-label={`Open ${name} on LinkedIn`}
+          className={/* design-ok: LinkedIn's brand blue; the mark is only recognisable in its own colour, in both themes */ "flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#0A66C2] text-white transition-opacity duration-fast ease-out hover:opacity-85"}
+        >
+          <LinkedInMark className="h-5 w-5" />
+        </a>
+      </div>
     </div>
+  );
+}
+
+/* LinkedIn's "in" wordmark. Lucide's outline icon is a generic glyph; the
+   brand mark on brand blue is what people recognise as "opens LinkedIn". */
+function LinkedInMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />
+    </svg>
   );
 }
