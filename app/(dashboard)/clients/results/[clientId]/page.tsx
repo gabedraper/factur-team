@@ -185,7 +185,14 @@ export default async function ClientResultPage({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <Stat label="Started" value={client.clientSince ?? "—"} />
         <Stat label="Ended" value={client.clientEnd ?? "—"} />
-        <Stat label="Months" value={String(client.monthsWithResults || "—")} />
+        {/*
+          * Months since they started, not months that produced something. The
+          * tile sits beside Started and above a table numbered from month 1,
+          * and both of those count the quiet months too -- three figures for
+          * the same word on one screen is how this got reported. The list
+          * page's Months column is the other count, and says so on hover.
+          */}
+        <Stat label="Months" value={String(client.monthsElapsed || "—")} />
         <Stat label="Leads" value={nf.format(client.leads)} />
         <Stat label="Appointments" value={nf.format(client.appointments)} />
         <Stat label="Quotes" value={nf.format(client.quotes)} />
