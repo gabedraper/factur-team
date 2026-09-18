@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Panel } from "@/components/pipeline/bits";
 import { updateOpportunity } from "@/actions/pipeline";
-import { STAGE_GROUPS, LEAD_STATUSES } from "@/lib/pipeline/picklists";
+import { LEAD_STATUSES } from "@/lib/pipeline/picklists";
 
 const FUNNEL_STEPS = [
   { key: "reached_lead", label: "Lead" },
@@ -81,21 +81,9 @@ export function OpportunityEditor({ opportunity }: { opportunity: EditableOpport
       <div className="space-y-3 p-4">
         {error && <p className="text-body text-red-600">{error}</p>}
 
-        <div>
-          <label className="text-meta text-muted-foreground">Stage</label>
-          <Select value={state.stage} onValueChange={(v) => save({ stage: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STAGE_GROUPS.map((g) => (
-                <SelectGroup key={g.label}>
-                  <SelectLabel>{g.label}</SelectLabel>
-                  {g.values.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
+        {/* No Stage here: progression is tracked by Lead status alone, so the
+            two pickers side by side only asked a rep to keep both in step.
+            The stage a record is in is still printed beside the name. */}
         <div>
           <label className="text-meta text-muted-foreground">Lead status</label>
           <Select value={state.lead_status ?? ""} onValueChange={(v) => save({ lead_status: v })}>
