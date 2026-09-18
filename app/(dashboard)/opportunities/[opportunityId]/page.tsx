@@ -150,6 +150,21 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           from there. */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
+          {/* Contact first: a rep opens this page to reach the person, and
+              the number, address and profile were below two panels they were
+              scrolling past on every call. */}
+          <ContactEditor
+            opportunityId={o.id}
+            contactName={contactName}
+            phone={o.crm_contacts?.phone ?? null}
+            email={o.crm_contacts?.email ?? null}
+            linkedinUrl={o.crm_contacts?.linkedin_url ?? null}
+            title={o.crm_contacts?.title ?? null}
+            company={o.crm_accounts?.name ?? null}
+            industry={o.crm_accounts?.industry ?? null}
+            domain={o.crm_accounts?.domain ?? null}
+          />
+
           <OpportunityEditor
             opportunity={{
               id: o.id,
@@ -170,18 +185,6 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           <QuotesAndOrders
             quotes={(quotes ?? []) as unknown as QuoteRow[]}
             orders={(orders ?? []) as unknown as OrderRow[]}
-          />
-
-          <ContactEditor
-            opportunityId={o.id}
-            contactName={contactName}
-            phone={o.crm_contacts?.phone ?? null}
-            email={o.crm_contacts?.email ?? null}
-            linkedinUrl={o.crm_contacts?.linkedin_url ?? null}
-            title={o.crm_contacts?.title ?? null}
-            company={o.crm_accounts?.name ?? null}
-            industry={o.crm_accounts?.industry ?? null}
-            domain={o.crm_accounts?.domain ?? null}
           />
         </div>
 
