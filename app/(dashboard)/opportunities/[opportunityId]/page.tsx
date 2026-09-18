@@ -27,7 +27,11 @@ type Opportunity = {
   reached_closing: boolean;
   org_clients: { name: string } | null;
   crm_accounts: { name: string; industry: string | null; domain: string | null } | null;
-  crm_contacts: { first_name: string | null; last_name: string | null; title: string | null; email: string | null; phone: string | null; linkedin_url: string | null } | null;
+  crm_contacts: {
+    first_name: string | null; last_name: string | null; title: string | null; email: string | null;
+    phone: string | null; mobile_phone: string | null; direct_phone: string | null; company_phone: string | null;
+    linkedin_url: string | null;
+  } | null;
 };
 
 type Activity = {
@@ -95,7 +99,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .select(
         "id,name,stage,lead_status,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
-        "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,linkedin_url)"
+        "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,mobile_phone,direct_phone,company_phone,linkedin_url)"
       )
       .eq("id", opportunityId)
       .maybeSingle(),
@@ -124,7 +128,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const contactName = [o.crm_contacts?.first_name, o.crm_contacts?.last_name].filter(Boolean).join(" ") || o.name;
 
   return (
-    <div className="p-6 space-y-4 max-w-6xl">
+    <div className="space-y-4 p-section">
       <RegisterActiveOpportunity
         opportunityId={o.id}
         phoneNumber={o.crm_contacts?.phone ?? null}
@@ -148,8 +152,26 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       {/* Fields in the middle, activity feed on the right -- same shape as a
           Salesforce record page, so the layout is legible to anyone coming
           from there. */}
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,3fr)_minmax(380px,2fr)]">
         <div className="space-y-4">
+          {/* Contact first: a rep opens this page to reach the person, and
+              the number, address and profile were below two panels they were
+              scrolling past on every call. */}
+          <ContactEditor
+            opportunityId={o.id}
+            contactName={contactName}
+            phone={o.crm_contacts?.phone ?? null}
+            mobilePhone={o.crm_contacts?.mobile_phone ?? null}
+            directPhone={o.crm_contacts?.direct_phone ?? null}
+            companyPhone={o.crm_contacts?.company_phone ?? null}
+            email={o.crm_contacts?.email ?? null}
+            linkedinUrl={o.crm_contacts?.linkedin_url ?? null}
+            title={o.crm_contacts?.title ?? null}
+            company={o.crm_accounts?.name ?? null}
+            industry={o.crm_accounts?.industry ?? null}
+            domain={o.crm_accounts?.domain ?? null}
+          />
+
           <OpportunityEditor
             opportunity={{
               id: o.id,
@@ -170,18 +192,6 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
           <QuotesAndOrders
             quotes={(quotes ?? []) as unknown as QuoteRow[]}
             orders={(orders ?? []) as unknown as OrderRow[]}
-          />
-
-          <ContactEditor
-            opportunityId={o.id}
-            contactName={contactName}
-            phone={o.crm_contacts?.phone ?? null}
-            email={o.crm_contacts?.email ?? null}
-            linkedinUrl={o.crm_contacts?.linkedin_url ?? null}
-            title={o.crm_contacts?.title ?? null}
-            company={o.crm_accounts?.name ?? null}
-            industry={o.crm_accounts?.industry ?? null}
-            domain={o.crm_accounts?.domain ?? null}
           />
         </div>
 

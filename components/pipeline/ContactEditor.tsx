@@ -1,7 +1,6 @@
 "use client";
 
 import { Phone as PhoneIcon, Linkedin, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/pipeline/bits";
 import { useDialer } from "@/components/work-panel/dialer-context";
 import { toE164 } from "@/lib/phone";
@@ -17,11 +16,15 @@ import { toE164 } from "@/lib/phone";
  * panel doesn't own; wrong numbers get fixed in Salesforce.
  */
 export function ContactEditor({
-  opportunityId, contactName, phone, email, linkedinUrl, title, company, industry, domain,
+  opportunityId, contactName, phone, mobilePhone, directPhone, companyPhone,
+  email, linkedinUrl, title, company, industry, domain,
 }: {
   opportunityId: string;
   contactName: string;
   phone: string | null;
+  mobilePhone?: string | null;
+  directPhone?: string | null;
+  companyPhone?: string | null;
   email: string | null;
   linkedinUrl: string | null;
   title: string | null;
@@ -32,33 +35,68 @@ export function ContactEditor({
   // This is the Opportunity's own contact, so the call is tagged with it and
   // logged against it -- callOpportunity, not the ad hoc requestCall.
   const { callOpportunity } = useDialer();
-  const dialableNumber = toE164(phone);
+
+  /*
+   * Every number Salesforce holds, each one a dial button. The plain "phone"
+   * is Salesforce's main number, which is usually the direct or mobile line
+   * repeated; a number shown once under its own label is not shown again as
+   * "Phone", so a rep sees three distinct ways to reach the person rather
+   * than the same one twice.
+   */
+  const lines = [
+    { label: "Direct", value: directPhone },
+    { label: "Mobile", value: mobilePhone },
+    { label: "Company", value: companyPhone },
+  ].filter((l): l is { label: string; value: string } => !!l.value);
+  if (phone && !lines.some((l) => l.value === phone)) lines.unshift({ label: "Phone", value: phone });
+
+  const dial = (value: string) => {
+    const dialable = toE164(value);
+    return (
+      <button
+        type="button"
+        className="flex items-center gap-1.5 underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
+        title={dialable ? `Call ${dialable}` : "This number doesn't look valid"}
+        disabled={!dialable}
+        onClick={() => dialable && callOpportunity({ opportunityId, phoneNumber: value, contactName })}
+      >
+        {value}
+        <PhoneIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    );
+  };
 
   return (
     <Panel title="Contact">
       <dl className="space-y-2 p-4 text-body">
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Phone</dt>
-          <dd className="flex items-center gap-2 tabular-nums">
-            {phone ?? "—"}
-            {phone && (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="h-6 w-6"
-                title={dialableNumber ? `Call ${dialableNumber}` : "This number doesn't look valid"}
-                disabled={!dialableNumber}
-                onClick={() => dialableNumber && callOpportunity({ opportunityId, phoneNumber: phone, contactName })}
-              >
-                <PhoneIcon className="h-3.5 w-3.5" />
-              </Button>
-            )}
-          </dd>
-        </div>
+        {/* The number itself dials -- a rep reads it and clicks it in the
+            same movement, rather than reading it here and hitting a button
+            beside it. Still the in-app dialer and not a tel: link, so the
+            call is logged against this opportunity. */}
+        {lines.length === 0 ? (
+          <div className="flex items-center justify-between gap-2">
+            <dt className="text-muted-foreground">Phone</dt>
+            <dd>—</dd>
+          </div>
+        ) : (
+          lines.map((l) => (
+            <div key={l.label} className="flex items-center justify-between gap-2">
+              <dt className="text-muted-foreground">{l.label}</dt>
+              <dd className="flex items-center gap-2 tabular-nums">{dial(l.value)}</dd>
+            </div>
+          ))
+        )}
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Email</dt>
-          <dd className="truncate">{email ?? "—"}</dd>
+          <dd className="truncate">
+            {email ? (
+              <a href={`mailto:${email}`} className="underline-offset-2 hover:underline">
+                {email}
+              </a>
+            ) : (
+              "—"
+            )}
+          </dd>
         </div>
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Website</dt>

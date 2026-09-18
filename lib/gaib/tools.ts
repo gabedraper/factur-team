@@ -269,6 +269,12 @@ const raiseTicketTool: GaibTool = {
       laneReason: String(input.lane_reason),
       pageUrl: (input.page_url as string) || ctx.pageUrl,
     });
+    if (ticket.status === "new") {
+      return `Raised as [Ticket ${ticket.ref}]. Tell them the number. Gabe builds these himself with ` +
+        "his assistant rather than handing them to the automatic builder, so promise this and no " +
+        "more: Gabe will look at it, and they'll hear from you when he starts on it and when it's live. " +
+        "Do not say it will be live shortly.";
+    }
     return `Raised as [Ticket ${ticket.ref}] in the ${ticket.lane} lane, status ${ticket.status}. Tell them the number.`;
   },
 };

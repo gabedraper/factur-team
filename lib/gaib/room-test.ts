@@ -141,7 +141,14 @@ export async function postTodaysTest(
   try {
     const res = await client.messages.parse({
       model: PICK_MODEL,
-      max_tokens: 1200,
+      /*
+       * Room to think before it writes. Thinking is on by default on this
+       * model and comes out of the same budget, so 1200 went on choosing which
+       * shipped ticket to use and the post itself ran out mid-sentence. A
+       * structured answer cut off at the cap still matches the schema -- it is
+       * simply half a message, and half a message is what got posted.
+       */
+      max_tokens: 16000,
       output_config: { format: zodOutputFormat(Pick) },
       system:
         "You run a small testing programme for Factur's internal web app (team.facturmfg.com). " +
@@ -168,6 +175,11 @@ export async function postTodaysTest(
         ].join("\n"),
       }],
     });
+    // Nothing else catches a clipped post, so the stop reason has to. No test
+    // today is a better morning than a sentence that stops halfway.
+    if (res.stop_reason === "max_tokens") {
+      return { ok: false, reason: "the model ran out of room mid-post" };
+    }
     pick = res.parsed_output ?? null;
   } catch (e) {
     return { ok: false, reason: `could not choose a test: ${e instanceof Error ? e.message : "unknown"}` };

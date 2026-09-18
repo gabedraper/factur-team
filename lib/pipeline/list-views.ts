@@ -46,6 +46,9 @@ export const LIST_FIELDS: ListField[] = [
   { key: "contact_title",    label: "Title",          type: "text", path: "crm_contacts.title" },
   { key: "contact_email",    label: "Email",          type: "text", path: "crm_contacts.email" },
   { key: "contact_phone",    label: "Phone",          type: "text", path: "crm_contacts.phone" },
+  { key: "contact_mobile",   label: "Mobile",         type: "text", path: "crm_contacts.mobile_phone" },
+  { key: "contact_direct",   label: "Direct line",    type: "text", path: "crm_contacts.direct_phone" },
+  { key: "contact_company_phone", label: "Company phone", type: "text", path: "crm_contacts.company_phone" },
   { key: "contact_linkedin", label: "LinkedIn",       type: "text", path: "crm_contacts.linkedin_url" },
 
   { key: "account_name",     label: "Company",        type: "text", path: "crm_accounts.name" },

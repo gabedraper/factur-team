@@ -157,6 +157,8 @@ export async function deleteAgent(id: string): Promise<Ok> {
 // ---------------------------------------------------------------------------
 
 export type CodingSettings = {
+  /** Who builds a new ticket: the automatic builder, or Gabe in his own session. */
+  builder: "agent" | "session";
   auto_ship: boolean;
   max_files: number;
   max_lines: number;
@@ -167,12 +169,12 @@ export async function getCodingSettings(): Promise<CodingSettings> {
   const db = createServiceClient();
   const { data } = await db
     .from("gaib_coding_settings")
-    .select("auto_ship,max_files,max_lines,extra_protected_paths")
+    .select("builder,auto_ship,max_files,max_lines,extra_protected_paths")
     .eq("id", true)
     .maybeSingle();
 
   return (data as CodingSettings | null) ?? {
-    auto_ship: false, max_files: AUTO_MAX_FILES, max_lines: AUTO_MAX_LINES,
+    builder: "agent", auto_ship: false, max_files: AUTO_MAX_FILES, max_lines: AUTO_MAX_LINES,
     extra_protected_paths: [],
   };
 }
@@ -187,6 +189,7 @@ export async function getCodingSettings(): Promise<CodingSettings> {
  * on a web form at all.
  */
 export async function updateCodingSettings(next: {
+  builder: "agent" | "session";
   auto_ship: boolean; max_files: number; max_lines: number; extra_protected_paths: string;
 }): Promise<Ok> {
   if (!(await mayManage())) return DENIED;
@@ -196,6 +199,7 @@ export async function updateCodingSettings(next: {
 
   const db = createServiceClient();
   const { error } = await db.from("gaib_coding_settings").update({
+    builder: next.builder === "session" ? "session" : "agent",
     auto_ship: next.auto_ship,
     max_files: Math.max(0, Math.min(Number(next.max_files) || 0, AUTO_MAX_FILES)),
     max_lines: Math.max(0, Math.min(Number(next.max_lines) || 0, AUTO_MAX_LINES)),

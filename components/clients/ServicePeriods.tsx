@@ -38,6 +38,31 @@ const toDraft = (p: ServicePeriod): Draft => ({
 /** Blank means "not recorded", which is different from zero. */
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
+/** The last day of the month a YYYY-MM-01 falls in. */
+const monthEnd = (monthStart: string) => {
+  const d = new Date(`${monthStart}T00:00:00Z`);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+};
+
+/*
+ * A derived row ends on the last month that service had results when the loader
+ * last ran, so a month landing since leaves the period reading as closed before
+ * the breakdown underneath it ends. The months on the page are the newer fact,
+ * so carry the date forward to them. A hand-entered date is somebody's answer
+ * and is left alone.
+ */
+const endsOn = (p: ServicePeriod, lastResult: string | undefined) => {
+  if (p.source !== "derived" || !p.endedOn || !lastResult) return p.endedOn;
+  const last = monthEnd(lastResult);
+  return p.endedOn < last ? last : p.endedOn;
+};
+
+/** "derived" alone had people asking twice where the date came from. */
+const SOURCE_HINT: Record<string, string> = {
+  derived: "Worked out from the months this service produced results.",
+  manual: "Entered by hand on this page.",
+};
+
 function Input({
   value, onChange, type = "text", placeholder, className = "",
 }: {
@@ -78,10 +103,12 @@ function ServicePicker({
 }
 
 export function ServicePeriods({
-  clientId, periods,
+  clientId, periods, lastResultMonth,
 }: {
   clientId: string;
   periods: ServicePeriod[];
+  /** Each service's last month in the breakdown below, as YYYY-MM-01. */
+  lastResultMonth: Record<string, string>;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -252,14 +279,17 @@ export function ServicePeriods({
                   <TD>{p.service}</TD>
                   <TD className="tabular-nums">{p.startedOn}</TD>
                   <TD className="tabular-nums">
-                    {p.endedOn ?? <span className="text-emerald-600 dark:text-emerald-400">open</span>}
+                    {endsOn(p, lastResultMonth[p.service])
+                      ?? <span className="text-emerald-600 dark:text-emerald-400">open</span>}
                   </TD>
                   <TD className="tabular-nums">
                     {p.monthlyRate === null ? "—" : money.format(p.monthlyRate)}
                   </TD>
                   <TD>{p.tier ?? "—"}</TD>
                   <TD className="text-muted-foreground">{p.note ?? "—"}</TD>
-                  <TD className="text-muted-foreground">{p.source}</TD>
+                  <TD className="text-muted-foreground">
+                    <span title={SOURCE_HINT[p.source]}>{p.source}</span>
+                  </TD>
                   <TD>
                     <div className="flex items-center justify-end gap-2">
                       <button

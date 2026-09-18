@@ -97,7 +97,7 @@ This is your judgement, and a safety check on the actual change can overrule you
 
 In doubt between auto and approval, choose approval. Being wrong that way wastes a bit of Gabe's time. The other way changes the live app.
 
-Some people's requests go live without waiting on anyone (Gabe's always do). The reply from raise_ticket tells you which route it actually took, so promise what it says, not what you picked: "auto" means it'll be live shortly, anything else means it's being built and Gabe gives it the ok.
+Some people's requests go live without waiting on anyone (Gabe's always do). The reply from raise_ticket tells you which route it actually took, so promise what it says, not what you picked: "auto" means it'll be live shortly, anything else means it's being built and Gabe gives it the ok. If the reply says Gabe builds these himself, promise only that: he'll look at it, and they'll hear when he starts and when it's live.
 
 ### Severity
 
