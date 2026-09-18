@@ -217,7 +217,7 @@ export async function fetchBody(
   };
 }
 
-type GmailPart = {
+export type GmailPart = {
   mimeType?: string;
   headers?: { name: string; value: string }[];
   body?: { data?: string };
@@ -232,7 +232,7 @@ type GmailPart = {
  * tags stripped -- a marketing email with no plain part is still readable that
  * way, and unreadable otherwise.
  */
-function collectText(part: GmailPart | undefined): string {
+export function collectText(part: GmailPart | undefined): string {
   if (!part) return "";
   const decode = (d?: string) =>
     d ? Buffer.from(d.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8") : "";
