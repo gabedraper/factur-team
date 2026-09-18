@@ -98,6 +98,27 @@ export type MonthRow = {
 };
 
 /**
+ * One opportunity behind a month's numbers, for the drill-down under the row.
+ *
+ * `appointment`, `quote` and `po` are read off the stage, so a row says which
+ * of the month's counts it is part of without anyone having to know the stage
+ * vocabulary.
+ */
+export type MonthRecord = {
+  /** The Salesforce id: the link into the record. */
+  id: string;
+  name: string | null;
+  stage: string | null;
+  createdOn: string;
+  account: string | null;
+  contact: string | null;
+  owner: string | null;
+  appointment: boolean;
+  quote: boolean;
+  po: boolean;
+};
+
+/**
  * Which metric a service is contracted on. Mirrors the SQL function of the
  * same name; both exist because the view sorts on it and the page labels with
  * it, and neither should have to call the other.
