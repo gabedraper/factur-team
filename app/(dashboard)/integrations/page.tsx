@@ -35,6 +35,8 @@ export default async function IntegrationsPage() {
     );
   }
 
+  const undescribed = report.schedules.filter((s) => !s.about).map((s) => s.name);
+
   const cards = TOOLS.map((tool) => {
     const connections = report.integrations.filter((i) => i.tool === tool.key);
     const directions = [...new Set(connections.map((c) => c.direction))];
@@ -100,15 +102,43 @@ export default async function IntegrationsPage() {
 
       <section className="space-y-3">
         <h2 className="text-section-title">Schedules</h2>
+        <p className="text-meta text-muted-foreground">
+          Read from the database&apos;s own job list on every load, so a job added or removed by any change shows
+          here at once. What each one is for is written in lib/integrations/schedules.ts.
+        </p>
+        {undescribed.length > 0 && (
+          <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-body">
+            <span className="font-medium">Not described:</span>{" "}
+            <span className="font-mono text-meta">{undescribed.join(", ")}</span>
+            <span className="block text-meta text-muted-foreground">
+              These jobs run but nobody has written what they do. Add them to lib/integrations/schedules.ts.
+            </span>
+          </div>
+        )}
         <TableScroll className="rounded-md border">
           <Table>
-            <THead><TR><TH>Job</TH><TH>Runs</TH><TH>Cron</TH><TH>State</TH></TR></THead>
+            <THead><TR><TH>Job</TH><TH>Records</TH><TH>From</TH><TH>To</TH><TH>Criteria</TH><TH>Runs</TH><TH>State</TH></TR></THead>
             <TBody>
               {report.schedules.map((s) => (
-                <TR key={s.name} className="border-t">
-                  <TD className="font-mono text-meta">{s.name}</TD>
-                  <TD>{s.runs}</TD>
-                  <TD className="font-mono text-meta text-muted-foreground">{s.cron}</TD>
+                <TR key={s.name} className="border-t align-top">
+                  <TD>
+                    <span className="block font-mono text-meta">{s.name}</span>
+                    {s.calls && <span className="block font-mono text-meta text-muted-foreground">{s.calls}</span>}
+                  </TD>
+                  {s.about ? (
+                    <>
+                      <TD className="min-w-40">{s.about.records}</TD>
+                      <TD className="min-w-40 text-muted-foreground">{s.about.from}</TD>
+                      <TD className="min-w-40 text-muted-foreground">{s.about.to}</TD>
+                      <TD className="min-w-56 text-muted-foreground">{s.about.criteria}</TD>
+                    </>
+                  ) : (
+                    <TD colSpan={4} className="text-warning">Not described yet.</TD>
+                  )}
+                  <TD className="whitespace-nowrap">
+                    <span className="block">{s.runs}</span>
+                    <span className="block font-mono text-meta text-muted-foreground">{s.cron}</span>
+                  </TD>
                   <TD>{s.active ? <span className="text-success">on</span> : <span className="text-destructive">off</span>}</TD>
                 </TR>
               ))}
