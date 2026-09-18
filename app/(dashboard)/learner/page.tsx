@@ -41,14 +41,24 @@ export default async function LearnerDashboard() {
       .in("role_id", roleIds.length ? roleIds : ["00000000-0000-0000-0000-000000000000"]),
     supabase
       .from("enrollments")
-      .select("course_id, completed_at, enrolled_at")
+      .select(
+        "course_id, completed_at, enrolled_at, courses(id, title, description, thumbnail_url, is_published)"
+      )
       .eq("user_id", user.id),
   ]);
 
-  const assignedCourses = (roleCourses || [])
-    .map((rc: any) => rc.courses)
+  // A course reaches someone either through a role or one at a time from the
+  // admin enrolment screen, so both sources build the list. Enrolling somebody
+  // directly used to mark progress on a course their role already granted and
+  // do nothing otherwise, which made the enrolment screen look broken.
+  const byId = new Map<string, any>();
+  [...(roleCourses || []), ...(enrollments || [])]
+    .map((row: any) => row.courses)
     .filter(Boolean)
-    .filter((c: any) => c.is_published);
+    .filter((c: any) => c.is_published)
+    .forEach((c: any) => byId.set(c.id, c));
+
+  const assignedCourses = [...byId.values()];
 
   const enrollmentMap: Record<string, { completed_at: string | null }> = {};
   (enrollments || []).forEach((e: any) => {
