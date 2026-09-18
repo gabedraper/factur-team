@@ -33,13 +33,23 @@ export async function POST(request: NextRequest) {
 
   const callId = event.call_id === undefined || event.call_id === null ? "" : String(event.call_id);
   if (!callId) return NextResponse.json({ ok: true, ignored: "no call_id" });
+  /*
+   * One call, two legs. A call through a coaching team or department arrives
+   * as an event for the team (the entry point) and another for the person
+   * who took or placed it, each with its own call_id, and the person's leg
+   * names the team's as entry_point_call_id. Salesforce logs the call under
+   * the entry point's id, so that is the id the call is keyed on here; the
+   * two legs merge onto one row, and the person's leg wins on who it was.
+   */
+  const entry = event.entry_point_call_id === undefined || event.entry_point_call_id === null ? "" : String(event.entry_point_call_id);
+  const externalId = entry || callId;
 
   const state = typeof event.state === "string" ? event.state : null;
 
   try {
     const landed = await landEvent({
       source: "dialpad",
-      externalId: callId,
+      externalId,
       eventType: state,
       payload: event,
       ready: state === null || FINAL.has(state),
