@@ -27,7 +27,11 @@ type Opportunity = {
   reached_closing: boolean;
   org_clients: { name: string } | null;
   crm_accounts: { name: string; industry: string | null; domain: string | null } | null;
-  crm_contacts: { first_name: string | null; last_name: string | null; title: string | null; email: string | null; phone: string | null; linkedin_url: string | null } | null;
+  crm_contacts: {
+    first_name: string | null; last_name: string | null; title: string | null; email: string | null;
+    phone: string | null; mobile_phone: string | null; direct_phone: string | null; company_phone: string | null;
+    linkedin_url: string | null;
+  } | null;
 };
 
 type Activity = {
@@ -95,7 +99,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .select(
         "id,name,stage,lead_status,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
-        "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,linkedin_url)"
+        "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,mobile_phone,direct_phone,company_phone,linkedin_url)"
       )
       .eq("id", opportunityId)
       .maybeSingle(),
@@ -157,6 +161,9 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
             opportunityId={o.id}
             contactName={contactName}
             phone={o.crm_contacts?.phone ?? null}
+            mobilePhone={o.crm_contacts?.mobile_phone ?? null}
+            directPhone={o.crm_contacts?.direct_phone ?? null}
+            companyPhone={o.crm_contacts?.company_phone ?? null}
             email={o.crm_contacts?.email ?? null}
             linkedinUrl={o.crm_contacts?.linkedin_url ?? null}
             title={o.crm_contacts?.title ?? null}

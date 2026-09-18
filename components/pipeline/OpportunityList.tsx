@@ -103,7 +103,11 @@ function Cell({ row, field }: { row: Row; field: ListField }) {
       </a>
     );
   }
-  if (field.key === "contact_phone" && typeof v === "string" && v) {
+  if (
+    (field.key === "contact_phone" || field.key === "contact_mobile" ||
+     field.key === "contact_direct" || field.key === "contact_company_phone") &&
+    typeof v === "string" && v
+  ) {
     return <PhoneCell row={row} value={v} />;
   }
   return <span className="text-muted-foreground">{text(row, field)}</span>;
