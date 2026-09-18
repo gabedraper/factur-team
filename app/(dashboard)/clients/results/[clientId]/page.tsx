@@ -82,7 +82,10 @@ function MonthRecords({ records, counted }: { records: MonthRecord[]; counted: n
       {!records.length ? (
         <p className="text-body text-muted-foreground">
           {counted
-            ? `${nf.format(counted)} leads are counted for this month, but the lead sync does not cover this client, so the individual records are not here.`
+            /* What is missing, not why: the panel cannot tell an uncovered
+               client from a covered one whose month the backfill counted
+               differently, and guessing reads as a fault mid-table. */
+            ? `${nf.format(counted)} leads are counted for this month, but none of them are in the hourly lead sync, which covers current clients only.`
             : "No leads recorded for this month."}
         </p>
       ) : (

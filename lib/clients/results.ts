@@ -232,18 +232,10 @@ export async function getServiceSeries(id: string): Promise<ServiceSeries[]> {
 }
 
 /*
- * The stages the loader counts, and what each one means. Copied from its own
- * sets rather than loosened: a drill-down that lists records the month never
- * counted is not a drill-down, it is a second opinion.
+ * What the four numbers on a row mean, for the "Counted as" chips. The stages
+ * the loader treats as an appointment, a quote and a PO; leads are every
+ * opportunity, so they have no set.
  */
-const DELIVERED = [
-  "Lead Generated", "Lead Generated: Scheduled", "Pipeline Hot: Appointment set",
-  "Pipeline Hot: Quoting", "Pipeline Hot: Quote Follow up",
-  "Pipeline Hot: Client RFQ Review", "Pipeline Hot: Supplier forms / NDA",
-  "Pipeline - Selling", "Closed: Closed Won", "Closed: Closed Lost",
-  "Closed: No Quote", "Sales Support", "Appointment Set", "Proposal",
-  "Needs Analysis",
-];
 const APPOINTMENT = new Set([
   "Pipeline Hot: Appointment set", "Appointment Set", "Lead Generated: Scheduled",
 ]);
@@ -271,6 +263,14 @@ function nextMonth(start: string): string {
  * no service tag, where the counts are a hand-run Salesforce backfill split by
  * service. So the rows and the number can disagree, and the panel says so
  * where they do rather than quietly showing fewer.
+ *
+ * Every lead generated for the client, long-term follow up and all, less the
+ * Prospecting: family, which is sourcing rather than a lead -- the same rule
+ * the Lead Flow drill-down uses. It was the narrower "delivered" stage list
+ * until 2026-09-18, which is the list leads were counted on before
+ * client_monthly_results moved to every opportunity: msi listed 3 of its 13
+ * leads for July and none of its 8 for August, and an empty month claimed the
+ * sync did not cover the client when it covered it fine.
  */
 export async function getMonthRecords(id: string, monthStart: string): Promise<MonthRecord[]> {
   const supabase = await createClient();
@@ -280,7 +280,7 @@ export async function getMonthRecords(id: string, monthStart: string): Promise<M
       .from("sf_opp_leads_raw")
       .select("id,name,stagename,createddate,account_name,account_contact_name__c,owner_name")
       .eq("client__c", id)
-      .in("stagename", DELIVERED)
+      .not("stagename", "like", "Prospecting:%")
       .gte("createddate", monthStart)
       .lt("createddate", nextMonth(monthStart))
       .order("createddate")
