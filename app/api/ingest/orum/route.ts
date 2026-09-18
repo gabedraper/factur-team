@@ -45,15 +45,23 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Not JSON.", { status: 400 });
   }
 
-  const inner = (body.payload && typeof body.payload === "object" ? body.payload : body) as Record<string, unknown>;
-  const recording = pick(inner, "recording_url", "recordingUrl", "recording", "call_recording", "recording.url");
+  /*
+   * The call sits at payload.v1 (seen 2026-09-18; an older shape may sit at
+   * payload, and a test at the top). Keyed on the recording id where there
+   * is one -- Salesforce keeps the same id on its Task, so the two paths
+   * meet by key -- else Orum's own entry id, else a digest of who called
+   * whom when.
+   */
+  const outer = (body.payload && typeof body.payload === "object" ? body.payload : body) as Record<string, unknown>;
+  const inner = (outer.v1 && typeof outer.v1 === "object" ? outer.v1 : outer) as Record<string, unknown>;
+  const recording = pick(inner, "recordingLink", "recording_url", "recordingUrl", "recording", "call_recording", "recording.url");
   const externalId =
-    pick(inner, "call_id", "callId", "id", "call.id")
-    ?? (recording ? recording.replace(/^.*\//, "") : null)
+    (recording ? recording.replace(/^.*\//, "") : null)
+    ?? pick(inner, "entryID", "entryId", "call_id", "callId", "id", "call.id")
     ?? digestId(
-      pick(inner, "user_email", "userEmail", "user.email"),
-      pick(inner, "prospect_phone", "prospectPhone", "phone_number", "phone"),
-      pick(inner, "datetime", "date_time", "started_at", "timestamp", "created_at")
+      pick(inner, "repEmail", "user_email", "userEmail", "user.email"),
+      pick(inner, "prospectPhoneNumber", "prospect_phone", "prospectPhone", "phone_number", "phone"),
+      pick(inner, "calledAt", "datetime", "date_time", "started_at", "timestamp", "created_at")
     );
 
   try {
