@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ChevronLeft, Phone, Mail, ClipboardList, StickyNote, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requirePipeline } from "@/lib/pipeline/access";
+import { listClientsForSelf } from "@/actions/self-service";
 import { PageHeader, Panel, Empty, Chip, stageTone } from "@/components/pipeline/bits";
 import { RegisterActiveOpportunity } from "@/components/work-panel/RegisterActiveOpportunity";
 import { OpportunityEditor } from "@/components/pipeline/OpportunityEditor";
 import { ContactEditor } from "@/components/pipeline/ContactEditor";
+import { CloneOpportunityDialog } from "@/components/pipeline/CloneOpportunityDialog";
 import { QuotesAndOrders, type QuoteRow, type OrderRow } from "@/components/pipeline/QuotesAndOrders";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 type Opportunity = {
   id: string;
   name: string;
+  client_id: string | null;
   stage: string;
   lead_status: string | null;
   notes: string | null;
@@ -93,11 +96,11 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
   const { opportunityId } = await params;
   const supabase = await createClient();
 
-  const [{ data: opp, error }, { data: activities }, { data: quotes }, { data: orders }] = await Promise.all([
+  const [{ data: opp, error }, { data: activities }, { data: quotes }, { data: orders }, clients] = await Promise.all([
     supabase
       .from("opportunities")
       .select(
-        "id,name,stage,lead_status,notes,next_action_date,updates," +
+        "id,name,client_id,stage,lead_status,notes,next_action_date,updates," +
         "reached_lead,reached_eval_call_scheduled,reached_selling,reached_discovery,reached_proposal,reached_closing," +
         "org_clients(name),crm_accounts(name,industry,domain),crm_contacts(first_name,last_name,title,email,phone,mobile_phone,direct_phone,company_phone,linkedin_url)"
       )
@@ -121,6 +124,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
       .eq("opportunity_id", opportunityId)
       .order("salesforce_created_at", { ascending: false })
       .limit(50),
+    listClientsForSelf(),
   ]);
 
   if (error || !opp) notFound();
@@ -141,6 +145,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ op
         <PageHeader title={contactName}>
           <Chip colour={stageTone(o.stage)}>{o.stage}</Chip>
           {o.lead_status && <Chip>{o.lead_status}</Chip>}
+          <CloneOpportunityDialog opportunityId={o.id} clients={clients} currentClientId={o.client_id} />
         </PageHeader>
         <p className="text-body text-muted-foreground">
           {[o.crm_contacts?.title, o.crm_accounts?.name, o.org_clients?.name && `for ${o.org_clients.name}`]

@@ -131,6 +131,121 @@ export async function createOpportunity(
   }
 }
 
+/**
+ * The same RFQ, pursued by a different client.
+ *
+ * An RFQ often arrives against a client who cannot make the part while
+ * another of ours can, and the only route to the second client was retyping
+ * the whole pursuit. So the detail already captured comes across -- the
+ * contact, the account, the notes and the running updates -- and the first
+ * client's progress does not: stage, lead status, the funnel flags and the
+ * dates start where a hand-made pursuit starts, and the owner is left unset
+ * so the receiving client's own reach decides whose it is.
+ *
+ * The two are tied together by a note on each record rather than a column.
+ * The activity panel is where the history of a pursuit is read, so that is
+ * where "this came from somewhere else" belongs, and it keeps the second from
+ * being counted as a lead that arrived on its own.
+ */
+export async function cloneOpportunity(
+  id: string,
+  clientId: string
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, me } = await ctx();
+
+    const { data: source } = await supabase
+      .from("opportunities")
+      .select(
+        "client_id,contact_id,account_id,notes,updates," +
+        "org_clients(name),crm_contacts(first_name,last_name),crm_accounts(name)"
+      )
+      .eq("id", id)
+      .maybeSingle();
+    if (!source) return { ok: false, error: "That opportunity is no longer there." };
+    const from = source as unknown as {
+      client_id: string | null;
+      contact_id: string | null;
+      account_id: string | null;
+      notes: string | null;
+      updates: string | null;
+      org_clients: { name: string } | null;
+      crm_contacts: { first_name: string | null; last_name: string | null } | null;
+      crm_accounts: { name: string } | null;
+    };
+    if (from.client_id === clientId) {
+      return { ok: false, error: "That is the client this opportunity is already on." };
+    }
+
+    // Same duplicate check createOpportunity makes, for the same reason: the
+    // receiving client may already be pursuing this contact, and that reads
+    // better as a sentence than as a unique-violation.
+    if (from.contact_id) {
+      const { data: existing } = await supabase
+        .from("opportunities")
+        .select("id")
+        .eq("client_id", clientId)
+        .eq("contact_id", from.contact_id)
+        .maybeSingle();
+      if (existing) {
+        return { ok: false, error: "This client already has a pursuit open against that contact." };
+      }
+    }
+
+    const { data: client } = await supabase.from("org_clients").select("name").eq("id", clientId).single();
+    const clientName = (client as { name: string } | null)?.name ?? "";
+    const contactName = [from.crm_contacts?.first_name, from.crm_contacts?.last_name].filter(Boolean).join(" ");
+
+    const { data, error } = await supabase
+      .from("opportunities")
+      .insert({
+        client_id: clientId,
+        contact_id: from.contact_id,
+        account_id: from.account_id,
+        notes: from.notes,
+        updates: from.updates,
+        name: computeOpportunityName(from.crm_accounts?.name ?? null, clientName, contactName),
+        close_date: new Date().toISOString().slice(0, 10),
+        created_by: me,
+        updated_by: me,
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: `Could not clone that opportunity: ${error.message}` };
+    const cloneId = (data as { id: string }).id;
+
+    /*
+     * The trail, written separately on each side and neither of them fatal:
+     * activity follows the client it hangs off, so somebody who can copy a
+     * pursuit cannot always write against the one they copied it from, and
+     * that must not cost them the copy they just made.
+     */
+    await Promise.all([
+      supabase.from("opp_activities").insert({
+        opportunity_id: id,
+        activity_type: "note",
+        subject: `Cloned to ${clientName}`,
+        body: `The same RFQ is now open under ${clientName}: /opportunities/${cloneId}`,
+        created_by: me,
+      }),
+      supabase.from("opp_activities").insert({
+        opportunity_id: cloneId,
+        activity_type: "note",
+        subject: `Cloned from ${from.org_clients?.name ?? "another client"}`,
+        body: `Copied from the pursuit under ${from.org_clients?.name ?? "another client"}: /opportunities/${id}`,
+        created_by: me,
+      }),
+    ]);
+
+    await supabase.rpc("record_opportunity_history", { p_source: "manual" });
+    revalidatePath("/opportunities", "layout");
+
+    return { ok: true, id: cloneId };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not clone that opportunity." };
+  }
+}
+
 export type OpportunityUpdate = Partial<
   Pick<
     OpportunityInput,
