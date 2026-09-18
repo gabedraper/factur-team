@@ -184,6 +184,20 @@ export async function createTicket(input: NewTicket): Promise<Ticket> {
     sessionId: input.sessionId,
   });
 
+  /*
+   * Who builds it. With the builder set to "session" the ticket waits for
+   * Gabe's own working session rather than being handed off: most tickets
+   * need a conversation about what exactly to build before anything is
+   * built, and that is where it happens. It stays in the queue as "new", and
+   * the card can still hand it to the automatic builder by hand.
+   */
+  const { data: coding } = await db
+    .from("gaib_coding_settings").select("builder").eq("id", true).maybeSingle();
+  if ((coding as { builder: string } | null)?.builder === "session") {
+    await logEvent(ticket.id, "system", "waiting for Gabe's session", "tickets are built with Gabe, not handed to the agent");
+    return ticket;
+  }
+
   const sent = await dispatchAgent(ticket.id, input.lane);
   if (sent.dispatched) {
     await db.from("gaib_tickets").update({ status: "queued" }).eq("id", ticket.id);

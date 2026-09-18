@@ -15,6 +15,7 @@ export function CodingRules({
   ceiling: { files: number; lines: number };
   builtIn: { pattern: string; why: string }[];
 }) {
+  const [builder, setBuilder] = useState<CodingSettings["builder"]>(settings.builder);
   const [autoShip, setAutoShip] = useState(settings.auto_ship);
   const [maxFiles, setMaxFiles] = useState(String(settings.max_files));
   const [maxLines, setMaxLines] = useState(String(settings.max_lines));
@@ -28,6 +29,7 @@ export function CodingRules({
     setSaved(false);
     start(async () => {
       const r = await updateCodingSettings({
+        builder,
         auto_ship: autoShip,
         max_files: Number(maxFiles) || 0,
         max_lines: Number(maxLines) || 0,
@@ -40,6 +42,31 @@ export function CodingRules({
 
   return (
     <div className="space-y-8">
+      <div className="flex items-center gap-3 rounded-lg border p-4">
+        <button
+          role="switch"
+          aria-checked={builder === "session"}
+          onClick={() => setBuilder((b) => (b === "session" ? "agent" : "session"))}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+            builder === "session" ? "bg-primary" : "bg-muted-foreground/30"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${
+              builder === "session" ? "translate-x-[1.375rem]" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+        <div>
+          <p className="text-body font-medium">Build tickets with Gabe</p>
+          <p className="text-meta text-muted-foreground">
+            {builder === "session"
+              ? "New tickets wait for Gabe's session. Any ticket can still be handed to the agent."
+              : "New tickets go straight to the automatic builder."}
+          </p>
+        </div>
+      </div>
+
       <div className="flex items-center gap-3 rounded-lg border p-4">
         <button
           role="switch"

@@ -145,6 +145,23 @@ export function phrase(n: Notice): string {
       ].filter(Boolean).join("\n\n");
     }
 
+    /*
+     * A person has picked it up. Only sent when Gabe starts on it himself;
+     * the automatic builder's runs are too short to be worth an interruption.
+     */
+    case "running": {
+      const why = shorten(n.note, 200);
+      return [
+        vary("running", [
+          `on it. Gabe and i are building ${thing} now ${tag}`,
+          `${thing} is being built as we speak, Gabe's got it ${tag}`,
+          `heads up, Gabe's started on ${thing} ${tag}`,
+        ]),
+        why ? `Gabe added: ${why}` : null,
+        vary("running-close", [`i'll tell you when it's live`, `you'll hear from me when it ships`]),
+      ].filter(Boolean).join("\n\n");
+    }
+
     case "awaiting_review":
       return n.kind === "idea"
         ? [

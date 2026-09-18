@@ -52,9 +52,9 @@ function submitted(when: string): string {
 }
 
 const STATUS: Record<string, string> = {
-  new: "New",
+  new: "Waiting for Gabe",
   queued: "Queued",
-  running: "Running",
+  running: "Being built",
   awaiting_review: "Waiting on you",
   shipped: "Shipped",
   rejected: "Rejected",
