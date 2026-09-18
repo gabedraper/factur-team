@@ -197,7 +197,13 @@ export default async function ClientResultPage({
         />
       </div>
 
-      <ServicePeriods clientId={clientId} periods={periods} />
+      <ServicePeriods
+        clientId={clientId}
+        periods={periods}
+        lastResultMonth={Object.fromEntries(
+          series.map((s) => [s.service, s.months[s.months.length - 1].monthStart]),
+        )}
+      />
 
       <div className="space-y-2 rounded-md border p-3">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-body">
