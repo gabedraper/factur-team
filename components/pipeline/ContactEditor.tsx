@@ -37,18 +37,22 @@ export function ContactEditor({
   const { callOpportunity } = useDialer();
 
   /*
-   * Every number Salesforce holds, each one a dial button. The plain "phone"
-   * is Salesforce's main number, which is usually the direct or mobile line
-   * repeated; a number shown once under its own label is not shown again as
-   * "Phone", so a rep sees three distinct ways to reach the person rather
-   * than the same one twice.
+   * Every number Salesforce holds, each one a dial button. The two a BDM asks
+   * for by name -- the switchboard and the mobile -- are always drawn, blank
+   * or not, so the panel answers "do we have his mobile" without the rep
+   * having to work out whether a missing row means missing or not held.
+   *
+   * The rest only appear when we hold them. The plain "phone" is Salesforce's
+   * main number, which is usually the direct or mobile line repeated; a
+   * number shown once under its own label is not shown again as "Phone", so a
+   * rep sees distinct ways to reach the person rather than the same one twice.
    */
-  const lines = [
-    { label: "Direct", value: directPhone },
-    { label: "Mobile", value: mobilePhone },
-    { label: "Company", value: companyPhone },
-  ].filter((l): l is { label: string; value: string } => !!l.value);
-  if (phone && !lines.some((l) => l.value === phone)) lines.unshift({ label: "Phone", value: phone });
+  const lines: { label: string; value: string | null }[] = [
+    { label: "HQ / Main Office Number", value: companyPhone ?? null },
+    { label: "Mobile Number", value: mobilePhone ?? null },
+  ];
+  if (directPhone) lines.push({ label: "Direct", value: directPhone });
+  if (phone && !lines.some((l) => l.value === phone)) lines.push({ label: "Phone", value: phone });
 
   const dial = (value: string) => {
     const dialable = toE164(value);
@@ -73,19 +77,12 @@ export function ContactEditor({
             same movement, rather than reading it here and hitting a button
             beside it. Still the in-app dialer and not a tel: link, so the
             call is logged against this opportunity. */}
-        {lines.length === 0 ? (
-          <div className="flex items-center justify-between gap-2">
-            <dt className="text-muted-foreground">Phone</dt>
-            <dd>—</dd>
+        {lines.map((l) => (
+          <div key={l.label} className="flex items-center justify-between gap-2">
+            <dt className="text-muted-foreground">{l.label}</dt>
+            <dd className="flex items-center gap-2 tabular-nums">{l.value ? dial(l.value) : "—"}</dd>
           </div>
-        ) : (
-          lines.map((l) => (
-            <div key={l.label} className="flex items-center justify-between gap-2">
-              <dt className="text-muted-foreground">{l.label}</dt>
-              <dd className="flex items-center gap-2 tabular-nums">{dial(l.value)}</dd>
-            </div>
-          ))
-        )}
+        ))}
         <div className="flex justify-between gap-2">
           <dt className="text-muted-foreground">Email</dt>
           <dd className="truncate">
